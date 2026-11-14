@@ -12,6 +12,7 @@ import {
 } from '@arch-guard/core/presets';
 import { createRule } from '@arch-guard/core';
 import { DECLARED_TOOLS_FILE } from './declared-tools.mjs';
+import { SITES_FILE } from './sites-file.mjs';
 import { SEED_SPECIFIERS } from './seed.mjs';
 import { CLIENT_FACE, HOST_FACE } from './faces.mjs';
 
@@ -20,6 +21,8 @@ const LAYERS = { model: 1, components: 2, host: 10 };
 const MESSAGES_ROLE = { id: 'lib:messages', pattern: 'src/messages.ts', layer: 1 };
 
 const DECLARED_TOOLS_ROLE = { id: 'lib:declared-tools', pattern: DECLARED_TOOLS_FILE, layer: 1 };
+
+const SITES_ROLE = { id: 'lib:sites', pattern: SITES_FILE, layer: 1 };
 
 const DEFAULT_THRESHOLDS = { fileLines: 200, viewLines: 200, functionLines: 80 };
 
@@ -272,7 +275,7 @@ export function moduleArch(options = {}) {
     ],
     overrides: {
       include: ['src/**'],
-      addRoles: [MESSAGES_ROLE, DECLARED_TOOLS_ROLE, TESTS_DIR_ROLE, ...roles],
+      addRoles: [MESSAGES_ROLE, DECLARED_TOOLS_ROLE, SITES_ROLE, TESTS_DIR_ROLE, ...roles],
       thresholds,
       customRules: MODULE_RULES,
 
