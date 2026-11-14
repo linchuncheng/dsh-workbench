@@ -8,8 +8,8 @@
 # 口径与代价见 内部设计记录。
 #
 # 为什么并行：串行那版靠 wall-clock sleep 排队，54 秒里 96% 是干等。每格各带自己的临时包根与
-# 假 pnpm、互不共享，所以能并行；假 pnpm 睡 2 秒、锁等待压到 1 秒（SYNC_LOCK_WAIT_SECONDS
-# 在 seed-workshop.sh 里可覆盖）—— 整条探针从 54s 收到 <10s。
+# 假 pnpm、互不共享，所以能并行；假 pnpm 默认睡 2 秒（②④⑥⑧ 改由 SYNC_PROBE_GATE 放行文件卡住，
+# 不等墙钟）、锁等待压到 1 秒（SYNC_LOCK_WAIT_SECONDS 在 seed-workshop.sh 里可覆盖）。
 # 负数格（"不该动"）仍需等一拍：它们彼此重叠，总时长由最慢那格（⑩/⑫）决定。
 #
 # 十八格：① 同代 / ② 不同代 / ③ 退避 / ④ 无参 setup / ⑤ 首次无基准 / ⑥ 装成才 ok /
@@ -48,8 +48,8 @@ setup_shell() {
   # 假 pnpm：报原话（② 要它进 seed.log）、记调用与目标（锁判据读它）、睡一下再按模式改实装版本。
   # 退出码永远 0 —— ⑥ 就是钉"不信退出码，复核过才写 ok"。
   # started / done 两个标记取代了原来"entry 必须 <3s 返回"那条计时断言：那条在假 pnpm 从 5 秒
-  # 压到 2 秒之后就假绿了（同步版 entry 也能在 3 秒内"等完"）。现在 ②④⑥⑧ 断言 run_it 返回时
-  # done **还没出现** —— 与假 install 多长无关。
+  # 压到 2 秒之后就假绿了（同步版 entry 也能在 3 秒内"等完"）。②④⑥⑧ 再用 SYNC_PROBE_GATE 把
+  # 假 install 卡在放行文件上：run_it 返回时 done 一定还没出现，与机器快慢无关，探针断言完才放行。
   cat >"$fresh/fakebin/pnpm" <<'SH'
 #!/bin/sh
 echo "FAKE-PNPM-RAW mode=$FAKE_PNPM_MODE"
@@ -57,7 +57,12 @@ echo called >>"$SYNC_PROBE_MARK"
 echo started >"$SYNC_PROBE_MARK.started"
 target="$(node -e 'process.stdout.write(String(require(process.argv[1]).devDependencies["@dsh-workbench/core"]).replace("^",""))' "$FAKE_PNPM_DIY/package.json")"
 echo "$target" >>"$SYNC_PROBE_MARK.target"
-sleep 2
+if [ -n "${SYNC_PROBE_GATE:-}" ]; then
+  i=0
+  while [ ! -f "$SYNC_PROBE_GATE" ] && [ "$i" -lt 600 ]; do sleep 0.05; i=$((i + 1)); done
+else
+  sleep 2
+fi
 if [ "$FAKE_PNPM_MODE" = fix ]; then
   for n in core module-tools shared; do
     printf '{"name":"@dsh-workbench/%s","version":"%s"}\n' "$n" "$target" > "$FAKE_PNPM_DIY/node_modules/@dsh-workbench/$n/package.json"
@@ -91,7 +96,7 @@ run_it() {
 
 wait_state() {
   i=0
-  while [ "$i" -lt 100 ]; do
+  while [ "$i" -lt 300 ]; do
     if [ -f "$1/workbench/diy/.sync.json" ] && grep -q "$2" "$1/workbench/diy/.sync.json"; then return 0; fi
     sleep 0.1; i=$((i + 1))
   done
@@ -112,8 +117,9 @@ c1() {
 
 c2() {
   b="$work/b"; setup_shell "$b" 9.9.9 0.0.1
-  run_it "$b" entry
+  SYNC_PROBE_GATE="$b/pnpm.gate" run_it "$b" entry
   [ ! -f "$b/pnpm.called.done" ] || fail "② entry 等到了安装结束（被后台 install 拖住）"
+  touch "$b/pnpm.gate"
   wait_state "$b" failed || fail "② 没写 failed"
   [ -f "$b/pnpm.called" ] || fail "② 没走到 pnpm"
   node -e '
@@ -138,8 +144,9 @@ c3() {
 
 c4() {
   d="$work/d"; setup_shell "$d" 9.9.9 0.0.1
-  run_it "$d"
+  SYNC_PROBE_GATE="$d/pnpm.gate" run_it "$d"
   [ ! -f "$d/pnpm.called.done" ] || fail "④ 无参那趟被后台 install 拖住"
+  touch "$d/pnpm.gate"
   wait_state "$d" failed || fail "④ 无参（带基准）没拉起自愈"
   echo "④ 无参（setup 那条路 + 基准）也自愈 ✅"
 }
@@ -154,8 +161,9 @@ c5() {
 
 c6() {
   f="$work/f"; setup_shell "$f" 9.9.9 0.0.1
-  FAKE_PNPM_MODE=fix run_it "$f" entry
+  SYNC_PROBE_GATE="$f/pnpm.gate" FAKE_PNPM_MODE=fix run_it "$f" entry
   [ ! -f "$f/pnpm.called.done" ] || fail "⑥ entry 等到了安装结束（被后台 install 拖住）"
+  touch "$f/pnpm.gate"
   wait_state "$f" '"ok"' || fail "⑥ 装成了却没写 ok"
   grep -q '"version": "9.9.9"' "$f/workbench/diy/.sync.json" || fail "⑥ ok 里的版本不对"
   echo "⑥ 复核通过才写 ok ✅"
@@ -174,8 +182,9 @@ c7() {
 
 c8() {
   h="$work/h"; setup_shell "$h" 0.2.0 0.2.0 0.3.1
-  FAKE_PNPM_MODE=fix run_it "$h" entry launcher "$h/profile"
+  SYNC_PROBE_GATE="$h/pnpm.gate" FAKE_PNPM_MODE=fix run_it "$h" entry launcher "$h/profile"
   [ ! -f "$h/pnpm.called.done" ] || fail "⑧ entry 等到了安装结束（被后台 install 拖住）"
+  touch "$h/pnpm.gate"
   wait_state "$h" '"ok"' || fail "⑧ 没装成 ok"
   [ "$(head -n 1 "$h/pnpm.called.target")" = "0.3.1" ] || fail "⑧ 目标不是基准那一代（$(head -n 1 "$h/pnpm.called.target")）"
   [ "$(installed_v "$h")" = "0.3.1" ] || fail "⑧ 装完不是基准那一代"

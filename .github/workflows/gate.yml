@@ -56,6 +56,7 @@ jobs:
         run: |
           set -o pipefail
           if ! DSH_HOME="$(mktemp -d)" pnpm -w run selfcheck > selfcheck.log 2>&1; then
+            grep -aA 25 '❌' selfcheck.log || true
             tail -n 40 selfcheck.log
             body=$(grep -aE '❌|通过 —— 失败' selfcheck.log | head -n 12 | sed -e 's/%/%25/g' | awk 'NF { printf "%s%%0A", $0 }')
             echo "::error title=fresh-home selfcheck failed::${body:0:1800}"
