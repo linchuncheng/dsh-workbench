@@ -1,6 +1,6 @@
-import { cpSync, existsSync, lstatSync, readFileSync, readlinkSync, renameSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
-import { ensureDir, isManagedLinkSpec, linkDir, removePath, withReleaseAge, writeJsonFile, writeTextFile } from '@dsh-workbench/shared/host';
+import { existsSync, lstatSync, readFileSync, readlinkSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
+import { ensureDir, isManagedLinkSpec, linkDir, moveDir, removePath, withReleaseAge, writeJsonFile, writeTextFile } from '@dsh-workbench/shared/host';
 import { installWithRetry, type InstallAttempt, type InstallRetryResult } from './install-retry.js';
 import { CORE_ARTIFACTS, SELF_UPDATE_PACKAGES } from './self-update-plan.js';
 import { isRealDir } from './version-migrate.js';
@@ -31,7 +31,9 @@ export interface VersionInstallDeps {
 }
 
 export function versionDirOf(versionsDir: string, version: string): string {
-  return join(versionsDir, version);
+  const wanted = version.trim();
+  if (wanted === '') throw new Error('版本号为空，不能当成版本目录');
+  return join(versionsDir, wanted);
 }
 
 export function versionProjectFiles(input: {
@@ -187,19 +189,11 @@ export function carryPreviousVersion(input: {
 
 function linkTargetOf(link: string): string | undefined {
   try {
-    return lstatSync(link).isSymbolicLink() ? readlinkSync(link) : undefined;
+    if (!lstatSync(link).isSymbolicLink()) return undefined;
+    // readlink 可能是相对路径；统一按链接所在目录解析成绝对路径。
+    return resolve(dirname(link), readlinkSync(link));
   } catch {
     return undefined;
-  }
-}
-
-function moveDir(source: string, target: string): void {
-  try {
-    renameSync(source, target);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
-    cpSync(source, target, { recursive: true });
-    removePath(source);
   }
 }
 

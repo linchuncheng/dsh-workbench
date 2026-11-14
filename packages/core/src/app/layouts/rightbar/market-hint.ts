@@ -39,6 +39,8 @@ const UPDATES_KEY = 'panels.market.hasNew';
 
 const SELF_UPDATE_NOTES: ReadonlySet<string> = new Set<string>([
   'panels.market.selfUpdateRetry',
+  'panels.market.selfUpdateReinstallFailed',
+  'panels.market.selfUpdateReinstallStopped',
 ]);
 
 function isProblem(row: MarketRow): boolean {

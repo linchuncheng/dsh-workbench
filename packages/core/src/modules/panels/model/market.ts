@@ -8,7 +8,8 @@ import type { RegistryNotebook } from '@dsh-workbench/shared/host';
 import type { UnitCapability } from '@dsh-workbench/shared/host';
 import { requireSupply, type SupplyPort, type UnitMountDeps } from '@dsh-workbench/shared/host';
 import type { Seam } from '@dsh-workbench/shared/host';
-import { quoteShellArg } from '@dsh-workbench/shared/host';
+import { quoteShellArg, runningVersionOf } from '@dsh-workbench/shared/host';
+import { dshVersionIn } from '@dsh-workbench/shared/host';
 import { createInstallRunner } from './market-install-run';
 import {
   affectedUnitsOf,
@@ -444,6 +445,8 @@ export function createMarketService(options: {
         },
         ...(options.selfUpdate === undefined ? {} : { selfUpdate: options.selfUpdate }),
         ...(includePrerelease === undefined ? {} : { includePrerelease }),
+        running: runningVersionOf(import.meta.url),
+        dshVersion: () => (profileDir === undefined || profileDir === null ? undefined : dshVersionIn(profileDir)),
         ...(logger === undefined ? {} : { logger }),
       });
     },

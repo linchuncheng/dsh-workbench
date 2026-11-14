@@ -104,4 +104,9 @@ describe('版本目录：项目文件从 profile 搬过来', () => {
     expect(versionDirOf('/base/versions', VERSION)).toBe(join('/base/versions', VERSION));
     expect(versionDirOf('/base/versions', '1.2.3-beta.2')).not.toBe(versionDirOf('/base/versions', VERSION));
   });
+
+  it('★ 空版本号不许落到 versions/ 根目录', () => {
+    expect(() => versionDirOf('/base/versions', '')).toThrow(/版本号为空/);
+    expect(() => versionDirOf('/base/versions', '   ')).toThrow(/版本号为空/);
+  });
 });

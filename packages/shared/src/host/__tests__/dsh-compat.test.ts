@@ -1,0 +1,122 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { dshCompatibilityOf, dshRequirementsOf, dshVersionIn } from '../dsh-compat.js';
+
+const ROOT = mkdtempSync(join(tmpdir(), 'dsh-wb-dsh-compat-'));
+
+beforeEach(() => {
+  // 别让跑测试的终端里已有的 DSH_VERSION 影响判定
+  vi.stubEnv('DSH_VERSION', '');
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+afterAll(() => {
+  rmSync(ROOT, { recursive: true, force: true });
+});
+
+const verdictOf = (manifest: Parameters<typeof dshRequirementsOf>[0], dshVersion?: string) =>
+  dshCompatibilityOf({ requirements: dshRequirementsOf(manifest), dshVersion });
+
+describe('dsh 兼容判定：engines 优先，再看 dsh peers', () => {
+  it('engines.dsh 高于当前 dsh → 不兼容；等于或低于 → 兼容', () => {
+    const manifest = { name: '@dsh-workbench/core', engines: { dsh: '>=0.2.2-rc.2' } };
+    expect(verdictOf(manifest, '0.2.2-rc.1').verdict).toBe('incompatible');
+    expect(verdictOf(manifest, '0.2.2-rc.2').verdict).toBe('compatible');
+    expect(verdictOf(manifest, '0.3.0').verdict).toBe('compatible');
+  });
+
+  it('预发布边界按原样比较，不把 rc.1 当成 rc.2', () => {
+    const manifest = { name: 'x', engines: { dsh: '>=0.2.2-rc.2' } };
+    const verdict = verdictOf(manifest, '0.2.2-rc.1');
+    expect(verdict).toMatchObject({ verdict: 'incompatible' });
+    if (verdict.verdict === 'incompatible') expect(verdict.requirements[0]?.range).toBe('>=0.2.2-rc.2');
+  });
+
+  it('有 engines 就只看 engines，peer 的区间不再参与', () => {
+    const manifest = {
+      name: 'x',
+      engines: { dsh: '>=0.2.0' },
+      peerDependencies: { '@deepseek-ai/dsh': '^0.9.0' },
+    };
+    expect(verdictOf(manifest, '0.2.2').verdict).toBe('compatible');
+  });
+
+  it('没有 engines：收 @deepseek-ai/dsh 与 dsh-* 的 peer，别的不算', () => {
+    const manifest = {
+      name: 'x',
+      peerDependencies: {
+        '@deepseek-ai/dsh': '>=0.2.0',
+        '@deepseek-ai/dsh-web': '>=0.2.0',
+        '@deepseek-ai/other': '^9.0.0',
+      },
+    };
+    expect(dshRequirementsOf(manifest).map((item) => item.range)).toEqual(['>=0.2.0', '>=0.2.0']);
+    expect(verdictOf(manifest, '0.2.2').verdict).toBe('compatible');
+  });
+
+  it('拿不到 dsh 版本 / 区间非法 / 没写要求 → 都是未知，不假装兼容', () => {
+    const manifest = { name: 'x', engines: { dsh: '>=0.2.0' } };
+    expect(verdictOf(manifest)).toMatchObject({ verdict: 'unknown', reason: 'missing-dsh-version' });
+    expect(verdictOf(manifest, 'not-a-version')).toMatchObject({ verdict: 'unknown', reason: 'missing-dsh-version' });
+    expect(verdictOf({ name: 'x', engines: { dsh: 'nonsense range' } }, '0.2.2')).toMatchObject({
+      verdict: 'unknown',
+      reason: 'malformed',
+    });
+    expect(verdictOf({ name: 'x' }, '0.2.2')).toMatchObject({ verdict: 'unknown', reason: 'no-requirement' });
+  });
+});
+
+describe('dsh 版本从 profile 的安装锚点读', () => {
+  function profileWith(files: Readonly<Record<string, unknown>>): string {
+    const dir = mkdtempSync(join(ROOT, 'profile-'));
+    for (const [rel, body] of Object.entries(files)) {
+      const file = join(dir, rel);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`, 'utf8');
+    }
+    return dir;
+  }
+
+  it('优先读实际安装的 dsh 清单；没有才退回锚点钉住的版本', () => {
+    const dir = profileWith({
+      'node_modules/@deepseek-ai/dsh/package.json': { name: '@deepseek-ai/dsh', version: '0.2.2-rc.5' },
+      'node_modules/@deepseek-ai/dsh-app-boot/package.json': {
+        name: '@deepseek-ai/dsh-app-boot',
+        version: '0.2.2-rc.2',
+        dependencies: { '@deepseek-ai/dsh': '0.2.2-rc.2' },
+      },
+    });
+    expect(dshVersionIn(dir)).toBe('0.2.2-rc.5');
+
+    const anchored = profileWith({
+      'node_modules/@deepseek-ai/dsh-app-boot/package.json': {
+        name: '@deepseek-ai/dsh-app-boot',
+        version: '0.2.2-rc.2',
+        dependencies: { '@deepseek-ai/dsh': '0.2.2-rc.2' },
+      },
+    });
+    expect(dshVersionIn(anchored)).toBe('0.2.2-rc.2');
+  });
+
+  it('只有 dsh 清单时读它自己的版本；都读不到就是 undefined', () => {
+    const dir = profileWith({
+      'node_modules/@deepseek-ai/dsh/package.json': { name: '@deepseek-ai/dsh', version: '0.2.2-rc.1' },
+    });
+    expect(dshVersionIn(dir)).toBe('0.2.2-rc.1');
+    expect(dshVersionIn(join(ROOT, 'nothing-here'))).toBeUndefined();
+  });
+
+  it('profile 里都没有时用启动器导出的 DSH_VERSION；非法值忽略', () => {
+    const dir = profileWith({});
+    vi.stubEnv('DSH_VERSION', '0.2.3');
+    expect(dshVersionIn(dir)).toBe('0.2.3');
+
+    vi.stubEnv('DSH_VERSION', 'garbage');
+    expect(dshVersionIn(dir)).toBeUndefined();
+  });
+});

@@ -4,11 +4,12 @@ import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createFakeProcesses } from '@dsh-workbench/shared/testing';
 import type { ProcessSpawnOptions } from '@dsh-workbench/shared/host';
+import { acquireHostLease, readReinstallRecord, reinstallRecordFile, updateJournalFile } from '@dsh-workbench/shared/host';
 import type { SelfUpdateRequest } from '@dsh-workbench/shared/host';
 import type { SelfUpdatePaths } from '@dsh-workbench/shared/host';
 import { selfUpdateStepsOf } from '../self-update-steps.js';
 import { runSelfUpdateSteps } from '../self-update-run.js';
-import { isManagedLinkSpec, type VersionLink } from '../version-dir.js';
+import { flipProfileLinks, isManagedLinkSpec, versionLinksOf, type VersionLink } from '../version-dir.js';
 import { SELF_UPDATE_PACKAGES } from '../self-update-plan.js';
 
 const ROOT = mkdtempSync(join(tmpdir(), 'dsh-wb-self-update-steps-'));
@@ -156,11 +157,8 @@ describe('自更新：runner 按步骤跑，失败只落在 marker 上', () => {
     expect(result.ok).toBe(true);
     expect(result.state).toBe('pending');
     expect(result.ran).toEqual(['version', 'install', 'verify', 'switch', 'bundles', 'prune', 'marker', 'expect-boot']);
-    expect(processes.calls).toHaveLength(2);
+    expect(processes.calls).toHaveLength(1);
     expect(processes.calls[0]?.args).toContain('install');
-    expect(processes.calls[1]?.args).toEqual(
-      expect.arrayContaining(['install', '--dir', plan.profileDir, '--prefer-offline']),
-    );
 
     const link = join(plan.profileDir, 'node_modules', CORE);
     expect(lstatSync(link).isSymbolicLink()).toBe(true);
@@ -174,6 +172,12 @@ describe('自更新：runner 按步骤跑，失败只落在 marker 上', () => {
     );
     expect(manifest.dsh.profile.bundles).toContain(CORE);
     expect(JSON.parse(readFileSync(plan.markerPath, 'utf8'))).toMatchObject({ state: 'pending-restart', version: TO });
+    // 提交那一刻就要有待重装记录：不然重装前崩溃或直接重启就没人补这一步
+    expect(readReinstallRecord(reinstallRecordFile(dirname(plan.markerPath)))).toMatchObject({
+      state: 'pending',
+      profileDir: plan.profileDir,
+      version: TO,
+    });
   });
 
   it('装失败：marker 落 failed，后面的步一步都不跑（没换链接）', async () => {
@@ -375,7 +379,7 @@ describe('确认窗口：只认「这一版确认可用」，不再自动回滚'
     expect(result.state).toBe('pending');
     expect(JSON.parse(readFileSync(plan.markerPath, 'utf8'))).toMatchObject({ state: 'pending-restart', version: TO });
     expect(linkedVersion(plan.profileDir)).toBe(TO);
-    expect(processes.calls).toHaveLength(2);
+    expect(processes.calls).toHaveLength(1);
   });
 
   it('★ 新版起来但工作台那半一直没露面 → 也不翻回去', async () => {
@@ -402,7 +406,7 @@ describe('确认窗口：只认「这一版确认可用」，不再自动回滚'
     expect(result.state).toBe('pending');
     expect(JSON.parse(readFileSync(plan.markerPath, 'utf8'))).toMatchObject({ state: 'pending-restart', version: TO });
     expect(linkedVersion(plan.profileDir)).toBe(TO);
-    expect(processes.calls).toHaveLength(2);
+    expect(processes.calls).toHaveLength(1);
   });
 });
 
@@ -539,5 +543,187 @@ describe('一次性迁移：旧版只压在 profile 的真目录里', () => {
     const kept = join(paths.versionsDir, FROM, 'node_modules', CORE, 'package.json');
     expect(JSON.parse(readFileSync(kept, 'utf8')).version).toBe(FROM);
     expect(versionAt(plan.profileDir, CORE)).toBe(TO);
+  });
+});
+
+describe('换版事务：失败不留半成品，提交后不再改判失败', () => {
+  const AT = '2026-11-10T12:00:00.000Z';
+
+  const linkedVersion = (profileDir: string): string =>
+    JSON.parse(readFileSync(join(profileDir, 'node_modules', CORE, 'package.json'), 'utf8')).version as string;
+
+  const oldProfile = (plan: ReturnType<typeof planOf>): string => {
+    materialize({ versionsDir: plan.versionsDir, version: FROM, packages: plan.packages });
+    flipProfileLinks(versionLinksOf({ profileDir: plan.profileDir, versionDir: join(plan.versionsDir, FROM), packages: plan.packages }));
+    return plan.profileDir;
+  };
+
+  it('★ 换链中途失败：回到旧版，清单原文不动，日志清掉', async () => {
+    const { request, paths } = caseDirs();
+    const plan = planOf(request, paths, { at: AT });
+    const profileDir = oldProfile(plan);
+    const manifestBefore = readFileSync(join(profileDir, 'package.json'), 'utf8');
+    const journalPath = updateJournalFile(paths.dir);
+    const processes = installing(plan.packages, paths.versionsDir, TO);
+    const flip = (links: readonly VersionLink[]): void => {
+      const first = links[0];
+      if (first !== undefined) flipProfileLinks([first]);
+      throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' });
+    };
+
+    const result = await runSelfUpdateSteps(plan, {
+      processes: processes.host,
+      now: () => AT,
+      flip,
+      inUseWaitMs: 0,
+    });
+
+    expect(result.state).toBe('failed');
+    expect(linkedVersion(profileDir)).toBe(FROM);
+    expect(readFileSync(join(profileDir, 'package.json'), 'utf8')).toBe(manifestBefore);
+    expect(existsSync(journalPath)).toBe(false);
+    expect(JSON.parse(readFileSync(plan.markerPath, 'utf8')).state).toBe('failed');
+  });
+
+  it('★ 事务日志写不上：一步都不动，profile 还是旧版', async () => {
+    const { request, paths } = caseDirs();
+    const plan = planOf(request, paths, { at: AT });
+    const profileDir = oldProfile(plan);
+    mkdirSync(join(paths.dir, 'self-update-journal.json'), { recursive: true });
+    const processes = installing(plan.packages, paths.versionsDir, TO);
+
+    const result = await runSelfUpdateSteps(plan, { processes: processes.host, now: () => AT });
+
+    expect(result.state).toBe('failed');
+    expect(result.detail).toContain('换版事务日志没写上');
+    expect(result.ran).toEqual(['version', 'install', 'verify']);
+    expect(linkedVersion(profileDir)).toBe(FROM);
+  });
+
+  it('★ 清单写入失败：链接回到旧版，清单原文不动', async () => {
+    const { request, paths } = caseDirs();
+    const plan = planOf(request, paths, { at: AT });
+    const profileDir = oldProfile(plan);
+    const manifestBefore = readFileSync(join(profileDir, 'package.json'), 'utf8');
+    const journalPath = updateJournalFile(paths.dir);
+    const processes = installing(plan.packages, paths.versionsDir, TO);
+
+    const result = await runSelfUpdateSteps(plan, {
+      processes: processes.host,
+      now: () => AT,
+      writeManifest: () => {
+        throw new Error('EACCES: 清单写不下去');
+      },
+    });
+
+    expect(result.state).toBe('failed');
+    expect(result.detail).toContain('清单没写成');
+    expect(linkedVersion(profileDir)).toBe(FROM);
+    expect(readFileSync(join(profileDir, 'package.json'), 'utf8')).toBe(manifestBefore);
+    expect(existsSync(journalPath)).toBe(false);
+  });
+
+  it('★ 提交之后 marker 写不下去：不改判失败，仍留重启后生效', async () => {
+    const { request, paths } = caseDirs();
+    const plan = planOf(request, paths, { at: AT });
+    mkdirSync(plan.markerPath, { recursive: true });
+    const processes = installing(plan.packages, paths.versionsDir, TO);
+
+    const result = await runSelfUpdateSteps(plan, { processes: processes.host, now: () => AT });
+
+    expect(result.ok).toBe(true);
+    expect(result.state).toBe('pending');
+    expect(result.detail).toContain('marker 这一步抛了');
+    expect(linkedVersion(plan.profileDir)).toBe(TO);
+  });
+});
+
+describe('切换前闸：不兼容 / 还占着 profile 都不换链', () => {
+  const AT = '2026-11-10T12:00:00.000Z';
+
+  it('★ 新版本要更高的 dsh：不切链接，marker 落 failed', async () => {
+    const { request, paths } = caseDirs();
+    const plan = planOf({ ...request, dshVersion: '0.2.2-rc.1' }, paths, { at: AT });
+    const processes = createFakeProcesses((call: ProcessSpawnOptions) => {
+      if (call.args.includes('install')) {
+        materialize({ versionsDir: paths.versionsDir, version: TO, packages: plan.packages });
+        writeFileSync(
+          join(paths.versionsDir, TO, 'node_modules', CORE, 'package.json'),
+          `${JSON.stringify({ name: CORE, version: TO, engines: { dsh: '>=0.2.2-rc.2' } })}\n`,
+          'utf8',
+        );
+      }
+      return { stdout: '+ 工作台' };
+    });
+
+    const result = await runSelfUpdateSteps(plan, { processes: processes.host, now: () => AT });
+
+    expect(result.state).toBe('failed');
+    expect(result.detail).toContain('不兼容');
+    expect(result.ran).toEqual(['version', 'install', 'verify']);
+    expect(existsSync(join(plan.profileDir, 'node_modules', CORE))).toBe(false);
+  });
+
+  it('★ 迁移现场还有活窗口：先在原地等，不换链', async () => {
+    const { request, paths } = caseDirs();
+    const profileDir = join(request.dshHome, 'profiles', request.profile);
+    for (const pkg of SELF_UPDATE_PACKAGES) {
+      const dir = join(profileDir, 'node_modules', pkg);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: pkg, version: FROM }), 'utf8');
+    }
+    const plan = planOf(request, paths, { at: AT });
+    expect(plan.migration).toBe(true);
+    const lease = acquireHostLease({ profileDir, profile: request.profile, pid: process.pid });
+    try {
+      const processes = installing(plan.packages, paths.versionsDir, TO);
+      const result = await runSelfUpdateSteps(plan, { processes: processes.host, now: () => AT, inUseWaitMs: 0 });
+      expect(result.state).toBe('failed');
+      expect(result.detail).toContain('先退出');
+      expect(JSON.parse(readFileSync(join(profileDir, 'node_modules', CORE, 'package.json'), 'utf8')).version).toBe(FROM);
+    } finally {
+      lease.release();
+    }
+  });
+
+  it('★ 发起更新的那个窗口不算「还占着」：它自己持着租约也能完成迁移', async () => {
+    const { request, paths } = caseDirs();
+    const profileDir = join(request.dshHome, 'profiles', request.profile);
+    for (const pkg of SELF_UPDATE_PACKAGES) {
+      const dir = join(profileDir, 'node_modules', pkg);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: pkg, version: FROM }), 'utf8');
+    }
+    const plan = planOf(request, paths, { at: AT, requesterPid: process.pid });
+    const lease = acquireHostLease({ profileDir, profile: request.profile, pid: process.pid });
+    try {
+      const processes = installing(plan.packages, paths.versionsDir, TO);
+      const result = await runSelfUpdateSteps(plan, { processes: processes.host, now: () => AT, inUseWaitMs: 0 });
+      expect(result.state).toBe('pending');
+      expect(JSON.parse(readFileSync(join(plan.profileDir, 'node_modules', CORE, 'package.json'), 'utf8')).version).toBe(TO);
+    } finally {
+      lease.release();
+    }
+  });
+});
+
+describe('数据安全：更新只动 profile 与版本目录', () => {
+  const AT = '2026-11-10T12:00:00.000Z';
+
+  it('★ 会话、项目、设置那几份一个字节都不动', async () => {
+    const { request, paths } = caseDirs();
+    const session = join(request.dshHome, 'sessions', 'one.jsonl');
+    const project = join(request.dshHome, 'projects', 'notes.txt');
+    mkdirSync(dirname(session), { recursive: true });
+    mkdirSync(dirname(project), { recursive: true });
+    writeFileSync(session, '{"say":"hi"}\n', 'utf8');
+    writeFileSync(project, 'today\n', 'utf8');
+    const plan = planOf(request, paths, { at: AT });
+    const processes = installing(plan.packages, paths.versionsDir, TO);
+
+    await runSelfUpdateSteps(plan, { processes: processes.host, now: () => AT });
+
+    expect(readFileSync(session, 'utf8')).toBe('{"say":"hi"}\n');
+    expect(readFileSync(project, 'utf8')).toBe('today\n');
   });
 });

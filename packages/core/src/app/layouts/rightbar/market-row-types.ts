@@ -55,7 +55,9 @@ export interface MarketNote {
     | 'panels.market.workbenchBrokenNoFix'
     | 'panels.market.selfUpdateQueued'
     | 'panels.market.selfUpdatePendingRestart'
-    | 'panels.market.selfUpdateRetry';
+    | 'panels.market.selfUpdateRetry'
+    | 'panels.market.selfUpdateReinstallFailed'
+    | 'panels.market.selfUpdateReinstallStopped';
   readonly params: Readonly<Record<string, string>>;
   readonly tone?: 'plain' | 'alert';
 }

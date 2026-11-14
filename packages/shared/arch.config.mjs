@@ -78,6 +78,18 @@ export default {
         glob: 'src/i18n/*.ts',
         reason: '词典是逐条文案的平铺表：拆文件只会让键名与语种漂开，检查的是键集不是文件体积。',
       },
+      {
+        rule: 'P06',
+        glob: 'src/host/lease.ts',
+        reason:
+          '更新租约已改用 proper-lockfile 的锁目录做 OS 级互斥；宿主租约仍是每窗口一枚的排他文件，' +
+          '要按 pid 判断「这个窗口还活着」，不能被锁库的释放语义接管。',
+      },
+      {
+        rule: 'P06',
+        glob: 'src/host/process-alive.ts',
+        reason: '这里只问进程号还在不在（kill(pid, 0)），既不开文件也不持锁。',
+      },
     ],
   },
 };

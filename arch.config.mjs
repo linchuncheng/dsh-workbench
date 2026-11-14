@@ -35,6 +35,13 @@ export default {
         glob: 'packages/shared/scripts/check-state.mjs',
         reason: '这条正则就是「禁 node:child_process」的判据本体；文件本身没有起进程。',
       },
+      {
+        rule: 'P06',
+        glob: 'packages/core/scripts/recover-update.mjs',
+        reason:
+          '启动器脚本是 core 包内的独立入口，core 没有直接依赖 execa；不能为了它新增运行时依赖，' +
+          '这里只需要同步起一次 pnpm 并继承输出。',
+      },
     ],
   },
 };

@@ -1,7 +1,8 @@
 import type { UnitManifest } from '@dsh-workbench/shared';
 import { provideWorkbenchSeam } from '@/shared/api/host/workbench-seam';
 import { holdHostLock } from '@/shared/api/host/host-lock';
-import { bootChores } from '@/shared/api/host/boot-chores';
+import { holdHostLeaseEffect, waitOutReinstall } from '@/shared/api/host/host-lease';
+import { bootChores, seedRuntime } from '@/shared/api/host/boot-chores';
 import { bootOkAction } from '@/shared/api/host/boot-ok';
 import { provideGitProcessSeam } from '@/shared/api/host/git-process';
 import { browserExtensionDir, shippedAdapterSet } from '@/shared/api/host/shipped-adapter-set';
@@ -10,13 +11,9 @@ import { assembleHostUnits } from '@/app/units/host';
 import { createPostChannels } from '@/shared/api/host/post-channels';
 import { takeHeldNotices, type AgentsLookup } from '@/shared/api/host/diy-debug-act';
 import { registerDiyActs } from '@/shared/api/host/diy-acts';
-import { dshHome, hostSurface, runningVersionOf, workbenchRoot } from '@dsh-workbench/shared/host';
 import {
-  capabilityHandler,
-  registerApi,
-  registerPanelState,
-  type PostWrite,
-  type RouteTable,
+  capabilityHandler, dshHome, hostSurface, registerApi, registerPanelState, runningVersionOf, workbenchRoot,
+  type PostWrite, type RouteTable,
 } from '@dsh-workbench/shared/host';
 import { PANEL_STATE_SERVICE, createFactLog, createPanelStateStore, toolUnits, wroteNow } from '@dsh-workbench/shared/host';
 
@@ -59,6 +56,7 @@ export const name = 'dsh-workbench';
 interface ReleasedLookup { isReleased(id: string): boolean }
 export const inject = ['webServer'];
 export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Promise<void> {
+  const reinstallDeadline = await waitOutReinstall((message) => warn(ctx, message));
   const seam = provideWorkbenchSeam(ctx);
   if (seam !== undefined) provideGitProcessSeam(seam);
   registerBootThemeGuard(ctx);
@@ -70,7 +68,11 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   const resolved = await resolveAdapterSet(ctx, config?.adapterSet, () => shippedAdapterSet(ctx));
   const adapters: AdapterSet = resolved.set;
   const loaded = resolved.load;
-  adapters.runtime.seed(ctx, { corePackageUrl: import.meta.url, log: (message) => warn(ctx, message) });
+  const profileDir = adapters.profile.dirOf(ctx);
+  await waitOutReinstall((message) => warn(ctx, message), reinstallDeadline);
+  holdHostLeaseEffect(ctx, { profileDir, profile: profileDir === null ? '' : basename(profileDir),
+    version: runningVersionOf(import.meta.url), onProblem: (message) => warn(ctx, message) });
+  seedRuntime(ctx, adapters, import.meta.url);
   if (loaded.ok) {
     ctx.logger?.info?.(`[dsh-workbench] 适配器集合：${adapters.id}@${adapters.version}（${loaded.spec}）`);
   } else if (loaded.failure !== 'not-configured') {
@@ -95,8 +97,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   const capabilities = adapters.runtime.capabilities(ctx);
   const runtimeProfile = adapters.runtime.profile?.(ctx) ?? null;
   const runtimeCheck = adapters.runtime.check;
-  const profileDir = adapters.profile.dirOf(ctx);
-  bootChores({ ctx, supply: adapters.modules, home: dshHome(), profileDir });
+  bootChores({ ctx, supply: adapters.modules, home: dshHome(), profileDir, log: (message) => warn(ctx, message) });
   const surface = hostSurface({ profile: profileDir ?? undefined });
   routes.health = async (search) => ({
     ...((await baseHealth?.(search)) as Record<string, unknown>),
@@ -425,10 +426,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   }, `${PLUGIN_ID}: 卸载时把单元摘干净`);
   ctx.effect(() => units.subscribe(sync), `${PLUGIN_ID}: 注册表变了就增删（装/卸一个模块 = 挂/卸它的面）`);
   ctx.effect(() => holdHostLock((message) => warn(ctx, message)), `${PLUGIN_ID}: 宿主在跑就留一枚锁，自更新等它退了才换包`);
-  ctx.effect(
-    () => bindRosterFacts({ units, bump: (names) => facts.bump(names) }),
-    `${PLUGIN_ID}: 花名册变了就把清单那条事实记一笔（浏览器据此重读，不用刷新页面）`,
-  );
+  ctx.effect(() => bindRosterFacts({ units, bump: (names) => facts.bump(names) }), `${PLUGIN_ID}: 花名册变了就把清单那条事实记一笔（浏览器据此重读，不用刷新页面）`);
 
   ctx.effect(() => {
     const off = ctx.on?.('tools/post-execute', (exec, result, next) => {

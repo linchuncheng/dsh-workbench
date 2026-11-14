@@ -1,11 +1,12 @@
 import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
-import { readBootRecord } from '@dsh-workbench/shared/host';
+import { readBootRecord, readReinstallRecord, reinstallRecordFile } from '@dsh-workbench/shared/host';
 import { selfUpdatePaths, selfUpdateUpFile } from './self-update-plan.js';
 import { pidAlive } from './self-update-alive.js';
 import {
   SELF_UPDATE_REASONS,
   SELF_UPDATE_STATES,
   type SelfUpdateReason,
+  type SelfUpdateReinstall,
   type SelfUpdateState,
   type WorkbenchSelfUpdate,
 } from '@dsh-workbench/shared/contract/protocol/bundle-install';
@@ -52,7 +53,11 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
   const state = asText(record.state);
   if (state === undefined || !(SELF_UPDATE_STATES as readonly string[]).includes(state)) return undefined;
   const owner = asText(record.profile);
-  if (profile !== undefined && owner !== undefined && owner !== profile) return undefined;
+  if (profile !== undefined && owner !== undefined && owner !== profile) {
+    // marker 属于别的 profile：不展示它的更新状态，但本 profile 的重装失败仍要能看见。
+    const reinstall = reinstallOf(paths.dir, profile);
+    return reinstall === undefined ? undefined : { state: 'ok', profile, reinstall };
+  }
   const from = asText(record.from);
   const to = asText(record.to);
   const version = asText(record.version);
@@ -64,6 +69,7 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
     version !== undefined &&
     readBootRecord(selfUpdateUpFile())?.version === version;
   const runnerGone = state === 'running' && typeof record.pid === 'number' && !pidAlive(record.pid);
+  const reinstall = reinstallOf(paths.dir, profile ?? owner);
   return {
     state: (runnerGone ? 'failed' : confirmed ? 'ok' : state) as SelfUpdateState,
     ...(record.migration === true ? { migration: true } : {}),
@@ -72,11 +78,24 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
     ...(to === undefined ? {} : { to }),
     ...(version === undefined ? {} : { version }),
     ...(at === undefined ? {} : { at }),
+    ...(reinstall === undefined ? {} : { reinstall }),
     ...(runnerGone
       ? { reason: 'incomplete' as const }
       : reason === undefined || !(SELF_UPDATE_REASONS as readonly string[]).includes(reason)
         ? {}
         : { reason: reason as SelfUpdateReason }),
     ...(tail === undefined ? {} : { tail }),
+  };
+}
+
+function reinstallOf(root: string, owner: string | undefined): SelfUpdateReinstall | undefined {
+  const record = readReinstallRecord(reinstallRecordFile(root));
+  if (record === undefined) return undefined;
+  if (owner !== undefined && record.profile !== owner) return undefined;
+  return {
+    state: record.state,
+    ...(record.reason === undefined ? {} : { reason: record.reason }),
+    ...(record.attempts === undefined ? {} : { attempts: record.attempts }),
+    ...(record.at === undefined ? {} : { at: record.at }),
   };
 }

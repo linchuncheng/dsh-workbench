@@ -168,7 +168,9 @@ DSH_BIN="$(command -v dsh)"
 #
 # 下限只有一处真相：package.json 的 engines.dsh。这里只读它，别在这儿另写一个版本号。
 DSH_FLOOR="$(WB_MANIFEST="$REPO_DIR/package.json" node -e 'const p = require(process.env.WB_MANIFEST); const e = p.engines ?? {}; process.stdout.write(typeof e.dsh === "string" ? e.dsh : "");' 2>/dev/null || true)"
-DSH_VERSION="$(dsh --version 2>/dev/null | tr -d '[:space:]' | sed 's/^v//' || true)"
+DSH_VERSION="$(dsh --version 2>/dev/null | grep -oE 'v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?' | head -n 1 | sed 's/^v//' || true)"
+# 宿主自更新的兼容闸要读真实运行时版本；导出给 dsh 及其加载的工作台。
+export DSH_VERSION
 
 if [ -n "$DSH_FLOOR" ] && [ -n "$DSH_VERSION" ]; then
   # `>=X.Y.Z[-pre]` 一档：与 dsh 自己那条预检同一口径（semver + includePrerelease）。
@@ -346,6 +348,14 @@ if [ "$MIGRATE" = "1" ]; then
   echo "如果 dsh web 刚才也开着，先重启它，让它从共用根重新读一遍。"
   exit 0
 fi
+
+# ── 换版事务日志：exec dsh 之前把没提交的切换收回来 ─────────────────────────
+#
+# 自更新是「先写日志、再搬目录 / 换链接 / 写清单、最后标记提交」。窗口被关掉或进程被强杀时，
+# 日志留在运行时根里；这里在 dsh 读到 profile 之前按日志恢复（已提交只清日志）。
+# 读不了日志或恢复失败都只提醒、不拦启动：现场与失败版本目录会原样留着。
+node "$REPO_DIR/scripts/recover-update.mjs" ||
+  echo "dsh-workbench: 提醒 —— 换版日志没处理成（见上一行），这次仍按现在的配置起。" >&2
 
 # ── 硬门禁：工作台 bundle 必须**被选中**（在 `dsh.profile.bundles` 里）─────────
 #

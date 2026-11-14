@@ -1,13 +1,27 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { now as clockNow, writeJsonFile, writeTextFile } from '@dsh-workbench/shared/host';
-import type { Seam, SelfUpdatePaths, SelfUpdateRequest, SelfUpdateStart } from '@dsh-workbench/shared/host';
+import {
+  acquireUpdateLease,
+  now as clockNow,
+  writeJsonFile,
+  writeTextFile,
+  type Seam,
+  type SelfUpdatePaths,
+  type SelfUpdateRequest,
+  type SelfUpdateStart,
+} from '@dsh-workbench/shared/host';
 import { SELF_UPDATE_RUNNING_TTL_MS } from '@dsh-workbench/shared/contract/protocol/bundle-install';
 import { hostSurface } from './platform.js';
 import { pidAlive } from './self-update-alive.js';
 import { runDetached, type SeedCommand } from './runtime-seed.js';
-import { type SelfUpdateProcess } from './self-update-cli.js';
-import { selfUpdateMarker, selfUpdatePaths, type SelfUpdateMarker } from './self-update-plan.js';
+import { selfUpdateCliFor, type SelfUpdateProcess } from './self-update-cli.js';
+import {
+  recoveryCommand,
+  selfUpdateMarker,
+  selfUpdatePaths,
+  selfUpdateRequestProblem,
+  type SelfUpdateMarker,
+} from './self-update-plan.js';
 import { selfUpdateStepsOf, type SelfUpdateSteps } from './self-update-steps.js';
 
 export * from './self-update-cli.js';
@@ -30,6 +44,8 @@ export interface SelfUpdatePlan {
 export interface SelfUpdatePlanOptions {
   readonly proc?: SelfUpdateProcess | undefined;
   readonly exists?: ((path: string) => boolean) | undefined;
+  readonly leaseToken?: string | undefined;
+  readonly requesterPid?: number | undefined;
 }
 
 export function selfUpdateBusy(marker: string, at: Date = new Date(clockNow())): boolean {
@@ -68,7 +84,12 @@ export function planSelfUpdate(
     command: {
       file: process.execPath,
       args: [selfUpdateRunnerEntry(), paths.planFile],
-      env: hostSurface().runtime === 'electron' ? { ELECTRON_RUN_AS_NODE: '1' } : {},
+      env: {
+        ...(hostSurface().runtime === 'electron' ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+        ...(options.leaseToken === undefined || options.leaseToken === ''
+          ? {}
+          : { DSH_WB_UPDATE_LEASE_TOKEN: options.leaseToken }),
+      },
       log: paths.log,
     },
   };
@@ -80,16 +101,50 @@ export function startSelfUpdate(
   seam?: Seam | undefined,
   options: SelfUpdatePlanOptions = {},
 ): SelfUpdateStart {
-  const plan = planSelfUpdate(request, new Date(clockNow()), options);
-  const forward = plan.steps.rescue;
-  if (selfUpdateBusy(plan.paths.marker)) {
-    onError('已经有一次工作台更新在跑 —— 等它落定再试（self-update.json 会说它到哪一步了）。');
-    return { started: false, paths: plan.paths, forward };
+  const paths = selfUpdatePaths();
+  const forward = recoveryCommand({
+    profile: request.profile,
+    pkg: request.pkg,
+    version: request.to === '' ? 'latest' : request.to,
+    cli: selfUpdateCliFor(request.profile, options.proc, options.exists),
+  });
+  const problem = selfUpdateRequestProblem(request);
+  if (problem !== undefined) {
+    onError(problem);
+    return { started: false, paths, forward };
   }
-  mkdirSync(plan.paths.dir, { recursive: true });
-  writeTextFile(plan.planFile, `${JSON.stringify(plan.steps, null, 2)}\n`);
-  writeJsonFile(plan.paths.marker, plan.marker);
+  if (selfUpdateBusy(paths.marker)) {
+    onError('已经有一次工作台更新在跑 —— 等它落定再试（self-update.json 会说它到哪一步了）。');
+    return { started: false, paths, forward };
+  }
+  let lease;
+  try {
+    lease = acquireUpdateLease({ root: paths.dir });
+  } catch (error) {
+    onError(`更新锁没写上，这次先不更新：${String(error)}`);
+    return { started: false, paths, forward };
+  }
+  if (lease === undefined) {
+    onError('已经有一次工作台更新在跑 —— 等它落定再试（self-update.json 会说它到哪一步了）。');
+    return { started: false, paths, forward };
+  }
+  let plan: SelfUpdatePlan;
+  try {
+    plan = planSelfUpdate(request, new Date(clockNow()), {
+      ...options,
+      leaseToken: lease.record.token,
+      requesterPid: process.pid,
+    });
+    mkdirSync(plan.paths.dir, { recursive: true });
+    writeTextFile(plan.planFile, `${JSON.stringify(plan.steps, null, 2)}\n`);
+    writeJsonFile(plan.paths.marker, plan.marker);
+  } catch (error) {
+    lease.release();
+    onError(`更新计划没写成，这次先不更新：${String(error)}`);
+    return { started: false, paths, forward };
+  }
   if (!runDetached(plan.command, onError, seam)) {
+    lease.release();
     writeJsonFile(plan.paths.marker, {
       ...plan.marker,
       state: 'failed',

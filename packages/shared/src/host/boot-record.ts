@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { workbenchRoot } from './data-root.js';
 import { writeJsonFile } from './fs-write.js';
+import { readJsonObject } from './read-json.js';
 
 export interface BootRecord {
   readonly version: string;
@@ -26,14 +26,8 @@ export function workbenchUpFile(): string {
 }
 
 export function readBootRecord(file: string): BootRecord | undefined {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(readFileSync(file, 'utf8'));
-  } catch {
-    return undefined;
-  }
-  if (typeof raw !== 'object' || raw === null) return undefined;
-  const record = raw as Readonly<Record<string, unknown>>;
+  const record = readJsonObject(file);
+  if (record === undefined) return undefined;
   if (typeof record.version !== 'string' || typeof record.at !== 'string') return undefined;
   return {
     version: record.version,

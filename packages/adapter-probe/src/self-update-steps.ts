@@ -50,6 +50,7 @@ export interface SelfUpdateSwitchStep {
   readonly profileDir: string;
   readonly links: readonly VersionLink[];
   readonly carry?: SelfUpdateCarry | undefined;
+  readonly waitForHosts?: boolean | undefined;
 }
 
 export interface SelfUpdateBundlesStep {
@@ -99,6 +100,8 @@ export interface SelfUpdateSteps {
   readonly version: string;
   readonly bundle: string;
   readonly packages: readonly string[];
+  readonly dshVersion?: string | undefined;
+  readonly requesterPid?: number | undefined;
   readonly migration: boolean;
   readonly rescue: string;
   readonly markerPath: string;
@@ -111,6 +114,7 @@ export interface SelfUpdateStepsOptions {
   readonly proc?: SelfUpdateProcess | undefined;
   readonly exists?: ((path: string) => boolean) | undefined;
   readonly at?: string | undefined;
+  readonly requesterPid?: number | undefined;
   readonly bootWindowMs?: number | undefined;
   readonly bootPollMs?: number | undefined;
 }
@@ -138,6 +142,8 @@ export function selfUpdateStepsOf(
     version,
     bundle: request.pkg,
     packages,
+    ...(request.dshVersion === undefined || request.dshVersion === '' ? {} : { dshVersion: request.dshVersion }),
+    ...(options.requesterPid === undefined ? {} : { requesterPid: options.requesterPid }),
     rescue: recoveryCommand({
       profile: request.profile,
       pkg: request.pkg,
@@ -155,7 +161,9 @@ export function selfUpdateStepsOf(
         kind: 'switch',
         profileDir,
         links: versionLinksOf({ profileDir, versionDir, packages }),
-        ...(migration
+        // 迁移现场（真目录换软链）必须等窗口退出；同版本重装也要等，否则会删掉别人在用的目录。
+        ...(migration ? { waitForHosts: true } : {}),
+        ...(migration && request.from !== version
           ? {
               carry: {
                 versionsDir: paths.versionsDir,

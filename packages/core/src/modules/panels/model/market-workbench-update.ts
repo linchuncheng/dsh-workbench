@@ -16,6 +16,8 @@ export interface WorkbenchUpdateDeps {
     | ((request: SelfUpdateRequest, onError: (message: string) => void) => SelfUpdateStart)
     | undefined;
   readonly includePrerelease?: (() => boolean) | undefined;
+  readonly running?: string | undefined;
+  readonly dshVersion?: (() => string | undefined) | undefined;
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
   readonly supply?: SupplyPort | undefined;
   readonly manager?: BundleManager | undefined;
@@ -79,11 +81,17 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
   if (home === undefined || profile === undefined || profile === null) {
     throw new Error('拿不到 DSH_HOME 或 profile 名字 —— 自更新要多一个进程在外头跑，这一步做不了。');
   }
+  const targetVersion = askedLatest ?? read.version;
+  if (targetVersion === read.version && deps.running !== undefined && deps.running !== read.version) {
+    throw new Error('这个版本已经装好了，先重启工作台再更新。');
+  }
   const spec =
     askedLatest === undefined
       ? `${read.pkg}@${deps.includePrerelease?.() === true ? 'beta' : 'latest'}`
       : `${read.pkg}@${askedLatest}`;
   const run = deps.selfUpdate ?? deps.supply?.startSelfUpdate ?? (() => { throw new Error('self-update 适配器未提供'); });
+  let failure = '';
+  const dshVersion = deps.dshVersion?.();
   const started = run(
     {
       dshHome: home,
@@ -91,10 +99,18 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
       pkg: read.pkg,
       from: read.version,
       to: askedLatest ?? '',
+      ...(deps.running === undefined ? {} : { running: deps.running }),
+      ...(dshVersion === undefined || dshVersion === '' ? {} : { dshVersion }),
       pinned: askedLatest !== undefined,
     },
-    (message: string) => deps.logger?.warn?.(`[dsh-workbench] ${message}`),
+    (message: string) => {
+      failure = message;
+      deps.logger?.warn?.(`[dsh-workbench] ${message}`);
+    },
   );
+  if (!started.started) {
+    throw new Error(failure === '' ? '工作台更新没有开始，请稍后再试。' : failure);
+  }
   deps.logger?.info?.(
     `[dsh-workbench] 自更新交给外部执行器（${started.paths.planFile}）：${read.version} → ${askedLatest ?? '最新版'}，本次操作不删除自己那一行`,
   );

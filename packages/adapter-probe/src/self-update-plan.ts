@@ -1,5 +1,5 @@
 import { bootFileIn, RELEASE_PACKAGES, upFileIn, workbenchRoot, workbenchSelfUpdateMarker } from '@dsh-workbench/shared/host';
-import type { SelfUpdatePaths, SelfUpdateRequest, SelfUpdateStart } from '@dsh-workbench/shared/host';
+import type { SelfUpdatePaths, SelfUpdateRequest, SelfUpdateStart, UpdateJournalState } from '@dsh-workbench/shared/host';
 import { join } from 'node:path';
 import { type SelfUpdateCli, cliCommand, isPathDsh } from './self-update-cli.js';
 import type { SelfUpdateReason, SelfUpdateState } from '@dsh-workbench/shared/contract/protocol/bundle-install';
@@ -20,6 +20,8 @@ export interface SelfUpdateMarker extends SelfUpdateRequest {
   readonly migration?: boolean | undefined;
   readonly version: string;
   readonly reason?: SelfUpdateReason | undefined;
+  readonly phase?: UpdateJournalState | undefined;
+  readonly committed?: boolean | undefined;
   readonly at: string;
 }
 
@@ -51,6 +53,19 @@ export function recoveryCommand(input: {
   const cli = input.cli ?? PATH_DSH;
   const command = isPathDsh(cli) ? 'dsh' : cliCommand(cli);
   return `${command} plugin --profile ${input.profile} add ${input.pkg}@${input.version}`;
+}
+
+export function selfUpdateRequestProblem(request: SelfUpdateRequest): string | undefined {
+  const from = request.from.trim();
+  const to = request.to.trim();
+  if (from === '') {
+    return '读不到当前安装的工作台版本 —— 先在市场里点一次「重新检查」，再试更新。';
+  }
+  if (request.running !== undefined && request.running !== from) {
+    const same = to === '' || to === from;
+    if (same) return '这个版本已经装好了，先重启工作台再更新。';
+  }
+  return undefined;
 }
 
 export function selfUpdateMarker(

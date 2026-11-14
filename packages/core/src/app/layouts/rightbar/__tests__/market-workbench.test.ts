@@ -259,6 +259,50 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(bare?.hint).toBeUndefined();
   });
 
+  it('★ 更新已生效但依赖重装没成 → 那一行要把重装失败说出来', () => {
+    const failed = workbenchRow(
+      { pkg: CORE, installed: '0.1.19' },
+      { state: 'ok', at: AT, version: '0.1.19', reinstall: { state: 'failed', attempts: 1, reason: 'ERR' } },
+      undefined,
+    );
+    expect(failed?.note).toEqual({
+      key: 'panels.market.selfUpdateReinstallFailed',
+      params: {},
+      tone: 'alert',
+    });
+
+    const stopped = workbenchRow(
+      { pkg: CORE, installed: '0.1.19' },
+      { state: 'ok', at: AT, version: '0.1.19', reinstall: { state: 'failed', attempts: 3 } },
+      undefined,
+    );
+    expect(stopped?.note).toEqual({
+      key: 'panels.market.selfUpdateReinstallStopped',
+      params: {},
+      tone: 'alert',
+    });
+
+    // 依赖没修好之前提示要一直可见（不按 toldAt 抑制）
+    const told = workbenchRow(
+      { pkg: CORE, installed: '0.1.19' },
+      { state: 'failed', at: AT, version: '0.1.19', reinstall: { state: 'failed', attempts: 1, at: AT } },
+      AT,
+    );
+    expect(told?.note).toEqual({
+      key: 'panels.market.selfUpdateReinstallFailed',
+      params: {},
+      tone: 'alert',
+    });
+
+    const pending = workbenchRow(
+      { pkg: CORE, installed: '0.1.19' },
+      { state: 'ok', at: AT, version: '0.1.19', reinstall: { state: 'pending' } },
+      undefined,
+    );
+    expect(pending?.note).toBeUndefined();
+    expect(dictionaries.zh['panels.market.selfUpdateReinstallFailed']).toContain('重装');
+  });
+
   it('★ 同一条 marker 已经告知过 → 下次打开那一行只报版本，不再打扰', () => {
     const update = { state: 'failed' as const, at: AT, version: '0.1.18' };
     const again = workbenchRow({ pkg: CORE, installed: '0.1.18' }, update, AT);

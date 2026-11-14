@@ -1,6 +1,6 @@
 import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { ModulePort } from '@dsh-workbench/shared/host';
-import { workbenchSelfUpdateMarker } from '@dsh-workbench/shared/host';
+import { dshVersionIn, workbenchSelfUpdateMarker } from '@dsh-workbench/shared/host';
 import { basename } from 'node:path';
 import { warn } from './host-args';
 import { readSelfUpdateMarker } from './self-update-marker';
@@ -15,6 +15,7 @@ export function resumeQueuedSelfUpdate(ctx: DshHostContext, input: SelfUpdateRes
   if (input.supply === undefined || input.profileDir === null || input.profileDir === '') return false;
   const marker = readSelfUpdateMarker(workbenchSelfUpdateMarker());
   if (marker.state !== 'queued' || marker.pkg === undefined) return false;
+  const dshVersion = dshVersionIn(input.profileDir);
   const started = input.supply.startSelfUpdate(
     {
       dshHome: input.home,
@@ -22,6 +23,7 @@ export function resumeQueuedSelfUpdate(ctx: DshHostContext, input: SelfUpdateRes
       pkg: marker.pkg,
       from: marker.from ?? '',
       to: marker.to ?? '',
+      ...(dshVersion === undefined ? {} : { dshVersion }),
       pinned: false,
     },
     (message) => warn(ctx, message),

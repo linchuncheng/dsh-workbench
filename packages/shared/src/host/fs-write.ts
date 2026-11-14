@@ -1,4 +1,4 @@
-import { appendFileSync, chmodSync, cpSync, mkdirSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import writeFileAtomic from 'write-file-atomic';
 import type { ShellKind } from './shell-text.js';
@@ -167,6 +167,16 @@ export function copyDirInto(from: string, to: string): void {
   ensureDir(to);
   for (const entry of readdirSync(from)) {
     cpSync(join(from, entry), join(to, basename(entry)), { recursive: true });
+  }
+}
+
+export function moveDir(source: string, target: string): void {
+  try {
+    renameSync(source, target);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+    cpSync(source, target, { recursive: true });
+    removePath(source);
   }
 }
 

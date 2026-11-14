@@ -37,6 +37,7 @@
     "scripts/clone-profile.mjs",
     "scripts/patch-blocks.mjs",
     "scripts/profile-dsh-layer.mjs",
+    "scripts/recover-update.mjs",
     "scripts/share-data-root.mjs",
     "scripts/seed-profile.sh",
     "scripts/seed-workshop.sh",

@@ -75,6 +75,8 @@ export interface SelfUpdateRequest {
   readonly pkg: string;
   readonly from: string;
   readonly to: string;
+  readonly running?: string | undefined;
+  readonly dshVersion?: string | undefined;
   readonly pinned: boolean;
 }
 

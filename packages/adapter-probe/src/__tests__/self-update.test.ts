@@ -15,6 +15,7 @@ import {
   selfUpdateBusy,
   selfUpdateCliFor,
   selfUpdatePaths,
+  selfUpdateRequestProblem,
   selfUpdateRunnerEntry,
   startSelfUpdate,
   type SelfUpdateCli,
@@ -323,6 +324,40 @@ describe('自更新现场：界面要知道外面那个进程跑成什么样', (
     writeFileSync(join(dshHome, 'workbench', 'self-update.json'), JSON.stringify({ state: '不认识的状态' }));
     expect(readSelfUpdateView()).toBeUndefined();
     expect(readSelfUpdateView()).toBeUndefined();
+  });
+});
+
+describe('请求本身不成立时不启动', () => {
+  it('★ 读不到已安装版本（from 空）→ 拒绝，不写计划', () => {
+    const req = request({ from: '' });
+    expect(selfUpdateRequestProblem(req)).toContain('读不到当前安装的工作台版本');
+  });
+
+  it('★ 同一目标已经装好、但当前还没重启 → 拒绝，先重启', () => {
+    const req = request({ from: '1.2.3-beta.2', to: '1.2.3-beta.2', running: '1.2.3-beta.1' });
+    expect(selfUpdateRequestProblem(req)).toContain('先重启工作台');
+  });
+
+  it('★ 同目标、但已经在跑这一版 → 允许重装', () => {
+    const req = request({ from: '1.2.3-beta.2', to: '1.2.3-beta.2', running: '1.2.3-beta.2' });
+    expect(selfUpdateRequestProblem(req)).toBeUndefined();
+  });
+
+  it('★ 前进到更新的目标 → 放行', () => {
+    const req = request({ from: '1.2.3-beta.2', to: '1.2.3-beta.4', running: '1.2.3-beta.1' });
+    expect(selfUpdateRequestProblem(req)).toBeUndefined();
+  });
+
+  it('★ 没有 running 字段 → 不拦（旧调用方保持兼容）', () => {
+    expect(selfUpdateRequestProblem(request({ from: '1.2.3-beta.2', to: '1.2.3-beta.2' }))).toBeUndefined();
+  });
+
+  it('★ startSelfUpdate 对不成立的请求直接返回 started=false，并给出人话', () => {
+    const req = request({ from: '' });
+    const messages: string[] = [];
+    const started = startSelfUpdate(req, (message) => messages.push(message));
+    expect(started.started).toBe(false);
+    expect(messages.join('\n')).toContain('读不到当前安装的工作台版本');
   });
 });
 
