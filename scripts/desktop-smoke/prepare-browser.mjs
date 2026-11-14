@@ -13,10 +13,28 @@ const log = (line) => {
   if (logFile !== undefined) appendFileSync(logFile, `${line}\n`);
 };
 
+const DOWNLOAD_ATTEMPTS = 3;
+const DOWNLOAD_TIMEOUT_MS = 180_000;
+
 async function download(url, file) {
-  const response = await fetch(url, { redirect: 'follow' });
-  if (!response.ok) throw new Error(`${url} -> ${response.status}`);
-  writeFileSync(file, Buffer.from(await response.arrayBuffer()));
+  let last;
+  for (let attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
+      if (!response.ok) throw new Error(`${url} -> ${response.status}`);
+      writeFileSync(file, Buffer.from(await response.arrayBuffer()));
+      return;
+    } catch (error) {
+      last = error;
+      if (attempt < DOWNLOAD_ATTEMPTS) {
+        log(`下载失败（第 ${String(attempt)} 次）：${error?.message ?? error}，重试`);
+        await new Promise((resolve) => {
+          setTimeout(resolve, attempt * 3000);
+        });
+      }
+    }
+  }
+  throw last;
 }
 
 async function unzip(zip, dest) {
