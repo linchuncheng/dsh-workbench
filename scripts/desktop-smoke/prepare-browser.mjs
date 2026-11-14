@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { execa } from 'execa';
@@ -58,16 +58,14 @@ function treeOf(dir, depth = 2) {
 async function unzip(zip, dest) {
   rmSync(dest, { recursive: true, force: true });
   mkdirSync(dest, { recursive: true });
+  log(`${zip}: ${String(statSync(zip).size)} 字节`);
   if (process.platform === 'win32') {
-    await execa('powershell', [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      `Expand-Archive -Path '${zip}' -DestinationPath '${dest}' -Force`,
-    ]);
-    return;
+    await execa('tar', ['-xf', zip, '-C', dest]);
+  } else {
+    await execa('unzip', ['-q', zip, '-d', dest]);
   }
-  await execa('unzip', ['-q', zip, '-d', dest]);
+  const entries = readdirSync(dest);
+  if (entries.length === 0) throw new Error(`${zip} 解压后目录是空的：${dest}`);
 }
 
 function writeEnv(entries) {

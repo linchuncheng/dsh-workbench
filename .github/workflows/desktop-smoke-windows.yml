@@ -154,39 +154,35 @@ jobs:
           if (-not (Wait-Page 9226)) { throw 'add-plugin instance produced no page' }
           Invoke-Logged 'add-plugin-probe' { node scripts/desktop-smoke/cdp-probe.mjs 9226 desktop-${{ inputs.label }}-add-plugin.png --add-plugin $env:DESKTOP_SMOKE_PLUGIN }
           $global:LASTEXITCODE = 0
-          if ($env:GITHUB_EVENT_NAME -eq 'push') {
-            Write-Host '自更新这条腿只在定时/手动跑：起点还是已发布的旧版代码，push 上红说明不了这次改动'
-          } else {
-            # 自更新这条 E2E 已经立住：三段都按硬判据走，红就挡这条腿。
-            $appRoot = Join-Path $env:USERPROFILE '.dsh'
+          # 自更新这条 E2E 已经立住：三段都按硬判据走，红就挡这条腿。
+          $appRoot = Join-Path $env:USERPROFILE '.dsh'
+          Stop-App
+          Start-Sleep -Seconds 3
+          Invoke-Logged 'update-fixture' { node scripts/desktop-smoke/self-update-update-fixture.mjs $appRoot 'desktop' $env:DESKTOP_SMOKE_UPDATE_FROM }
+          $app6 = Start-App 9227 $out6 $err6
+          "self-update desktop pid: $($app6.Id)"
+          if (!(Wait-Page 9227)) { throw 'update-probe: 起 9227 后没有页面' }
+          Invoke-Logged 'update-probe' { node scripts/desktop-smoke/cdp-probe.mjs 9227 desktop-${{ inputs.label }}-self-update.png --self-update }
+          $ready = Join-Path $env:DESKTOP_SMOKE_OUT "desktop-${{ inputs.label }}-self-update-ready.json"
+          $to = ''
+          if (Test-Path -LiteralPath $ready) {
+            $to = (node -e "try{const p=JSON.parse(require('node:fs').readFileSync(process.argv[1],'utf8'));process.stdout.write(typeof p.to==='string'?p.to:'')}catch{process.stdout.write('')}" $ready | Out-String).Trim()
+          }
+          if ($to -eq '') { throw "update-probe: 探针没写出 $ready，或里面没有 to" }
+          $env:DESKTOP_SMOKE_EXPECT_RUNNING_VERSION = $to
+          Stop-App
+          Start-Sleep -Seconds 3
+          $app7 = Start-App 9228 $out7 $err7
+          "after-self-update desktop pid: $($app7.Id)"
+          if (!(Wait-Page 9228)) { throw 'update-after-restart: 起 9228 后没有页面' }
+          if (-not (Invoke-Allowed 'update-after-restart' { node scripts/desktop-smoke/cdp-probe.mjs 9228 desktop-${{ inputs.label }}-after-self-update.png --verify-only --expect-workbench })) {
+            Write-Host '第一次重启后体检没过：再启一次（换链后的头一跑偶发拿不到宿主路由）'
             Stop-App
             Start-Sleep -Seconds 3
-            Invoke-Logged 'update-fixture' { node scripts/desktop-smoke/self-update-update-fixture.mjs $appRoot 'desktop' $env:DESKTOP_SMOKE_UPDATE_FROM }
-            $app6 = Start-App 9227 $out6 $err6
-            "self-update desktop pid: $($app6.Id)"
-            if (!(Wait-Page 9227)) { throw 'update-probe: 起 9227 后没有页面' }
-            Invoke-Logged 'update-probe' { node scripts/desktop-smoke/cdp-probe.mjs 9227 desktop-${{ inputs.label }}-self-update.png --self-update }
-            $ready = Join-Path $env:DESKTOP_SMOKE_OUT "desktop-${{ inputs.label }}-self-update-ready.json"
-            $to = ''
-            if (Test-Path -LiteralPath $ready) {
-              $to = (node -e "try{const p=JSON.parse(require('node:fs').readFileSync(process.argv[1],'utf8'));process.stdout.write(typeof p.to==='string'?p.to:'')}catch{process.stdout.write('')}" $ready | Out-String).Trim()
-            }
-            if ($to -eq '') { throw "update-probe: 探针没写出 $ready，或里面没有 to" }
-            $env:DESKTOP_SMOKE_EXPECT_RUNNING_VERSION = $to
-            Stop-App
-            Start-Sleep -Seconds 3
-            $app7 = Start-App 9228 $out7 $err7
-            "after-self-update desktop pid: $($app7.Id)"
-            if (!(Wait-Page 9228)) { throw 'update-after-restart: 起 9228 后没有页面' }
-            if (-not (Invoke-Allowed 'update-after-restart' { node scripts/desktop-smoke/cdp-probe.mjs 9228 desktop-${{ inputs.label }}-after-self-update.png --verify-only --expect-workbench })) {
-              Write-Host '第一次重启后体检没过：再启一次（换链后的头一跑偶发拿不到宿主路由）'
-              Stop-App
-              Start-Sleep -Seconds 3
-              $app8 = Start-App 9228 $out7 $err7
-              "after-self-update retry desktop pid: $($app8.Id)"
-              if (-not (Wait-Page 9228)) { throw 'update-after-restart: 重试时起 9228 后没有页面' }
-              Invoke-Logged 'update-after-restart-retry' { node scripts/desktop-smoke/cdp-probe.mjs 9228 desktop-${{ inputs.label }}-after-self-update-retry.png --verify-only --expect-workbench }
-            }
+            $app8 = Start-App 9228 $out7 $err7
+            "after-self-update retry desktop pid: $($app8.Id)"
+            if (-not (Wait-Page 9228)) { throw 'update-after-restart: 重试时起 9228 后没有页面' }
+            Invoke-Logged 'update-after-restart-retry' { node scripts/desktop-smoke/cdp-probe.mjs 9228 desktop-${{ inputs.label }}-after-self-update-retry.png --verify-only --expect-workbench }
           }
           $global:LASTEXITCODE = 0
       - name: Assert opencli installed
