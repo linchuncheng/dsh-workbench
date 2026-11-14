@@ -584,6 +584,37 @@ describe('换版事务：失败不留半成品，提交后不再改判失败', (
     expect(JSON.parse(readFileSync(plan.markerPath, 'utf8')).state).toBe('failed');
   });
 
+  it('★ 翻完链新版目录被掏空：回到旧版，不把 profile 留在残树上', async () => {
+    const { request, paths } = caseDirs();
+    const plan = planOf(request, paths, { at: AT });
+    const profileDir = oldProfile(plan);
+    const manifestBefore = readFileSync(join(profileDir, 'package.json'), 'utf8');
+    const journalPath = updateJournalFile(paths.dir);
+    const processes = installing(plan.packages, paths.versionsDir, TO);
+    const flip = (links: readonly VersionLink[]): void => {
+      flipProfileLinks(links);
+      for (const pkg of SELF_UPDATE_PACKAGES.filter((name) => name.includes('adapter'))) {
+        rmSync(join(plan.versionDir, 'node_modules', pkg), { recursive: true, force: true });
+        mkdirSync(join(plan.versionDir, 'node_modules', pkg), { recursive: true });
+      }
+    };
+
+    const result = await runSelfUpdateSteps(plan, {
+      processes: processes.host,
+      now: () => AT,
+      flip,
+      inUseWaitMs: 0,
+    });
+
+    expect(result.state).toBe('failed');
+    expect(result.detail).toContain('翻完链之后版本目录不全');
+    expect(result.detail).toContain('空目录');
+    expect(linkedVersion(profileDir)).toBe(FROM);
+    expect(readFileSync(join(profileDir, 'package.json'), 'utf8')).toBe(manifestBefore);
+    expect(existsSync(journalPath)).toBe(false);
+    expect(JSON.parse(readFileSync(plan.markerPath, 'utf8')).state).toBe('failed');
+  });
+
   it('★ 事务日志写不上：一步都不动，profile 还是旧版', async () => {
     const { request, paths } = caseDirs();
     const plan = planOf(request, paths, { at: AT });

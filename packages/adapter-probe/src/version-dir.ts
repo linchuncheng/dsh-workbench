@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, readFileSync, readlinkSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { ensureDir, isManagedLinkSpec, linkDir, moveDir, removePath, withReleaseAge, writeJsonFile, writeTextFile } from '@dsh-workbench/shared/host';
 import { installWithRetry, type InstallAttempt, type InstallRetryResult } from './install-retry.js';
@@ -95,6 +95,23 @@ export function versionSelfCheck(input: {
   readonly packages?: readonly string[] | undefined;
 }): boolean {
   return versionMissingOf(input).length === 0;
+}
+
+export function versionTreeNoteOf(input: {
+  readonly versionDir: string;
+  readonly packages?: readonly string[] | undefined;
+}): string {
+  const packages = input.packages ?? SELF_UPDATE_PACKAGES;
+  const notes: string[] = [];
+  for (const pkg of packages) {
+    const dir = join(input.versionDir, 'node_modules', pkg);
+    if (!existsSync(dir)) {
+      notes.push(`${pkg} 没有目录`);
+      continue;
+    }
+    if (readdirSync(dir).length === 0) notes.push(`${pkg} 是空目录`);
+  }
+  return notes.join('；');
 }
 
 export async function installVersionDir(input: {

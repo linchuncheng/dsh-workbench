@@ -29,6 +29,7 @@ import {
   flipProfileLinks,
   versionMissingOf,
   versionSelfCheck,
+  versionTreeNoteOf,
   writeProfileLinks,
   writeVersionProject,
   type VersionLink,
@@ -262,6 +263,12 @@ async function applyStep(
       record = next;
     };
     const flip = deps.flip;
+    const recheck = (when: string): void => {
+      const broken = versionMissingOf({ versionDir: plan.versionDir, version: plan.version, packages: plan.packages });
+      if (broken.length === 0) return;
+      const note = versionTreeNoteOf({ versionDir: plan.versionDir, packages: plan.packages });
+      throw new Error(`${when}（${broken.join('、')}）${note === '' ? '' : `：${note}`}，按事务日志回到 ${plan.marker.from}`);
+    };
     const run = (): void => {
       const hosts = activeHostLeases(step.profileDir).filter((lease) => lease.pid !== plan.requesterPid);
       if (step.waitForHosts === true && hosts.length > 0) {
@@ -274,10 +281,12 @@ async function applyStep(
           persist({ state: 'carrying', carried: carryDoneOf(record) });
         }
       }
+      recheck('搬完上一版之后版本目录不全');
       if (record.state !== 'flipping') persist({ state: 'flipping' });
       if (flip !== undefined) {
         flip(step.links.slice(record.cursor));
         persist({ cursor: step.links.length });
+        recheck('翻完链之后版本目录不全');
         return;
       }
       while (record.cursor < step.links.length) {
@@ -286,6 +295,7 @@ async function applyStep(
         flipProfileLinks([link]);
         persist({ cursor: record.cursor + 1 });
       }
+      recheck('翻完链之后版本目录不全');
     };
     const flipped = await waitOutInUse(run, deps, now);
     if (!flipped.ok) {
