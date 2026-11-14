@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { execa } from 'execa';
@@ -17,17 +17,21 @@ const DOWNLOAD_ATTEMPTS = 3;
 const DOWNLOAD_TIMEOUT_MS = 180_000;
 
 async function download(url, file) {
+  const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
+  if (!response.ok) throw new Error(`${url} -> ${response.status}`);
+  writeFileSync(file, Buffer.from(await response.arrayBuffer()));
+}
+
+async function withRetries(what, run) {
   let last;
   for (let attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
-      if (!response.ok) throw new Error(`${url} -> ${response.status}`);
-      writeFileSync(file, Buffer.from(await response.arrayBuffer()));
+      await run();
       return;
     } catch (error) {
       last = error;
       if (attempt < DOWNLOAD_ATTEMPTS) {
-        log(`下载失败（第 ${String(attempt)} 次）：${error?.message ?? error}，重试`);
+        log(`${what}（第 ${String(attempt)} 次）失败：${error instanceof Error ? error.message : String(error)}，重试`);
         await new Promise((resolve) => {
           setTimeout(resolve, attempt * 3000);
         });
@@ -35,6 +39,20 @@ async function download(url, file) {
     }
   }
   throw last;
+}
+
+function treeOf(dir, depth = 2) {
+  if (!existsSync(dir)) return `（${dir} 不存在）`;
+  const lines = [];
+  const walk = (base, level) => {
+    if (level > depth) return;
+    for (const one of readdirSync(base, { withFileTypes: true }).slice(0, 20)) {
+      lines.push(`${'  '.repeat(level - 1)}${one.name}${one.isDirectory() ? '/' : ''}`);
+      if (one.isDirectory()) walk(join(base, one.name), level + 1);
+    }
+  };
+  walk(dir, 1);
+  return lines.join('\n');
 }
 
 async function unzip(zip, dest) {
@@ -64,13 +82,17 @@ const meta = await fetch('https://googlechromelabs.github.io/chrome-for-testing/
 const cft = meta.channels.Stable.downloads.chrome.find((one) => one.platform === platform);
 if (cft === undefined) throw new Error(`Chrome for Testing 没有 ${platform} 包`);
 log(`cft: ${cft.url}`);
-await download(cft.url, join(temp, 'cft.zip'));
-await unzip(join(temp, 'cft.zip'), join(temp, 'cft'));
 const chrome =
   process.platform === 'win32'
     ? join(temp, 'cft', 'chrome-win64', 'chrome.exe')
     : join(temp, 'cft', 'chrome-mac-arm64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing');
-if (!existsSync(chrome)) throw new Error(`Chrome for Testing 没解出来：${chrome}`);
+await withRetries('准备 Chrome', async () => {
+  await download(cft.url, join(temp, 'cft.zip'));
+  await unzip(join(temp, 'cft.zip'), join(temp, 'cft'));
+  if (!existsSync(chrome)) {
+    throw new Error(`Chrome for Testing 没解出来：${chrome}\n解出来的目录：\n${treeOf(join(temp, 'cft'))}`);
+  }
+});
 if (process.platform === 'win32') {
   const version = await execa('powershell', [
     '-NoProfile',
@@ -97,8 +119,10 @@ const asset = /opencli-extension-v[0-9.]+\.zip/u.exec(assets)?.[0];
 if (asset === undefined) throw new Error(`latest release 里没有扩展包：${assets.slice(0, 200)}`);
 const extensionUrl = `https://github.com/jackwener/opencli/releases/download/${tag}/${asset}`;
 log(`extension: ${extensionUrl}`);
-await download(extensionUrl, join(temp, 'opencli-ext.zip'));
-await unzip(join(temp, 'opencli-ext.zip'), join(temp, 'opencli-ext'));
+await withRetries('下载扩展', async () => {
+  await download(extensionUrl, join(temp, 'opencli-ext.zip'));
+  await unzip(join(temp, 'opencli-ext.zip'), join(temp, 'opencli-ext'));
+});
 let extensionDir = join(temp, 'opencli-ext');
 if (!existsSync(join(extensionDir, 'manifest.json'))) {
   const nested = await execa('node', [
