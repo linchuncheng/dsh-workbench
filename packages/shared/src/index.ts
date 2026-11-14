@@ -73,6 +73,7 @@ export * from './contract/runner.js';
 export * from './contract/unit-board.js';
 export * from './contract/unit-capability.js';
 export * from './contract/unit-declaration.js';
+export * from './contract/unit-site.js';
 export * from './contract/unit.js';
 export * from './contract/workbench-contract.js';
 export * from './i18n/en.js';
