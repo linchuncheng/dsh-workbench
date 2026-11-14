@@ -190,7 +190,6 @@ export function carryPreviousVersion(input: {
 function linkTargetOf(link: string): string | undefined {
   try {
     if (!lstatSync(link).isSymbolicLink()) return undefined;
-    // readlink 可能是相对路径；统一按链接所在目录解析成绝对路径。
     return resolve(dirname(link), readlinkSync(link));
   } catch {
     return undefined;

@@ -59,10 +59,6 @@ export function switchJournalOf(input: VersionSwitchJournalInput): UpdateJournal
   };
 }
 
-/**
- * 只记下这次会被接管的几条依赖原值；回滚时按 key 回写，
- * 不覆盖等待期间用户/插件新增的依赖。
- */
 function manifestDepsOf(manifestText: string, links: readonly VersionLink[]): Readonly<Record<string, string | null>> {
   let dependencies: Record<string, unknown> = {};
   try {

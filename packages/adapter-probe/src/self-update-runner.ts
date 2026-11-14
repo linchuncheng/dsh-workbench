@@ -17,7 +17,6 @@ function report(line: string): void {
   process.stderr.write(`${line}\n`);
 }
 
-/** 计划都读不出来时，至少别把更新锁留在盘上。 */
 function releaseLeaseByToken(): void {
   const token = process.env['DSH_WB_UPDATE_LEASE_TOKEN'];
   if (token === undefined || token === '') return;
@@ -126,7 +125,6 @@ async function main(): Promise<number> {
     if (journal.kind === 'restored') report(`退出前按日志恢复：${journal.detail}`);
     if (journal.kind === 'kept') report(`换版现场留着：${journal.detail}`);
     if (result.ok) {
-      // 步骤收尾后先放锁：重装要长时间等窗口退出，不该一直堵着启动器消费待重装记录。
       releaseOnce();
       try {
         const outcome = await reinstallProfileWhenIdle(plan, { processes, log: report });

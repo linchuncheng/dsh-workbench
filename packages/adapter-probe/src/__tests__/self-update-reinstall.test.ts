@@ -151,7 +151,6 @@ describe('重装延后：宿主退出后才在 profile 上跑 install', () => {
   it('★ 重装失败：留一条失败记录（累计次数），不碰已经换好的链接', async () => {
     const plan = planOf();
     const file = reinstallRecordFile(dirname(plan.markerPath));
-    // 已经换好的链接：失败后必须原样还在
     const linked = join(plan.profileDir, 'node_modules', '@dsh-workbench', 'core');
     mkdirSync(linked, { recursive: true });
     writeFileSync(join(linked, 'version.txt'), TO, 'utf8');

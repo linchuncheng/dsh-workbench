@@ -76,7 +76,6 @@ function reinstallPending() {
         stdio: 'inherit',
         env: process.env,
         shell: process.platform === 'win32',
-        // pnpm 卡死时不能把工作台一起卡住；超时按失败处理，下次启动再补。
         timeout: 10 * 60_000,
         killSignal: 'SIGTERM',
       },
@@ -103,7 +102,6 @@ function reinstallPending() {
 }
 
 const journal = recoverJournal();
-// 现场被故意留着（半换版/恢复失败）时不要再去动 node_modules，免得破坏人工救援现场。
 if (journal === 'none' || journal === 'cleared' || journal === 'restored') {
   reinstallPending();
 } else {

@@ -48,6 +48,24 @@ export function writeTextFile(path: string, text: string, options: WriteFileOpti
 }
 
 /**
+ * 只在文件不存在时创建，已存在返回 `false`（不覆盖）。
+ * @param path 目标文件。
+ * @param text 文本内容。
+ * @param options 目录/权限；不参与原子写。
+ * @returns 真的创建了为 `true`。
+ */
+export function writeTextFileExclusive(path: string, text: string, options: WriteFileOptions = {}): boolean {
+  const mode = prepareOf(path, options);
+  try {
+    writeFileSync(path, text, { flag: 'wx', mode });
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false;
+    throw error;
+  }
+}
+
+/**
  * 往文件末尾追加文本；文件或目录不存在就建。追加不是原子写，只给「日志/采集」这类只增不改的流。
  * @param path 目标文件。
  * @param text 追加内容。

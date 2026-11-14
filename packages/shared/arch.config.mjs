@@ -80,10 +80,10 @@ export default {
       },
       {
         rule: 'P06',
-        glob: 'src/host/lease.ts',
+        glob: 'src/host/fs-write.ts',
         reason:
-          '更新租约已改用 proper-lockfile 的锁目录做 OS 级互斥；宿主租约仍是每窗口一枚的排他文件，' +
-          '要按 pid 判断「这个窗口还活着」，不能被锁库的释放语义接管。',
+          'writeTextFileExclusive 是唯一写入口的“只在不存在时创建”，不是 file-lock 协议；' +
+          '宿主租约用它保证每个窗口的租约文件名唯一。',
       },
       {
         rule: 'P06',

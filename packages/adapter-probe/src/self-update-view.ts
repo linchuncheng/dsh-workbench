@@ -54,7 +54,6 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
   if (state === undefined || !(SELF_UPDATE_STATES as readonly string[]).includes(state)) return undefined;
   const owner = asText(record.profile);
   if (profile !== undefined && owner !== undefined && owner !== profile) {
-    // marker 属于别的 profile：不展示它的更新状态，但本 profile 的重装失败仍要能看见。
     const reinstall = reinstallOf(paths.dir, profile);
     return reinstall === undefined ? undefined : { state: 'ok', profile, reinstall };
   }

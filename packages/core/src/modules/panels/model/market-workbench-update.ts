@@ -83,7 +83,7 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
   }
   const targetVersion = askedLatest ?? read.version;
   if (targetVersion === read.version && deps.running !== undefined && deps.running !== read.version) {
-    throw new Error('这个版本已经装好了，先重启工作台再更新。');
+    throw new Error('这个版本已经安装完成，先重启工作台再更新。');
   }
   const spec =
     askedLatest === undefined

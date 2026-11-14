@@ -7,7 +7,6 @@ import { dshCompatibilityOf, dshRequirementsOf, dshVersionIn } from '../dsh-comp
 const ROOT = mkdtempSync(join(tmpdir(), 'dsh-wb-dsh-compat-'));
 
 beforeEach(() => {
-  // 别让跑测试的终端里已有的 DSH_VERSION 影响判定
   vi.stubEnv('DSH_VERSION', '');
 });
 

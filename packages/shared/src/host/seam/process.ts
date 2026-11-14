@@ -1,7 +1,7 @@
 import { closeSync, openSync } from 'node:fs';
 import { win32 } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
-import { execa, type Options, type ResultPromise } from 'execa';
+import { execa, execaSync, type Options, type ResultPromise } from 'execa';
 import { shellKindOf } from '../shell-text.js';
 import type {
   ProcessChild,
@@ -18,6 +18,45 @@ export interface NodeProcessHostOptions {
 }
 
 export type TreeKillSpawner = (file: string, args: readonly string[], onFailure: () => void) => void;
+
+export interface SyncProcessInput {
+  readonly file: string;
+  readonly args: readonly string[];
+  readonly cwd?: string | undefined;
+  readonly env?: Readonly<Record<string, string | undefined>> | undefined;
+  readonly timeoutMs?: number | undefined;
+}
+
+export interface SyncProcessResult {
+  readonly code: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly failed: boolean;
+  readonly detail?: string | undefined;
+}
+
+/**
+ * 同步跑一个一次性探针进程；需要异步/流式的走 `createNodeProcessHost`。
+ * @param input 命令、参数、cwd、追加的 env 与超时。
+ * @returns 退出码与输出；非零、超时或起不来都算 `failed`。
+ */
+export function runProcessSync(input: SyncProcessInput): SyncProcessResult {
+  const result = execaSync(input.file, [...input.args], {
+    cwd: input.cwd,
+    env: input.env,
+    timeout: input.timeoutMs,
+    encoding: 'utf8',
+    windowsHide: true,
+    reject: false,
+  });
+  return {
+    code: result.exitCode ?? null,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+    failed: result.failed,
+    ...(result.failed ? { detail: result.shortMessage } : {}),
+  };
+}
 
 function windowsRootOf(systemRoot: string | undefined): string | undefined {
   const candidate = systemRoot ?? process.env['SystemRoot'] ?? process.env['windir'];

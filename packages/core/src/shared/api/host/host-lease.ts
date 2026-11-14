@@ -1,5 +1,6 @@
 import {
   acquireHostLease,
+  now,
   PLUGIN_ID,
   readUpdateLease,
   updateLeaseActive,
@@ -9,15 +10,10 @@ import {
 
 const REINSTALL_WAIT_MS = 10 * 60_000 + 30_000;
 
-/**
- * 启动器正在重装依赖时，等它写完再让宿主加载模块；否则会从半装的 node_modules 里 require。
- * 只等启动器的重装锁（kind='reinstall'），不等 runner 的更新锁——runner 正等我们启动。
- */
 export async function waitOutReinstall(log: (message: string) => void, deadline?: number): Promise<number> {
   const root = workbenchRoot();
-  const end = deadline ?? Date.now() + REINSTALL_WAIT_MS;
-  // 已经等过一轮上限：别再开新的等待窗口。
-  if (Date.now() >= end) return end;
+  const end = deadline ?? now() + REINSTALL_WAIT_MS;
+  if (now() >= end) return end;
   let warned = false;
   for (;;) {
     const lease = readUpdateLease(root);
@@ -26,7 +22,7 @@ export async function waitOutReinstall(log: (message: string) => void, deadline?
       log('另一个窗口正在重装依赖，等它结束再启动…');
       warned = true;
     }
-    if (Date.now() >= end) {
+    if (now() >= end) {
       log('依赖重装还没结束，先继续启动（可能短暂缺包）。');
       return end;
     }

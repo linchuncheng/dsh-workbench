@@ -131,10 +131,6 @@ function writeCommittedMarker(plan: SelfUpdateSteps, now: () => string, log: (me
   }
 }
 
-/**
- * 切到新版那一刻就写下待重装记录，让启动器/运行器之后一定有据可依地补重装。
- * 每次显式更新都重新计数：用户重新点更新，就该再给自动重装几次机会。
- */
 function writePendingReinstall(plan: SelfUpdateSteps, at: string, log: (message: string) => void): void {
   try {
     const file = reinstallRecordFile(dirname(plan.markerPath));
@@ -263,7 +259,6 @@ async function applyStep(
       } catch (error) {
         throw new Error(`换版事务日志没写成：${messageOf(error)}`, { cause: error });
       }
-      // 只有写盘成功才认这个状态，失败时恢复用上一次落盘的状态。
       record = next;
     };
     const flip = deps.flip;
@@ -301,12 +296,10 @@ async function applyStep(
     try {
       persist({ state: 'manifest' });
       writeManifest({ profileDir: step.profileDir, links: step.links });
-      // 切到新版和“待重装”要在同一个崩溃点之前落盘：否则重启后没人补重装。
       writePendingReinstall(plan, now(), log);
       persist({ state: 'committed' });
     } catch (error) {
       const restored = restoreUpdateJournal({ record, file: journalPath, log });
-      // 提交没成、已经退回旧版：刚写的“待重装”不再成立，清掉免得启动器照着跑一次。
       if (restored.ok && plan.version !== plan.marker.from) {
         try {
           const file = reinstallRecordFile(dirname(plan.markerPath));

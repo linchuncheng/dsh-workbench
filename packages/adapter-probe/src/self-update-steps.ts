@@ -161,7 +161,6 @@ export function selfUpdateStepsOf(
         kind: 'switch',
         profileDir,
         links: versionLinksOf({ profileDir, versionDir, packages }),
-        // 迁移现场（真目录换软链）必须等窗口退出；同版本重装也要等，否则会删掉别人在用的目录。
         ...(migration ? { waitForHosts: true } : {}),
         ...(migration && request.from !== version
           ? {

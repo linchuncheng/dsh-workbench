@@ -68,7 +68,6 @@ export function rollForward(
   const changed: typeof planned = [];
   const specs: Record<string, string> = {};
   for (const item of planned) {
-    // 先记下来再换：linkDir 是“先删后建”，失败时这条也得按快照退回。
     changed.push(item);
     try {
       link(item.target, item.link.path);
@@ -95,7 +94,6 @@ export function rollForward(
   return { ok: true, detail: `已经按 ${record.to} 补好链接与清单` };
 }
 
-/** 把一条链接按日志快照退回原状；只在前滚失败时做，失败也不抛。 */
 function revertLink(record: ManifestRecord, link: UpdateJournalRecord['links'][number], apply: LinkFn): void {
   try {
     if (link.kind === 'symlink' && link.target !== undefined) {
@@ -109,7 +107,6 @@ function revertLink(record: ManifestRecord, link: UpdateJournalRecord['links'][n
     if (link.kind !== 'dir') return;
     const carried = record.carry.find((item) => item.from === link.path);
     if (carried !== undefined && existsSync(carried.to)) {
-      // 复制而不是搬走：回退要幂等，失败重试时快照还得在。
       copyDirInto(carried.to, link.path);
       return;
     }

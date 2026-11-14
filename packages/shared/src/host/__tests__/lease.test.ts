@@ -48,7 +48,6 @@ describe('宿主租约：一个窗口一枚，退出只摘自己那枚', () => {
     const profileDir = root();
     const dead = acquireHostLease({ profileDir, profile: 'workbench', pid: 999_999_999, token: 'dead' });
     expect(activeHostLeases(profileDir)).toHaveLength(0);
-    // 死掉的租约顺手回收，免得 pid 复用后被永远当成活窗口
     expect(existsSync(dead.record.file)).toBe(false);
 
     const live = acquireHostLease({ profileDir, profile: 'workbench', pid: process.pid, token: 'live' });
@@ -79,10 +78,8 @@ describe('更新租约：同一个运行时根只许一个更新', () => {
     const dead = acquireUpdateLease({ root: rootDir, pid: 999_999_999, token: 'dead' });
     expect(dead).toBeDefined();
 
-    // 锁目录还新鲜：即使 pid 已经没了也不抢，避免误判正在启动的更新
     expect(acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'next' })).toBeUndefined();
 
-    // 心跳停了超过 stale 窗口 → 锁目录可被回收
     const lockDir = `${updateLeaseFile(rootDir)}.d`;
     const old = new Date(Date.now() - 120_000);
     utimesSync(lockDir, old, old);
@@ -105,7 +102,6 @@ describe('更新租约：同一个运行时根只许一个更新', () => {
     expect(acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'next' })).toBeUndefined();
     launched?.release();
 
-    // 盘上先躺一把超过窗口的旧锁，验证的是“接管已存在的陈旧锁”这条分支
     writeFileSync(
       updateLeaseFile(rootDir),
       `${JSON.stringify({ pid: 0, token: 'old', startedAt: new Date(Date.now() - 10 * 60_000).toISOString() })}\n`,

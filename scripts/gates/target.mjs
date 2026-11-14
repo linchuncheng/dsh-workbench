@@ -864,6 +864,7 @@ const SHARED_IMPLEMENTATION_IMPORTS = new Set(['opencli', 'execa', 'proper-lockf
 
 const SEAM_PROCESS_HOST = 'packages/shared/src/host/seam/process.ts';
 const FS_WRITE_ENTRY = 'packages/shared/src/host/fs-write.ts';
+const LOCK_ENTRY = 'packages/shared/src/host/lease.ts';
 
 function sharedAdapterFindings({ hasAdaptersDir, deps, imports }) {
   const findings = [];
@@ -882,6 +883,7 @@ function sharedAdapterFindings({ hasAdaptersDir, deps, imports }) {
     }
     if (file === SEAM_PROCESS_HOST && spec === 'execa') continue;
     if (file === FS_WRITE_ENTRY && spec === 'write-file-atomic') continue;
+    if (file === LOCK_ENTRY && spec === 'proper-lockfile') continue;
     if (SHARED_IMPLEMENTATION_IMPORTS.has(spec)) {
       findings.push(finding(file, 1, `shared import 了 ${spec}`, '执行 / 锁 / 原子写属于适配器实现'));
     }

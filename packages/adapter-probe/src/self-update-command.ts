@@ -53,7 +53,6 @@ export function runSelfUpdateCommand(
         } catch {
           // 进程可能已经退出
         }
-        // 给 pnpm 一点收尾时间；迟迟不退也按失败结束，别把锁永久占着。
         grace = setTimeout(() => done(null), 2_000);
         grace.unref?.();
       }, deps.timeoutMs);

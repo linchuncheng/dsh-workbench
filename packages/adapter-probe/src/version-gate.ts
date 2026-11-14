@@ -2,11 +2,11 @@ import { existsSync, lstatSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { execaSync } from 'execa';
 import {
   dshCompatibilityOf,
   dshRequirementsOf,
   readJsonObject,
+  runProcessSync,
   type DshCompatibility,
   type DshRequirement,
 } from '@dsh-workbench/shared/host';
@@ -44,7 +44,6 @@ export function versionGateOf(input: VersionGateInput): VersionGateResult {
     if (isLinkDir(pkgDir)) continue;
     const declared = declaredEntriesOf(manifest);
     if (declared.length === 0) {
-      // 有 exports 却没有根入口：按名字 import 会直接失败，不能静默放行。
       if (manifest['exports'] !== undefined) violations.push(`${pkg} 的 exports 没有根入口`);
       continue;
     }
@@ -76,14 +75,15 @@ export const probeEntry: VersionEntryProbe = (input) => {
     `const names = Object.keys(mod ?? {});`,
     `if (names.length === 0) { process.stderr.write("没有导出"); process.exit(2); }`,
   ].join('\n');
-  const result = execaSync(process.execPath, ['--input-type=module', '-e', code], {
+  const result = runProcessSync({
+    file: process.execPath,
+    args: ['--input-type=module', '-e', code],
     cwd: input.versionDir,
-    timeout: 20_000,
-    reject: false,
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    timeoutMs: 20_000,
+    env: { ELECTRON_RUN_AS_NODE: '1' },
   });
   if (!result.failed) return { ok: true };
-  const detail = `${result.stderr ?? ''}`.trim() || `${result.shortMessage ?? `退出码 ${String(result.exitCode)}`}`;
+  const detail = result.stderr.trim() || result.detail || `退出码 ${String(result.code)}`;
   return { ok: false, detail };
 };
 
@@ -92,22 +92,16 @@ function coreHostEntryOf(versionDir: string): string | undefined {
   if (isLinkDir(coreDir)) return undefined;
   const manifest = readJsonObject(join(coreDir, 'package.json'));
   if (manifest === undefined) return undefined;
-  // 与一般的入口声明共用同一套解析，避免“能解析”和“能加载”看的不是同一个文件。
   const declared = declaredEntriesOf(manifest);
   return declared.length === 0 ? undefined : firstResolvable(coreDir, declared);
 }
 
 function declaredEntriesOf(manifest: Readonly<Record<string, unknown>>): readonly string[] {
-  // 有 exports 时 Node 只认它，不能再回退 main（否则会放行一个按名字 import 不进来的版本）。
   if (manifest['exports'] !== undefined) return entriesOfExports(manifest['exports']);
   const main = stringOf(manifest['main']);
   return main === undefined ? [] : [main];
 }
 
-/**
- * 按 Node 的 ESM 条件解析收集候选：对象键按插入顺序，取第一个命中的条件；
- * 数组是回退列表，按顺序取第一个可解析的。`types`/`browser`/子路径键不参与。
- */
 function entriesOfExports(value: unknown): readonly string[] {
   if (typeof value === 'string') return [value];
   if (Array.isArray(value)) return value.flatMap((item) => [...entriesOfExports(item)]);
@@ -117,7 +111,6 @@ function entriesOfExports(value: unknown): readonly string[] {
   for (const [key, entry] of Object.entries(record)) {
     if (key === 'types' || key.startsWith('types@') || key.startsWith('.')) continue;
     if (!ESM_CONDITIONS.has(key)) continue;
-    // 命中第一个条件就只认它：Node 不会因为它的文件缺失再退到后面的条件。
     return entriesOfExports(entry);
   }
   return [];

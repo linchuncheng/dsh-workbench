@@ -172,7 +172,6 @@ describe('自更新：runner 按步骤跑，失败只落在 marker 上', () => {
     );
     expect(manifest.dsh.profile.bundles).toContain(CORE);
     expect(JSON.parse(readFileSync(plan.markerPath, 'utf8'))).toMatchObject({ state: 'pending-restart', version: TO });
-    // 提交那一刻就要有待重装记录：不然重装前崩溃或直接重启就没人补这一步
     expect(readReinstallRecord(reinstallRecordFile(dirname(plan.markerPath)))).toMatchObject({
       state: 'pending',
       profileDir: plan.profileDir,

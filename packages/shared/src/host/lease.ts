@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import dayjs from 'dayjs';
 import lockfile from 'proper-lockfile';
-import { writeJsonFile } from './fs-write.js';
+import { writeJsonFile, writeTextFileExclusive } from './fs-write.js';
 import { pidAlive } from './process-alive.js';
 import { now, nowIso } from './time.js';
 
@@ -133,8 +133,7 @@ export function acquireHostLease(input: HostLeaseInput): HostLeaseHandle {
       profile: input.profile,
       ...(input.version === undefined || input.version === '' ? {} : { version: input.version }),
     };
-    try {
-      writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`, { flag: 'wx', mode: 0o644 });
+    if (writeTextFileExclusive(file, `${JSON.stringify(body, null, 2)}\n`, { mode: 0o644 })) {
       const record: HostLeaseRecord = { ...body, file };
       return {
         record,
@@ -142,8 +141,6 @@ export function acquireHostLease(input: HostLeaseInput): HostLeaseHandle {
           releaseHostLease({ file, pid, token });
         },
       };
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
     }
   }
   throw new Error('宿主租约重名，写不进去');
@@ -217,15 +214,12 @@ export function updateLeaseActive(root: string, at: number = now()): boolean {
   const record = readUpdateLease(root);
   if (record === undefined) return false;
   const started = dayjs(record.startedAt).valueOf();
-  // 时间读不出来只能当损坏锁清掉，否则会永久卡住更新。
   if (!Number.isFinite(started)) return false;
   const age = at - started;
   if (record.pid > 0) {
     if (!pidAlive(record.pid)) return false;
-    // pid 可能被系统复用；超过合理时长就不再认这把锁。
     return age < UPDATE_LEASE_MAX_MS;
   }
-  // 时钟往回调得太离谱时也按陈旧处理，避免永久忙。
   if (age < -UPDATE_LEASE_CLOCK_SKEW_MS) return false;
   return age < UPDATE_LEASE_LAUNCH_MS;
 }
@@ -238,7 +232,6 @@ export function acquireUpdateLease(input: UpdateLeaseInput): UpdateLeaseHandle |
   const file = updateLeaseFile(input.root);
   let unlock: (() => void) | undefined;
   try {
-    // OS 级互斥：proper-lockfile 用目录创建做原子锁，按 mtime 心跳判断陈旧锁。
     unlock = lockfile.lockSync(file, updateLockOptions(file));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ELOCKED') return undefined;

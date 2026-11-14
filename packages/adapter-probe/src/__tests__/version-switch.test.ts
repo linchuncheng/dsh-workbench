@@ -349,11 +349,9 @@ describe('换版事务日志：快照先落盘，失败按快照恢复', () => {
     const record = journalFor(profileDir, versionsDir, V1, V2);
     writeUpdateJournal(journalPath, record);
 
-    // 模拟已经走到写清单这一步：链接与清单都指到 V2
     const links = versionLinksOf({ profileDir, versionDir: join(versionsDir, V2), packages: PACKAGES });
     flipProfileLinks(links);
     writeProfileLinks({ profileDir, links });
-    // 等待期间用户装了新插件，回滚不能把它吞掉
     const manifestNow = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')) as {
       dependencies: Record<string, string>;
     };
@@ -408,7 +406,6 @@ describe('换版事务日志：快照先落盘，失败按快照恢复', () => {
     fakeVersionDir(versionsDir, V2);
     const profileDir = linkedProfile(versionsDir, V1);
     const record = journalFor(profileDir, versionsDir, V1, V2);
-    // 第二条链接的父路径做成普通文件，linkDir 一定失败
     writeFileSync(join(profileDir, 'blocked'), 'x', 'utf8');
     const broken = {
       ...record,
@@ -435,7 +432,6 @@ describe('换版事务日志：快照先落盘，失败按快照恢复', () => {
     const fakeLink: LinkFn = (target, path) => {
       attempt += 1;
       calls.push({ target, path });
-      // 第一次换链成功，第二次（失败那条）抛错
       if (attempt === 2) throw new Error('boom');
       linkDir(target, path);
     };
@@ -445,7 +441,6 @@ describe('换版事务日志：快照先落盘，失败按快照恢复', () => {
     expect(result.ok).toBe(false);
     for (const pkg of PACKAGES) expect(linkedVersion(profileDir, pkg)).toBe(V1);
     const failed = record.links[1];
-    // 失败那条也要有一次“指回旧目标”的回退调用
     expect(
       calls.slice(2).some((call) => call.path === failed?.path && call.target.includes(V1)),
     ).toBe(true);
@@ -581,7 +576,6 @@ describe('强杀后的恢复规则：只有没提交、目标没启动、快照�
 
   it('目标版本已经启动过：按日志前滚到新版，不留下半截现场', () => {
     const setup = caseSetup();
-    // 只有换链开始后才可能“新版真的起来了”
     writeUpdateJournal(setup.journalPath, { ...setup.record, state: 'flipping', cursor: PACKAGES.length });
     const bootFile = join(setup.base, 'self-update-boot.json');
     writeJsonFile(bootFile, { version: V2, at: '2026-11-14T10:05:00.000Z' });
@@ -595,7 +589,6 @@ describe('强杀后的恢复规则：只有没提交、目标没启动、快照�
       state: 'pending-restart',
       version: V2,
     });
-    // 清单也要跟着指到新版，否则下一次 pnpm install 会悄悄把依赖降回旧版
     const manifest = JSON.parse(readFileSync(join(setup.profileDir, 'package.json'), 'utf8')) as {
       dependencies?: Record<string, string>;
     };
@@ -609,7 +602,6 @@ describe('强杀后的恢复规则：只有没提交、目标没启动、快照�
 
     const recovered = recoverUpdateJournal({ file: setup.journalPath, bootFile, markerPath: setup.markerPath });
 
-    // 走普通恢复：链接与清单仍指旧版，日志被清掉
     expect(recovered.kind).toBe('restored');
     for (const pkg of PACKAGES) expect(linkedVersion(setup.profileDir, pkg)).toBe(V1);
     expect(existsSync(setup.journalPath)).toBe(false);
@@ -635,7 +627,6 @@ describe('强杀后的恢复规则：只有没提交、目标没启动、快照�
     delete partial['manifestText'];
     writeJsonFile(setup.journalPath, partial);
     expect(recoverUpdateJournal({ file: setup.journalPath }).kind).toBe('none');
-    // 缺字段的日志一个字都不许改
     expect(JSON.parse(readFileSync(setup.journalPath, 'utf8'))).not.toHaveProperty('manifestText');
   });
 

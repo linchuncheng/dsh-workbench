@@ -54,7 +54,6 @@ export function workbenchRow(
   const staleNote = mark !== undefined && mark.kind === 'pending-restart' && update !== undefined;
   const reinstallNote = reinstallNoteOf(selfUpdate);
   const updateNote = mark === undefined || staleNote ? undefined : selfUpdateNote(mark);
-  // 重装失败是 alert，别被“重启后生效/排队中”这类 plain 提示遮住。
   const note =
     reinstallNote !== undefined && (updateNote === undefined || updateNote.tone !== 'alert')
       ? reinstallNote
@@ -110,8 +109,6 @@ export function workbenchActionsOf(row: MarketRow): MarketRowAction[] {
 
 function reinstallNoteOf(update: WorkbenchSelfUpdate | null | undefined): MarketNote | undefined {
   const reinstall = update?.reinstall;
-  // 只报失败；待重装是下一步启动会自己处理的过程态。
-  // 失败提示不按 toldAt 抑制：依赖真的坏了，修好/记录清掉前一直可见。
   if (reinstall?.state !== 'failed') return undefined;
   if (reinstall.attempts !== undefined && reinstall.attempts >= 3) {
     return { key: 'panels.market.selfUpdateReinstallStopped', params: {}, tone: 'alert' };

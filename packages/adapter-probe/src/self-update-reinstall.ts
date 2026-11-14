@@ -16,13 +16,10 @@ export const SELF_UPDATE_REINSTALL_WAIT_MS = 900_000;
 
 export const SELF_UPDATE_REINSTALL_POLL_MS = 3_000;
 
-/** 连续几次看不到活窗口才动手，避开“旧窗口刚退、新窗口正在起”的空档。 */
 export const SELF_UPDATE_REINSTALL_IDLE_POLLS = 3;
 
-/** 自动重装最多试几次；超过就让用户手动处理，别无限改写 profile。 */
 export const SELF_UPDATE_REINSTALL_MAX_ATTEMPTS = 3;
 
-/** 单次 pnpm install 最长跑多久；卡死时按失败处理，别把更新锁永久占着。 */
 export const SELF_UPDATE_REINSTALL_TIMEOUT_MS = 10 * 60_000;
 
 export interface SelfUpdateReinstallDeps {
@@ -47,7 +44,6 @@ export async function reinstallProfileWhenIdle(
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const file = reinstallRecordFile(dirname(plan.markerPath));
   const prior = readReinstallRecord(file);
-  // 记录通常已经在 switch 提交时写好；这里只兜底补一条，别把失败次数清零。
   if (prior === undefined) writeRecord(file, 'pending', plan, now(), log);
   if ((prior?.attempts ?? 0) >= SELF_UPDATE_REINSTALL_MAX_ATTEMPTS) {
     log(`profile 重装已经连续失败 ${String(prior?.attempts)} 次，先不再自动重试`);
@@ -70,7 +66,6 @@ export async function reinstallProfileWhenIdle(
   }
   if (lease === undefined) return 'pending';
   try {
-    // 拿到锁之后重读：启动器可能已经把这个记录消费掉，或失败次数已经涨到上限。
     const latest = readReinstallRecord(file);
     if (latest === undefined) return 'done';
     if ((latest.attempts ?? 0) >= SELF_UPDATE_REINSTALL_MAX_ATTEMPTS) {

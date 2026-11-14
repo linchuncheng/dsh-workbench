@@ -62,7 +62,6 @@ export function dshCompatibilityOf(input: {
     }
     if (!semver.satisfies(version, range, { includePrerelease: true })) unsatisfied.push(requirement);
   }
-  // 明确的“不满足”优先于“某条写坏了”，否则会把已知冲突当成未知放过去。
   if (unsatisfied.length > 0) return { verdict: 'incompatible', requirements: unsatisfied };
   if (malformed) return { verdict: 'unknown', reason: 'malformed', requirements };
   return { verdict: 'compatible' };
@@ -71,7 +70,6 @@ export function dshCompatibilityOf(input: {
 export function dshVersionIn(profileDir: string): string | undefined {
   const own = readManifest(join(profileDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'))?.['version'];
   if (typeof own === 'string' && semver.valid(own) !== null) return own;
-  // dsh 多半装在全局，profile 里根本没有；启动器会把 `dsh --version` 导出成这个变量。
   const fromEnv = process.env['DSH_VERSION'];
   if (typeof fromEnv === 'string' && semver.valid(fromEnv.trim()) !== null) return fromEnv.trim();
   const anchor = readManifest(join(profileDir, 'node_modules', '@deepseek-ai', 'dsh-app-boot', 'package.json'));
@@ -88,7 +86,6 @@ function dependencyVersionOf(
     if (typeof table !== 'object' || table === null) continue;
     const range = (table as Readonly<Record<string, unknown>>)[name];
     if (typeof range !== 'string' || range.trim() === '') continue;
-    // 只有写死的精确版本才能当“已装版本”；区间取到的下界会静默低估/高估。
     const exact = semver.valid(range.trim());
     if (exact !== null) return exact;
   }

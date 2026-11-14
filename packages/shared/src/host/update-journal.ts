@@ -181,7 +181,6 @@ export function restoreUpdateJournal(input: UpdateJournalRestoreInput): UpdateJo
 function restoreLink(link: UpdateJournalLink, record: UpdateJournalRecord): void {
   if (link.kind === 'symlink') {
     if (link.target === undefined) throw new Error('快照里没有原来指向哪');
-    // 相对软链按链接所在目录解析：Windows junction 不接受相对目标。
     linkDir(resolve(dirname(link.path), link.target), link.path);
     return;
   }
@@ -246,7 +245,6 @@ export function recoverUpdateJournal(input: UpdateJournalRecoveryInput): UpdateJ
       input.log?.(`恢复锁没写上，这次先不动现场：${messageOf(error)}`);
       return { kind: 'none' };
     }
-    // 别人正在恢复/更新：不抢，等下一轮。
     if (lease === undefined) return { kind: 'none' };
   }
   try {
@@ -269,7 +267,6 @@ function recoverLocked(input: UpdateJournalRecoveryInput): UpdateJournalRecovery
     try {
       clearUpdateJournal(input.file);
     } catch (error) {
-      // 换版已经提交、只是日志没删掉：重装仍应进行，下次启动会再清一次日志。
       input.log?.(`换版日志没清掉：${messageOf(error)}`);
       markCommitted(input, record);
       return { kind: 'cleared', from: record.from, to: record.to, dirty: true };
@@ -307,7 +304,6 @@ function recoverLocked(input: UpdateJournalRecoveryInput): UpdateJournalRecovery
     file: input.file,
     ...(input.log === undefined ? {} : { log: input.log }),
   });
-  // 回滚成功后，“切到新版要重装”的记录已经不成立了，别让启动器再按它跑一次。
   if (restored.ok) clearRolledBackReinstall(dirname(input.file), record);
   markFailed(input, record);
   return restored.ok
@@ -316,12 +312,10 @@ function recoverLocked(input: UpdateJournalRecoveryInput): UpdateJournalRecovery
 }
 
 function clearRolledBackReinstall(root: string, record: UpdateJournalRecord): void {
-  // 同版本重装（to === from）的记录仍然有意义，保留。
   if (record.to === record.from) return;
   try {
     const file = reinstallRecordFile(root);
     const pending = readReinstallRecord(file);
-    // 只清这次换版写下的那条；上一次更新留下的有效记录不能跟着清掉。
     if (pending !== undefined && pending.version !== record.to) return;
     clearReinstallRecord(file);
   } catch {
@@ -331,8 +325,6 @@ function clearRolledBackReinstall(root: string, record: UpdateJournalRecord): vo
 
 function targetStarted(record: UpdateJournalRecord, input: UpdateJournalRecoveryInput): boolean {
   if (record.to === record.from) return false;
-  // 只有换链开始之后才可能“新版真的起来了”；prepared/carrying 阶段命中只能是别的
-  // profile 共享的启动记录，不能拿它去改这份 profile。
   if (record.state !== 'flipping' && record.state !== 'manifest') return false;
   const since = dayjs(record.at).valueOf();
   for (const file of [input.bootFile, input.upFile]) {
@@ -365,7 +357,6 @@ function snapshotIntact(record: UpdateJournalRecord): boolean {
 }
 
 function markCommitted(input: UpdateJournalRecoveryInput, record: UpdateJournalRecord): void {
-  // 已经确认过这一版可用就不要降级回“重启后生效”。
   if (markerIsOk(input, record.to)) return;
   writeMarker(input, {
     state: 'pending-restart',
@@ -379,7 +370,6 @@ function markCommitted(input: UpdateJournalRecoveryInput, record: UpdateJournalR
 function markFailed(input: UpdateJournalRecoveryInput, record: UpdateJournalRecord): void {
   if (markerIsOk(input, record.to)) return;
   const current = readMarker(input);
-  // 同一次失败不反复刷新时间，免得界面上的提示一直“刚失败”。
   if (current?.['state'] === 'failed' && current['version'] === record.from) return;
   writeMarker(input, {
     state: 'failed',

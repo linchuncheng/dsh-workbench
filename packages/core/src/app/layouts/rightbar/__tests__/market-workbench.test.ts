@@ -282,7 +282,6 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
       tone: 'alert',
     });
 
-    // 依赖没修好之前提示要一直可见（不按 toldAt 抑制）
     const told = workbenchRow(
       { pkg: CORE, installed: '0.1.19' },
       { state: 'failed', at: AT, version: '0.1.19', reinstall: { state: 'failed', attempts: 1, at: AT } },
