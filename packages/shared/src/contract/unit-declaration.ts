@@ -1,7 +1,8 @@
 import type { UnitHostNeeds, UnitManifest, UnitTitle } from '../contract/unit.js';
-import { isRecord, text } from './guards.js';
+import { isRecord, listOf, outsideKeys, text } from './guards.js';
 import { unitTitleKey } from '../contract/unit.js';
 import { needsProblemsOf, type Need } from './needs.js';
+import { originProblemsOf, siteOf, sitesProblemsOf } from './unit-site.js';
 
 /**
  * 声明协议当前版本；模块清单的 dsh.workbench.apiVersion 要写这个整数。
@@ -73,7 +74,7 @@ const TITLE_KEYS = ['zh', 'en'] as const satisfies readonly (keyof UnitTitle)[];
 const TOOL_KEYS = ['name', 'writes', 'key', 'onDemand'] as const satisfies readonly (keyof UnitToolDeclaration)[];
 
 const TOOL_KEY_SHAPE = /^[a-z][a-zA-Z0-9]*$/;
-const HOST_KEYS = ['inject', 'optional', 'writes', 'origins'] as const satisfies readonly (keyof UnitHostNeeds)[];
+const HOST_KEYS = ['inject', 'optional', 'writes', 'origins', 'sites'] as const satisfies readonly (keyof UnitHostNeeds)[];
 
 type MissingCardKey = Exclude<keyof UnitCardDeclaration, (typeof CARD_KEYS)[number]>;
 type MissingTitleKey = Exclude<keyof UnitTitle, (typeof TITLE_KEYS)[number]>;
@@ -91,25 +92,6 @@ void HOST_KEYS_COVERED;
 
 const UNIT_WRITE_SCOPES: readonly string[] = ['unit', 'workspace'];
 
-function originProblemsOf(subject: string, value: readonly string[]): string[] {
-  const problems: string[] = [];
-  for (const one of value) {
-    let url: URL;
-    try {
-      url = new URL(one);
-    } catch {
-      problems.push(`${subject}: ${JSON.stringify(one)} 不是合法 URL`);
-      continue;
-    }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      problems.push(`${subject}: ${JSON.stringify(one)} 只能是 http / https`);
-    } else if (url.pathname !== '/' || url.search !== '' || url.hash !== '') {
-      problems.push(`${subject}: ${JSON.stringify(one)} 只能是站点根（不要带 path / query / hash）`);
-    }
-  }
-  return problems;
-}
-
 /**
  * 读一份声明里的协议版本；不是对象或 apiVersion 不是整数时给 undefined。
  * @param raw 清单里 dsh.workbench 那段原始值。
@@ -119,14 +101,6 @@ export function declarationApiVersionOf(raw: unknown): number | undefined {
   if (!isRecord(raw)) return undefined;
   const version = raw.apiVersion;
   return Number.isInteger(version) ? (version as number) : undefined;
-}
-
-function outsideKeys(value: Readonly<Record<string, unknown>>, allowed: readonly string[]): string[] {
-  return Object.keys(value).filter((key) => !allowed.includes(key));
-}
-
-function listOf(keys: readonly string[]): string {
-  return keys.map((key) => JSON.stringify(key)).join(' / ');
 }
 
 function stringArrayProblems(at: string, value: unknown): string[] {
@@ -302,6 +276,9 @@ export function declarationProblemsOf(subject: string, raw: unknown): readonly s
           problems.push(...originProblemsOf(`${subject}: dsh.workbench.host.origins`, host.origins as readonly string[]));
         }
       }
+      if (host.sites !== undefined) {
+        problems.push(...sitesProblemsOf(`${subject}: dsh.workbench.host.sites`, host.sites));
+      }
       if (host.writes !== undefined) {
         const shape = stringArrayProblems(`${subject}: dsh.workbench.host.writes`, host.writes);
         problems.push(...shape);
@@ -348,6 +325,18 @@ export function readDeclaration(subject: string, raw: unknown): DeclarationRead 
   if (needsRead.errors.length > 0) return { problems: needsRead.errors, warnings: needsRead.warnings };
   const card = declaration.card;
   const id = text(declaration.unit);
+  const sites =
+    declaration.host.sites === undefined
+      ? undefined
+      : Object.fromEntries(
+          Object.entries(declaration.host.sites).map(([name, site]) => [name, siteOf(site)]),
+        );
+  const explicitOrigins = declaration.host.origins;
+  const siteOrigins = sites === undefined ? [] : Object.values(sites).map((site) => site.origin);
+  const origins =
+    explicitOrigins === undefined && siteOrigins.length === 0
+      ? undefined
+      : [...new Set([...siteOrigins, ...(explicitOrigins ?? []).map((one) => new URL(one).origin)])];
   return {
     declaration,
     problems: [],
@@ -365,9 +354,8 @@ export function readDeclaration(subject: string, raw: unknown): DeclarationRead 
         inject: [...(declaration.host.inject ?? [])],
         ...(declaration.host.optional === undefined ? {} : { optional: [...declaration.host.optional] }),
         writes: [...(declaration.host.writes ?? [])],
-        ...(declaration.host.origins === undefined
-          ? {}
-          : { origins: [...new Set(declaration.host.origins.map((one) => new URL(one).origin))] }),
+        ...(origins === undefined ? {} : { origins }),
+        ...(sites === undefined ? {} : { sites }),
       },
       ...(declaration.needs === undefined ? {} : { needs: declaration.needs }),
     },

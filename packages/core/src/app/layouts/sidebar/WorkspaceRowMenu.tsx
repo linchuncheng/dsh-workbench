@@ -15,8 +15,7 @@ import styles from './WorkspaceRowMenu.module.css';
 export const WORKSPACE_MENU_TRIGGER = 'data-workspace-menu-trigger';
 
 export interface WorkspaceMenuAnchor {
-  readonly element?: HTMLElement;
-  readonly point?: { readonly x: number; readonly y: number };
+  readonly point: { readonly x: number; readonly y: number };
   readonly align: 'start' | 'end';
 }
 
@@ -35,7 +34,7 @@ export function nextWorkspaceMenu(
 ): WorkspaceMenuTarget | null {
   const openFor = current?.workspace.workspaceId ?? null;
   if (shouldToggleWorkspaceMenu(open.mode, openFor, workspace.workspaceId)) return null;
-  return { workspace, ...(open.element === undefined ? {} : { element: open.element }), ...(open.point === undefined ? {} : { point: open.point }), align: open.align };
+  return { workspace, point: open.point, align: open.align };
 }
 
 export interface WorkspaceRowMenuProps {
@@ -73,7 +72,6 @@ export function WorkspaceRowMenu({ target, t, onClose, onAlias, onDelete, onReve
     ];
   }, [target, t]);
   const open = target !== null;
-  const anchorRef = useMemo(() => ({ current: target?.element ?? null }), [target]);
   const point = target?.point;
 
   useEffect(() => {
@@ -125,9 +123,7 @@ export function WorkspaceRowMenu({ target, t, onClose, onAlias, onDelete, onReve
       className={point === undefined ? styles.portalRoot : undefined}
       autoFocus
       align={target?.align ?? 'end'}
-      {...(point === undefined
-        ? { anchorRef }
-        : { contextual: true, anchorPoint: point })}
+      {...(point === undefined ? {} : { contextual: true, anchorPoint: point })}
       listClassName={styles.list}
     />
   );

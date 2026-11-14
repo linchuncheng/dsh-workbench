@@ -40,26 +40,30 @@ describe('workspaceSections', () => {
     ]);
   });
 
-  it('认默认工作区用的是 dsh 自己那一条（title === default-workspace，官方文案「默认工作区」）', () => {
+  it('认默认工作区用的是身份：title 或路径尾段，改别名也还在默认那一段', () => {
     expect(workspaceSections([DEFAULT], HEADINGS)).toEqual([
-      { id: 'defaultWorkspace', heading: '默认工作区', items: [DEFAULT] },
+      { id: 'defaultWorkspace', heading: null, items: [DEFAULT] },
     ]);
     const renamed = at(DEFAULT.path, '文档暂存');
     expect(workspaceSections([renamed], HEADINGS)).toEqual([
-      { id: 'workspaces', heading: null, items: [renamed] },
+      { id: 'defaultWorkspace', heading: null, items: [renamed] },
+    ]);
+    const moved = at('/Users/you/elsewhere/default-workspace', '别处的项目');
+    expect(workspaceSections([moved], HEADINGS)).toEqual([
+      { id: 'defaultWorkspace', heading: null, items: [moved] },
     ]);
   });
 
-  it('只剩工坊那一条时，只画「工坊」那一段', () => {
+  it('只剩工坊那一条时，只画「工坊」那一段（一条不摆标题）', () => {
     expect(workspaceSections([WORKSHOP], HEADINGS)).toEqual([
-      { id: 'workshop', heading: '工坊', items: [WORKSHOP] },
+      { id: 'workshop', heading: null, items: [WORKSHOP] },
     ]);
   });
 
   it('工坊优先于默认工作区（同一条不会被分到两段里）', () => {
     const both = at(WORKSHOP.path, 'default-workspace');
     expect(workspaceSections([both], HEADINGS)).toEqual([
-      { id: 'workshop', heading: '工坊', items: [both] },
+      { id: 'workshop', heading: null, items: [both] },
     ]);
   });
 
@@ -89,41 +93,92 @@ describe('workspaceSections：组内按「待审批 → 通知 → 在跑 → �
   });
 });
 
-describe('workspaceSections：组间档位优先，同档看分类', () => {
-  it('★★ 只有一组有状态：那一组整组到最前，其余照旧', () => {
+describe('workspaceSections：只有待审批能搬组，同档仍按固定段序', () => {
+  it('★★ 通知那一档不搬组：组的位置不因「跑完了」而变', () => {
     const rows = [...PROJECTS, DEFAULT, WORKSHOP];
     const sections = workspaceSections(rows, HEADINGS, { rankOf: ranker({ [DEFAULT.path]: 1 }) });
-    expect(sections.map((section) => section.id)).toEqual(['defaultWorkspace', 'workspaces', 'workshop']);
-    expect(sections[1]?.heading).toBe('工作区');
+    expect(sections.map((section) => section.id)).toEqual(['workspaces', 'defaultWorkspace', 'workshop']);
+    expect(sections[1]?.heading).toBe('默认工作区');
   });
 
-  it('★★ 组间档位优先：待审批那组压过通知那组', () => {
+  it('★★ 在跑那一档也不搬组：agent 工作台里「在跑」是常态，搬组等于重建空间记忆', () => {
+    const rows = [...PROJECTS, DEFAULT, WORKSHOP];
+    const sections = workspaceSections(rows, HEADINGS, { rankOf: ranker({ [WORKSHOP.path]: 2 }) });
+    expect(sections.map((section) => section.id)).toEqual(['workspaces', 'defaultWorkspace', 'workshop']);
+  });
+
+  it('★★ 待审批那一段整段上浮，其余按固定段序跟在后面', () => {
     const rows = [...PROJECTS, at('/a/approval', 'approval'), DEFAULT, WORKSHOP];
     const sections = workspaceSections(rows, HEADINGS, {
       rankOf: ranker({ '/a/approval': 0, [DEFAULT.path]: 1, [WORKSHOP.path]: 2 }),
     });
     expect(sections.map((section) => section.id)).toEqual(['workspaces', 'defaultWorkspace', 'workshop']);
-  });
 
-  it('★★ 同档再看分类：工坊 > 默认工作区 > 工作区', () => {
-    const rows = [...PROJECTS, at('/a/approval', 'approval'), DEFAULT, WORKSHOP];
-    const sections = workspaceSections(rows, HEADINGS, {
-      rankOf: ranker({ '/a/approval': 0, [DEFAULT.path]: 0, [WORKSHOP.path]: 0 }),
+    const lifted = workspaceSections(rows, HEADINGS, {
+      rankOf: ranker({ '/a/approval': 0, [DEFAULT.path]: 0, [WORKSHOP.path]: 2 }),
     });
-    expect(sections.map((section) => section.id)).toEqual(['workshop', 'defaultWorkspace', 'workspaces']);
+    expect(lifted.map((section) => section.id)).toEqual(['workspaces', 'defaultWorkspace', 'workshop']);
+
+    const defaultFirst = workspaceSections(rows, HEADINGS, { rankOf: ranker({ [DEFAULT.path]: 0 }) });
+    expect(defaultFirst.map((section) => section.id)).toEqual(['defaultWorkspace', 'workspaces', 'workshop']);
   });
 
-  it('★ 组内仍按四档排（组间先比档位，再比分类）', () => {
+  it('★ 组内仍按四档排（待审批 → 通知 → 在跑 → 无状态）', () => {
     const rows = [at('/a/idle', 'idle'), at('/a/approval', 'approval'), DEFAULT, WORKSHOP, at('/a/running', 'running')];
     const sections = workspaceSections(rows, HEADINGS, {
       rankOf: ranker({ '/a/approval': 0, '/a/running': 2, [WORKSHOP.path]: 1 }),
     });
-    expect(sections.map((section) => section.id)).toEqual(['workspaces', 'workshop', 'defaultWorkspace']);
+    expect(sections.map((section) => section.id)).toEqual(['workspaces', 'defaultWorkspace', 'workshop']);
     expect(sections[0]?.items.map((item) => item.title)).toEqual(['approval', 'running', 'idle']);
   });
 
   it('★ 一组都没有状态时，三类的先后照旧（稳定排序，不按名字乱动）', () => {
     const sections = workspaceSections([WORKSHOP, DEFAULT, ...PROJECTS], HEADINGS, { rankOf: ranker({}) });
     expect(sections.map((section) => section.id)).toEqual(['workspaces', 'defaultWorkspace', 'workshop']);
+  });
+});
+
+describe('workspaceSections：同档按最近活动，再退宿主顺序', () => {
+  const recencyOf = (times: Record<string, number>) => (item: { readonly path: string }): number =>
+    times[item.path] ?? 0;
+
+  it('★★ 同档按最近活动降序（与传进来的顺序无关）', () => {
+    const rows = [at('/a/old', 'old'), at('/a/new', 'new'), at('/a/mid', 'mid')];
+    const sections = workspaceSections(rows, HEADINGS, {
+      rankOf: ranker({}),
+      recencyOf: recencyOf({ '/a/old': 1, '/a/new': 3, '/a/mid': 2 }),
+    });
+    expect(sections[0]?.items.map((item) => item.title)).toEqual(['new', 'mid', 'old']);
+  });
+
+  it('★ 最近活动一样时保持宿主顺序（手动排过的位置不丢）', () => {
+    const rows = [at('/a/b', 'b'), at('/a/a', 'a')];
+    const sections = workspaceSections(rows, HEADINGS, {
+      rankOf: ranker({}),
+      recencyOf: recencyOf({ '/a/b': 5, '/a/a': 5 }),
+    });
+    expect(sections[0]?.items.map((item) => item.title)).toEqual(['b', 'a']);
+  });
+
+  it('★ 档位优先于最近活动：在跑的那条排到最前，哪怕它更旧', () => {
+    const rows = [at('/a/fresh-idle', 'idle'), at('/a/stale-run', 'run')];
+    const sections = workspaceSections(rows, HEADINGS, {
+      rankOf: ranker({ '/a/stale-run': 2 }),
+      recencyOf: recencyOf({ '/a/fresh-idle': 9, '/a/stale-run': 1 }),
+    });
+    expect(sections[0]?.items.map((item) => item.title)).toEqual(['run', 'idle']);
+  });
+});
+
+describe('workspaceSections：条目少时不摆标题', () => {
+  it('★ 三行三组（1 个项目 + 默认 + 工坊）：平铺，全不画标题', () => {
+    const sections = workspaceSections([...PROJECTS.slice(0, 1), DEFAULT, WORKSHOP], HEADINGS);
+    expect(sections.map((section) => section.heading)).toEqual([null, null, null]);
+    expect(sections.map((section) => section.id)).toEqual(['workspaces', 'defaultWorkspace', 'workshop']);
+  });
+
+  it('★ 四条起才画标题（分组有区分价值）', () => {
+    const sections = workspaceSections([...PROJECTS, DEFAULT, WORKSHOP], HEADINGS);
+    expect(sections.map((section) => section.heading)).toEqual(['工作区', '默认工作区', '工坊']);
   });
 });

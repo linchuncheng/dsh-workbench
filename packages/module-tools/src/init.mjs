@@ -1,5 +1,5 @@
 import { cpSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { DESIGN_FILE, applyToDeveloping, readDesign, readUserSource, renderDesign, writeUserReadme } from './design.mjs';
+import { DESIGN_FILE, applyToDeveloping, readDesign, readUserSource, renderDesign, sitesOf, writeUserReadme } from './design.mjs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,18 +58,31 @@ export async function init({ root, args = [] }) {
     console.error('  --template diy：唯一模板（真数据源 + 卡片 + 可跑流程/工具），也是默认');
     process.exit(2);
   }
-  const picked = args[args.indexOf('--template') + 1];
-  const which = args.includes('--template') ? picked : 'diy';
+  const templateAt = args.indexOf('--template');
+  if (templateAt !== -1 && (args[templateAt + 1] === undefined || args[templateAt + 1].startsWith('--'))) {
+    console.error('--template 后面要给模板名，例如：--template diy');
+    process.exit(2);
+  }
+  const picked = args[templateAt + 1];
+  const which = templateAt === -1 ? 'diy' : picked;
   const template = TEMPLATES[which];
   if (template === undefined) {
     console.error(`不认识的模板：${String(which)}（可用：${Object.keys(TEMPLATES).join(' / ')}）`);
     process.exit(2);
   }
   const at = args.indexOf('--dir');
+  if (at !== -1 && (args[at + 1] === undefined || args[at + 1].startsWith('--'))) {
+    console.error('--dir 后面要给目录，例如：dsh-wb-module init demo --dir ./module-demo');
+    process.exit(2);
+  }
   const target = at === -1 ? join(root, `module-${unit}`) : args[at + 1];
   const describedAt = args.indexOf('--description');
+  if (describedAt !== -1 && (args[describedAt + 1] === undefined || args[describedAt + 1].startsWith('--'))) {
+    console.error('--description 后面要给一句话，例如：--description "示例模块"');
+    process.exit(2);
+  }
   const description =
-    describedAt === -1 ? `${unit} 模块：独立 dsh 插件包` : (args[describedAt + 1] ?? `${unit} 模块：独立 dsh 插件包`);
+    describedAt === -1 ? `${unit} 模块：独立 dsh 插件包` : args[describedAt + 1];
   if (existsSync(target) && readdirSync(target).length > 0) {
     console.error(`${target} 已经存在且不是空目录，不覆盖`);
     process.exit(2);
@@ -110,7 +123,7 @@ export async function init({ root, args = [] }) {
   walk(target);
   const declared = readDesign(target);
   if (declared !== undefined) {
-    applyToDeveloping(target, renderDesign(declared));
+    applyToDeveloping(target, renderDesign(declared, sitesOf(target) ?? undefined));
     const source = readUserSource(target);
     if (source !== undefined) writeUserReadme(target, source);
   }

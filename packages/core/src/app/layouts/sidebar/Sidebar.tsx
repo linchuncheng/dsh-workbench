@@ -1,4 +1,4 @@
-import { Fragment, createElement as h, useEffect, useState } from 'react';
+import { Fragment, createElement as h, useEffect, useMemo, useState } from 'react';
 import { Spinner } from '@dsh-workbench/shared';
 import type {
   DshContextMenuTarget,
@@ -20,6 +20,7 @@ import { SidebarHeader } from './SidebarHeader';
 import { WorkspaceSection } from './WorkspaceSection';
 import { useSidebarAttention, useLongTaskPresence } from './use-attention';
 import { usePanelEntries } from './use-panel-entries';
+import { workspaceRecencyOf } from './workspace-recency';
 import { cx } from '@dsh-workbench/shared';
 
 import { PanelList } from './PanelNav';
@@ -113,6 +114,11 @@ export function Sidebar(props: SidebarProps) {
     longTasks,
   });
 
+  const recency = useMemo(
+    () => workspaceRecencyOf({ items, sessions, archivedIds: archivedSet }),
+    [items, sessions, archivedSet],
+  );
+
   const pickProject = (workspaceId: string) => {
     setStoredId(workspaceId);
     selectProject(workspaceId);
@@ -160,6 +166,7 @@ export function Sidebar(props: SidebarProps) {
           items={items}
           current={current}
           attention={attention}
+          recency={recency}
           onPick={pickProject}
           onAdd={addProject}
           onAlias={props.renameWorkspace}
@@ -180,6 +187,7 @@ export function Sidebar(props: SidebarProps) {
           items={items}
           current={current}
           attention={attention}
+          recency={recency}
           compact
           onPick={pickProject}
           onAdd={addProject}

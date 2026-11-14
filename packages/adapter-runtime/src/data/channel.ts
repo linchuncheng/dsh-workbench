@@ -44,6 +44,9 @@ function queryOf(recipe: RequestRecipe, overrides: CallOverrides): Record<string
 }
 
 export function channelUrlOf(recipe: RequestRecipe, overrides: CallOverrides): string {
+  if (recipe.origin === undefined || recipe.origin === '') {
+    throw new Error('这条配方只写了 site，没经过宿主解析');
+  }
   const path = overrides.path ?? recipe.request.path;
   const url = new URL(path.startsWith('/') ? `${recipe.origin}${path}` : path);
   for (const [name, value] of Object.entries(queryOf(recipe, overrides))) url.searchParams.set(name, value);

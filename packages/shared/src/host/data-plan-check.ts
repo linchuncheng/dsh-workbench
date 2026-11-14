@@ -1,4 +1,6 @@
 import type { PlanStep, RequestPlan } from '../contract/data.js';
+import { pathSegmentsProblem } from '../contract/guards.js';
+import { authLossProblemsOf } from './auth-loss.js';
 
 const DEFAULT_MAX_BYTES = 2_000_000;
 const MAX_MAX_BYTES = 8_000_000;
@@ -104,10 +106,15 @@ export function planProblemOf(plan: RequestPlan): readonly PlanProblem[] {
   if (!Array.isArray(plan.steps)) {
     return [{ path: 'steps', problem: 'steps 要是数组' }];
   }
-  if (typeof plan.origin !== 'string' || plan.origin.trim() === '') {
-    problems.push({ path: 'origin', problem: 'origin 不能为空' });
-  } else {
-    const originProblem = originProblemOf(plan.origin);
+  const originText = typeof plan.origin === 'string' ? plan.origin.trim() : '';
+  const siteText = typeof plan.site === 'string' ? plan.site.trim() : '';
+  if (plan.site !== undefined && siteText === '') {
+    problems.push({ path: 'site', problem: 'site 不能为空' });
+  }
+  if (originText === '' && siteText === '') {
+    problems.push({ path: 'origin', problem: '计划要有 origin 或 site 至少一个' });
+  } else if (originText !== '') {
+    const originProblem = originProblemOf(originText);
     if (originProblem !== undefined) problems.push({ path: 'origin', problem: originProblem });
   }
   if (plan.loginUrl !== undefined) {
@@ -122,19 +129,13 @@ export function planProblemOf(plan: RequestPlan): readonly PlanProblem[] {
     problems.push({ path: 'steps', problem: `一次最多 ${String(MAX_STEPS)} 步` });
   }
   if (authLoss !== undefined) {
-    const path = authLoss.path;
-    if (typeof path !== 'string' || path.trim() === '') {
-      problems.push({ path: 'authLoss.path', problem: 'authLoss.path 不能为空' });
-    }
-    const hasEquals = authLoss.equals !== undefined;
-    const hasIn = Array.isArray(authLoss.in) && authLoss.in.length > 0;
-    if (!hasEquals && !hasIn) problems.push({ path: 'authLoss', problem: 'equals 或 in 至少给一个' });
-    if (hasEquals && hasIn) problems.push({ path: 'authLoss', problem: 'equals 与 in 只给一个' });
-    if (
-      authLoss.messagePath !== undefined &&
-      (typeof authLoss.messagePath !== 'string' || authLoss.messagePath.trim() === '')
-    ) {
-      problems.push({ path: 'authLoss.messagePath', problem: 'messagePath 不能为空' });
+    for (const one of authLossProblemsOf('authLoss', authLoss)) {
+      problems.push({
+        path: one.path,
+        problem: one.problem.startsWith(one.path)
+          ? one.problem.slice(one.path.length).replace(/^[:：]\s*/, '')
+          : one.problem,
+      });
     }
   }
   const names = new Set<string>();
@@ -146,9 +147,17 @@ export function planProblemOf(plan: RequestPlan): readonly PlanProblem[] {
     }
     const step: PlanStep = {
       ...raw,
+      ...(raw.response === null ? { response: undefined } : {}),
       ...(raw.repeat === null ? { repeat: undefined } : {}),
       ...(raw.while === null ? { while: undefined } : {}),
     };
+    if (
+      step.response !== undefined &&
+      (typeof step.response !== 'object' || step.response === null || Array.isArray(step.response))
+    ) {
+      problems.push({ path: `${at}.response`, problem: 'response 要是一个对象' });
+      return;
+    }
     if (typeof step.request !== 'object' || step.request === null) {
       problems.push({ path: `${at}.request`, problem: 'request 要是一个对象' });
       return;
@@ -224,6 +233,8 @@ export function planProblemOf(plan: RequestPlan): readonly PlanProblem[] {
       if (typeof step.while.path !== 'string' || step.while.path.trim() === '') {
         problems.push({ path: `${at}.while.path`, problem: 'while.path 不能为空' });
       }
+      const whilePathProblem = pathSegmentsProblem(step.while.path, `${at}.while.path`);
+      if (whilePathProblem !== undefined) problems.push({ path: `${at}.while.path`, problem: whilePathProblem });
       if (step.while.equals === undefined) {
         problems.push({ path: `${at}.while.equals`, problem: 'while.equals 不能为空' });
       } else if (!primitiveValue(step.while.equals)) {
@@ -290,6 +301,10 @@ export function planProblemOf(plan: RequestPlan): readonly PlanProblem[] {
       (typeof step.response.path !== 'string' || step.response.path.trim() === '')
     ) {
       problems.push({ path: `${at}.response.path`, problem: 'response.path 不能为空' });
+    }
+    const responsePathProblem = pathSegmentsProblem(step.response?.path, `${at}.response.path`);
+    if (responsePathProblem !== undefined) {
+      problems.push({ path: `${at}.response.path`, problem: responsePathProblem });
     }
     const maxBytesProblem = maxBytesProblemOf(step.response?.maxBytes);
     if (maxBytesProblem !== undefined) problems.push({ path: `${at}.response.maxBytes`, problem: maxBytesProblem });

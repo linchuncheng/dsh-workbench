@@ -56,6 +56,7 @@ export interface SelectFieldProps {
   readonly selection?: 'check' | 'fill' | undefined;
   readonly variant?: 'ghost' | 'boxed' | undefined;
   readonly iconOnly?: boolean | undefined;
+  readonly chevronHidden?: boolean | undefined;
   readonly ariaLabel?: string | undefined;
   readonly title?: string | undefined;
   readonly id?: string | undefined;
@@ -224,18 +225,20 @@ export function stepSelectCursor(
   return (cursor + step + shown.length) % shown.length;
 }
 
-/** 把候选排成 `Menu` 要的条目表：按 `group` 插分组标题；一项都没有时退回 `emptyText` 那一行（不给就是空表）。 */
+/** 把候选排成 `Menu` 要的条目表：按 `group` 插分组标题（`groups: false` 时平铺）；一项都没有时退回 `emptyText` 那一行（不给就是空表）。 */
 export function selectEntries(
   shown: readonly SelectFieldOption[],
   emptyText: string | undefined,
+  options: { readonly groups?: boolean } = {},
 ): readonly MenuEntry[] {
   if (shown.length === 0) {
     return emptyText === undefined ? [] : [{ type: 'label', id: EMPTY_ID, text: emptyText }];
   }
+  const grouped = options.groups ?? true;
   const out: MenuEntry[] = [];
   let group: string | null = null;
   for (const option of shown) {
-    if (option.group !== undefined && option.group !== group) {
+    if (grouped && option.group !== undefined && option.group !== group) {
       out.push({ type: 'label', id: `__wb-select-group-${String(out.length)}`, text: option.group });
       group = option.group;
     }
@@ -315,6 +318,7 @@ function useSelectState(props: SelectFieldProps) {
  * @param props.label - 没进 `FormRow` 时的标签兜底；进了那一行就别再给它和 `hint`，否则会多一个标签。
  * @param props.renderValue - 自己渲染触发器上那份当前值；不给就用候选项的 `label`。
  * @param props.placeholder - 没选中时那句话；不给是 `—`。
+ * @param props.chevronHidden - 箭头留着位置但不画：调用方在那个位置叠自己的操作钮。
  * @param props.search - 是否可搜（默认 true）；`false` 时不画搜索框、也不自动聚焦。
  * @param props.filter - 自定义匹配；不给用 `defaultSelectFilter`（空白查询一律命中）。
  * @param props.emptyText - 无匹配时的文案，或按查询生成文案的函数（能说"没有匹配 X 的项"）。
@@ -344,6 +348,7 @@ export function SelectField(props: SelectFieldProps) {
     selection = 'fill',
     variant = 'boxed',
     iconOnly = false,
+    chevronHidden = false,
     ariaLabel,
     title,
     id,
@@ -394,6 +399,7 @@ export function SelectField(props: SelectFieldProps) {
     icon,
     value: selectValueNode(current, renderValue, placeholder),
     iconOnly,
+    chevronHidden,
     onOpen: () => state.setOpen(true),
     ref: state.triggerRef,
   });
@@ -440,8 +446,8 @@ export function SelectField(props: SelectFieldProps) {
       listClassName: mergeClass('wb-selectMenu', menuClassName),
       anchor,
       selection,
-      selectedId: selectCursorValue(state.shown, state.cursor) ?? undefined,
-      items: selectEntries(state.shown, state.empty),
+      selectedId: selectCursorValue(state.shown, state.cursor) ?? (value === '' ? undefined : value),
+      items: selectEntries(state.shown, state.empty, { groups: state.query.trim() === '' }),
       footer:
         footer === undefined
           ? undefined

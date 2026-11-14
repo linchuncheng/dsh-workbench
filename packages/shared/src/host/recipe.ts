@@ -1,4 +1,5 @@
 import type { CallOverrides, RecipeAuth, RecipeCalls, RequestRecipe } from '../contract/data.js';
+import { authLossScriptLines } from './auth-loss.js';
 import { callsProblemOf, DEFAULT_RECIPE_MAX_BYTES, recipeProblemOf } from './recipe-rules.js';
 
 export interface RecipeDescription {
@@ -36,7 +37,14 @@ function mergedQuery(recipe: RequestRecipe, overrides: CallOverrides): Record<st
 
 function baseUrlOf(recipe: RequestRecipe, overrides: CallOverrides): string {
   const path = overrides.path ?? recipe.request.path;
-  return path.startsWith('/') ? `${recipe.origin}${path}` : path;
+  return path.startsWith('/') ? `${originOf(recipe)}${path}` : path;
+}
+
+function originOf(recipe: RequestRecipe): string {
+  if (recipe.origin === undefined || recipe.origin === '') {
+    throw new Error('这条配方还没解析站点：缺少 origin（只写 site 的配方要先经宿主解析）');
+  }
+  return recipe.origin;
 }
 
 function urlOf(recipe: RequestRecipe, overrides: CallOverrides): string {
@@ -76,7 +84,7 @@ function encodedBody(value: unknown): string {
   return typeof value === 'string' ? literal(value) : `JSON.stringify(${literal(value)})`;
 }
 
-function tokenLines(recipe: RequestRecipe, auth: RecipeAuth): string[] {
+function tokenLines(recipe: RequestRecipe, auth: RecipeAuth, origin: string): string[] {
   if (!needsToken(auth)) return [];
   const source = auth.kind === 'none' ? undefined : auth.source;
   if (source === undefined) return [];
@@ -119,7 +127,7 @@ function tokenLines(recipe: RequestRecipe, auth: RecipeAuth): string[] {
   if (source.kind === 'endpoint') {
     const method = source.method ?? 'GET';
     const hasBody = source.body !== undefined;
-    const endpointUrl = source.url.startsWith('/') ? `${recipe.origin}${source.url}` : source.url;
+    const endpointUrl = source.url.startsWith('/') ? `${origin}${source.url}` : source.url;
     const lines = [
       '  let pre;',
       '  try {',
@@ -150,6 +158,7 @@ function fetchLine(recipe: RequestRecipe, hasBody: boolean): string {
 export function scriptOf(recipe: RequestRecipe, overrides: CallOverrides = {}): string {
   const problem = recipeProblemOf(recipe, overrides);
   if (problem !== undefined) throw new Error(problem);
+  const origin = originOf(recipe);
   const auth = authOf(recipe);
   const body = bodyOf(recipe, overrides);
   const contentType = recipe.request.contentType ?? 'json';
@@ -165,14 +174,15 @@ export function scriptOf(recipe: RequestRecipe, overrides: CallOverrides = {}): 
   const { kind: responseKind, path: responsePath, maxBytes } = responseOf(recipe, overrides);
   const lines: string[] = [];
   lines.push('(async () => {');
-  lines.push(`  if (location.origin !== ${quote(recipe.origin)}) return { ok: false, code: "not-on-site" };`);
+  lines.push(`  if (location.origin !== ${quote(origin)}) return { ok: false, code: "not-on-site" };`);
   lines.push(
-    '  const pick = (value, path) => path.split(".").reduce((one, key) => (one === null || one === undefined ? one : one[key]), value);',
+    '  const pick = (value, path) => path.split(".").filter((key) => key !== "").reduce((one, key) => (one === null || one === undefined ? one : one[key]), value);',
   );
   lines.push(
     '  const set = (target, path, value) => { const parts = path.split("."); let at = target; for (let index = 0; index < parts.length - 1; index += 1) { const key = parts[index]; if (at[key] === null || typeof at[key] !== "object") at[key] = {}; at = at[key]; } at[parts[parts.length - 1]] = value; return target; };',
   );
-  lines.push(...tokenLines(recipe, auth));
+  lines.push(...tokenLines(recipe, auth, origin));
+  if (recipe.authLoss !== undefined) lines.push(...authLossScriptLines(recipe.authLoss));
   lines.push(`  const headers = ${literal(headers)};`);
   if (place?.in === 'header' && needsToken(auth)) {
     lines.push(`  headers[${quote(place.name)}] = ${quote(place.prefix ?? '')} + token;`);
@@ -200,12 +210,21 @@ export function scriptOf(recipe: RequestRecipe, overrides: CallOverrides = {}): 
   lines.push('    return { ok: false, code: "fetch-failed", message: String(error) };');
   lines.push('  }');
   lines.push('  const text = await res.text();');
+  lines.push('  if (res.status === 401) return { ok: false, code: "not-logged-in", message: "HTTP 401" };');
   lines.push(
     `  if (new TextEncoder().encode(text).length > ${maxBytes}) return { ok: false, code: "too-large", message: "返回超过 ${Math.round(maxBytes / 1024)} KB" };`,
   );
-  lines.push(
-    '  if (res.status === 403) return { ok: false, code: "forbidden", message: text.slice(0, 200) };',
-  );
+  if (recipe.authLoss === undefined) {
+    lines.push('  if (res.status === 403) return { ok: false, code: "forbidden", message: text.slice(0, 200) };');
+  } else {
+    lines.push('  if (res.status === 403) {');
+    lines.push('    let json;');
+    lines.push('    try { json = JSON.parse(text); } catch (error) { json = null; }');
+    lines.push('    const lost = json === null ? null : authLostOf(json);');
+    lines.push('    if (lost !== null) return { ok: false, code: "not-logged-in", message: lost };');
+    lines.push('    return { ok: false, code: "forbidden", message: text.slice(0, 200) };');
+    lines.push('  }');
+  }
   lines.push('  if (!res.ok) return { ok: false, code: "http-" + res.status, message: text.slice(0, 200) };');
   if (responseKind === 'text') {
     lines.push('  return { ok: true, text };');
@@ -216,6 +235,10 @@ export function scriptOf(recipe: RequestRecipe, overrides: CallOverrides = {}): 
     lines.push('  } catch (error) {');
     lines.push('    return { ok: false, code: "shape", message: "返回的不是 JSON（可能跳到登录页了）" };');
     lines.push('  }');
+    if (recipe.authLoss !== undefined) {
+      lines.push('  const lost = authLostOf(data);');
+      lines.push('  if (lost !== null) return { ok: false, code: "not-logged-in", message: lost };');
+    }
     if (responsePath === undefined) {
       lines.push('  return { ok: true, data };');
     } else {
@@ -263,16 +286,18 @@ export function scriptOfMany(recipe: RequestRecipe, calls: RecipeCalls): string 
   const problem = callsProblemOf(recipe, calls);
   if (problem !== undefined) throw new Error(problem);
   if (recipe.request.method !== 'GET') throw new Error('批量读只认 GET，写一条一条走 submit');
+  const origin = originOf(recipe);
   const auth = authOf(recipe);
   const place = auth.kind === 'none' ? undefined : auth.place;
   if (place?.in === 'body') throw new Error('批量读不带 body 里的凭据');
   const lines: string[] = [];
   lines.push('(async () => {');
-  lines.push(`  if (location.origin !== ${quote(recipe.origin)}) return { ok: false, code: "not-on-site" };`);
+  lines.push(`  if (location.origin !== ${quote(origin)}) return { ok: false, code: "not-on-site" };`);
   lines.push(
-    '  const pick = (value, path) => path.split(".").reduce((one, key) => (one === null || one === undefined ? one : one[key]), value);',
+    '  const pick = (value, path) => path.split(".").filter((key) => key !== "").reduce((one, key) => (one === null || one === undefined ? one : one[key]), value);',
   );
-  lines.push(...tokenLines(recipe, auth));
+  lines.push(...tokenLines(recipe, auth, origin));
+  if (recipe.authLoss !== undefined) lines.push(...authLossScriptLines(recipe.authLoss));
   lines.push(`  const headers = ${literal(recipe.request.headers ?? {})};`);
   if (place?.in === 'header' && needsToken(auth)) {
     lines.push(`  headers[${quote(place.name)}] = ${quote(place.prefix ?? '')} + token;`);
@@ -292,10 +317,23 @@ export function scriptOfMany(recipe: RequestRecipe, calls: RecipeCalls): string 
   lines.push('      return { ok: false, code: "fetch-failed", message: String(error) };');
   lines.push('    }');
   lines.push('    const text = await res.text();');
+  lines.push('    if (res.status === 401) return { ok: false, code: "not-logged-in", message: "HTTP 401" };');
   lines.push(
     '    if (new TextEncoder().encode(text).length > maxBytes) return { ok: false, code: "too-large", message: "返回超过 " + Math.round(maxBytes / 1024) + " KB" };',
   );
-  lines.push('    if (!res.ok) return { ok: false, code: "http-" + res.status, message: text.slice(0, 200) };');
+  if (recipe.authLoss === undefined) {
+    lines.push('    if (res.status === 403) return { ok: false, code: "forbidden", message: text.slice(0, 200) };');
+    lines.push('    if (!res.ok) return { ok: false, code: "http-" + res.status, message: text.slice(0, 200) };');
+  } else {
+    lines.push('    if (res.status === 403) {');
+    lines.push('      let json;');
+    lines.push('      try { json = JSON.parse(text); } catch (error) { json = null; }');
+    lines.push('      const lost = json === null ? null : authLostOf(json);');
+    lines.push('      if (lost !== null) return { ok: false, code: "not-logged-in", message: lost };');
+    lines.push('      return { ok: false, code: "forbidden", message: text.slice(0, 200) };');
+    lines.push('    }');
+    lines.push('    if (!res.ok) return { ok: false, code: "http-" + res.status, message: text.slice(0, 200) };');
+  }
   lines.push('    if (kind === "text") return { ok: true, text };');
   lines.push('    let data;');
   lines.push('    try {');
@@ -303,6 +341,10 @@ export function scriptOfMany(recipe: RequestRecipe, calls: RecipeCalls): string 
   lines.push('    } catch (error) {');
   lines.push('      return { ok: false, code: "shape", message: "返回的不是 JSON（可能跳到登录页了）" };');
   lines.push('    }');
+  if (recipe.authLoss !== undefined) {
+    lines.push('    const lost = authLostOf(data);');
+    lines.push('    if (lost !== null) return { ok: false, code: "not-logged-in", message: lost };');
+  }
   lines.push('    if (path === null) return { ok: true, data };');
   lines.push('    const value = pick(data, path);');
   lines.push('    if (value === undefined) return { ok: false, code: "shape", message: "返回里没有 " + path + " 这一格" };');

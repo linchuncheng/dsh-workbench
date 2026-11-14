@@ -250,12 +250,18 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
   ): Promise<DataResult<unknown>> {
     const problem = recipeProblemOf(recipe, overrides);
     if (problem !== undefined) return failure('invalid-request', problem);
+    if (recipe.origin === undefined || recipe.origin === '') {
+      return failure('invalid-request', '这条配方只写了 site，没经过宿主解析');
+    }
     if (mode === 'request' && recipe.request.method !== 'GET') {
       return failure('invalid-request', 'request 只读 GET；写走 submit');
     }
     if (options.seam === undefined) return failure('invalid-request', '没有执行缝，读不了浏览器');
     const seam = options.seam;
-    const call = options.channel === false ? undefined : channelCallOf(recipe, overrides ?? {}, command);
+    const call =
+      options.channel === false || recipe.authLoss !== undefined
+        ? undefined
+        : channelCallOf(recipe, overrides ?? {}, command);
     if (call !== undefined && (await ensureChannel(seam, command, channelState, options.channelInstalled))) {
       const viaChannel = await readChannel(seam, call, recipe, callOptions.signal);
       if (viaChannel !== undefined) return viaChannel;
@@ -286,9 +292,12 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
     calls: RecipeCalls,
     callOptions: DataCallOptions,
   ): Promise<RecipeResults> {
-    const names = Object.keys(calls);
+    const names = calls !== null && typeof calls === 'object' ? Object.keys(calls) : [];
     const problem = callsProblemOf(recipe, calls);
     if (problem !== undefined) return allFailure(names, 'invalid-request', problem);
+    if (recipe.origin === undefined || recipe.origin === '') {
+      return allFailure(names, 'invalid-request', '这条配方只写了 site，没经过宿主解析');
+    }
     if (recipe.request.method !== 'GET') {
       return allFailure(names, 'invalid-request', 'requestMany 只读 GET；写走 submit');
     }
@@ -367,6 +376,9 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
       const problem = planProblemOf(plan)[0];
       if (problem !== undefined) {
         return allSame(plan, { code: 'invalid-request', message: `${problem.path}: ${problem.problem}` });
+      }
+      if (plan.origin === undefined || plan.origin === '') {
+        return allSame(plan, { code: 'invalid-request', message: '这份计划只写了 site，没经过宿主解析' });
       }
       const session = sessionOf(plan.session);
       const names = plan.steps.map((one) => one.name);

@@ -110,6 +110,10 @@
   color: var(--dsw-alias-label-caption);
 }
 
+.wb-selectChevron[data-hidden] {
+  visibility: hidden;
+}
+
 .wb-selectMenu {
   min-width: var(--wb-len-240);
   max-width: var(--wb-len-360);

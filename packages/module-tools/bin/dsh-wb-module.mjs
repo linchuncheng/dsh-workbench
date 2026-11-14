@@ -109,7 +109,7 @@ const COMMANDS = {
   migrate: '把模块清单迁到当前代（apiVersion / workbenchFaces）；源码类问题只给提示',
   publish: '发货前清单：门禁 + files + npm pack（只 dry run）',
   release: '真发布：全门禁 + 验收闸 + 预检接管 + 发到出口 + 发后核包 + 更新市场索引（中断可 --resume）',
-  sync: '按清单生成 src/declared-tools.ts，按 design.json 生成 src/datasource.ts',
+  sync: '按清单生成 src/declared-tools.ts 与 src/sites.ts，按 design.json 生成 src/datasource.ts',
   lint: '用模块自己那份 eslint.config.mjs；--fix 写回文件',
   changelog: '更新日志：check 查这一版有没有；发布时用 release --changelog-note 写进去',
 };
@@ -129,9 +129,19 @@ async function dispatch(name, raw) {
     }
     args.push(raw[index]);
   }
-  const root = resolve(flagValue(raw, '--cwd') ?? cwd);
-  if (root !== process.cwd()) process.chdir(root);
-  await commands[name]({ root, only: flagValue(raw, '--only'), args });
+  const cwdValue = flagValue(raw, '--cwd');
+  if (raw.includes('--cwd') && (cwdValue === undefined || cwdValue.startsWith('--'))) {
+    console.error('✖ --cwd 后面要给目录，例如：--cwd ./module-demo');
+    process.exit(2);
+  }
+  const root = resolve(cwdValue ?? cwd);
+  try {
+    if (root !== process.cwd()) process.chdir(root);
+    await commands[name]({ root, only: flagValue(raw, '--only'), args });
+  } catch (error) {
+    console.error(`✖ ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
 }
 
 const program = new Command('dsh-wb-module')

@@ -54,7 +54,7 @@ pnpm design check # 设计底稿有没有空格、readme.json / README / DEVELOP
 | `dsh-wb-module build` | 出 `dist/host.js`（单文件 ESM）与 `client.js`（套 loader 壳） |
 | `dsh-wb-module check [--only <判据>] [--package <包名或 unit>]` | 十四条判据；`--only` 单跑，也当查询口用；`--package` 只报这个模块的问题（见下）；`--list [--json\|--markdown]` 只列判据元数据 |
 | `dsh-wb-module lint [--fix]` | 用模块自己那份 `eslint.config.mjs`；`--fix` 写回文件 |
-| `dsh-wb-module sync` | 按清单生成 `src/declared-tools.ts`，按 `design.json` 的 `key + recipe` 生成 `src/datasource.ts` |
+| `dsh-wb-module sync` | 按清单生成 `src/declared-tools.ts` 与 `src/sites.ts`（清单有站点表时），按 `design.json` 的 `key + recipe` 生成 `src/datasource.ts` |
 | `dsh-wb-module design <init\|migrate\|check\|render\|accept>` | 设计底稿：填、拆旧 README、查空格、生成 README 与 DEVELOPING、验收打勾 |
 | `dsh-wb-module migrate [--dry-run]` | 把模块清单迁到当前代：`apiVersion` → 3、缺/空的 `workbenchFaces` 补默认；源码类问题只给提示（check 会点名） |
 | `dsh-wb-module changelog check [版本]` | 查这一版有没有记录；发布时用 `release --changelog-note` 写进去 |
@@ -79,7 +79,7 @@ pnpm design check # 设计底稿有没有空格、readme.json / README / DEVELOP
 <!-- dsh-wb-module:begin checks -->
 | 判据 | 层 | 摘要 |
 |---|---|---|
-| `contracts` | manifest | 单元 id、两个面、四个脚本、peer 依赖存在，以及清单与代码注册对账 |
+| `contracts` | manifest | 单元 id、两个面、四个脚本、peer 依赖存在，以及清单与代码注册对账；站点表引用 / 未用 / origins / 信封 |
 | `protocol` | manifest | dsh.workbench 的 apiVersion、静态半形状与未知键 |
 | `bundles` | build | 宿主产物不含浏览器侧、浏览器产物不内联外壳 CSS 与夹具 |
 | `source` | source | 零注释、包与运行时入口分开、不手写进程/锁/原子写 |

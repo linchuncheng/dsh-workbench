@@ -18,6 +18,7 @@ import { Spinner } from './Spinner.js';
  * @param args.icon - 值左边那枚图标；不给不占位。
  * @param args.value - 已渲染好的当前值节点（文本或占位）。
  * @param args.iconOnly - 只画图标（窄栏那颗切换钮），值与箭头都不画。
+ * @param args.chevronHidden - 箭头占位但不可见；调用方自己在那个位置叠一颗操作钮。
  * @param args.onOpen - 点它做什么，通常是把列表打开。
  * @param args.ref - 挂到这颗 `<button>` 上，取消后回焦点、菜单开着头条滚轮要用它。
  * @returns 一颗 `<button>`。
@@ -33,6 +34,7 @@ export function selectTriggerNode(args: {
   readonly icon: ReactNode | undefined;
   readonly value: ReactNode;
   readonly iconOnly: boolean;
+  readonly chevronHidden: boolean;
   readonly onOpen: () => void;
   readonly ref: Ref<HTMLButtonElement> | undefined;
 }): ReactNode {
@@ -56,7 +58,7 @@ export function selectTriggerNode(args: {
         <Fragment>
           {args.icon === undefined ? null : <span className="wb-selectIcon">{args.icon}</span>}
           <span className="wb-selectValue">{args.value}</span>
-          <span className="wb-selectChevron">
+          <span className="wb-selectChevron" data-hidden={args.chevronHidden ? '' : undefined}>
             <IconChevronDownOutlineRegular size={14} />
           </span>
         </Fragment>

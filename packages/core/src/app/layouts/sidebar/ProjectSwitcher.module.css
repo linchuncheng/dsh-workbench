@@ -8,6 +8,36 @@
   margin: 0 0 var(--wb-len-4);
 }
 
+.triggerArea {
+  position: relative;
+}
+
+.triggerAction {
+  position: absolute;
+  top: 50%;
+  right: var(--wb-len-5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--wb-len-20);
+  height: var(--wb-len-20);
+  transform: translateY(-50%);
+  visibility: hidden;
+}
+
+.triggerAreaActive .triggerAction {
+  visibility: visible;
+}
+
+.triggerArea:has(.triggerAction:hover) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-radius: var(--dsw-radius-md);
+}
+
+.triggerArea .triggerAction .rowAction:hover {
+  background: none;
+}
+
 .glyphBox {
   display: inline-flex;
   align-items: center;
@@ -81,7 +111,8 @@
   margin-inline-start: auto;
 }
 
-.trailing .rowAction {
+.trailing .rowAction,
+.triggerAction .rowAction {
   width: var(--wb-len-20);
   min-width: var(--wb-len-20);
   height: var(--wb-len-20);

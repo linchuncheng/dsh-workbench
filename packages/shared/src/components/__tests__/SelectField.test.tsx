@@ -136,6 +136,16 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
     expect(JSON.stringify(trigger?.children)).toContain('wb-selectValue');
   });
 
+  it('★ chevronHidden：箭头留在原位但藏起来，调用方在那个位置叠自己的操作钮', () => {
+    const chevronOf = (props: Record<string, unknown>): AnyElement | undefined =>
+      elementsOf(menuOf(render(props)).props['anchor']).find(
+        (one) => one.props['className'] === 'wb-selectChevron',
+      );
+
+    expect(chevronOf({})?.props['data-hidden']).toBeUndefined();
+    expect(chevronOf({ chevronHidden: true })?.props['data-hidden']).toBe('');
+  });
+
   it('★ search=false：锚点仍是触发钮（折叠左栏那个下拉要的就是"点开直接是列表"）', () => {
     const root = render({ search: false });
     const anchor = elementsOf(menuOf(root).props['anchor']);
@@ -170,13 +180,10 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
     expect(ghostSearch).toBeDefined();
   });
 
-  it('搜索：按纯文本过滤（label 不是字符串时用 searchText）', () => {
+  it('搜索：按纯文本过滤（label 不是字符串时用 searchText），结果平铺不再画组标题', () => {
     const root = render({}, [true, '默认', null]);
     const items = menuOf(root).props['items'] as readonly MenuEntry[];
-    expect(items).toEqual([
-      { type: 'label', id: '__wb-select-group-0', text: '默认' },
-      { id: 'c', label: '默认工作区' },
-    ]);
+    expect(items).toEqual([{ id: 'c', label: '默认工作区' }]);
 
     states = [true, '甲', null];
     const byText = menuOf(
@@ -187,6 +194,12 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
       } as never),
     ).props['items'] as readonly MenuEntry[];
     expect(byText).toEqual([{ id: 'a', label: expect.anything() }]);
+  });
+
+  it('★ 选中项：键盘游标没动时先用当前值（打开就能看出我在哪）', () => {
+    expect(menuOf(render({})).props['selectedId']).toBe('b');
+    expect(menuOf(render({}, [true, '', 2])).props['selectedId']).toBe('c');
+    expect(menuOf(render({ value: '' })).props['selectedId']).toBeUndefined();
   });
 
   it('搜不到 / 加载中 / 空名单退化成手填，三种态各有明确落点', () => {
@@ -284,6 +297,21 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
       { type: 'label', id: '__wb-select-group-0', text: 'G' },
       { id: 'a', label: '甲', disabled: true },
       { id: 'b', label: '乙', icon: expect.anything() },
+    ]);
+  });
+
+  it('★ 条目构造：groups: false 时平铺，不插分组标题', () => {
+    const items = selectEntries(
+      [
+        { value: 'a', label: '甲', group: 'G' },
+        { value: 'b', label: '乙', group: 'G' },
+      ],
+      undefined,
+      { groups: false },
+    );
+    expect(items).toEqual([
+      { id: 'a', label: '甲' },
+      { id: 'b', label: '乙' },
     ]);
   });
 });

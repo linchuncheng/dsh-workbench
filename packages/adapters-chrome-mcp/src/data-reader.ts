@@ -94,6 +94,9 @@ export function createMcpDataReader(options: McpDataReaderOptions): DataReader {
       } catch (error) {
         return failed(error);
       }
+      if (request.origin === undefined || request.origin === '') {
+        return failed(new Error('这份计划只写了 site，没经过宿主解析'));
+      }
       try {
         await options.call('browser_navigate', { url: request.origin });
         const value = await options.call('browser_evaluate', { script });

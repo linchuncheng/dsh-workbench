@@ -11,6 +11,7 @@ import {
   hostSurface,
   readDeclaration,
   recipeProblemOf,
+  resolveRecipeOf,
 } from '@dsh-workbench/shared/host';
 import {
   DECLARED_TOOLS_FILE,
@@ -22,6 +23,7 @@ import { discoverPackages, workspaceRootOf } from '../discover.mjs';
 import { readDesign } from '../design.mjs';
 import { DEFAULT_FACES } from '../faces.mjs';
 import { datasourceProblemOf } from '../datasource-file.mjs';
+import { sitesProblemOf } from '../sites-file.mjs';
 import { SEED_SHORT } from '../seed.mjs';
 
 const ROOT = process.env.DSH_WB_ROOT ?? fileURLToPath(new URL('../../../../', import.meta.url));
@@ -38,6 +40,174 @@ export const title = '模块契约';
 
 function text(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function withoutComments(source) {
+  let out = '';
+  let quote = '';
+  for (let index = 0; index < source.length; index += 1) {
+    const ch = source[index];
+    const next = source[index + 1];
+    if (quote !== '') {
+      out += ch;
+      if (ch === '\\') {
+        out += next ?? '';
+        index += 1;
+      } else if (ch === quote) {
+        quote = '';
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch;
+      out += ch;
+      continue;
+    }
+    if (ch === '/' && next === '/') {
+      while (index < source.length && source[index] !== '\n') index += 1;
+      out += '\n';
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      index += 2;
+      while (index < source.length && !(source[index] === '*' && source[index + 1] === '/')) index += 1;
+      index += 1;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+function isApostrophe(source, index, ch) {
+  if (ch === '`') return false;
+  return /[A-Za-z0-9]/.test(source[index - 1] ?? '') && /[A-Za-z0-9]/.test(source[index + 1] ?? '');
+}
+
+function visibleMask(source) {
+  const mask = new Uint8Array(source.length);
+  let quote = '';
+  for (let index = 0; index < source.length; index += 1) {
+    const ch = source[index];
+    if (quote !== '') {
+      if (ch === '\\') index += 1;
+      else if (ch === quote) quote = '';
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      if (isApostrophe(source, index, ch)) {
+        mask[index] = 1;
+        continue;
+      }
+      quote = ch;
+      mask[index] = 1;
+      continue;
+    }
+    mask[index] = 1;
+  }
+  return mask;
+}
+
+function blankStrings(source) {
+  let out = '';
+  let quote = '';
+  for (let index = 0; index < source.length; index += 1) {
+    const ch = source[index];
+    if (quote !== '') {
+      if (ch === '\\') {
+        out += '  ';
+        index += 1;
+      } else if (ch === quote) {
+        quote = '';
+        out += ch;
+      } else {
+        out += ' ';
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      if (!isApostrophe(source, index, ch)) quote = ch;
+      out += ch;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+function topLevelParts(source) {
+  const parts = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of source) {
+    if (ch === '{' || ch === '[' || ch === '(') depth += 1;
+    else if (ch === '}' || ch === ']' || ch === ')') depth -= 1;
+    if (ch === ',' && depth === 0) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  parts.push(current);
+  return parts;
+}
+
+function visibleHits(source, mask, pattern) {
+  const hits = [];
+  for (const match of source.matchAll(pattern)) {
+    if (match.index === undefined || mask[match.index] !== 1) continue;
+    hits.push(match[1]);
+  }
+  return hits;
+}
+
+function destructuredSiteNames(source, mask) {
+  const names = [];
+  let dynamic = false;
+  for (const hit of source.matchAll(/\b(?:const|let|var)\s*\{/g)) {
+    if (hit.index === undefined || mask[hit.index] !== 1) continue;
+    let index = hit.index + hit[0].length;
+    let depth = 1;
+    let body = '';
+    while (index < source.length && depth > 0) {
+      const ch = source[index];
+      if (mask[index] === 1) {
+        if (ch === '{') depth += 1;
+        else if (ch === '}') depth -= 1;
+      }
+      if (depth > 0) body += ch;
+      index += 1;
+    }
+    const tail = source.slice(index).trimStart();
+    if (!/^(?::[^=]+)?=\s*SITES\b/.test(tail)) continue;
+    for (const part of topLevelParts(body)) {
+      const head = part.trim();
+      if (head === '') continue;
+      if (head.startsWith('...') || head.startsWith('[')) {
+        dynamic = true;
+        continue;
+      }
+      const key = head
+        .split(':')[0]
+        .split('=')[0]
+        .trim()
+        .replace(/^['"]|['"]$/g, '');
+      if (/^[a-z][a-z0-9-]*$/.test(key)) names.push(key);
+    }
+  }
+  return { names, dynamic };
+}
+
+function dynamicSitesUsed(code, destructuredDynamic) {
+  return (
+    destructuredDynamic ||
+    /\bSITES\s*\??\s*\[(?!\s*['"])/.test(code) ||
+    /\{\s*\.\.\.\s*SITES\b/.test(code) ||
+    /\bObject\s*\.\s*(?:values|entries|keys)\s*\(\s*SITES\b/.test(code) ||
+    /\bSITES\s+as\s+[A-Za-z_$]/.test(code) ||
+    /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*SITES\b/.test(code)
+  );
 }
 
 async function unitFaceOf(dir) {
@@ -695,8 +865,11 @@ export async function run() {
     }
 
     const design = readDesign(pkg.dir);
-    const datasourceProblem = datasourceProblemOf(pkg.dir, design);
+    const sites = manifest?.host.sites;
+    const datasourceProblem = datasourceProblemOf(pkg.dir, design, sites);
     if (datasourceProblem !== undefined) problems.push(`${name}: ${datasourceProblem}`);
+    const sitesProblem = sitesProblemOf(pkg.dir, sites);
+    if (sitesProblem !== undefined) problems.push(`${name}: ${sitesProblem}`);
 
     const reads =
       design !== undefined && Array.isArray(design.reads) && design.reads.length > 0
@@ -704,12 +877,105 @@ export async function run() {
         : design !== undefined && design.datasource !== undefined
           ? [design.datasource]
           : [];
-    for (const read of reads) {
+    const writes =
+      design !== undefined && Array.isArray(design.writes) && design.writes.length > 0
+        ? design.writes
+        : design !== undefined && design.write !== undefined
+          ? [design.write]
+          : [];
+    const usedSites = new Set();
+    const recipeRows = [...reads, ...writes];
+    for (const read of recipeRows) {
       const recipe = read?.recipe;
-      if (recipe === undefined) continue;
-      const problem = recipeProblemOf(recipe);
+      if (recipe === undefined || recipe === null) continue;
+      const siteName = text(recipe?.site);
+      if (siteName !== '') usedSites.add(siteName);
+      const resolved = resolveRecipeOf(recipe, sites);
+      if (!resolved.ok) {
+        const hasOrigin = text(recipe?.origin) !== '';
+        problems.push(
+          siteName === '' && !hasOrigin
+            ? `${name}: design.json 的配方要有 origin 或 site 至少一个`
+            : `${name}: design.json 的配方指向了没声明的站点 ${siteName}（${resolved.problem.message}）`,
+        );
+        continue;
+      }
+      const problem = recipeProblemOf(resolved.value);
       if (problem !== undefined) {
         problems.push(`${name}: design.json 的配方不合法（${problem}）—— 跑 \`dsh-wb-module design check\` 看点名`);
+      }
+    }
+
+    if (sites !== undefined) {
+      let dynamicSites = false;
+      for (const file of sourceFilesOf(pkg.dir)) {
+        if (file.endsWith(join('src', 'sites.ts')) || file.endsWith(join('src', 'datasource.ts'))) continue;
+        const source = withoutComments(readFileSync(file, 'utf8'));
+        const mask = visibleMask(source);
+        const code = blankStrings(source);
+        const looksLikeRecipe = /\brequest\s*:|\bsteps\s*:/.test(code);
+        const destructured = destructuredSiteNames(source, mask);
+        if (dynamicSitesUsed(code, destructured.dynamic)) dynamicSites = true;
+        const siteHits = [
+          ...(looksLikeRecipe
+            ? visibleHits(source, mask, /(?:['"]site['"]|\bsite)\s*:\s*['"]([a-z][a-z0-9-]*)['"]/g)
+            : []),
+          ...visibleHits(source, mask, /\bSITES\s*\.\s*([a-z][a-z0-9-]*)/g),
+          ...visibleHits(source, mask, /\bSITES\s*\??\s*\[\s*['"]([a-z][a-z0-9-]*)['"]\s*\]/g),
+          ...destructured.names,
+        ];
+        for (const siteName of siteHits) {
+          usedSites.add(siteName);
+          if (!Object.hasOwn(sites, siteName)) {
+            problems.push(
+              `${name}: ${relative(pkg.dir, file)} 里引用了没声明的站点 ${siteName}（静态扫描）—— ` +
+                '在清单 dsh.workbench.host.sites 里补上，或改成已声明的站点',
+            );
+          }
+        }
+        const literalOrigin = [...source.matchAll(/\borigin\s*:\s*['"]https?:\/\//g)].some(
+          (hit) => hit.index !== undefined && mask[hit.index] === 1,
+        );
+        if (literalOrigin) {
+          warnings.push(
+            `${name}: ${relative(pkg.dir, file)} 里出现字面 origin（静态扫描）—— 模块已有站点表，建议收进 host.sites`,
+          );
+        }
+      }
+      for (const siteName of Object.keys(sites)) {
+        if (!usedSites.has(siteName) && !dynamicSites) {
+          problems.push(
+            `${name}: 站点表里的 ${siteName} 没有被任何配方 / 计划 / 源码引用 —— ` +
+              '多半是探了没用或名字写错了；不用就从 host.sites 删掉',
+          );
+        }
+      }
+      const rawOrigins = Array.isArray(dsh.workbench?.host?.origins) ? dsh.workbench.host.origins : [];
+      if (rawOrigins.length > 0) {
+        const normalized = new Set();
+        for (const one of rawOrigins) {
+          const origin = typeof one === 'string' ? one : '';
+          let canonical;
+          try {
+            canonical = new URL(origin).origin;
+          } catch {
+            problems.push(`${name}: host.origins 里有一项不是合法 URL：${JSON.stringify(one)}`);
+            continue;
+          }
+          if (canonical !== origin) {
+            warnings.push(`${name}: host.origins 里的 ${JSON.stringify(one)} 会按 ${canonical} 归一`);
+          }
+          if (normalized.has(canonical)) problems.push(`${name}: host.origins 里重复了 ${canonical}`);
+          normalized.add(canonical);
+        }
+        const siteOrigins = new Set(Object.values(sites).map((site) => site.origin));
+        for (const origin of normalized) {
+          if (!siteOrigins.has(origin)) {
+            warnings.push(
+              `${name}: host.origins 里的 ${origin} 不属于任何站点 —— 建议补进 host.sites，或从 origins 删掉`,
+            );
+          }
+        }
       }
     }
 

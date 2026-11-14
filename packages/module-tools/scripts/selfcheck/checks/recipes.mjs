@@ -206,11 +206,11 @@ export const checks = [
           origin: 'https://x.example.com',
           request: { method: 'GET', path: '/api/other' },
         };
-        const stale = datasourceProblemOf(probe, designNow);
+        const stale = datasourceProblemOf(probe, designNow, undefined);
         if (stale === undefined || !stale.includes('sync')) {
           problems.push('配方改了、生成物没跟，datasourceProblemOf 没点名 sync');
         }
-        const renderedStale = renderDatasource(designNow);
+        const renderedStale = renderDatasource(designNow, undefined);
         if (!renderedStale.includes('/api/other')) problems.push('renderDatasource 没按新配方渲染');
       } catch (error) {
         problems.push(String(error?.message ?? error).split('\n')[0]);

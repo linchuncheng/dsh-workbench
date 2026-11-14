@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { callsProblemOf, describeRecipe, recipeProblemOf } from '@dsh-workbench/shared/host';
+import { callsProblemOf, describeRecipe, envelopePathOf, readDeclaration, recipeProblemOf, resolveRecipeOf } from '@dsh-workbench/shared/host';
+import { readsOf, writesOf } from './datasource-file.mjs';
 
 export const DESIGN_FILE = 'design.json';
 export const DEVELOPING_FILE = 'DEVELOPING.md';
@@ -49,20 +50,6 @@ function hasBareRequired(value) {
   return false;
 }
 
-function readsOf(design) {
-  const list = design?.reads;
-  if (Array.isArray(list) && list.length > 0) return list;
-  const one = design?.datasource;
-  return one === undefined || one === null || typeof one !== 'object' ? [] : [one];
-}
-
-function writesOf(design) {
-  const list = design?.writes;
-  if (Array.isArray(list) && list.length > 0) return list;
-  const one = design?.write;
-  return one === undefined || one === null || typeof one !== 'object' ? [] : [one];
-}
-
 function persistenceLabel(value) {
   const raw = text(value);
   if (raw === 'prefs') return '存起来（按工作区记，刷新还在）';
@@ -70,9 +57,11 @@ function persistenceLabel(value) {
   return cell(raw);
 }
 
-function recipeSummaryOf(recipe) {
+function recipeSummaryOf(recipe, sites) {
   try {
-    const described = describeRecipe(recipe);
+    const got = resolveRecipeOf(recipe, sites);
+    if (!got.ok) return `（配方不合法：${got.problem.message}）`;
+    const described = describeRecipe(got.value);
     const auth =
       described.auth === undefined
         ? 'cookie'
@@ -83,11 +72,13 @@ function recipeSummaryOf(recipe) {
   }
 }
 
-function callsSummaryOf(recipe, calls) {
+function callsSummaryOf(recipe, calls, sites) {
   try {
+    const got = resolveRecipeOf(recipe, sites);
+    if (!got.ok) return `（批量不合法：${got.problem.message}）`;
     return Object.keys(calls)
       .map((name) => {
-        const described = describeRecipe(recipe, calls[name]);
+        const described = describeRecipe(got.value, calls[name]);
         return `${name}: ${described.url}`;
       })
       .join('；');
@@ -96,13 +87,15 @@ function callsSummaryOf(recipe, calls) {
   }
 }
 
-function datasourceRowsOf(read) {
+function datasourceRowsOf(read, sites) {
   return [
     '| 项 | 值（照抄，别转述） |',
     '|---|---|',
     `| 哪条读（命令 / URL） | ${cell(read?.read)} |`,
-    ...(read?.recipe === undefined ? [] : [`| 调用形状（配方） | ${cell(recipeSummaryOf(read.recipe))} |`]),
-    ...(read?.calls === undefined ? [] : [`| 一次打几条（批量） | ${cell(callsSummaryOf(read.recipe, read.calls))} |`]),
+    ...(read?.recipe === undefined ? [] : [`| 调用形状（配方） | ${cell(recipeSummaryOf(read.recipe, sites))} |`]),
+    ...(read?.calls === undefined
+      ? []
+      : [`| 一次打几条（批量） | ${cell(callsSummaryOf(read.recipe, read.calls, sites))} |`]),
     `| 参数（缺省 / 范围 / 上限） | ${cell(read?.params)} |`,
     `| 凭据从哪来 | ${cell(read?.credentials)} |`,
     `| 没登录 / 凭据过期时是什么样 | ${cell(read?.notLoggedIn)} |`,
@@ -111,12 +104,12 @@ function datasourceRowsOf(read) {
   ];
 }
 
-function writeRowsOf(write) {
+function writeRowsOf(write, sites) {
   return [
     '| 项 | 值（照抄，别转述） |',
     '|---|---|',
     `| 哪条写（命令 / URL + 方法） | ${cell(write?.command)} |`,
-    ...(write?.recipe === undefined ? [] : [`| 调用形状（配方） | ${cell(recipeSummaryOf(write.recipe))} |`]),
+    ...(write?.recipe === undefined ? [] : [`| 调用形状（配方） | ${cell(recipeSummaryOf(write.recipe, sites))} |`]),
     `| 参数（必填 / 取值枚举 / 上限） | ${cell(write?.params)} |`,
     `| 凭据从哪来 | ${cell(write?.credentials)} |`,
     `| 有没有预览档（没有就写"没有，一次就是真的"） | ${cell(write?.preview)} |`,
@@ -129,6 +122,57 @@ function writeRowsOf(write) {
 
 function text(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+export function sitesOf(root) {
+  const read = declarationReadOf(root);
+  if (read === undefined || read.problems.length > 0) return undefined;
+  return read.manifest?.host.sites;
+}
+
+function declarationReadOf(root) {
+  const manifest = manifestOf(root);
+  const raw = manifest?.dsh?.workbench;
+  return raw === undefined ? undefined : readDeclaration(text(manifest?.name), raw);
+}
+
+function resolvedForDesign(recipe, sites) {
+  const got = resolveRecipeOf(recipe, sites);
+  return got.ok ? { recipe: got.value } : { problem: got.problem.message };
+}
+
+function envelopeOfDesign(recipe, sites) {
+  if (recipe.envelope === false) return false;
+  if (recipe.envelope !== undefined) return recipe.envelope;
+  if (sites === undefined) return undefined;
+  const site = text(recipe.site);
+  return site === '' ? undefined : sites?.[site]?.envelope;
+}
+
+function recipeCellProblemsOf(label, recipe, sites, calls) {
+  if (recipe === undefined || recipe === null) return [];
+  const resolved = resolvedForDesign(recipe, sites);
+  if (resolved.problem !== undefined) return [`${label}.recipe（${resolved.problem}）`];
+  const problem = recipeProblemOf(resolved.recipe);
+  if (problem !== undefined) return [`${label}.recipe（${problem}）`];
+  const cells = [];
+  if (recipe.envelope !== undefined) {
+    const own = envelopePathOf(undefined, recipe.envelope);
+    if (!own.ok) cells.push(`${label}.recipe.envelope（${own.problem}）`);
+  }
+  const envelope = envelopeOfDesign(recipe, sites);
+  if ((resolved.recipe.response?.kind ?? 'json') === 'json') {
+    const got = envelopePathOf(resolved.recipe.response?.path, envelope);
+    if (!got.ok) cells.push(`${label}.recipe.response.path（${got.problem}）`);
+  }
+  if (calls !== undefined && calls !== null) {
+    for (const [name, call] of Object.entries(calls)) {
+      if ((call?.response?.kind ?? 'json') !== 'json') continue;
+      const got = envelopePathOf(call?.response?.path, envelope);
+      if (!got.ok) cells.push(`${label}.calls.${name}.response.path（${got.problem}）`);
+    }
+  }
+  return cells;
 }
 
 function pending(value) {
@@ -191,7 +235,7 @@ function need(cells, value, path) {
   if (pending(value)) cells.push(path);
 }
 
-export function emptyCells(design) {
+export function emptyCells(design, sites) {
   const cells = [];
   for (const field of ['unit', 'name', 'oneLine']) need(cells, design?.[field], field);
 
@@ -238,15 +282,16 @@ export function emptyCells(design) {
     if (recipe !== undefined && custom !== undefined) {
       cells.push(`${label}.recipe（recipe 与 custom 只能二选一）`);
     }
-    if (recipe !== undefined) {
-      const problem = recipeProblemOf(recipe);
-      if (problem !== undefined) cells.push(`${label}.recipe（${problem}）`);
-    }
+    if (recipe !== undefined) cells.push(...recipeCellProblemsOf(label, recipe, sites, read?.calls));
     if (read?.calls !== undefined) {
       if (recipe === undefined) cells.push(`${label}.calls（calls 要有 recipe）`);
       else {
-        const problem = callsProblemOf(recipe, read.calls);
-        if (problem !== undefined) cells.push(`${label}.calls（${problem}）`);
+        const resolved = resolvedForDesign(recipe, sites);
+        if (resolved.problem !== undefined) cells.push(`${label}.calls（${resolved.problem}）`);
+        else {
+          const problem = callsProblemOf(resolved.recipe, read.calls);
+          if (problem !== undefined) cells.push(`${label}.calls（${problem}）`);
+        }
       }
     }
     if (custom !== undefined && text(custom?.why) === '') cells.push(`${label}.custom.why`);
@@ -270,10 +315,7 @@ export function emptyCells(design) {
     if (recipe !== undefined && custom !== undefined) {
       cells.push(`${label}.recipe（recipe 与 custom 只能二选一）`);
     }
-    if (recipe !== undefined) {
-      const problem = recipeProblemOf(recipe);
-      if (problem !== undefined) cells.push(`${label}.recipe（${problem}）`);
-    }
+    if (recipe !== undefined) cells.push(...recipeCellProblemsOf(label, recipe, sites, undefined));
     if (custom !== undefined && text(custom?.why) === '') cells.push(`${label}.custom.why`);
 
     const key = text(write?.key);
@@ -335,7 +377,7 @@ export function designWarningsOf(design) {
   return warnings;
 }
 
-export function renderDesign(design) {
+export function renderDesign(design, sites) {
   const panel = asRows(design?.panel);
   const config = asRows(design?.config);
   const capabilities = asRows(design?.capabilities);
@@ -413,16 +455,16 @@ export function renderDesign(design) {
     '### 数据源探明记录',
     '',
     ...(reads.length <= 1
-      ? [...datasourceRowsOf(reads[0]), '']
-      : reads.flatMap((one, index) => [`#### 读 ${String(index + 1)}`, '', ...datasourceRowsOf(one), ''])),
+      ? [...datasourceRowsOf(reads[0], sites), '']
+      : reads.flatMap((one, index) => [`#### 读 ${String(index + 1)}`, '', ...datasourceRowsOf(one, sites), ''])),
     ...(writes.length === 0
       ? []
       : [
           '### 写通道探明记录',
           '',
           ...(writes.length <= 1
-            ? [...writeRowsOf(writes[0]), '']
-            : writes.flatMap((one, index) => [`#### 写 ${String(index + 1)}`, '', ...writeRowsOf(one), ''])),
+            ? [...writeRowsOf(writes[0], sites), '']
+            : writes.flatMap((one, index) => [`#### 写 ${String(index + 1)}`, '', ...writeRowsOf(one, sites), ''])),
         ]),
     '### 验收（自己在真卡片上逐条走通后打勾：`dsh-wb-module design accept`）',
     '',
@@ -669,7 +711,12 @@ function checkDesign(root) {
     console.error(`✖ 没有 ${DESIGN_FILE} —— 先跑 dsh-wb-module design init`);
     process.exit(1);
   }
-  const cells = emptyCells(design);
+  const sites = sitesOf(root);
+  const cells = emptyCells(design, sites);
+  const declaration = declarationReadOf(root);
+  if (declaration !== undefined && declaration.problems.length > 0) {
+    cells.unshift(`清单 dsh.workbench（${declaration.problems[0]}）`);
+  }
   const warnings = designWarningsOf(design);
   const rows = (key) => asRows(design[key]).length;
   const acceptance = asRows(design.acceptance);
@@ -677,7 +724,7 @@ function checkDesign(root) {
 
   const developing = existsSync(join(root, DEVELOPING_FILE)) ? readFileSync(join(root, DEVELOPING_FILE), 'utf8') : '';
   const at = regionOf(developing);
-  const fresh = at === undefined ? false : developing.slice(at.start, at.end) === `${START_MARK}\n${renderDesign(design)}\n`;
+  const fresh = at === undefined ? false : developing.slice(at.start, at.end) === `${START_MARK}\n${renderDesign(design, sites)}\n`;
   const source = readUserSource(root);
   const copyProblems = userCopyProblemsOf(source);
   const user = existsSync(join(root, 'README.md')) ? readFileSync(join(root, 'README.md'), 'utf8') : '';
@@ -720,7 +767,7 @@ export async function design({ root, args = [] }) {
     writeDesign(root, design0);
     const source = readUserSource(root) ?? userSourceSkeleton(manifest, design0);
     writeUserSource(root, source);
-    const how = applyToDeveloping(root, renderDesign(design0));
+    const how = applyToDeveloping(root, renderDesign(design0, sitesOf(root) ?? undefined));
     writeUserReadme(root, source);
     console.log(`✔ 写好 ${DESIGN_FILE} 与 ${README_SOURCE_FILE}（工程底稿 + 用户文案骨架）`);
     console.log(`  ${DEVELOPING_FILE} 的那一段：${how === 'created' ? '新建' : how === 'inserted' ? '插进「需求底稿」那一节' : '已更新'}`);
@@ -743,7 +790,7 @@ export async function design({ root, args = [] }) {
       console.error(`✖ 没有 ${README_SOURCE_FILE} —— 旧模块先跑 dsh-wb-module design migrate；新模块跑 design init`);
       process.exit(1);
     }
-    const how = applyToDeveloping(root, renderDesign(design0));
+    const how = applyToDeveloping(root, renderDesign(design0, sitesOf(root) ?? undefined));
     const user = writeUserReadme(root, source);
     console.log(`✔ ${DEVELOPING_FILE} 的那一段：${how === 'same' ? '本来就是最新的' : how === 'updated' ? '更新了' : how === 'inserted' ? '插进「需求底稿」那一节' : '已更新'}`);
     console.log(`  README.md：${user === 'same' ? '本来就是最新的' : user === 'created' ? '新建' : '重生成'}`);
@@ -764,7 +811,7 @@ export async function design({ root, args = [] }) {
     design0.acceptance = acceptance.map((one) => ({ ...one, checked: true }));
     design0.acceptedAt = new Date().toISOString();
     writeDesign(root, design0);
-    applyToDeveloping(root, renderDesign(design0));
+    applyToDeveloping(root, renderDesign(design0, sitesOf(root) ?? undefined));
     const source = readUserSource(root);
     if (source !== undefined) writeUserReadme(root, source);
     console.log(`✔ ${acceptance.length} 条验收全部打勾（只在真的在真卡片上逐条走通过之后再跑这条）`);
@@ -788,7 +835,7 @@ export async function design({ root, args = [] }) {
     }
     const source = readUserSource(root) ?? userSourceSkeleton(manifestOf(root), design0);
     writeUserSource(root, source);
-    const how = applyToDeveloping(root, renderDesign(design0));
+    const how = applyToDeveloping(root, renderDesign(design0, sitesOf(root) ?? undefined));
     const user = writeUserReadme(root, source);
     console.log(`✔ ${DEVELOPING_FILE} 的那一段：${how === 'same' ? '本来就是最新的' : how === 'updated' ? '更新了' : '已更新'}`);
     console.log(`✔ ${README_SOURCE_FILE} 与 README.md 已生成（${user === 'created' ? '新建' : '重生成'}）`);
