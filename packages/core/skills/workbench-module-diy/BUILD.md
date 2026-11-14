@@ -127,8 +127,26 @@ export const apply = plugin.apply;
 
 不写 `writes`（或写 `[]`）= 不拿门面：`deps.seam` 是 `undefined`，代码里按可选处理。
 
-读站点数据的模块再声明 `host.origins`：`["https://oa.example.com"]`。声明后 `deps.data` 的
-HTTP / 配方 / 计划只放行这些站点，未声明的 origin 直接回 `invalid-request`；path / registry 安装预检会列出「会读取这些站」。
+读站点数据的模块声明 `host.sites`（短名 → 站点事实），`host.origins` 由它推导；显式 `origins` 仍可写：
+
+```json
+{
+  "host": {
+    "inject": [],
+    "sites": {
+      "oa": {
+        "origin": "https://oa.example.com",
+        "loginUrl": "https://oa.example.com/login",
+        "authLoss": { "path": "errorCode", "equals": "002" }
+      }
+    }
+  }
+}
+```
+
+声明后 `deps.data` 的 HTTP / 配方 / 计划只放行这些站点（站点 origin 并集 + 显式 origins）；未声明的 origin
+直接回 `invalid-request`；path / registry 安装预检会列出「会读取这些站」。配方与计划只写 `site: 'oa'`，
+运行时由宿主解析出 origin / 登录页 / 过期信号 / 会话 / 超时。
 无 URL 的 `browser` 脚本与 `command` 读不在 origin 校验范围。不写 = 兼容旧模块，仍放行；写 `[]` = 一个都不许。
 
 写计划放在 `writes: true` 的工具 `execute` 里（审批门在工具层先过）：

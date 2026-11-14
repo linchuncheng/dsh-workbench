@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readDeclaration } from '@dsh-workbench/shared/host';
 import {
   DECLARED_TOOLS_FILE,
   declaredToolsApplies,
@@ -15,6 +16,7 @@ import {
   datasourceProblemOf,
   renderDatasource,
 } from './datasource-file.mjs';
+import { SITES_FILE, renderSites, sitesEntriesOf, sitesProblemOf } from './sites-file.mjs';
 
 export async function sync({ root }) {
   const manifestPath = join(root, 'package.json');
@@ -24,14 +26,14 @@ export async function sync({ root }) {
   const unit = typeof raw?.unit === 'string' ? raw.unit : manifest.name;
   if (raw === undefined) throw new Error(`${unit}: package.json 里没有 dsh.workbench —— 这不是模块包`);
 
+  const read = readDeclaration(unit, raw);
+  if (read.problems.length > 0) throw new Error(read.problems.join('；'));
+  const sites = read.manifest?.host.sites;
+  const siteEntries = sitesEntriesOf(sites);
   const tools = Array.isArray(raw.tools) ? raw.tools : [];
   const design = readDesign(root);
-  const entries = datasourceEntriesOf(design);
-  if (tools.length === 0 && entries.length === 0) {
-    console.log(`${unit}: 清单里没有工具、design.json 里也没有带 key 的配方，不用生成物`);
-    return;
-  }
-
+  const entries = datasourceEntriesOf(design, sites);
+  const sitesAt = join(root, SITES_FILE);
   if (tools.length > 0) {
     const missing = declaredToolsWithoutKey(raw);
     if (missing.length > 0) {
@@ -44,7 +46,39 @@ export async function sync({ root }) {
           '（key 是代码里那个短名：`DECLARED_TOOLS.<key>.name`；生成物按清单生成它，代码里引用工具名就写它、不写字面量）',
       );
     }
+  }
 
+  if (siteEntries.length === 0 && existsSync(sitesAt)) {
+    const current = readFileSync(sitesAt, 'utf8').trimStart();
+    if (!current.startsWith('export const SITES = {')) {
+      throw new Error(`${SITES_FILE} 不是生成物（开头不是 export const SITES）—— 先手动处理，别让 sync 误删`);
+    }
+    rmSync(sitesAt, { force: true });
+    console.log(`${unit}: 清单里没有站点表，删掉了旧的 ${SITES_FILE}`);
+  }
+
+  if (tools.length === 0 && entries.length === 0 && siteEntries.length === 0) {
+    console.log(`${unit}: 清单里没有工具与站点表、design.json 里也没有带 key 的配方，不用生成物`);
+    return;
+  }
+
+  if (siteEntries.length > 0) {
+    const had = existsSync(sitesAt);
+    if (had) {
+      const current = readFileSync(sitesAt, 'utf8').trimStart();
+      if (!current.startsWith('export const SITES = {')) {
+        throw new Error(`${SITES_FILE} 不是生成物（开头不是 export const SITES）—— 先手动处理，别让 sync 覆盖`);
+      }
+    }
+    const stale = sitesProblemOf(root, sites);
+    writeFileSync(sitesAt, renderSites(sites));
+    console.log(
+      `${unit}: 写了 ${SITES_FILE}（${siteEntries.length} 个站点，按清单生成）` +
+        (had && stale !== undefined ? ' —— 原来那份和清单对不上，已刷新' : ''),
+    );
+  }
+
+  if (tools.length > 0) {
     const at = declaredToolsPathOf(root);
     const had = existsSync(at);
     const stale = declaredToolsProblemOf(root, raw);
@@ -58,8 +92,8 @@ export async function sync({ root }) {
   if (entries.length > 0) {
     const at = join(root, DATASOURCE_FILE);
     const had = existsSync(at);
-    const stale = datasourceProblemOf(root, design);
-    writeFileSync(at, renderDatasource(design));
+    const stale = datasourceProblemOf(root, design, sites);
+    writeFileSync(at, renderDatasource(design, sites));
     console.log(
       `${unit}: 写了 ${DATASOURCE_FILE}（${entries.length} 条配方，按 design.json 生成）` +
         (had && stale !== undefined ? ' —— 原来那份和底稿对不上，已刷新' : ''),

@@ -1,4 +1,5 @@
 import type { PlanStep, RequestPlan } from '../contract/data.js';
+import { authLossScriptLines } from './auth-loss.js';
 import {
   PLAN_DEFAULT_LOOP,
   PLAN_DEFAULT_MAX_BYTES,
@@ -67,9 +68,11 @@ export function scriptOfPlan(
         `response: ${outputOf(step)}, ${loopOf(step)} }`,
     )
     .join(',\n');
+  if (plan.origin === undefined || plan.origin === '') {
+    throw new Error('这份计划还没解析站点：缺少 origin（只写 site 的计划要先经宿主解析）');
+  }
   const origin = new URL(plan.origin).origin;
   const timeoutMs = plan.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const authLoss = plan.authLoss === undefined ? 'null' : JSON.stringify(plan.authLoss);
   return [
     '(async () => {',
     `  if (location.origin !== ${quote(origin)}) return { ok: false, code: "not-on-site" };`,
@@ -113,15 +116,7 @@ export function scriptOfPlan(
     '    for (let at = from; at <= to; at += 1) out.push(at);',
     '    return out;',
     '  };',
-    `  const authLoss = ${authLoss};`,
-    '  const authLostOf = (value) => {',
-    '    if (authLoss === null) return null;',
-    '    const got = pick(value, authLoss.path);',
-    '    const hit = Array.isArray(authLoss.in) && authLoss.in.length > 0 ? authLoss.in.indexOf(got) >= 0 : got === authLoss.equals;',
-    '    if (!hit) return null;',
-    '    const message = authLoss.messagePath === undefined ? null : pick(value, authLoss.messagePath);',
-    '    return typeof message === "string" && message !== "" ? message : "需要登录";',
-    '  };',
+    ...authLossScriptLines(plan.authLoss),
     `  const prior = ${JSON.stringify(prior)};`,
     '  const steps = [',
     steps,

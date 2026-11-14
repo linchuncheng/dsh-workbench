@@ -1,3 +1,4 @@
+import type { AuthLoss } from './data.js';
 import type { ExtensionNeed, LibNeed, Need } from './needs.js';
 
 /**
@@ -47,8 +48,37 @@ export interface UnitTool {
 }
 
 /**
+ * 一个站点的返回信封：`dataPath` 是业务数据那一格，`codePath` / `messagePath` 是业务码与文案。
+ * 只在生成期展开路径时使用，运行时不认「信封」这个概念。
+ */
+export interface SiteEnvelope {
+  readonly dataPath?: string;
+  readonly codePath?: string;
+  readonly messagePath?: string;
+}
+
+/**
+ * 站点级事实：模块里同一个站点只写一遍，配方与计划用 `site` 引用。
+ * `origin` 必填；其余缺省时等同于今天的内联写法。`authLoss` 与读取计划共用同一形状。
+ */
+export interface UnitSite {
+  readonly origin: string;
+  readonly loginUrl?: string;
+  readonly session?: string;
+  readonly timeoutMs?: number;
+  readonly authLoss?: AuthLoss;
+  readonly envelope?: SiteEnvelope;
+  readonly pagination?: {
+    readonly pageParam?: string;
+    readonly sizeParam?: string;
+    readonly totalPath?: string;
+  };
+}
+
+/**
  * 模块要外壳的哪些服务：inject 缺一个就挂不上，optional 缺了照挂。
  * origins 是模块要读写的站点（能解析的 origin）；声明了就只有这些站点放行，写 `[]` 等于一个都不许。
+ * sites 是站点事实的唯一来源，写了它时 origins 由站点 origin 推导（显式 origins 仍参与并集）。
  * writes 声明模块要哪几档执行缝写入域：unit 是模块自己的数据目录，workspace 是当前会话工作区；
  * 缺省 [] = 不给执行缝门面（deps.seam 是 undefined）。
  */
@@ -57,6 +87,7 @@ export interface UnitHostNeeds {
   readonly optional?: readonly string[];
   readonly writes?: readonly ('unit' | 'workspace')[];
   readonly origins?: readonly string[];
+  readonly sites?: Readonly<Record<string, UnitSite>>;
 }
 
 /**

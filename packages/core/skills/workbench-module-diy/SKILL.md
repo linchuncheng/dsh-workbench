@@ -37,10 +37,12 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 1. **判域** —— [DESIGN.md](DESIGN.md) §0。输出一句结论 + 下一步。
 2. **确认三张表**：问法见 [STEPS.md](STEPS.md)。只询问用户能决定的事，实现细节不必问。ASCII 画面与三张表当场写入
    `design.json`（[DESIGN.md](DESIGN.md) §5）。
-3. **确定数据源**：见 [DATASOURCE.md](DATASOURCE.md)。探明后写成一条**配方**（`design.json` 的 `key + recipe`
-   → `dsh-wb-module sync` → `data.request`）；后一跳要用前一跳结果的写成**读取计划**
-   （`data.plan({ steps })`，不写脚本）；配方和计划都覆盖不了的写 `custom: { why }`，并写清三种状态。
-   写操作先读 [WRITES.md](WRITES.md) 的四步与执行体；有写工具时，把审批屏画进 ASCII（[DESIGN.md](DESIGN.md) §3 末节）。
+3. **先落站点表，再探接口**：见 [DATASOURCE.md](DATASOURCE.md) 第 0 段——先探 origin / 登录页 / 过期信号 /
+   会话 / 超时 / 信封 / 分页，填进清单 `host.sites`，跑一次 `check --only contracts`；再探接口、写**配方**
+   （`design.json` 的 `key + recipe`，配方只写 `site` → `dsh-wb-module sync` → `data.request`）。
+   后一跳要用前一跳结果的写成**读取计划**（`data.plan({ steps })`，不写脚本）；配方和计划都覆盖不了的写
+   `custom: { why }`，并写清三种状态。写操作先读 [WRITES.md](WRITES.md) 的四步与执行体；有写工具时，
+   把审批屏画进 ASCII（[DESIGN.md](DESIGN.md) §3 末节）。
 4. **套用模板**：见 [BUILD.md](BUILD.md) §1–§2。先执行 `pnpm exec dsh-wb-module init <unit> --template diy`，
    把 `design.json` 改成确认过的那份，再修改数据源与渲染。依赖由 setup 安装，通常无需再安装；
    确实需要时，请在**工作区根**运行 `pnpm install`（在会话沙箱里运行会报 EPERM：link 目标位于可写根之外）。不要从零编写。
@@ -70,6 +72,7 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 | 一次性还是固化、workflow 怎么写 | [FLOW.md](FLOW.md) |
 | 步骤与完成判据 | [STEPS.md](STEPS.md) |
 | 探测数据源、固化读、错误码 | [DATASOURCE.md](DATASOURCE.md) |
+| 站点表：先探站点，再探接口 | [SITES.md](SITES.md) |
 | 写通道四步、回读、撤销 | [WRITES.md](WRITES.md) |
 | 面板内容、状态矩阵、界面规则 | [PANEL.md](PANEL.md) |
 | 选组件、表单、hooks | [KIT.md](KIT.md) |

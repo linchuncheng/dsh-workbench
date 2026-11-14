@@ -132,10 +132,12 @@ export interface RecipeResponse {
 }
 
 export interface RequestRecipe {
-  readonly origin: string;
+  readonly origin?: string;
+  readonly site?: string;
   readonly loginUrl?: string;
   readonly session?: string;
   readonly timeoutMs?: number;
+  readonly authLoss?: AuthLoss;
   readonly auth?: RecipeAuth;
   readonly request: RecipeRequest;
   readonly response?: RecipeResponse;
@@ -197,7 +199,8 @@ export interface AuthLoss {
 }
 
 export interface RequestPlan {
-  readonly origin: string;
+  readonly origin?: string;
+  readonly site?: string;
   readonly loginUrl?: string;
   readonly session?: string;
   readonly timeoutMs?: number;
@@ -208,6 +211,16 @@ export interface RequestPlan {
 export type PlanStepResult<T = unknown> = DataResult<T> & { readonly elapsedMs?: number };
 
 export type PlanResults = Readonly<Record<string, PlanStepResult<unknown>>>;
+
+/**
+ * 已经过宿主站点解析的配方：`site` 已展开成 `origin` 等站点事实。
+ */
+export type ResolvedRequestRecipe = RequestRecipe & { readonly origin: string };
+
+/**
+ * 已经过宿主站点解析的读取计划：`site` 已展开成 `origin` 等站点事实。
+ */
+export type ResolvedRequestPlan = RequestPlan & { readonly origin: string };
 
 /**
  * 写计划的调用参数：幂等键必填，逐步骤确认由调用方给；`confirm` 返回 false 就停，不写。

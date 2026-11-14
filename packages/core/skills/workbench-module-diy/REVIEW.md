@@ -4,7 +4,7 @@
 
 | 判据 | 检查 | 修法 |
 |---|---|---|
-| `contracts` | 清单 ↔ 代码 ↔ `design.json` 漂移；dsh 组合期不校验清单 | 按报错改：`unit` 重名换名；`dsh.workbenchFaces` 两个源码入口；至少保留 `build` / `typecheck` / `test` / `selfcheck` 四个脚本（模板共 8 个）；`private: true`。`dsh.workbench.tools` 与 `registerTools()` 一致；`design.json` 对键名；生成物过期跑 `sync` |
+| `contracts` | 清单 ↔ 代码 ↔ `design.json` 漂移；dsh 组合期不校验清单；站点引用 / 未用站点 / origins / 信封 | 按报错改：`unit` 重名换名；`dsh.workbenchFaces` 两个源码入口；至少保留 `build` / `typecheck` / `test` / `selfcheck` 四个脚本（模板共 8 个）；`private: true`。`dsh.workbench.tools` 与 `registerTools()` 一致；`design.json` 对键名；生成物过期跑 `sync`。站点：配方只写 `site`，站点表不多不少；`host.origins` 由站点推导；信封路径跑 `sync` 展开 |
 | `protocol` | `dsh.workbench` 版本 / 形状 / 多余键（外壳静默忽略生字段） | 补 `"apiVersion": 3`；`unit` / `title` / `card` / `tools` / `host` 写全（名字是 `{ zh, en }` 字面量；无卡片 `null`、无工具 `[]`）；删协议外键（`faces` 在 `dsh.workbenchFaces`；不写 `scope`） |
 | `bundles` | 运行时互串：浏览器产物含 node 内置 / 宿主产物含 DOM、react | 不 import 对方那侧 |
 | `source` | 非种子 `@deepseek-ai/*`；宿主碰 dsh 浏览器包；`@/` 指外壳；根入口取运行值；客户端引 `/host`；**手写进程 / PATH / 文件锁 / 状态原子写**（import 首选库放行） | 宿主只用 Node 侧；种子词仅在 client 可达文件；`@/` 只指自己 `src/`；运行值：浏览器 `kit`、宿主 `shared/host`；进程/锁/状态写交给外壳 |
@@ -17,6 +17,12 @@
 | `style` | 模块定义 `.wb-*`；手写行 / 操作区 / 表单（F1–F4）；`--dsw-*` / `--wb-*` 不在现读的令牌清单 | 样式走 `*.module.css`（无 `wb-` 前缀）；借外壳类用 `:global(.wb-…)`；行 / 操作区用 `FormRow(s)` / `FormActions`，表单用 `Form`（[KIT.md](KIT.md) §5）。F4：裸 `<form` 或手写 `wb-formRow` / `wb-formRows` / `wb-field`。令牌名现查：`workbench_diy_components` `scope: 'tokens'` |
 | `arch` | 结构：巨文件 / 反向依赖 / 跨运行时 / 表外目录 / 模型无测试 / 测试住 `__tests__`；依赖白名单（含 execa / which / proper-lockfile / write-file-atomic / dayjs / zod）+ `shell-quote` / `shelljs` / `zx` deny；能力首选 dayjs / structuredClone / URLSearchParams / zod（日期已是硬门禁） | 见「第十二条」 |
 | `lint` | 语法：`as any` / `console` / `debugger` / 颜色字面量 / `!important` / **直接读 `process.platform` / `versions.electron` / `dshDesktop` / `navigator.userAgent`** / react-hooks | 见「第十三条」 |
+
+## 站点审查
+
+- 模块里出现**字面 origin** → 指出应放进清单 `host.sites`（`contracts` 只给警告，不挡绿）。
+- 站点表里的站点与配方一一对得上（不多不少）；`design.check` 与 `check --only contracts` 各报一次。
+- 安装预览列出的站点就是模块实际会读写的站点（`host.origins` 由站点表推导）。
 
 ## 第十二条 `arch`
 

@@ -1,6 +1,6 @@
-import { Fragment, createElement as h, useMemo, useState } from 'react';
-import type { ReactNode, SelectFieldOption, Translate, WorkspaceView } from '@dsh-workbench/shared';
-import { attentionListRank, type Attention, type WorkspaceAttention } from '@/modules/sessions';
+import { Fragment, createElement as h } from 'react';
+import type { SelectFieldOption, Translate, WorkspaceView } from '@dsh-workbench/shared';
+import type { Attention } from '@/modules/sessions';
 import styles from './ProjectSwitcher.module.css';
 import { SelectField, cx } from '@dsh-workbench/shared';
 import { IconFolderCloseRegular, IconPlusOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives';
@@ -11,10 +11,8 @@ import { WorkspaceAliasDialog } from './WorkspaceAliasDialog';
 import { WorkspaceDeleteDialog } from './WorkspaceDeleteDialog';
 import { WorkspaceRowMenu, nextWorkspaceMenu } from './WorkspaceRowMenu';
 import { WorkspaceRowAction } from './WorkspaceRowAction';
-import type { WorkspaceMenuTarget } from './WorkspaceRowMenu';
-import { displayNameOf, matchWorkspaces } from './workspace-name';
-import { workspaceSections } from './workspace-groups';
-import { workspaceOptions } from './workspace-items';
+import { matchWorkspaces } from './workspace-name';
+import { useProjectSwitcherState } from './use-project-switcher-state';
 
 export interface ProjectSwitcherProps {
   items: readonly WorkspaceView[];
@@ -30,90 +28,27 @@ export interface ProjectSwitcherProps {
   t: Translate;
 }
 
-interface WorkspaceOrderSnapshot {
-  readonly attention: ReadonlyMap<string, WorkspaceAttention>;
-  readonly recency: ReadonlyMap<string, number>;
-}
-
-export function ProjectSwitcher({
-  items,
-  current,
-  attention,
-  recency,
-  compact = false,
-  onPick,
-  onAdd,
-  onAlias,
-  onDelete,
-  onReveal,
-  t,
-}: ProjectSwitcherProps) {
-  const [open, setOpen] = useState(false);
-  const [hoverId, setHoverId] = useState<string | null>(null);
-  const [triggerHover, setTriggerHover] = useState(false);
-  const [frozenOrder, setFrozenOrder] = useState<WorkspaceOrderSnapshot | null>(null);
-  const [menu, setMenu] = useState<WorkspaceMenuTarget | null>(null);
-  const [naming, setNaming] = useState<WorkspaceView | null>(null);
-  const [deleting, setDeleting] = useState<WorkspaceView | null>(null);
-
-  const currentId = current?.workspaceId ?? '';
-  const ordering = useMemo(
-    () => frozenOrder ?? { attention: attention.byWorkspace, recency },
-    [frozenOrder, attention.byWorkspace, recency],
-  );
-  const byId = useMemo(() => new Map(items.map((workspace) => [workspace.workspaceId, workspace])), [items]);
-  const sections = useMemo(
-    () =>
-      workspaceSections(
-        items,
-        {
-          workspaces: t('project.group.workspaces'),
-          defaultWorkspace: t('project.group.defaultWorkspace'),
-          workshop: t('project.group.workshop'),
-        },
-        {
-          rankOf: (workspace) => attentionListRank(ordering.attention.get(workspace.workspaceId)),
-          recencyOf: (workspace) => ordering.recency.get(workspace.workspaceId) ?? 0,
-        },
-      ),
-    [items, ordering, t],
-  );
-  const hasWarning = [...ordering.attention.values()].some((one) => one.severity === 'warning');
-  const revealCurrentId = hasWarning ? null : current?.workspaceId ?? null;
-  const options = useMemo(
-    () =>
-      workspaceOptions({
-        sections,
-        currentId,
-        revealCurrentId,
-        hoverId,
-        openMenuId: menu?.workspace.workspaceId ?? null,
-        t,
-        attention: attention.byWorkspace,
-        onHover: setHoverId,
-        onMenu: (workspace, open) => setMenu((current) => nextWorkspaceMenu(current, workspace, open)),
-      }),
-    [sections, currentId, revealCurrentId, hoverId, menu, t, attention.byWorkspace],
-  );
-  const valueNodes = useMemo(() => {
-    const out = new Map<string, ReactNode>();
-    for (const workspace of items) {
-      const { dir, name } = displayNameOf(workspace);
-      out.set(
-        workspace.workspaceId,
-        <span className={styles.triggerName}>
-          <span className={styles.dir}>{dir}</span>
-          {name === '' ? null : <span className={styles.name}>{name}</span>}
-        </span>,
-      );
-    }
-    return out;
-  }, [items]);
-
-  const triggerWorkspace = compact || open ? null : current;
-  const triggerMenuOpen =
-    triggerWorkspace !== null && menu !== null && menu.workspace.workspaceId === triggerWorkspace.workspaceId;
-  const triggerActionActive = triggerWorkspace !== null && (triggerHover || triggerMenuOpen);
+export function ProjectSwitcher(props: ProjectSwitcherProps) {
+  const { current, attention, recency, compact = false, onPick, onAdd, onAlias, onDelete, onReveal, t } = props;
+  const {
+    open,
+    setOpen,
+    setTriggerHover,
+    setFrozenOrder,
+    menu,
+    setMenu,
+    naming,
+    setNaming,
+    deleting,
+    setDeleting,
+    currentId,
+    byId,
+    options,
+    valueNodes,
+    triggerWorkspace,
+    triggerMenuOpen,
+    triggerActionActive,
+  } = useProjectSwitcherState(props);
 
   return (
     <div className={cx(styles.root, compact && styles.rail)}>

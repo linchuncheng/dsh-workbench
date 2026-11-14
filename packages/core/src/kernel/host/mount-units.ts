@@ -359,7 +359,7 @@ export function mountUnits(
       continue;
     }
     const unit = host.manifest.id;
-    const unitData = scopedDataReader(data, host.manifest.host.origins);
+    const unitData = scopedDataReader(data, host.manifest.host.origins, host.manifest.host.sites);
     const unitHostKit = createHostKit({
       libInstallCommand: (options) => adaptersOf(deps.ctx).supply.libInstallCommand(options),
       surface: deps.surface ?? hostSurface(),

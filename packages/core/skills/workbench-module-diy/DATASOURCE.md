@@ -11,6 +11,11 @@
 
 判据是"要不要新凭据"，不是"要不要接新平台"。其余类型见 [DESIGN.md](DESIGN.md) §0。
 
+## 第 0 段：站点表
+
+站点事实放清单 `host.sites`，配方只写 `site`。探测清单、放行条件与生成物见 [SITES.md](SITES.md)。
+填完跑 `check --only contracts`。
+
 ## 五步
 
 1. **问入口** —— "你平时在哪个网页 / 软件里看这个？"记下入口。不问"用 deploy 还是 jenkins"。
@@ -57,11 +62,11 @@
 3. **试一条最小读** —— 先证明能拿到，再写模块。记录：结构化字段形状；未登录长什么样；超时 / 被墙的形状。
    产出必须是一条可重复的命令或请求。
 
-4. **落配方** —— 把探明结果填成 `design.json` 里这条读的 `recipe`：`origin`、`request`（method / path /
-   query / body / contentType）、`auth`（凭据从哪来、放到哪）、`response`（json / text、取哪一格）。
+4. **落配方** —— 把探明结果填成 `design.json` 里这条读的 `recipe`：`site`（短名）、`request`、`auth`、
+   `response`（json / text、取哪一格）。站点事实从站点表来，信封见 [SITES.md](SITES.md)。
    同时把 `key` 写成 lowerCamelCase。配方与"哪条读 / 参数 / 凭据 / 没登录 / 超时 / 当时调用原文"
    并存：前两格给人看，后一格给壳用。形状见下面「配方」。
-5. **固化进模块** —— 跑 `dsh-wb-module sync`，它把 `key + recipe` 生成到 `src/datasource.ts`；
+5. **固化进模块** —— 跑 `dsh-wb-module sync`，它生成 `src/datasource.ts` 与 `src/sites.ts`；
    宿主半侧 `mount({ data })` 只写一行 `data.request(DATASOURCE.<key>, overrides?)`（读）或
    `data.submit(...)`（写，在工具里）。路由把 `DataResult` 摊平成 `{ ok: true, ...data }` /
    `{ ok: false, error }`，卡片只依赖这条路由。写操作走 [WRITES.md](WRITES.md)。
@@ -72,15 +77,14 @@
 {
   "key": "balance",
   "recipe": {
-    "origin": "https://x.example.com",
-    "loginUrl": "https://x.example.com/login",
+    "site": "x",
     "request": { "method": "GET", "path": "/api/balance", "query": { "scope": "self" } },
-    "response": { "kind": "json", "path": "data" }
+    "response": { "kind": "json", "path": "balance" }
   },
   "read": "GET /api/balance（登录态 cookie）",
   "params": "scope 固定 self",
   "credentials": "复用浏览器登录：同源 cookie",
-  "notLoggedIn": "401 → 阻断屏，code auth，helpUrl 指 /login",
+  "notLoggedIn": "站点表 authLoss 命中 → 阻断屏，code auth，helpUrl 指登录页",
   "timeout": "25 秒；超时归 timeout，不整卡换文案"
 }
 ```

@@ -120,17 +120,19 @@ export const checks = [
     },
   },
   {
-    title: '★ 指引有"数据从哪来"那一节：预装的运行时探 → 固化成一条读 → 三态',
+    title: '★ 指引有"数据从哪来"那一节：站点表 → 预装的运行时探 → 固化成一条读 → 三态',
     run(_ctx, report) {
       const datasourceMd = skillFile('DATASOURCE.md');
       report(
-        '★ 指引有"数据从哪来"那一节：预装的运行时探 → 固化成一条读 → 三态',
+        '★ 指引有"数据从哪来"那一节：站点表 → 预装的运行时探 → 固化成一条读 → 三态',
         datasourceMd.includes('运行时') &&
           datasourceMd.includes('预装') &&
           datasourceMd.includes('侦察兵') &&
           datasourceMd.includes('固化进模块') &&
-          datasourceMd.includes('没登录'),
-        `运行时 ${datasourceMd.includes('运行时')} / 预装 ${datasourceMd.includes('预装')} / 固化 ${datasourceMd.includes('固化进模块')} / 三态 ${datasourceMd.includes('没登录')}`,
+          datasourceMd.includes('没登录') &&
+          datasourceMd.includes('站点表') &&
+          datasourceMd.includes('check --only contracts'),
+        `运行时 ${datasourceMd.includes('运行时')} / 预装 ${datasourceMd.includes('预装')} / 固化 ${datasourceMd.includes('固化进模块')} / 三态 ${datasourceMd.includes('没登录')} / 站点表 ${datasourceMd.includes('站点表')} / 自检 ${datasourceMd.includes('check --only contracts')}`,
       );
     },
   },

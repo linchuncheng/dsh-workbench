@@ -1,4 +1,6 @@
 import type { CallOverrides, CredentialSource, RecipeAuth, RequestRecipe } from '../contract/data.js';
+import { pathSegmentsProblem } from '../contract/guards.js';
+import { authLossProblemsOf } from './auth-loss.js';
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const RESPONSE_KINDS = ['json', 'text'];
@@ -61,9 +63,12 @@ function absoluteUrlProblem(value: unknown, label: string): string | undefined {
   return undefined;
 }
 
-function requestPathProblem(value: unknown, origin: string, label: string): string | undefined {
+function requestPathProblem(value: unknown, origin: string | undefined, label: string): string | undefined {
   const text = textOf(value);
   const relative = relativePathProblem(value, label);
+  if (origin === undefined) {
+    return text.startsWith('/') ? relative : `${label} 要以 / 开头（只写 site 时用站内路径）`;
+  }
   if (relative === undefined) return undefined;
   if (text.startsWith('/') || text.startsWith('//') || text.includes('\\') || text.includes('?') || text.includes('#')) {
     return relative;
@@ -78,11 +83,14 @@ function requestPathProblem(value: unknown, origin: string, label: string): stri
   return undefined;
 }
 
-function resolvedUrlProblem(value: unknown, origin: string, label: string): string | undefined {
+function resolvedUrlProblem(value: unknown, origin: string | undefined, label: string): string | undefined {
   const text = textOf(value);
   if (text === '') return `${label} 不能为空`;
   if (text.startsWith('//')) return `${label} 不许用协议相对地址`;
-  return absoluteUrlProblem(text.startsWith('/') ? `${origin}${text}` : text, label);
+  if (text.startsWith('/')) {
+    return origin === undefined ? undefined : absoluteUrlProblem(`${origin}${text}`, label);
+  }
+  return absoluteUrlProblem(text, label);
 }
 
 function queryProblem(value: unknown): string | undefined {
@@ -130,7 +138,7 @@ function bodyProblem(value: unknown, contentType: string): string | undefined {
   return undefined;
 }
 
-function sourceProblem(value: unknown, origin: string): string | undefined {
+function sourceProblem(value: unknown, origin: string | undefined): string | undefined {
   const source = recordOf(value);
   if (source === undefined) return 'auth.source 要是对象';
   const kind = textOf(source['kind']);
@@ -190,7 +198,7 @@ function placeProblem(value: unknown, source: CredentialSource | undefined): str
   return `不认识的 auth.place.in：${where === '' ? '（空）' : where}`;
 }
 
-function authProblem(value: unknown, origin: string): string | undefined {
+function authProblem(value: unknown, origin: string | undefined): string | undefined {
   if (value === undefined) return undefined;
   const auth = recordOf(value);
   if (auth === undefined) return 'auth 要是对象';
@@ -213,13 +221,20 @@ function maxBytesProblem(value: unknown): string | undefined {
   return undefined;
 }
 
+function responsePathProblem(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (textOf(value) === '') return 'response.path 不能为空';
+  return pathSegmentsProblem(value, 'response.path');
+}
+
 function responseProblem(value: unknown): string | undefined {
   if (value === undefined) return undefined;
   const response = recordOf(value);
   if (response === undefined) return 'response 要是对象';
   const kind = textOf(response['kind']);
   if (!RESPONSE_KINDS.includes(kind)) return `response.kind 只认 ${RESPONSE_KINDS.join(' / ')}`;
-  if (response['path'] !== undefined && textOf(response['path']) === '') return 'response.path 不能为空';
+  const pathIssue = responsePathProblem(response['path']);
+  if (pathIssue !== undefined) return pathIssue;
   return maxBytesProblem(response['maxBytes']);
 }
 
@@ -230,7 +245,8 @@ function responseOverrideProblem(value: unknown): string | undefined {
   if (response['kind'] !== undefined && !RESPONSE_KINDS.includes(textOf(response['kind']))) {
     return `response.kind 只认 ${RESPONSE_KINDS.join(' / ')}`;
   }
-  if (response['path'] !== undefined && textOf(response['path']) === '') return 'response.path 不能为空';
+  const pathIssue = responsePathProblem(response['path']);
+  if (pathIssue !== undefined) return pathIssue;
   return maxBytesProblem(response['maxBytes']);
 }
 
@@ -267,9 +283,14 @@ function overridesProblem(recipe: RequestRecipe, overrides: CallOverrides): stri
 export function recipeProblemOf(recipe: unknown, overrides?: CallOverrides): string | undefined {
   const box = recordOf(recipe);
   if (box === undefined) return '配方要是对象';
-  const originIssue = httpOriginProblem(box['origin']);
-  if (originIssue !== undefined) return originIssue;
-  const origin = textOf(box['origin']);
+  const originText = textOf(box['origin']);
+  if (box['site'] !== undefined && textOf(box['site']) === '') return 'site 不能为空';
+  if (originText === '' && textOf(box['site']) === '') return '配方要有 origin 或 site 至少一个';
+  if (originText !== '') {
+    const originIssue = httpOriginProblem(box['origin']);
+    if (originIssue !== undefined) return originIssue;
+  }
+  const origin = originText === '' ? undefined : originText;
   if (box['loginUrl'] !== undefined) {
     const loginIssue = absoluteUrlProblem(box['loginUrl'], 'loginUrl');
     if (loginIssue !== undefined) return loginIssue;
@@ -279,6 +300,12 @@ export function recipeProblemOf(recipe: unknown, overrides?: CallOverrides): str
     const timeout = box['timeoutMs'];
     if (typeof timeout !== 'number' || !Number.isInteger(timeout) || timeout <= 0) {
       return 'timeoutMs 要是正整数';
+    }
+  }
+  if (box['authLoss'] !== undefined) {
+    const issue = authLossProblemsOf('authLoss', box['authLoss'])[0];
+    if (issue !== undefined) {
+      return issue.problem.startsWith(issue.path) ? issue.problem : `${issue.path}: ${issue.problem}`;
     }
   }
   const request = recordOf(box['request']);

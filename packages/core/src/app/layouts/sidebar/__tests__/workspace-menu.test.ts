@@ -9,7 +9,7 @@ const read = (name: string): string => readFileSync(new URL(name, HERE), 'utf8')
 const ROW_ACTION = read('WorkspaceRowAction.tsx');
 const ROW_LABEL = read('WorkspaceRowLabel.tsx');
 const ITEMS = read('workspace-items.tsx');
-const SWITCHER = read('ProjectSwitcher.tsx');
+const SWITCHER = `${read('ProjectSwitcher.tsx')}\n${read('use-project-switcher-state.tsx')}`;
 const SIDEBAR = read('Sidebar.tsx');
 const MENU = read('WorkspaceRowMenu.tsx');
 const ALIAS = read('WorkspaceAliasDialog.tsx');

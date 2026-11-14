@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import type { SessionsSnapshot, WorkspaceView } from '@dsh-workbench/shared';
 
 export interface WorkspaceRecencyInput {
@@ -8,8 +9,8 @@ export interface WorkspaceRecencyInput {
 
 function stampOf(value: number | string): number {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? 0 : parsed;
+  const parsed = dayjs(value).valueOf();
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function workspaceRecencyOf(input: WorkspaceRecencyInput): ReadonlyMap<string, number> {

@@ -3,7 +3,7 @@ import { discoverPackages } from './discover.mjs';
 export const CHECKS = {
   contracts: {
     title: '模块契约',
-    summary: '单元 id、两个面、四个脚本、peer 依赖存在，以及清单与代码注册对账',
+    summary: '单元 id、两个面、四个脚本、peer 依赖存在，以及清单与代码注册对账；站点表引用 / 未用 / origins / 信封',
     layer: 'manifest',
     load: () => import('./checks/contracts.mjs'),
   },

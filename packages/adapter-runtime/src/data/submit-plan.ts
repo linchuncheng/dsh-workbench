@@ -88,6 +88,9 @@ export async function submitPlanOf(
   if (options.idempotencyKey.trim() === '') return invalid(plan, 'submitPlan 要一个非空的幂等键');
   const problem = planProblemOf(plan)[0];
   if (problem !== undefined) return invalid(plan, `${problem.path}: ${problem.problem}`);
+  if (plan.origin === undefined || plan.origin === '') {
+    return invalid(plan, '这份计划只写了 site，没经过宿主解析');
+  }
   for (const step of plan.steps) {
     if (step.request.method === 'GET') return invalid(plan, `第 ${step.name} 步是 GET：写计划只收写请求`);
     if (hasOwnIdempotencyKey(step)) {
