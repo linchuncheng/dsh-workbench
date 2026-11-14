@@ -18,11 +18,12 @@ const WRITES = read('sidebar-inject.ts');
 const CLIENT = read('../../client.tsx');
 
 describe('工作区行的三点菜单：悬停换图标、点开是菜单', () => {
-  it('★ 三点那颗挨着行尾开（align=end），锚点就是那颗钮本身', () => {
+  it('★ 三点那颗挨着行尾开（align=end），开在那一刻量到的按钮右下角', () => {
     expect(ROW_ACTION).toContain('IconEllipsisOutlineRegular');
     expect(ROW_ACTION).not.toContain('IconEditOutlineRegular');
     expect(ROW_ACTION).toContain('aria-haspopup="menu"');
-    expect(ROW_ACTION).toContain("onMenu({ element: event.currentTarget, align: 'end', mode: 'toggle' })");
+    expect(ROW_ACTION).toContain('const rect = event.currentTarget.getBoundingClientRect()');
+    expect(ROW_ACTION).toContain("onMenu({ point: { x: rect.right, y: rect.bottom }, align: 'end', mode: 'toggle' })");
     expect(ROW_ACTION).toContain('data-workspace-menu-trigger=""');
     expect(ROW_ACTION).toContain('aria-expanded={menuOpen}');
     expect(ITEMS).toContain('menuOpen={openMenuId === workspace.workspaceId}');
@@ -59,11 +60,11 @@ describe('工作区行的三点菜单：悬停换图标、点开是菜单', () =
     expect(branch).toContain('onReveal(path)');
   });
 
-  it('★ 菜单本体挂在开关上（SelectField 的兄弟），锚点交给那颗钮：CSS anchor 定位，不自己算坐标', () => {
+  it('★ 菜单本体挂在开关上（SelectField 的兄弟），两条路都只认坐标：锚在元素上会在选择器一关时被人连锚点一起收走', () => {
     expect(SWITCHER).toContain('<WorkspaceRowMenu');
     expect(MENU).toContain('<Menu');
     expect(MENU).toContain('portal');
-    expect(MENU).toContain('anchorRef');
+    expect(MENU).not.toContain('anchorRef');
     expect(MENU).toContain('anchorPoint: point');
     expect(MENU).toContain('createPortal(menu, document.body)');
     expect(MENU).not.toContain('getBoundingClientRect');
@@ -84,7 +85,7 @@ describe('工作区行的三点菜单：悬停换图标、点开是菜单', () =
     expect(MENU).toContain('listClassName={styles.list}');
   });
 
-  it('★ 菜单根节点不挂在行里：anchorRef 模式（含关着）display: contents；右键 point 模式固定 0×0，都不占行盒', () => {
+  it('★ 菜单根节点不挂在行里：关着时 display: contents，开着（point 模式）固定 0×0，都不占行盒', () => {
     expect(MENU).toContain('className={point === undefined ? styles.portalRoot : undefined}');
     expect(MENU).toContain('createPortal(menu, document.body)');
     expect(MENU).not.toContain('className={styles.anchor}');
