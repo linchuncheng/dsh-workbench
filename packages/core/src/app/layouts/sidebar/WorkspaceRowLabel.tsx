@@ -9,25 +9,29 @@ import type { WorkspaceMenuOpen } from './WorkspaceRowMenu';
 export interface WorkspaceRowLabelProps {
   readonly workspace: WorkspaceView;
   readonly current: boolean;
+  readonly reveal?: boolean;
   readonly action?: ReactNode;
   readonly onHover?: (hovering: boolean) => void;
   readonly onMenu?: (open: WorkspaceMenuOpen) => void;
 }
 
-export function WorkspaceRowLabel({ workspace, current, action, onHover, onMenu }: WorkspaceRowLabelProps) {
+export function WorkspaceRowLabel({ workspace, current, reveal = false, action, onHover, onMenu }: WorkspaceRowLabelProps) {
   const { dir, name } = displayNameOf(workspace);
   const hostRef = useRef<HTMLSpanElement | null>(null);
   const hoverRef = useRef(onHover);
   const menuRef = useRef(onMenu);
+  const revealRef = useRef(reveal);
 
   useEffect(() => {
     hoverRef.current = onHover;
     menuRef.current = onMenu;
+    revealRef.current = reveal;
   });
 
   useEffect(() => {
     const row = hostRef.current?.closest<HTMLElement>('[role="menuitem"]');
     if (row === null || row === undefined) return;
+    if (revealRef.current) row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     const enter = (): void => hoverRef.current?.(true);
     const leave = (): void => hoverRef.current?.(false);
     const show = (event: Event, point: { x: number; y: number }): void => {

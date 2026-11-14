@@ -10,6 +10,7 @@ const ROW_ACTION = read('WorkspaceRowAction.tsx');
 const ROW_LABEL = read('WorkspaceRowLabel.tsx');
 const ITEMS = read('workspace-items.tsx');
 const SWITCHER = read('ProjectSwitcher.tsx');
+const SIDEBAR = read('Sidebar.tsx');
 const MENU = read('WorkspaceRowMenu.tsx');
 const ALIAS = read('WorkspaceAliasDialog.tsx');
 const DELETE = read('WorkspaceDeleteDialog.tsx');
@@ -42,7 +43,7 @@ describe('工作区行的三点菜单：悬停换图标、点开是菜单', () =
   it('★ 菜单不跟行走：行 hover 才在，开菜单时选择器留着（关掉选择器 = 用户点开的那把列表凭空没了）', () => {
     const branch = SWITCHER.slice(
       SWITCHER.indexOf('onMenu: (workspace, open) =>'),
-      SWITCHER.indexOf('[sections, currentId, hoverId'),
+      SWITCHER.indexOf('[sections, currentId,'),
     );
 
     expect(ITEMS).toContain('onMenu={openMenu}');
@@ -89,6 +90,57 @@ describe('工作区行的三点菜单：悬停换图标、点开是菜单', () =
     expect(MENU).toContain('className={point === undefined ? styles.portalRoot : undefined}');
     expect(MENU).toContain('createPortal(menu, document.body)');
     expect(MENU).not.toContain('className={styles.anchor}');
+  });
+});
+
+describe('选择工作区那颗开关：hover 换成三点、点它开菜单、右键也开', () => {
+  it('★ hover 时箭头让位给三点：叠的就是行里那颗 WorkspaceRowAction', () => {
+    expect(SWITCHER).toContain('chevronHidden={triggerActionActive}');
+    expect(SWITCHER).toContain('<WorkspaceRowAction');
+    expect(SWITCHER).toContain('onPointerEnter={compact ? undefined : () => setTriggerHover(true)}');
+    expect(SWITCHER).toContain('onPointerLeave={compact ? undefined : () => setTriggerHover(false)}');
+
+    const css = read('ProjectSwitcher.module.css');
+    expect(css).toContain('.triggerAreaActive .triggerAction');
+    expect(css).toContain('.triggerAction .rowAction');
+  });
+
+  it('★ 列表开着或收窄成图标时不出这颗钮（那时开关被搜索框顶掉 / 本来只有一个图标）', () => {
+    expect(SWITCHER).toContain('const triggerWorkspace = compact || open ? null : current');
+    expect(SWITCHER).toContain('{triggerWorkspace === null ? null : (');
+  });
+
+  it('★ 右键开关本身：开在指针处，走 open 不走 toggle，也不弹浏览器菜单', () => {
+    expect(SWITCHER).toContain('onContextMenu={');
+    expect(SWITCHER).toContain('x: event.clientX, y: event.clientY');
+    expect(SWITCHER).toContain("align: 'start'");
+    expect(SWITCHER).toContain("mode: 'open'");
+    expect(SWITCHER).toContain('event.preventDefault()');
+    expect(SWITCHER).toContain('event.stopPropagation()');
+  });
+});
+
+describe('工作区列表的排序与定位', () => {
+  it('★ 排序键：档位 → 最近活动 → 宿主顺序；最近活动在侧栏算好传下来', () => {
+    expect(SIDEBAR).toContain('workspaceRecencyOf({ items, sessions, archivedIds: archivedSet })');
+    expect(SIDEBAR).toContain('recency={recency}');
+    expect(SWITCHER).toContain('recency: ReadonlyMap<string, number>');
+    expect(SWITCHER).toContain('rankOf: (workspace) => attentionListRank(ordering.attention.get(workspace.workspaceId))');
+    expect(SWITCHER).toContain('recencyOf: (workspace) => ordering.recency.get(workspace.workspaceId) ?? 0');
+  });
+
+  it('★ 打开那一刻冻结排序键：开着不重排，圆点仍读实时状态', () => {
+    expect(SWITCHER).toContain(
+      'setFrozenOrder(next ? { attention: attention.byWorkspace, recency } : null)',
+    );
+    expect(SWITCHER).toContain('frozenOrder ?? { attention: attention.byWorkspace, recency }');
+  });
+
+  it('★ 当前工作区那一行随菜单挂载滚进视野，且不抢焦点；有待审批时先让信号留在首屏', () => {
+    expect(ROW_LABEL).toContain("row.scrollIntoView({ block: 'nearest', inline: 'nearest' })");
+    expect(ROW_LABEL).toContain('if (revealRef.current)');
+    expect(ITEMS).toContain('reveal={workspace.workspaceId === revealCurrentId}');
+    expect(SWITCHER).toContain("const revealCurrentId = hasWarning ? null : current?.workspaceId ?? null");
   });
 });
 
