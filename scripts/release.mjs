@@ -273,8 +273,9 @@ function printUsage() {
 发布走 pnpm -r publish --ignore-scripts —— 各包的 prepublishOnly / prepack 只拦手敲的
 pnpm publish，彩排与真发都不会再触发它们。
 
-更新日志闸不受 --skip-gate 影响：packages/docs/site/desktop/views/changelog.md 必须已经有
-目标版本的一节；构建后还会核对 packages/core/CHANGELOG.md（随 @dsh-workbench/core 发布）也含这一版。
+更新日志闸只对正式版本生效（-beta / -rc 这类预发布跳过），且不受 --skip-gate 影响：
+packages/docs/site/desktop/views/changelog.md 必须已经有目标版本的一节；构建后还会核对
+packages/core/CHANGELOG.md（随 @dsh-workbench/core 发布）也含这一版。
 单独检查：pnpm run check:changelog -- --version 1.2.10
 
 选项：
@@ -284,7 +285,7 @@ pnpm publish，彩排与真发都不会再触发它们。
   --dry-run         只彩排不发布，结束后回滚本地版本号
   --skip-build      跳过构建：发磁盘上现有产物（prepack 已关，不再兜底重建）
   --skip-rehearsal  跳过 dry-run 彩排（不推荐）
-  --skip-gate       跳过门禁（真的跳过：发布不会再补跑；更新日志闸仍然生效；不推荐）
+  --skip-gate       跳过门禁（真的跳过：发布不会再补跑；正式版本的更新日志闸仍然生效；不推荐）
                     项目里的 release:fast 就是「--skip-gate --skip-rehearsal」那条捷径
   --allow-dirty     允许工作区有未提交的改动
 `);
@@ -320,7 +321,15 @@ function changelogStatus(targetVersion, file) {
   return sh("node", args, { allowFailure: true }).status;
 }
 
+function stableOf(targetVersion) {
+  return semver.prerelease(targetVersion) === null;
+}
+
 function assertChangelog(targetVersion) {
+  if (!stableOf(targetVersion)) {
+    console.log(`\n📓 更新日志闸：v${targetVersion} 是预发布版，这次不查（正式版本才要求）`);
+    return;
+  }
   console.log(
     `\n📓 更新日志闸（强制）：v${targetVersion} 必须已经有更新日志 —— --skip-gate 无法跳过`,
   );
@@ -333,6 +342,10 @@ function assertChangelog(targetVersion) {
 }
 
 function assertShippedChangelog(targetVersion, options) {
+  if (!stableOf(targetVersion)) {
+    console.log(`\n📓 更新日志随包闸：v${targetVersion} 是预发布版，这次不查（正式版本才要求）`);
+    return;
+  }
   const file = path.join(rootDir, "packages", "core", "CHANGELOG.md");
   console.log(`\n📓 更新日志随包闸：packages/core/CHANGELOG.md 必须含 v${targetVersion}`);
   if (changelogStatus(targetVersion, file) !== 0) {

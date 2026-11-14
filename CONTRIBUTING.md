@@ -91,7 +91,8 @@ they cover — never scattered next to it (S73).
 ## Releasing
 
 `pnpm release` runs the full gate plus a mandatory changelog check that `--skip-gate`
-cannot bypass. Before you start, `packages/docs/site/desktop/views/changelog.md` must
+cannot bypass. It applies to stable versions only: prereleases (`-beta`, `-rc`, …) skip
+it. Before you start, `packages/docs/site/desktop/views/changelog.md` must
 already contain a `## v<version>` section with content for the version being released;
 after the release build, `packages/core/CHANGELOG.md` (shipped with
 `@dsh-workbench/core`) must contain the same version. Check one version directly with
