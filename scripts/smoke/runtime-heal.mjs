@@ -15,7 +15,7 @@ const FIXTURE_TGZ = join(WORK, 'jackwener-opencli-1.0.0.tgz');
 const loadRuntime = () =>
   import(pathToFileURL(join(REPO, 'packages', 'adapter-runtime', 'dist', 'index.js')).href);
 const loadProbe = () =>
-  import(pathToFileURL(join(REPO, 'packages', 'adapter-probe', 'dist', 'isolated-install.js')).href);
+  import(pathToFileURL(join(REPO, 'packages', 'adapter-probe', 'dist', 'install', 'isolated-install.js')).href);
 const loadSharedHost = () =>
   import(pathToFileURL(join(REPO, 'packages', 'shared', 'dist', 'host.js')).href);
 

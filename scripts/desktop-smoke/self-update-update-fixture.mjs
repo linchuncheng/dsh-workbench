@@ -36,7 +36,7 @@ async function main() {
   const profileDir = join(dshHome, 'profiles', profile);
   if (!existsSync(join(profileDir, 'package.json'))) fail(`没有这个 profile：${profileDir}`);
 
-  const plan = await distModule(ROOT, 'adapter-probe', 'dist', 'self-update-plan.js');
+  const plan = await distModule(ROOT, 'adapter-probe', 'dist', 'self-update', 'self-update-plan.js');
   const bundles = await distModule(ROOT, 'shared', 'dist', 'host', 'profile', 'profile-bundles.js');
   const files = await distModule(ROOT, 'shared', 'dist', 'host', 'runtime', 'fs-write.js');
   const packages = plan.SELF_UPDATE_PACKAGES;

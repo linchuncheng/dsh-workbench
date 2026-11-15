@@ -72,9 +72,9 @@ export function rewriteVersions(versionDir, version, packages) {
 }
 
 async function installNewest({ root, dshHome, profile, version, packages, core, log }) {
-  const versions = await distModule(root, 'adapter-probe', 'dist', 'version-dir.js');
-  const steps = await distModule(root, 'adapter-probe', 'dist', 'self-update-steps.js');
-  const plan = await distModule(root, 'adapter-probe', 'dist', 'self-update-plan.js');
+  const versions = await distModule(root, 'adapter-probe', 'dist', 'self-update', 'version', 'version-dir.js');
+  const steps = await distModule(root, 'adapter-probe', 'dist', 'self-update', 'self-update-steps.js');
+  const plan = await distModule(root, 'adapter-probe', 'dist', 'self-update', 'self-update-plan.js');
   const paths = plan.selfUpdatePaths();
   const profileDir = join(dshHome, 'profiles', profile);
   const newestDir = join(paths.versionsDir, version);
