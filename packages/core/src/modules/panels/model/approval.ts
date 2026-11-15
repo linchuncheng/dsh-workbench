@@ -230,12 +230,18 @@ export function stopVerdictFor(call: ApprovalCall, longTaskRuns: LongTaskRunsLoo
   return stopVerdict(call, longTaskRuns);
 }
 
+function planBodyOf(raw: Readonly<Record<string, unknown>>): boolean {
+  const see = raw['see'];
+  const shots = raw['shots'];
+  return (Array.isArray(see) && see.length > 0) || (Array.isArray(shots) && shots.length > 0);
+}
+
 export function confirmVerdictFor(call: ApprovalCall): ApprovalVerdict | undefined {
   if (call.name !== DIY_PLAN_TOOL) return undefined;
   const raw = argsOf(call);
   if (raw['destination'] !== 'board') return { kind: 'allow' };
   const summary = textOf(raw, 'summary');
-  if (summary === '') return { kind: 'allow' };
+  if (summary === '' || !planBodyOf(raw)) return { kind: 'allow' };
   const title = pair('模块设计方案', 'Module design');
   return askOf('diy plan: build a board card once the user approves the plan', title, title);
 }
