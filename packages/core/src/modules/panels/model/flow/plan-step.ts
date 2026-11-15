@@ -107,7 +107,6 @@ export async function planStep(
       ready: '用现成的，直接给她看',
       once: '一次性，做完就把结果说清楚',
       reroute: '改道，告诉她这一步不走面板',
-      headless: '没有看板，先说明能做什么',
     };
     return {
       ok: true,

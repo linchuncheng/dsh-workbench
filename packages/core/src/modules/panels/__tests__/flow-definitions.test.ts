@@ -72,6 +72,36 @@ describe('DIY 流程定义', () => {
     expect(events.filter((one) => one.status === 'skipped')).toEqual([]);
   });
 
+  it('★ 没有看板的模块：跳过确认方案，照样创建、安装、检查、保存', async () => {
+    const { session } = openBoard();
+    const seen: string[] = [];
+
+    expect(session.provide('judge', { destination: 'headless', summary: '加一个读库存的工具' })).toEqual({
+      ok: true,
+    });
+    await tick();
+
+    const values: Record<string, unknown> = {
+      probe: { sites: [] },
+      build: { unit: 'stock-tool' },
+      install: { unit: 'stock-tool', installed: true },
+      verify: { passed: [], unverified: [] },
+      ledger: { design: 'design.json' },
+    };
+    for (const stepId of ['probe', 'build', 'install', 'verify', 'ledger']) {
+      expect(session.current()?.stepId).toBe(stepId);
+      seen.push(stepId);
+      expect(session.provide(stepId, values[stepId])).toEqual({ ok: true });
+      await tick();
+    }
+
+    const result = await session.result;
+
+    expect(seen).toEqual(['probe', 'build', 'install', 'verify', 'ledger']);
+    expect(result.status).toBe('ok');
+    expect(result.steps['plan']).toBeUndefined();
+  });
+
   it('★ 方案少写四段就递不上去，卡上不会是一张空壳', async () => {
     const { session } = openBoard();
 

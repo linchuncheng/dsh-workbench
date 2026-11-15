@@ -57,14 +57,15 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
     description:
       '要给她做一个面板模块、动手之前用它：先说清她要什么（先问、等她回答），再判去向。' +
       '一次性任务、用现成的、只是问问题都别调。' +
-      '每次都是整份方案：四段（see/do/agent/data）必填，加一两张 shots；改方案就整份重发。',
+      '判成看板时整份方案四段（see/do/agent/data）必填，再加一两张 shots；没有看板的模块只写 summary。',
     parameters: {
       type: 'object',
       properties: {
         destination: {
           type: 'string',
           enum: [...DESTINATIONS],
-          description: 'ready=用现成的 / once=一次性 / reroute=改道 / board=看板 / headless=没看板',
+          description:
+            'ready=用现成的 / once=一次性 / reroute=改道 / board=要一块看板卡片 / headless=要能力不要卡片（照样创建、安装）',
         },
         summary: { type: 'string', description: '一句话复述她要什么，用她的话（她说过的原话）。' },
         cells: { type: 'string', description: '看板几格。' },
