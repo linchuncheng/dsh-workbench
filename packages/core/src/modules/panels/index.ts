@@ -324,7 +324,23 @@ export const panelsHost: UnitOwnedFace = {
           };
         },
       },
-      actions: [marketSourcesAction(marketSources, marketInit)],
+      actions: [
+        marketSourcesAction(marketSources, marketInit),
+        {
+          resource: 'diy-flow-stop',
+          handle(payload) {
+            const session = (payload as { session?: unknown } | null)?.session;
+            if (typeof session !== 'string' || session.trim() === '') {
+              return { ok: false, text: '要停哪一条流程？没带会话号，停下来' };
+            }
+            if (diyRuns.stepOf(session) === null) {
+              return { ok: false, text: '这条会话没有运行中的流程 —— 没什么可停的' };
+            }
+            diyRuns.stop(session);
+            return { ok: true, text: '已经停下了' };
+          },
+        },
+      ],
       prefs: { resource: PANELS_PREF_RESOURCE, handle: (payload: unknown) => applyPanelsPref(panels, payload) },
       provision: {
         handle: async (request) => {

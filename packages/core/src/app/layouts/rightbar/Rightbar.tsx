@@ -24,8 +24,6 @@ import { BoardGrid, ModuleHost, workspacePathOf } from './BoardGrid';
 import type { BoardRegistry } from '@/kernel/client/board-registry';
 import type { RightbarState } from './store';
 import { rightbarPresentation } from './presentation';
-import { FlowProgress } from './FlowProgress';
-import { currentSessionId } from '@/modules/sessions';
 import { createSuiteWorld } from './suite-world';
 import { useBoardWorkspace, useEnabledUnits, type PanelBoardView } from './use-panels';
 import { reportPanelCrash, setPanelWorkspace } from '@/shared/hooks/panel-state-report';
@@ -353,11 +351,6 @@ export function Rightbar(props: RightbarProps) {
         refreshToken={panelToken}
         onOpenMarket={openMarket}
         onCollapse={props.toggleRightbar}
-      />
-
-      <FlowProgress
-        t={props.t}
-        session={currentSessionId(props.useSessions((snapshot) => snapshot), false) ?? null}
       />
 
       {devBoard.strip(top.kind === 'board')}

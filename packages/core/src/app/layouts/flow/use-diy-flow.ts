@@ -13,11 +13,11 @@ export interface DiyFlowView {
   readonly current: DiyFlowStepView | null;
 }
 
-export function useDiyFlow(session: string | null): DiyFlowView | null {
+export function useDiyFlow(session: string | null, token = 0): DiyFlowView | null {
   const read = useApiResource<{ steps?: readonly DiyFlowStepView[]; current?: DiyFlowStepView | null }>(
     DIY_FLOW_ROUTE,
     session === null ? {} : { session },
-    0,
+    token,
     { report: false },
   );
   if (read.value === undefined) return null;
