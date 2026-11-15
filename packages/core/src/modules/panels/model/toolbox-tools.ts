@@ -1,6 +1,7 @@
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { sessionIdOf, sessionWorkspace } from '@dsh-workbench/shared/host';
 import { presetOfSession } from '@/shared/api/host/preset-scope';
+import { DIY_PRESET_ID } from '@/shared/api/diy';
 import { toolScopeContextOf } from '@/shared/api/host/tool-scope';
 import { TOOLBOX_CLOSE_TOOL, TOOLBOX_LIST_TOOL, TOOLBOX_OPEN_TOOL } from '../unit';
 import { textOutput } from './tool-output';
@@ -43,6 +44,7 @@ function catalogText(
     '工作台工具包（默认仅启用三个控制工具；启用工具包需要用户审批，关闭工具包无需审批）：',
     ...toolbox
       .catalog(workspace)
+      .filter((pack) => !(preset === DIY_PRESET_ID && pack.id === 'manage'))
       .map((pack) => `- ${pack.id} — ${pack.label.zh}（${countLine(pack)}）· ${pack.hint}`),
   ];
   const open = [...toolbox.packsOf(session, preset)];
@@ -64,6 +66,7 @@ function targetPlan(
   exec: DshToolRunContext,
   toolbox: Toolbox,
   allowHidden: boolean,
+  preset: string | null,
 ): TargetPlan | { readonly error: string } {
   const session = sessionIdOf(exec);
   if (session === null) return { error: unavailableText() };
@@ -73,6 +76,13 @@ function targetPlan(
   const { packs, unknown, hidden } = toolbox.resolve(targets, allowHidden ? undefined : workspace);
   if (unknown.length > 0) return { error: errorText(toolbox, workspace, unknown) };
   if (!allowHidden && hidden.length > 0) return { error: hiddenText(hidden) };
+  if (preset === DIY_PRESET_ID && packs.includes('manage')) {
+    return {
+      error:
+        'DIY 模式下不提供 manage 工具包：装 / 卸 / 显示 / 隐藏 / 排序 / 市场 / 长任务都已经在 diy 包里，' +
+        '直接调 diy 那一族即可，不用再开包。',
+    };
+  }
   return { session, packs };
 }
 
@@ -145,7 +155,7 @@ export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Arr
     },
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
-      const plan = targetPlan(raw, exec, toolbox, allowHidden);
+      const plan = targetPlan(raw, exec, toolbox, allowHidden, presetOf(ctx, exec));
       if ('error' in plan) return { text: plan.error };
       return run(plan, exec);
     },
@@ -154,7 +164,7 @@ export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Arr
   const openTool = targetTool(
     TOOLBOX_OPEN_TOOL,
     '开启工作台工具包，将工具解锁到本次会话。' +
-      '面板 / 看板 / 模块界面 / 模块市场 启用 manage；调试 / 录制 / 日志 / 页面 启用 diy；' +
+      '面板 / 模块界面 / 模块市场 启用 manage（DIY 模式下不提供，diy 已含这一族）；调试 / 录制 / 日志 / 页面 启用 diy；' +
       'MCP server 启用 mcp:<server>；模块或插件自己的工具启用 unit:<模块或插件 id>。开启需要用户审批。',
     false,
     (plan, exec) => {

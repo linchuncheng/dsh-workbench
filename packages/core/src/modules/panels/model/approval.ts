@@ -284,7 +284,10 @@ export function approvalVerdict(
       title,
     );
   }
-  if (call.name !== undefined && (DIY_TOOLS as readonly string[]).includes(call.name)) {
+  if (
+    call.name !== undefined &&
+    ((DIY_TOOLS as readonly string[]).includes(call.name) || call.name === PANELS_HIDE_TOOL)
+  ) {
     return { kind: 'allow' };
   }
   const raw = argsOf(call);

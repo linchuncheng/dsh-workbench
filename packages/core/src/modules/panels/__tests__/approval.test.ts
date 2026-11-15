@@ -62,23 +62,22 @@ async function zhOf(call: ApprovalCall): Promise<string> {
   return decision?.kind === 'ask' ? decision.displayReason.zh : '';
 }
 
-describe('改面板的五个动作各自一把工具，每把都要问', () => {
-  it('五句话各不相同、说的都是这件事', async () => {
-    const five = await Promise.all([
+describe('改面板：show / move / reset / follow 要问，hide 不问（可逆、只是挪位置）', () => {
+  it('四句话各不相同、说的都是这件事；hide 直接放行', async () => {
+    const four = await Promise.all([
       zhOf({ name: PANELS_SHOW_TOOL, arguments: { id: 'issues' } }),
-      zhOf({ name: PANELS_HIDE_TOOL, arguments: { id: 'issues' } }),
       zhOf({ name: PANELS_MOVE_TOOL, arguments: { id: 'issues' } }),
       zhOf({ name: PANELS_RESET_TOOL, arguments: {} }),
       zhOf({ name: PANELS_FOLLOW_TOOL, arguments: { id: 'issues' } }),
     ]);
 
-    expect(five[0]).toContain('加到当前项目的面板');
-    expect(five[1]).toContain('移除');
-    expect(five[2]).toContain('最前面');
-    expect(five[3]).toContain('清空');
-    expect(five[4]).toContain('恢复为跟随机器级默认值');
-    expect(new Set(five).size).toBe(5);
-    for (const zh of five) {
+    expect(four[0]).toContain('加到当前项目的面板');
+    expect(four[1]).toContain('最前面');
+    expect(four[2]).toContain('清空');
+    expect(four[3]).toContain('恢复为跟随机器级默认值');
+    expect(new Set(four).size).toBe(4);
+    expect(panelsApproval({ name: PANELS_HIDE_TOOL, arguments: { id: 'issues' } })?.kind).toBe('allow');
+    for (const zh of four) {
       expect(zh).toContain('允许吗');
       expect(zh).not.toContain('（');
     }
@@ -106,12 +105,12 @@ describe('改面板的五个动作各自一把工具，每把都要问', () => {
     expect(all).not.toContain('issues');
   });
 
-  it('★ 问句那半写明"哪份板"（兜底句只说目标）：hide 的兜底句短，问句带上落点', async () => {
-    const hide = panelsApproval({ name: PANELS_HIDE_TOOL, arguments: { id: 'issues' } });
-    const fallback = panelsApproval({ name: PANELS_HIDE_TOOL, arguments: { id: 'issues', scope: 'machine' } });
+  it('★ 问句那半写明"哪份板"（兜底句只说目标）', async () => {
+    const show = panelsApproval({ name: PANELS_SHOW_TOOL, arguments: { id: 'issues' } });
+    const machine = panelsApproval({ name: PANELS_SHOW_TOOL, arguments: { id: 'issues', scope: 'machine' } });
 
-    expect(hide?.kind === 'ask' ? hide.question.zh : '').toContain('当前项目的面板');
-    expect(fallback?.kind === 'ask' ? fallback.question.zh : '').toContain('机器级默认值');
+    expect(show?.kind === 'ask' ? show.question.zh : '').toContain('当前项目的面板');
+    expect(machine?.kind === 'ask' ? machine.question.zh : '').toContain('机器级默认值');
   });
 
   it('目标模块：能拿到就说名字，拿不到就说"面板"', async () => {
@@ -345,7 +344,6 @@ describe('清单里的写工具都在自己的策略后面（漏了不报错，�
 describe('文案口径：说清是工作台的动作、目标是哪个模块 / 插件，一句到底', () => {
   const NOUNS: Readonly<Record<string, string>> = {
     [PANELS_SHOW_TOOL]: '模块',
-    [PANELS_HIDE_TOOL]: '模块',
     [PANELS_MOVE_TOOL]: '模块',
     [PANELS_RESET_TOOL]: '面板',
     [PANELS_FOLLOW_TOOL]: '模块条目',
@@ -373,7 +371,6 @@ describe('文案口径：说清是工作台的动作、目标是哪个模块 / �
     })),
     { call: { name: PANELS_FOLLOW_TOOL, arguments: {} }, noun: '面板' },
     { call: { name: PANELS_SHOW_TOOL, arguments: { id: 'inventory', scope: 'machine' } }, noun: '模块' },
-    { call: { name: PANELS_HIDE_TOOL, arguments: { id: 'inventory', scope: 'machine' } }, noun: '模块' },
     { call: { name: PANELS_RESET_TOOL, arguments: { scope: 'machine' } }, noun: '机器级默认值' },
   ];
 

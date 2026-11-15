@@ -278,10 +278,21 @@ export const MANAGE_TOOLS = [
   LONG_TASKS_STOP_TOOL,
 ] as const satisfies readonly PanelsToolName[];
 
+export const DIY_BORROWED_TOOLS = [
+  PANELS_HIDE_TOOL,
+  MODULES_LIST_TOOL,
+  MODULES_INSTALL_TOOL,
+  MODULES_INSTALL_BUNDLE_TOOL,
+  MODULES_UNINSTALL_TOOL,
+  LONG_TASKS_LIST_TOOL,
+  LONG_TASKS_STOP_TOOL,
+] as const satisfies readonly PanelsToolName[];
+
 export const DIY_PACK_TOOLS = [
   ...DIY_TOOLS,
   ...DIY_RECORD_TOOLS,
   ...DIY_DEBUG_TOOLS,
+  ...DIY_BORROWED_TOOLS,
 ] as const satisfies readonly PanelsToolName[];
 
 type PackAssigned =
@@ -289,12 +300,12 @@ type PackAssigned =
   | (typeof MANAGE_TOOLS)[number]
   | (typeof DIY_PACK_TOOLS)[number];
 type Unassigned = Exclude<PanelsToolName, PackAssigned>;
-type PackOverlap = Extract<(typeof MANAGE_TOOLS)[number], (typeof DIY_PACK_TOOLS)[number]>;
+type BorrowedOutsideDiy = Exclude<(typeof DIY_BORROWED_TOOLS)[number], (typeof DIY_PACK_TOOLS)[number]>;
 
 const EVERY_TOOL_IN_ONE_PACK: Unassigned extends never ? true : never = true;
-const NO_PACK_OVERLAP: PackOverlap extends never ? true : never = true;
+const DIY_PACK_CARRIES_WHAT_IT_BORROWS: BorrowedOutsideDiy extends never ? true : never = true;
 void EVERY_TOOL_IN_ONE_PACK;
-void NO_PACK_OVERLAP;
+void DIY_PACK_CARRIES_WHAT_IT_BORROWS;
 
 export function screenOnlyToolsFor(pageDebug: boolean): readonly PanelsToolName[] {
   return pageDebug ? [] : [...DIY_DEBUG_TOOLS, ...DIY_LOGS_TOOLS];

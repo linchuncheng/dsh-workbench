@@ -1,7 +1,7 @@
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
 import type { DebugStore, PanelStateStore } from '@dsh-workbench/shared/host';
 import { PANEL_STATE_SERVICE, UNITS_SERVICE, WORKBENCH_ADAPTERS, supplyPortOf } from '@dsh-workbench/shared/host';
-import type { AdapterSet } from '@dsh-workbench/shared/host';
+import type { AdapterSet, LongTaskBase, LongTaskRegistry } from '@dsh-workbench/shared/host';
 
 import { registerComponentsTool } from './diy-components';
 import { registerDebugTools } from './diy-debug-tools';
@@ -68,6 +68,7 @@ export function registerDiyTools(
   debug: DebugStore,
   previewOf: (unit: string) => PublishPreview | null = () => null,
   inferredAuthorOf: (unit: string) => Promise<string | undefined> = async () => undefined,
+  installRuns?: LongTaskRegistry<LongTaskBase>,
 ): Array<() => void> {
   const supply = supplyPortOf(ctx);
   const tools = ctx.get('tools') as DshToolRegistry | undefined;
@@ -148,11 +149,12 @@ export function registerDiyTools(
         .filter((unit) => wanted === '' || unit === wanted)
         .map((unit) => {
           const report = reported.get(unit);
+          const mountedAt = registry?.addedAt?.(unit);
           return {
             unit,
             name: nameOf.get(unit) ?? '',
             health: healthOf({ registry, unit, installed: installed.includes(unit) }),
-            mountedAt: registry?.addedAt?.(unit),
+            ...(mountedAt === undefined ? {} : { mountedAt }),
             ...(report === undefined ? {} : { report }),
           };
         });
@@ -304,7 +306,16 @@ export function registerDiyTools(
         });
       }
 
-      const outcome = await market.installBundle(found.dir);
+      const job: { settle?: (error?: unknown) => void } = {};
+      installRuns?.start({ workspace: root, target: found.unit, payload: job });
+      let outcome: Awaited<ReturnType<MarketService['installBundle']>>;
+      try {
+        outcome = await market.installBundle(found.dir);
+      } catch (error) {
+        job.settle?.(error);
+        throw error;
+      }
+      job.settle?.();
       const verdict = verdictOf(outcome.change);
       const restartRequired = outcome.change.application === 'restart-required';
       const panel =
@@ -338,6 +349,7 @@ export function registerDiyTools(
       });
     },
   };
+
 
   return [
     tools.register(statusTool),

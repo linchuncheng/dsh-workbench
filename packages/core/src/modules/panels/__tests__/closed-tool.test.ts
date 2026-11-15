@@ -5,7 +5,7 @@ import {
   TOOLBOX_LIST_TOOL,
   TOOLBOX_OPEN_TOOL,
 } from '../unit';
-import { absentScreenReason, offBoardReason, packClosedReason } from '../model/closed-tool';
+import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedReason } from '../model/closed-tool';
 import type { PackEntry } from '../model/toolbox';
 
 const shellPack: PackEntry = {
@@ -58,5 +58,20 @@ describe('收起的工具：理由要能让模型说出下一次调什么', () =
     expect(reason).toContain('workbench_diy_debug_start');
     expect(reason).toContain('没探到页面调试能力');
     expect(reason).toContain(DIY_STATE_TOOL);
+  });
+
+  it('★ DIY 会话里被拒的管理工具不再让 agent 去开 manage（开不了）', () => {
+    const reason = diyManageAbsentReason('workbench_panels_list');
+
+    expect(reason).toContain('DIY 会话里不提供');
+    expect(reason).toContain('别试着开');
+    expect(reason).not.toContain('workbench_toolbox_open');
+  });
+
+  it('★ DIY 会话里没上板的模块，给的是 DIY 自己的显示命令', () => {
+    const reason = offBoardReason('workbench_board_x_list', 'board-x', true);
+
+    expect(reason).toContain('workbench_diy_show');
+    expect(reason).not.toContain('workbench_panels_show');
   });
 });

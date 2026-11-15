@@ -1,6 +1,6 @@
 import type { UnitManifest } from '@dsh-workbench/shared';
-import type { DshHostContext, RecordStore, UnitOwnedFace } from '@dsh-workbench/shared/host';
-import { DIY_DEBUG_SERVICE, DIY_RECORD_SERVICE, MCP_TOOLS_SERVICE, TOOLBOX_SERVICE, createDebugStore, createRecordStore, supplyNeedsOf, PANELS_SERVICE, dshHome, seamOf, supplyPortOf, workbenchRoot } from '@dsh-workbench/shared/host';
+import type { DshHostContext, LongTaskBase, LongTaskRegistry, RecordStore, UnitOwnedFace } from '@dsh-workbench/shared/host';
+import { DIY_DEBUG_SERVICE, DIY_RECORD_SERVICE, MCP_TOOLS_SERVICE, TOOLBOX_SERVICE, createDebugStore, createLongTaskRegistry, createRecordStore, supplyNeedsOf, PANELS_SERVICE, dshHome, seamOf, supplyPortOf, workbenchRoot } from '@dsh-workbench/shared/host';
 import type { McpToolsPort, ToolboxPort, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { basename, join } from 'node:path';
 import { workshopPathOf } from '@/shared/api/host/diy';
@@ -46,7 +46,8 @@ import { installedPackageRoutes } from './model/installed-package-routes';
 import { registerPanelTools } from './model/tools';
 import { createToolbox } from './model/toolbox';
 import { capabilityBriefOf } from './model/capability-brief';
-import { absentScreenReason, offBoardReason, packClosedReason } from './model/closed-tool';
+import { DIY_PRESET_ID } from '@/shared/api/diy';
+import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedReason } from './model/closed-tool';
 import { registerToolboxTools } from './model/toolbox-tools';
 import { panelsUnit, screenOnlyToolsFor } from './unit';
 
@@ -92,6 +93,19 @@ export const panelsHost: UnitOwnedFace = {
       capabilityBrief: (workspace) => capabilityBriefOf(toolbox.catalog(workspace)),
     };
     ctx.provide(TOOLBOX_SERVICE, toolboxPort);
+    const installRuns: LongTaskRegistry<LongTaskBase> = createLongTaskRegistry<LongTaskBase>({
+      view: (snapshot) => ({
+        title: snapshot.status === 'stopped' ? `${snapshot.target} · 已停止等待（安装可能仍在进行）` : snapshot.target,
+        status: snapshot.status,
+        step: snapshot.step,
+        steps: snapshot.steps,
+      }),
+      run: ({ payload }) =>
+        new Promise<void>((resolve, reject) => {
+          (payload as { settle: (error?: unknown) => void }).settle = (error) =>
+            error === undefined ? resolve() : reject(error);
+        }),
+    });
     const debug = withObserverCleanup(createDebugStore(), (workspace) => stopObservers(ctx, workspace), logger);
     ctx.provide(DIY_DEBUG_SERVICE, debug);
     const base = createRecordStore();
@@ -231,6 +245,7 @@ export const panelsHost: UnitOwnedFace = {
           inferredAuthorOf(workshopPathOf(ctx), unit),
         ),
       },
+      longTasks: installRuns,
       registerTools: () => [
         ...registerToolboxTools(ctx, toolbox),
         ...registerPanelTools(ctx, panels, values),
@@ -251,6 +266,7 @@ export const panelsHost: UnitOwnedFace = {
           debug,
           (unit) => publishPreviewOf(workshopPathOf(ctx), unit),
           (unit) => inferredAuthorOf(workshopPathOf(ctx), unit),
+          installRuns,
         ),
         ...registerRecordTools(ctx, record),
         ...registerLongTaskTools(ctx, longTaskRuns),
@@ -272,10 +288,13 @@ export const panelsHost: UnitOwnedFace = {
         denyReason: (tool, context) => {
           const sets = denySets(context);
           if (sets.screen.has(tool)) return absentScreenReason(tool);
+          const diy = context.preset === DIY_PRESET_ID;
           const unit = sets.hiddenUnitOf.get(tool);
-          if (unit !== undefined) return offBoardReason(tool, unit);
+          if (unit !== undefined) return offBoardReason(tool, unit, diy);
           const pack = toolbox.closedPackOf(tool, context);
-          return pack === undefined ? undefined : packClosedReason(tool, pack);
+          if (pack === undefined) return undefined;
+          if (diy && pack.id === 'manage') return diyManageAbsentReason(tool);
+          return packClosedReason(tool, pack);
         },
         subscribe: (listener) => {
           const offPanels = panels.subscribe(listener);

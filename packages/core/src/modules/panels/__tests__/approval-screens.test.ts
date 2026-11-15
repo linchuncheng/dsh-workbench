@@ -263,6 +263,9 @@ async function document(): Promise<string> {
     '**2026-11-08 加 MCP 那一屏**：`mcp:<server>` 包只点 server 的名字；工具自己的审批归 dsh，',
     '所以"写入"那一行改说"MCP 工具自己的审批仍走 dsh"（不说逐条确认）。',
     '',
+    '**2026-11-15 去掉 `panels_hide` 那一屏**：把一格收起来可逆、只是挪位置，问一次不值；',
+    '删除仍但问（`modules_uninstall`），「加自己的、能撤的」不问，「引外来的、删掉的、占屏的、发出去的」问。',
+    '',
   ];
   for (const tool of ASK_TOOLS) parts.push(...(await screenOf(tool)));
   parts.push(...(await pluginScreen()));

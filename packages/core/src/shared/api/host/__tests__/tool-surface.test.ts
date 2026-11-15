@@ -12,7 +12,7 @@ import { TOOLBOX_TOOLS } from '@/modules/panels/unit';
 
 const TOOLBOX_CHAR_BUDGET = 394;
 const MANAGE_CHAR_BUDGET = 1687;
-const DIY_CHAR_BUDGET = 5082;
+const DIY_CHAR_BUDGET = 4964;
 
 type Surface = 'toolbox' | 'manage' | 'diy';
 
@@ -119,7 +119,7 @@ describe('工具面是常驻上下文：话要一句顶一句', () => {
     );
   });
 
-  it('★ diy 包：DIY 25 + 调试 4 + 录制 4，共 33 把；开包才付这份钱（2026-11-08 实测 5082）', () => {
+  it('★ diy 包：DIY 25 + 调试 4 + 录制 4，共 33 把；开包才付这份钱（2026-11-15 实测 4964）', () => {
     const tools = registered('diy');
     const total = tools.reduce((sum, tool) => sum + promptTextOf(tool).length, 0);
 

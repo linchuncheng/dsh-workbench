@@ -9,6 +9,7 @@ import { approvalFor, MCP_TOOLS_SERVICE, SESSION_PROJECTIONS_SERVICE, type McpSe
 import { createHostKit, createWorkspaceStore, hostSurface, WORKBENCH_ADAPTERS } from '@dsh-workbench/shared/host';
 import { panelsHost } from '../index';
 import {
+  DIY_BORROWED_TOOLS,
   DIY_PACK_TOOLS,
   MANAGE_TOOLS,
   PANELS_SHOW_TOOL,
@@ -177,8 +178,9 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
 
     expect(opened['newly']).toEqual(['manage', 'unit:board-x']);
     const after = deniedOf(mounted, 's-1');
+    const managed = new Set<string>([...MANAGE_TOOLS]);
     for (const name of [...MANAGE_TOOLS, 'workbench_board_x_list']) expect(after).not.toContain(name);
-    for (const name of DIY_PACK_TOOLS) expect(after).toContain(name);
+    for (const name of DIY_PACK_TOOLS.filter((one) => !managed.has(one))) expect(after).toContain(name);
   });
 
   it('幂等：再开同一个包不重复问，返回说"本来就在开"', async () => {
@@ -210,17 +212,17 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
     expect(deniedOf(mounted, 's-2')).toContain(MANAGE_TOOLS[0]);
   });
 
-  it('DIY 模式默认开 manage + diy；显式收掉之后不再默认开回来', async () => {
+  it('DIY 模式只开 diy（工坊族 + 借来的七把）；显式收掉之后不再默认开回来', async () => {
     const { mounted, registered } = mount();
+    const notBorrowed = MANAGE_TOOLS.filter((one) => !(DIY_BORROWED_TOOLS as readonly string[]).includes(one));
 
-    expect(new Set(deniedOf(mounted, 's-1', 'workbench-diy'))).toEqual(new Set(['workbench_board_x_list', 'workbench_board_x_do']));
+    expect(new Set(deniedOf(mounted, 's-1', 'workbench-diy'))).toEqual(
+      new Set([...notBorrowed, 'workbench_board_x_list', 'workbench_board_x_do']),
+    );
     await call(registered, TOOLBOX_CLOSE_TOOL, { targets: ['diy'] }, 's-1');
-    expect(deniedOf(mounted, 's-1', 'workbench-diy')).toEqual([
-      ...DIY_PACK_TOOLS,
-      'workbench_board_x_list',
-      'workbench_board_x_do',
-    ]);
-    expect(deniedOf(mounted, 's-1', 'workbench-diy')).not.toContain(MANAGE_TOOLS[0]);
+    expect(new Set(deniedOf(mounted, 's-1', 'workbench-diy'))).toEqual(
+      new Set([...MANAGE_TOOLS, ...DIY_PACK_TOOLS, 'workbench_board_x_list', 'workbench_board_x_do']),
+    );
   });
 
   it('★ 工坊那条会话是先建会话、再 select DIY：header 上没有 preset，list 也要说已启用', async () => {
@@ -228,12 +230,15 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
 
     const listed = await call(registered, TOOLBOX_LIST_TOOL, {}, 's-1');
 
-    expect(String(listed['text'])).toContain('当前已启用：manage、diy');
-    expect(deniedOf(mounted, 's-1', 'workbench-diy')).toEqual(['workbench_board_x_list', 'workbench_board_x_do']);
+    expect(String(listed['text'])).toContain('当前已启用：diy');
+    expect(String(listed['text'])).not.toContain('manage');
+    const notBorrowed = MANAGE_TOOLS.filter((one) => !(DIY_BORROWED_TOOLS as readonly string[]).includes(one));
+    expect(new Set(deniedOf(mounted, 's-1', 'workbench-diy'))).toEqual(
+      new Set([...notBorrowed, 'workbench_board_x_list', 'workbench_board_x_do']),
+    );
 
     const again = await call(registered, TOOLBOX_OPEN_TOOL, { targets: ['manage'] }, 's-1');
-    expect(again['newly']).toEqual([]);
-    expect(String(again['text'])).toContain('原本已启用');
+    expect(String(again['text'])).toContain('DIY 模式下不提供 manage 工具包');
   });
 
   it('★ 旧 dsh 没有会话 id：包全开，开包工具只回一句"不用开"', async () => {

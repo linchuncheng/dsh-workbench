@@ -45,7 +45,7 @@ const SHELL_PACKS: readonly PackEntry[] = [
   {
     id: 'diy',
     label: { zh: 'DIY 工具', en: 'DIY tools' },
-    hint: '调试 · 录制 · 日志 · 页面动作 · 工坊',
+    hint: '工坊 · 调试 · 录制 · 日志 · 页面动作 · 借来的管理七把',
     tools: DIY_PACK_TOOLS,
     alwaysOn: [],
     writes: writesOf(DIY_PACK_TOOLS),
@@ -74,7 +74,7 @@ interface SessionState {
 }
 
 function defaultPacks(preset: string | null): ReadonlySet<PackId> {
-  return new Set<PackId>(preset === DIY_PRESET_ID ? ['manage', 'diy'] : []);
+  return new Set<PackId>(preset === DIY_PRESET_ID ? ['diy'] : []);
 }
 
 function unitPacks(manifests: readonly UnitManifest[]): readonly PackEntry[] {
@@ -147,6 +147,7 @@ export function createToolbox(options: {
 
   const packsOf = (session: string | null, preset: string | null): ReadonlySet<PackId> => {
     const open = new Set<PackId>(defaultPacks(preset));
+    if (preset === DIY_PRESET_ID) open.delete('manage');
     if (session === null) return new Set(catalog().map((pack) => pack.id));
     const state = states.get(session);
     if (state === undefined) return open;
@@ -164,6 +165,12 @@ export function createToolbox(options: {
         if (!pack.alwaysOn.includes(name)) deny.add(name);
       }
     }
+    const allowed = new Set<string>();
+    for (const pack of catalog()) {
+      if (!open.has(pack.id)) continue;
+      for (const name of pack.tools) allowed.add(name);
+    }
+    for (const name of allowed) deny.delete(name);
     for (const name of TOOLBOX_TOOLS) deny.delete(name);
     return deny;
   };

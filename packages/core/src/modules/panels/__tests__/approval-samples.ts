@@ -79,6 +79,7 @@ export function stopRuns(
 
 export const ALLOWED_WRITES = new Set<string>([
   ...DIY_TOOLS.filter((one) => one !== DIY_PUBLISH_TOOL),
+  PANELS_HIDE_TOOL,
   DIY_DEBUG_PAUSE_TOOL,
   DIY_DEBUG_STOP_TOOL,
 ]);
