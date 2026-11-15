@@ -100,8 +100,8 @@ export const panelsHost: UnitOwnedFace = {
       mcp: () => (ctx.get(MCP_TOOLS_SERVICE) as McpToolsPort | undefined)?.servers() ?? [],
       flowDenied: (context) => {
         if (context.preset !== DIY_PRESET_ID || context.session === null) return [];
-        const step = diyRuns.stepOf(context.session);
-        return step === null ? [] : [...deniedAtStep(step)];
+        const step = diyRuns.stepOf(context.session) ?? diyRuns.start(context.session);
+        return [...deniedAtStep(step)];
       },
     });
     const toolboxPort: ToolboxPort = {

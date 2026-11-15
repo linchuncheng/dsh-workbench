@@ -5,7 +5,7 @@ import { deniedAtStep } from '../model/flow/gate';
 import { createDiyFlowRuns } from '../model/flow/runs';
 
 describe('这一步拒什么', () => {
-  it('★★ 判去向拒写，建模块不拒任何工具', () => {
+  it('★★ 判去向拒写文件，建模块不拒任何工具；bash 不禁（查东西要用）', () => {
     const judge = DIY_BOARD_FLOW.steps[0];
     const build = DIY_BOARD_FLOW.steps.find((step) => step.id === 'build');
     if (judge === undefined || build === undefined) throw new Error('定义缺步骤');
@@ -13,7 +13,7 @@ describe('这一步拒什么', () => {
     const judgeDenied = deniedAtStep(judge);
     const buildDenied = deniedAtStep(build);
 
-    expect([...judgeDenied]).toEqual(['write', 'edit', 'bash']);
+    expect([...judgeDenied]).toEqual(['write', 'edit']);
     expect(judgeDenied.has('workbench_diy_recon')).toBe(false);
     expect([...buildDenied]).toEqual([]);
   });

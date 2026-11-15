@@ -4,7 +4,7 @@ export interface DiyFlow extends Omit<FlowDefinition, 'steps'> {
   readonly steps: readonly FlowNodeStep[];
 }
 
-const WRITE = ['write', 'edit', 'bash'] as const;
+const WRITE = ['write', 'edit'] as const;
 
 const isBoard = { $eq: [{ $ref: 'steps.judge.destination' }, { $lit: 'board' }] } as const;
 
