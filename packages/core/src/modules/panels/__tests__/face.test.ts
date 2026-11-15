@@ -97,6 +97,7 @@ describe('panelsHost', () => {
       'panels',
       'panels/plugins',
       'panels/diy-debug',
+      'panels/diy-flow',
       'panels/diy-record',
       'panels/market-discover',
       'panels/market-doc',

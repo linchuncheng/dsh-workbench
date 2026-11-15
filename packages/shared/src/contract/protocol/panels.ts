@@ -4,6 +4,8 @@ export const DIY_DEBUG_ROUTE = 'panels/diy-debug';
 
 export const DIY_RECORD_ROUTE = 'panels/diy-record';
 
+export const DIY_FLOW_ROUTE = 'panels/diy-flow';
+
 export type PanelSource = 'default' | 'user';
 
 export interface PanelUnitView {

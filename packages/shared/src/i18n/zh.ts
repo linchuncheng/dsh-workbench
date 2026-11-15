@@ -767,6 +767,8 @@ export const zh = {
   'record.finished.note': '录制已完成。agent 会自动读取结果，无需操作。',
   'record.act.cancel': '取消',
   'record.act.halt': '停',
+  'rightbar.flow.label': '流程进度',
+  'rightbar.flow.position': '第 {at} 步 / 共 {total} 步',
   'approval.plan.see': '一眼看到',
   'approval.plan.do': '你能做',
   'approval.plan.agent': 'AI 能做什么',

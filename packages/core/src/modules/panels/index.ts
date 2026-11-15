@@ -50,6 +50,7 @@ import { DIY_BOARD_FLOW } from './model/flow/definitions';
 import { deniedAtStep } from './model/flow/gate';
 import { registerDiyPlanTool } from './model/flow/plan-tool';
 import { createDiyFlowRuns } from './model/flow/runs';
+import { diyFlowRoutes } from './model/flow/routes';
 import { capabilityBriefOf } from './model/capability-brief';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
 import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedReason } from './model/closed-tool';
@@ -242,6 +243,7 @@ export const panelsHost: UnitOwnedFace = {
           includePrerelease,
         }),
         ...diyDebugRoutes(debug),
+        ...diyFlowRoutes(diyRuns),
         ...diyRecordRoutes(record),
         ...marketDiscoverRoutes(discover),
         ...marketSourcesRoutes(marketSources),
