@@ -11,6 +11,12 @@ function asText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function requiredOf(schema: Readonly<Record<string, unknown>> | undefined): readonly string[] {
+  const required = schema?.['required'];
+  if (!Array.isArray(required)) return [];
+  return required.filter((one): one is string => typeof one === 'string');
+}
+
 export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Array<() => void> {
   const tools = ctx.get('tools') as DshToolRegistry | undefined;
   if (tools === undefined) return [];
@@ -31,7 +37,7 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         cells: { type: 'string', description: '看板几格。' },
         steps: { type: 'string', description: '几步：抓一次 → 判定 → 出卡。' },
         minutes: { type: 'string', description: '大概几分钟。' },
-        sketch: { type: 'string', description: '草图：三行字就行。' },
+        sketch: { type: 'string', description: '草图：三行字。' },
       },
       required: ['destination', 'summary'],
       additionalProperties: false,
@@ -47,6 +53,9 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       }
       const summary = asText(record['summary']);
       if (summary === '') throw new Error('summary 不能为空：用她的话复述一遍');
+      for (const key of requiredOf(runs.stepOf(session)?.schema)) {
+        if (asText(record[key]) === '') throw new Error(`这一步要填 ${key}（定义里写着）`);
+      }
 
       const result = await planStep(runs, session, {
         destination,

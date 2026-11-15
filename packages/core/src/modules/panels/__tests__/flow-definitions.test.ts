@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createFlowHost } from '@dsh-workbench/shared/host';
 import type { FlowStepEvent } from '@dsh-workbench/shared/host';
-import { DIY_BOARD_FLOW, DIY_BOARD_STEPS, DIY_TWEAK_FLOW } from '../definitions';
+import { DIY_BOARD_FLOW, DIY_BOARD_STEPS, DIY_TWEAK_FLOW } from '../model/flow/definitions';
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -85,6 +85,14 @@ describe('DIY 流程定义', () => {
       expect(allowsWrite, step.id).toBe(writeSteps.has(step.id));
       expect(deniesWrite, step.id).toBe(!writeSteps.has(step.id));
     }
+  });
+
+  it('★ 重试与入参约定也写在定义里，不在调用方', () => {
+    const probe = DIY_BOARD_FLOW.steps.find((step) => step.id === 'probe');
+    const judge = DIY_BOARD_FLOW.steps.find((step) => step.id === 'judge');
+
+    expect(probe?.retry?.attempts).toBe(2);
+    expect(judge?.schema?.['required']).toEqual(['destination', 'summary']);
   });
 
   it('★ 改一格从建模块起，没有站探', () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createFlowHost } from '@dsh-workbench/shared/host';
-import { DIY_BOARD_FLOW } from '../definitions';
-import { planStep } from '../plan-step';
-import { createDiyFlowRuns } from '../runs';
+import { DIY_BOARD_FLOW } from '../model/flow/definitions';
+import { planStep } from '../model/flow/plan-step';
+import { createDiyFlowRuns } from '../model/flow/runs';
 
 const runsOf = () => {
   const ended: string[] = [];

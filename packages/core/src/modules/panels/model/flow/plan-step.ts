@@ -21,7 +21,7 @@ export interface PlanResult {
 const NEXT: Readonly<Record<string, string>> = {
   judge: '先判去向',
   plan: '补计划',
-  confirm: '发起一次审批，让她点头',
+  confirm: '发起一次审批，让她批准',
   probe: '开始站探',
   build: '可以动工了',
   install: '装到面板上',
@@ -56,7 +56,7 @@ export async function planStep(
   if (step === null) {
     const short: Record<string, string> = {
       ready: '用现成的，直接给她看',
-      once: '一次性，跑完就把结果说清楚',
+      once: '一次性，做完就把结果说清楚',
       reroute: '改道，告诉她这一步不走面板',
       headless: '没有看板，先说明能做什么',
     };

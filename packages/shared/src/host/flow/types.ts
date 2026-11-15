@@ -262,10 +262,6 @@ export interface FlowStepEvent {
 }
 
 /**
- * 跑一条流程要的那几件：流程、输入、动作表、取消信号、身份与进度回调。
- * `sleep` / `now` 可注入，测试里用假时钟；`sessionId` / `agentRunner` / `maxAgents` 只给 agent 节点用。
- */
-/**
  * 开一条由外部推进的流程：引擎不执行任何步骤，只算条件、报当前步、等外部递结果。
  */
 export interface FlowOpenOptions {

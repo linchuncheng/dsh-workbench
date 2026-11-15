@@ -1,6 +1,7 @@
 import { flowUsesAgents } from './agent.js';
 import { checkFlow } from './check.js';
-import { createFlowActionRegistry, openFlow, runFlow } from './run.js';
+import { createFlowActionRegistry, runFlow } from './run.js';
+import { openFlow } from './open.js';
 import type { AiPort } from '../ai/port.js';
 import type {
   FlowActionRegistry,

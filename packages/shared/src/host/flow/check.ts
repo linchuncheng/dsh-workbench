@@ -9,6 +9,7 @@ import type {
   FlowCheckOptions,
   FlowDataStep,
   FlowDefinition,
+  FlowForEach,
   FlowPredicate,
   FlowProblem,
   FlowRetry,
@@ -111,6 +112,20 @@ function checkRetry(retry: FlowRetry | undefined, at: string, add: AddProblem): 
   }
 }
 
+function checkForEach(
+  forEach: FlowForEach | undefined,
+  at: string,
+  seen: ReadonlySet<string>,
+  add: AddProblem,
+): void {
+  if (forEach === undefined) return;
+  checkValue(forEach.over, `${at}.forEach.over`, { seen, item: false, value: false }, add);
+  if (forEach.as.trim() === '') add(`${at}.forEach.as`, 'forEach.as 不能为空');
+  if (!Number.isInteger(forEach.max) || forEach.max < 1 || forEach.max > 50) {
+    add(`${at}.forEach.max`, 'forEach.max 要在 1..50');
+  }
+}
+
 function checkCommon(
   step: FlowActionStep | FlowAgentStep | FlowAiStep,
   at: string,
@@ -121,13 +136,7 @@ function checkCommon(
   if (step.when !== undefined) {
     checkPredicate(step.when, `${at}.when`, { seen, item: false, value: false }, add);
   }
-  if (step.forEach !== undefined) {
-    checkValue(step.forEach.over, `${at}.forEach.over`, { seen, item: false, value: false }, add);
-    if (step.forEach.as.trim() === '') add(`${at}.forEach.as`, 'forEach.as 不能为空');
-    if (!Number.isInteger(step.forEach.max) || step.forEach.max < 1 || step.forEach.max > 50) {
-      add(`${at}.forEach.max`, 'forEach.max 要在 1..50');
-    }
-  }
+  checkForEach(step.forEach, at, seen, add);
   checkRetry(step.retry, at, add);
   const poll = 'poll' in step ? step.poll : undefined;
   if (poll !== undefined) {
@@ -296,13 +305,7 @@ function checkFlowAt(
         if (!Number.isFinite(poll.maxMs) || poll.maxMs < 0) add(`${at}.poll.maxMs`, 'poll.maxMs 不能为负');
         checkPredicate(poll.until, `${at}.poll.until`, { seen, item: false, value: true }, add);
       }
-      if (step.forEach !== undefined) {
-        checkValue(step.forEach.over, `${at}.forEach.over`, { seen, item: false, value: false }, add);
-        if (step.forEach.as.trim() === '') add(`${at}.forEach.as`, 'forEach.as 不能为空');
-        if (!Number.isInteger(step.forEach.max) || step.forEach.max < 1 || step.forEach.max > 50) {
-          add(`${at}.forEach.max`, 'forEach.max 要在 1..50');
-        }
-      }
+      checkForEach(step.forEach, at, seen, add);
       if (step.schema !== undefined && (typeof step.schema !== 'object' || step.schema === null)) {
         add(`${at}.schema`, 'schema 要是对象');
       }

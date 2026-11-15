@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createFlowHost } from '@dsh-workbench/shared/host';
-import { DIY_BOARD_FLOW } from '../definitions';
-import { deniedAtStep } from '../gate';
-import { createDiyFlowRuns } from '../runs';
+import { DIY_BOARD_FLOW } from '../model/flow/definitions';
+import { deniedAtStep } from '../model/flow/gate';
+import { createDiyFlowRuns } from '../model/flow/runs';
 
 const UNIVERSE = ['workbench_diy_status', 'workbench_diy_plan', 'write', 'edit', 'bash', 'workbench_modules_install'];
 

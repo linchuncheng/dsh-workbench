@@ -27,6 +27,7 @@ const WRITE = ['write', 'edit', 'bash'] as const;
 
 const isBoard = { $eq: [{ $ref: 'steps.judge.destination' }, { $lit: 'board' }] } as const;
 
+const JUDGE_SCHEMA = { required: ['destination', 'summary'] } as const;
 const judgeTools = { allow: [...READ_ONLY, 'workbench_diy_plan'], deny: [...WRITE] } as const;
 const readTools = { allow: [...READ_ONLY], deny: [...WRITE] } as const;
 const buildTools = { allow: [...READ_ONLY, ...WRITE, 'workbench_diy_plan'] } as const;
@@ -37,13 +38,13 @@ export const DIY_BOARD_FLOW: DiyFlow = {
   id: 'diy-board',
   title: '做一张看板卡片',
   steps: [
-    { id: 'judge', title: '判去向', tools: judgeTools },
+    { id: 'judge', title: '判去向', tools: judgeTools, schema: JUDGE_SCHEMA },
     { id: 'plan', title: '计划', when: isBoard, tools: judgeTools },
-    { id: 'confirm', title: '等她点头', when: isBoard, tools: readTools },
-    { id: 'probe', title: '站探', when: isBoard, tools: readTools },
-    { id: 'build', title: '建模块', when: isBoard, tools: buildTools },
+    { id: 'confirm', title: '等她批准', when: isBoard, tools: readTools },
+    { id: 'probe', title: '站探', when: isBoard, tools: readTools, retry: { attempts: 2 } },
+    { id: 'build', title: '建模块', when: isBoard, tools: buildTools, retry: { attempts: 2 } },
     { id: 'install', title: '装', when: isBoard, tools: installTools },
-    { id: 'verify', title: '验收', when: isBoard, tools: readTools },
+    { id: 'verify', title: '验收', when: isBoard, tools: readTools, retry: { attempts: 1 } },
     { id: 'ledger', title: '留账', when: isBoard, tools: ledgerTools },
   ],
 };
