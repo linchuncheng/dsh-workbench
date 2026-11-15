@@ -19,16 +19,16 @@ describe('判成看板才问一句，其余去向不问', () => {
   });
 
   it('★★ 一次性：不问，直接走', () => {
-    expect(panelsApprovalFor()(call('once'))).toBeUndefined();
+    expect(panelsApprovalFor()(call('once'))).toEqual({ kind: 'allow' });
   });
 
   it('★ 用现成的 / 改道 / 没看板：都不问', () => {
     for (const destination of ['ready', 'reroute', 'headless']) {
-      expect(panelsApprovalFor()(call(destination)), destination).toBeUndefined();
+      expect(panelsApprovalFor()(call(destination)), destination).toEqual({ kind: 'allow' });
     }
   });
 
   it('★ 没有复述就不问（问也没内容给她看）', () => {
-    expect(panelsApprovalFor()(call('board', { summary: '' }))).toBeUndefined();
+    expect(panelsApprovalFor()(call('board', { summary: '' }))).toEqual({ kind: 'allow' });
   });
 });

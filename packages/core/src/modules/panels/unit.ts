@@ -141,7 +141,6 @@ export const ALL_TOOLS = [
 export type PanelsToolName = (typeof ALL_TOOLS)[number];
 
 export const READ_TOOLS = [
-  DIY_PLAN_TOOL,
   TOOLBOX_LIST_TOOL,
   TOOLBOX_OPEN_TOOL,
   TOOLBOX_CLOSE_TOOL,
@@ -178,6 +177,7 @@ export const READ_TOOLS = [
 ] as const satisfies readonly PanelsToolName[];
 
 export const WRITE_TOOLS = [
+  DIY_PLAN_TOOL,
   PANELS_SHOW_TOOL,
   PANELS_HIDE_TOOL,
   PANELS_MOVE_TOOL,

@@ -233,9 +233,9 @@ export function stopVerdictFor(call: ApprovalCall, longTaskRuns: LongTaskRunsLoo
 export function confirmVerdictFor(call: ApprovalCall): ApprovalVerdict | undefined {
   if (call.name !== DIY_PLAN_TOOL) return undefined;
   const raw = argsOf(call);
-  if (raw['destination'] !== 'board') return undefined;
+  if (raw['destination'] !== 'board') return { kind: 'allow' };
   const summary = textOf(raw, 'summary');
-  if (summary === '') return undefined;
+  if (summary === '') return { kind: 'allow' };
   const bits = [
     textOf(raw, 'cells') === '' ? '' : `${textOf(raw, 'cells')} 格`,
     textOf(raw, 'steps') === '' ? '' : `${textOf(raw, 'steps')} 步`,
