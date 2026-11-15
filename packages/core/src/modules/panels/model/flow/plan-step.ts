@@ -22,7 +22,6 @@ export interface PlanResult {
 const NEXT: Readonly<Record<string, string>> = {
   judge: '先判去向',
   plan: '补计划',
-  confirm: '发起一次审批，让她批准',
   probe: '开始站探',
   build: '可以动工了',
   install: '装到面板上',

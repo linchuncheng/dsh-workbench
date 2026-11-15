@@ -47,7 +47,7 @@ describe('按会话跑的流程', () => {
     expect(runs.stepOf('s-1')?.id).toBe('plan');
     runs.provide('s-1', { cells: '3' });
     await Promise.resolve();
-    expect(runs.stepOf('s-1')?.id).toBe('confirm');
+    expect(runs.stepOf('s-1')?.id).toBe('probe');
   });
 
   it('★ 非看板去向走完就收摊，闸重新放开', async () => {

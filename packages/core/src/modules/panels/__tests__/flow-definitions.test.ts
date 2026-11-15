@@ -51,7 +51,6 @@ describe('DIY 流程定义', () => {
     const values: Record<string, unknown> = {
       judge: { destination: 'board', summary: '盯库存' },
       plan: { cells: '3' },
-      confirm: true,
       probe: { sites: [] },
       build: { unit: 'stock' },
       install: { unit: 'stock', installed: true },
@@ -68,7 +67,7 @@ describe('DIY 流程定义', () => {
 
     const result = await session.result;
 
-    expect(seen).toEqual(['judge', 'plan', 'confirm', 'probe', 'build', 'install', 'verify', 'ledger']);
+    expect(seen).toEqual(['judge', 'plan', 'probe', 'build', 'install', 'verify', 'ledger']);
     expect(result.status).toBe('ok');
     expect(events.filter((one) => one.status === 'skipped')).toEqual([]);
   });

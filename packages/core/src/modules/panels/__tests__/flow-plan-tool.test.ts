@@ -40,9 +40,9 @@ describe('计划工具', () => {
       exec,
     )) as { step: string; done: boolean; text: string };
 
-    expect(out.step).toBe('confirm');
+    expect(out.step).toBe('probe');
     expect(out.done).toBe(false);
-    expect(out.text).toContain('confirm');
+    expect(out.text).toContain('probe');
   });
 
   it('★ 判成一次性：当场收尾，不再往下走', async () => {

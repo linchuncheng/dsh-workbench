@@ -27,8 +27,6 @@ const PLAN_SCHEMA = {
   },
 } as const;
 
-const CONFIRM_SCHEMA = { type: 'boolean' } as const;
-
 const PROBE_SCHEMA = {
   type: 'object',
   required: ['sites'],
@@ -67,7 +65,6 @@ export const DIY_BOARD_FLOW: DiyFlow = {
   steps: [
     { id: 'judge', title: '判去向', tools: lockedTools, schema: JUDGE_SCHEMA },
     { id: 'plan', title: '计划', when: isBoard, tools: lockedTools, schema: PLAN_SCHEMA },
-    { id: 'confirm', title: '等她批准', when: isBoard, tools: lockedTools, schema: CONFIRM_SCHEMA },
     { id: 'probe', title: '站探', when: isBoard, tools: lockedTools, retry: { attempts: 2 }, schema: PROBE_SCHEMA },
     { id: 'build', title: '建模块', when: isBoard, tools: openTools, retry: { attempts: 2 }, schema: BUILD_SCHEMA },
     { id: 'install', title: '装', when: isBoard, tools: lockedTools, schema: INSTALL_SCHEMA },

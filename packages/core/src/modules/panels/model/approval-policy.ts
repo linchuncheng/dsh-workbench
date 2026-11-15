@@ -5,11 +5,12 @@ import type {
   RecordState,
 } from '@dsh-workbench/shared/host';
 import type { MarketSourcesStore } from '@/shared/api/host/market-sources-store';
-import { DIY_PUBLISH_TOOL, DIY_RECORD_PREPARE_TOOL, LONG_TASKS_STOP_TOOL } from '../unit';
+import { DIY_PLAN_TOOL, DIY_PUBLISH_TOOL, DIY_RECORD_PREPARE_TOOL, LONG_TASKS_STOP_TOOL } from '../unit';
 import type { LongTaskRunsLookup } from './long-task-tools';
 import { recordRefusalText } from './diy-record-text';
 import {
   approvalVerdict,
+  confirmVerdictFor,
   publishVerdictFor,
   stopVerdictFor,
   type MarketSourceLookup,
@@ -47,6 +48,7 @@ export function panelsApprovalFor(
         };
   return (call) => {
     if (call.name === LONG_TASKS_STOP_TOOL) return stopVerdictFor(call, longTaskRuns);
+    if (call.name === DIY_PLAN_TOOL) return confirmVerdictFor(call);
     if (call.name === DIY_PUBLISH_TOOL) return publishVerdictFor(call, publishPreview);
     return recordHeldVerdict(call, recording) ?? approvalVerdict(call, sourceOf, toolbox);
   };

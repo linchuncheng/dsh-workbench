@@ -27,8 +27,8 @@ describe('计划工具推进流程', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.step).toBe('confirm');
-    expect(runs.stepOf('s-1')?.id).toBe('confirm');
+    expect(result.step).toBe('probe');
+    expect(runs.stepOf('s-1')?.id).toBe('probe');
   });
 
   it('★★ 判成一次性：递完去向就收摊，不进面板', async () => {
@@ -50,7 +50,7 @@ describe('计划工具推进流程', () => {
     await planStep(runs, 's-1', { destination: 'board', summary: '盯库存低于 10 的' });
     const second = await planStep(runs, 's-1', { destination: 'board', summary: '盯库存低于 10 的', cells: '2' });
 
-    expect(second.step).toBe('confirm');
+    expect(second.step).toBe('probe');
   });
 
   it('★ 范围变了重新计划：旧流程被停掉，新流程从判去向开始', async () => {
@@ -59,7 +59,7 @@ describe('计划工具推进流程', () => {
 
     const again = await planStep(runs, 's-1', { destination: 'board', summary: '改成另一件事' });
 
-    expect(again.step).toBe('confirm');
-    expect(runs.stepOf('s-1')?.id).toBe('confirm');
+    expect(again.step).toBe('probe');
+    expect(runs.stepOf('s-1')?.id).toBe('probe');
   });
 });

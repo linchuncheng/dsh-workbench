@@ -23,6 +23,7 @@ import {
   PANELS_SHOW_TOOL,
   DIY_RECORD_PREPARE_TOOL,
   DIY_PUBLISH_TOOL,
+  DIY_PLAN_TOOL,
 } from '../unit';
 import type { Toolbox } from './toolbox';
 import { toolboxVerdictFor } from './toolbox-approval';
@@ -227,6 +228,29 @@ export type MarketSourceLookup = (id: string | undefined) => MarketSourceConfig 
 
 export function stopVerdictFor(call: ApprovalCall, longTaskRuns: LongTaskRunsLookup | undefined): ApprovalVerdict | undefined {
   return stopVerdict(call, longTaskRuns);
+}
+
+export function confirmVerdictFor(call: ApprovalCall): ApprovalVerdict | undefined {
+  if (call.name !== DIY_PLAN_TOOL) return undefined;
+  const raw = argsOf(call);
+  if (raw['destination'] !== 'board') return undefined;
+  const summary = textOf(raw, 'summary');
+  if (summary === '') return undefined;
+  const bits = [
+    textOf(raw, 'cells') === '' ? '' : `${textOf(raw, 'cells')} 格`,
+    textOf(raw, 'steps') === '' ? '' : `${textOf(raw, 'steps')} 步`,
+    textOf(raw, 'minutes') === '' ? '' : `约 ${textOf(raw, 'minutes')} 分钟`,
+  ].filter((one) => one !== '');
+  const sketch = textOf(raw, 'sketch');
+  const body = [bits.join(' · '), sketch].filter((one) => one !== '').join('\n');
+  return askOf(
+    'diy plan: build a board card once the user approves the plan',
+    pair(
+      `计划：${summary}${body === '' ? '' : `\n${body}`}\n就这样动手，允许吗？`,
+      `Plan: ${summary}${body === '' ? '' : `\n${body}`}\nStart building?`,
+    ),
+    pair(`计划：${summary}`, `Plan: ${summary}`),
+  );
 }
 
 export function publishVerdictFor(
