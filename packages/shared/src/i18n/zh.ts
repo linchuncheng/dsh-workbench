@@ -769,7 +769,7 @@ export const zh = {
   'record.act.halt': '停',
   'approval.plan.see': '一眼看到',
   'approval.plan.do': '你能做',
-  'approval.plan.agent': 'AI 能替你做',
+  'approval.plan.agent': 'AI 能做什么',
   'approval.plan.data': '数据从哪来',
   'approval.record.site': '站点',
   'approval.record.what': '录制功能',

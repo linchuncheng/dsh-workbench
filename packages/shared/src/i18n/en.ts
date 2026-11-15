@@ -773,7 +773,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'record.act.halt': 'Halt',
   'approval.plan.see': 'At a glance',
   'approval.plan.do': 'You can',
-  'approval.plan.agent': 'AI can do for you',
+  'approval.plan.agent': 'What the AI can do',
   'approval.plan.data': 'Where the data comes from',
   'approval.record.site': 'Site',
   'approval.record.what': 'Records',

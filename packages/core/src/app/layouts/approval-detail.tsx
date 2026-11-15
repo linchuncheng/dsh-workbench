@@ -524,10 +524,15 @@ export function shellApprovalDetail(
   if (input.tool === DIY_PLAN_TOOL) {
     return (
       <ApprovalPlan rows={[]}>
+        <p className={styles.planSummary}>{textOf(input.args, 'summary')}</p>
         {planShots(input.args).map((shot, index) => (
           <div className={styles.shot} key={String(index)}>
-            <p className={styles.shotCaption}>{shot.caption}</p>
-            <CodeBlock code={shot.ascii} copyLabel={t('markdown.copy')} copiedLabel={t('env.copied')} />
+            <CodeBlock
+              code={shot.ascii}
+              lang={shot.caption}
+              copyLabel={t('markdown.copy')}
+              copiedLabel={t('env.copied')}
+            />
           </div>
         ))}
         {planSections(input.args, t).map((section) => (

@@ -19,7 +19,7 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
     name: DIY_PLAN_TOOL,
     description:
       '动手前先判去向并给计划：是看板、一次性、用现成的、改道、还是没看板。判成看板才会往下走，其余当场收尾。' +
-      '判成看板时，用界面真实文案画出它的样子，并说清这个模块能给她什么：一眼看到、你能做、我能替你做、数据从哪来。',
+      '判成看板时，用界面真实文案画出它的样子，并说清这个模块能给她什么：一眼看到、你能做、AI 能做什么、数据从哪来。',
     parameters: {
       type: 'object',
       properties: {

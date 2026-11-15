@@ -236,7 +236,7 @@ export function confirmVerdictFor(call: ApprovalCall): ApprovalVerdict | undefin
   if (raw['destination'] !== 'board') return { kind: 'allow' };
   const summary = textOf(raw, 'summary');
   if (summary === '') return { kind: 'allow' };
-  const title = pair(`模块设计方案：${summary}`, `Module design: ${summary}`);
+  const title = pair('模块设计方案', 'Module design');
   return askOf('diy plan: build a board card once the user approves the plan', title, title);
 }
 
