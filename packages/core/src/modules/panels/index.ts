@@ -14,6 +14,8 @@ import { registerDiyTools } from './model/diy-tools';
 import { inferredAuthorOf, publishPreviewOf } from '@/shared/api/host/diy-publish-preview';
 import { stopObservers, withObserverCleanup } from './model/diy-observers';
 import { diyDebugRoutes } from './model/diy-debug-routes';
+import { flowStopAction } from './model/flow/stop-action';
+import type { AgentsLookup } from '@/shared/api/host/diy-debug-act';
 import { diyRecordRoutes } from './model/diy-record-routes';
 import { registerRecordTools } from './model/diy-record-tools';
 import { releaseQuietly } from './model/diy-record';
@@ -326,20 +328,10 @@ export const panelsHost: UnitOwnedFace = {
       },
       actions: [
         marketSourcesAction(marketSources, marketInit),
-        {
-          resource: 'diy-flow-stop',
-          handle(payload) {
-            const session = (payload as { session?: unknown } | null)?.session;
-            if (typeof session !== 'string' || session.trim() === '') {
-              return { ok: false, text: '要停哪一条流程？没带会话号，停下来' };
-            }
-            if (diyRuns.stepOf(session) === null) {
-              return { ok: false, text: '这条会话没有运行中的流程 —— 没什么可停的' };
-            }
-            diyRuns.stop(session);
-            return { ok: true, text: '已经停下了' };
-          },
-        },
+        flowStopAction({
+          runs: diyRuns,
+          agents: () => ctx.get('agents') as AgentsLookup | undefined,
+        }),
       ],
       prefs: { resource: PANELS_PREF_RESOURCE, handle: (payload: unknown) => applyPanelsPref(panels, payload) },
       provision: {

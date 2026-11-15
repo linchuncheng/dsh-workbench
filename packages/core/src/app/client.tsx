@@ -32,6 +32,7 @@ import { ColumnSwitch } from '@/app/layouts/rightbar/ColumnSwitch';
 import { createDshColumnSource, DSH_COLUMN_POLL_MS } from '@/app/layouts/rightbar/dsh-column-source';
 import { createDshBorrow } from '@/app/layouts/rightbar/dsh-borrow';
 import { Tip } from '@/shared/components/Tip';
+import { dockSessionId } from '@/app/layouts/flow/dock-session';
 import { FlowProgress } from '@/app/layouts/flow/FlowProgress';
 import { Rightbar } from '@/app/layouts/rightbar/Rightbar';
 import { installContextChips } from '@/shared/api/context-chips';
@@ -451,7 +452,10 @@ function mount(ctx: DshClientContext): void {
         id: 'workbench-flow',
         order: 10,
         locale: LOCALE_NS,
-        inject: (session: string) => ({ t: ctx.locale.bind(LOCALE_NS), session }),
+        inject: (session: unknown) => ({
+          t: ctx.locale.bind(LOCALE_NS),
+          flowSessionId: dockSessionId(session),
+        }),
       },
       FlowProgress,
     ),
