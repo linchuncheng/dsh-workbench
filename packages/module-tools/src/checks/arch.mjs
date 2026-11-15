@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { builtinSourceForms, runGuard } from '@arch-guard/core';
-import { discoverModulePackages } from '../discover.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
 
 export const title = '模块架构（分层 / 边界 / 设计系统）';
 

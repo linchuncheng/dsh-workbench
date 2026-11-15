@@ -1,11 +1,11 @@
-import { now } from '../time.js';
+import { now } from '../runtime/time.js';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { DshShell } from '../../api/dsh.js';
-import { workbenchRoot } from '../data-root.js';
-import { shellKindOf } from '../shell-text.js';
-import { callOperatorOf, invocationOf, quotedArgvLine, quotedLineOf } from '../shell-render.js';
-import { runShell, type ShellResult } from '../shell.js';
+import { workbenchRoot } from '../data/data-root.js';
+import { shellKindOf } from '../shell/shell-text.js';
+import { callOperatorOf, invocationOf, quotedArgvLine, quotedLineOf } from '../shell/shell-render.js';
+import { runShell, type ShellResult } from '../shell/shell.js';
 import { deniedPathOf, sandboxDeniedOf } from './denial.js';
 import { abortedResult, errorHookOf, killHookOf, killTreeOf } from './handles.js';
 import { seamProductEnv } from './env.js';

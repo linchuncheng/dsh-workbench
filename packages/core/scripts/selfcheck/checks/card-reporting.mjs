@@ -129,7 +129,7 @@ export const checks = [
   {
     title: '★ 审批机制里没有任何工具名（认领全在套件，外壳只留机制）',
     run(ctx, report) {
-      const approvalSource = read(join(SHARED_SRC, 'host/tool-approval.ts'));
+      const approvalSource = read(join(SHARED_SRC, 'host/unit/tool-approval.ts'));
       report(
         '★ 审批机制里没有任何工具名（认领全在套件，外壳只留机制）',
         !/workbench_/.test(approvalSource),

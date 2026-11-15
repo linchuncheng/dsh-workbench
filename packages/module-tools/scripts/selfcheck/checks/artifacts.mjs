@@ -109,7 +109,7 @@ export const checks = [
           if (!built.includes('style.textContent !== css')) {
             throw new Error('注入还是"没有才插入"：热更新时新 CSS 写不进去，新增的类会掉样式');
           }
-          const { cssInjectionCode } = await import('../../../src/css-injection.mjs');
+          const { cssInjectionCode } = await import('../../../src/build/css-injection.mjs');
           const fakeDocument = fakeBrowserDocument();
           const applyStyles = (text) =>
             new Function('document', cssInjectionCode('x.module.css:/w/x.module.css', text))(fakeDocument);

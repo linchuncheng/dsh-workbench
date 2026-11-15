@@ -99,7 +99,7 @@ export function unionFacts(file, name) {
 }
 
 export function renderAdapterSet() {
-  const facts = interfaceFacts('packages/shared/src/host/adapters.ts', 'AdapterSet');
+  const facts = interfaceFacts('packages/shared/src/host/adapters/adapters.ts', 'AdapterSet');
   const body = facts.members.map((member) => `  ${renderProperty(member)};`).join('\n');
   return ['```ts', `interface ${facts.name} {`, body, '}', '```'].join('\n');
 }

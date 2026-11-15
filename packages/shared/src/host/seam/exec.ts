@@ -1,5 +1,5 @@
-import type { ShellResult } from '../shell.js';
-import type { ShellKind } from '../shell-text.js';
+import type { ShellResult } from '../shell/shell.js';
+import type { ShellKind } from '../shell/shell-text.js';
 import type { WriteIntent } from './intent.js';
 
 export type SeamShellKind = ShellKind;

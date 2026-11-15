@@ -18,13 +18,13 @@ import {
   declaredToolsProblemOf,
   declaredToolsWithoutKey,
   declaredToolsApplies,
-} from '../declared-tools.mjs';
-import { discoverPackages, workspaceRootOf } from '../discover.mjs';
-import { readDesign } from '../design.mjs';
-import { DEFAULT_FACES } from '../faces.mjs';
-import { datasourceProblemOf } from '../datasource-file.mjs';
-import { sitesProblemOf } from '../sites-file.mjs';
-import { SEED_SHORT } from '../seed.mjs';
+} from '../contract/declared-tools.mjs';
+import { discoverPackages, workspaceRootOf } from '../support/discover.mjs';
+import { readDesign } from '../contract/design.mjs';
+import { DEFAULT_FACES } from '../contract/faces.mjs';
+import { datasourceProblemOf } from '../contract/datasource-file.mjs';
+import { sitesProblemOf } from '../contract/sites-file.mjs';
+import { SEED_SHORT } from '../build/seed.mjs';
 
 const ROOT = process.env.DSH_WB_ROOT ?? fileURLToPath(new URL('../../../../', import.meta.url));
 

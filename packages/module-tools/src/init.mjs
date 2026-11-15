@@ -1,5 +1,5 @@
 import { cpSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { DESIGN_FILE, applyToDeveloping, readDesign, readUserSource, renderDesign, sitesOf, writeUserReadme } from './design.mjs';
+import { DESIGN_FILE, applyToDeveloping, readDesign, readUserSource, renderDesign, sitesOf, writeUserReadme } from './contract/design.mjs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

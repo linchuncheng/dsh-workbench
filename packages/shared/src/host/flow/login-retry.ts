@@ -1,5 +1,5 @@
 import type { FlowAction, FlowActionContext } from './types.js';
-import { now } from '../time.js';
+import { now } from '../runtime/time.js';
 
 /**
  * 认证失败后的重试口径：多久重试一次、最多等多久、怎么认认证错误、去哪登录。

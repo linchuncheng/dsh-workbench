@@ -1,4 +1,4 @@
-import { planProblemOf } from '../data-plan.js';
+import { planProblemOf } from '../data/data-plan.js';
 import { flowUses } from './scan.js';
 import type {
   FlowActionRegistry,

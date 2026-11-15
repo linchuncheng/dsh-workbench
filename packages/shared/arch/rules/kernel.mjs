@@ -8,7 +8,7 @@ const KERNEL_FILES = new Set([
   'src/contract/unit-declaration.ts',
   'src/contract/unit.ts',
   'src/contract/workbench-contract.ts',
-  'src/host/unit-face.ts',
+  'src/host/unit/unit-face.ts',
 ]);
 
 const UI_OR_VENDOR = /^(react(?:\/|$)|react-dom(?:\/|$)|@deepseek-ai\/|node:)/;
@@ -56,7 +56,7 @@ const kernelHasNoVendorFields = createRule({
     'UnitMountDeps 是宿主交给每个模块的全部依赖；新增一个 opencli / browser / plugin / probe 字段，' +
     '等于让所有模块都背这个供应商。先证明它所有模块都需要，否则放适配器。',
   run(ctx) {
-    const file = 'src/host/unit-face.ts';
+    const file = 'src/host/unit/unit-face.ts';
     const text = ctx.sourceOf(file);
     if (text === undefined) return [];
     const match = /export interface UnitMountDeps \{([\s\S]*?)\n\}/.exec(text);

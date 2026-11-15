@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { discoverPackages } from '../discover.mjs';
+import { discoverPackages } from '../support/discover.mjs';
 
 const MARKERS_ENV = 'DSH_WB_INTERNAL_MARKERS';
 

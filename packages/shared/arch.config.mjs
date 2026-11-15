@@ -71,6 +71,12 @@ export default {
   ],
   overrides: {
     include: ['src/**'],
+    structure: {
+      directoryItemLimits: [
+        { role: 'lib:components', max: 21 },
+        { role: 'lib:contract', max: 24 },
+      ],
+    },
     customRules: [entryKeepsHostOut, ...kernelRules, testsLiveInFolders],
     exceptions: [
       {
@@ -80,14 +86,14 @@ export default {
       },
       {
         rule: 'P06',
-        glob: 'src/host/fs-write.ts',
+        glob: 'src/host/runtime/fs-write.ts',
         reason:
           'writeTextFileExclusive 是唯一写入口的“只在不存在时创建”，不是 file-lock 协议；' +
           '宿主租约用它保证每个窗口的租约文件名唯一。',
       },
       {
         rule: 'P06',
-        glob: 'src/host/process-alive.ts',
+        glob: 'src/host/runtime/process-alive.ts',
         reason: '这里只问进程号还在不在（kill(pid, 0)），既不开文件也不持锁。',
       },
     ],

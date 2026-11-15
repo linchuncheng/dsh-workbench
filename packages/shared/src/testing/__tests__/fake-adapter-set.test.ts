@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adapterContractGaps } from '../../host/adapter-contract.js';
+import { adapterContractGaps } from '../../host/adapters/adapter-contract.js';
 import { fakeAdapterSet } from '../fake-adapter-set.js';
 
 const ctx = { get: () => undefined } as never;

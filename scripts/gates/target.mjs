@@ -221,9 +221,9 @@ const GATES = [
     id: 'WB-K2',
     title: 'kernel 契约不新增供应商字段',
     run() {
-      const fields = vendorFieldsOf(read(join(SHARED_SRC, 'host/unit-face.ts')));
+      const fields = vendorFieldsOf(read(join(SHARED_SRC, 'host/unit/unit-face.ts')));
       const findings = fields.map((field) =>
-        finding('src/host/unit-face.ts', field.line, `UnitMountDeps 新增 ${field.name}`, '放进 adapter 端口，不进每个模块都收的 deps'),
+        finding('src/host/unit/unit-face.ts', field.line, `UnitMountDeps 新增 ${field.name}`, '放进 adapter 端口，不进每个模块都收的 deps'),
       );
       return findings.length === 0 ? pass('没有新增供应商字段') : fail(findings);
     },
@@ -422,7 +422,7 @@ const GATES = [
         one({ imports: [['src/a.ts', '@dsh-workbench/adapter-supply']] }) === 1 &&
         one({ imports: [['src/a.ts', 'execa']] }) === 1 &&
         one({ imports: [['packages/shared/src/host/seam/process.ts', 'execa']] }) === 0 &&
-        one({ imports: [['packages/shared/src/host/fs-write.ts', 'write-file-atomic']] }) === 0 &&
+        one({ imports: [['packages/shared/src/host/runtime/fs-write.ts', 'write-file-atomic']] }) === 0 &&
         one({}) === 0
       );
     },
@@ -863,8 +863,8 @@ function checksMetadataFindings(text) {
 const SHARED_IMPLEMENTATION_IMPORTS = new Set(['opencli', 'execa', 'proper-lockfile', 'write-file-atomic']);
 
 const SEAM_PROCESS_HOST = 'packages/shared/src/host/seam/process.ts';
-const FS_WRITE_ENTRY = 'packages/shared/src/host/fs-write.ts';
-const LOCK_ENTRY = 'packages/shared/src/host/lease.ts';
+const FS_WRITE_ENTRY = 'packages/shared/src/host/runtime/fs-write.ts';
+const LOCK_ENTRY = 'packages/shared/src/host/runtime/lease.ts';
 
 function sharedAdapterFindings({ hasAdaptersDir, deps, imports }) {
   const findings = [];

@@ -46,7 +46,7 @@ function noPromptGaps() {
   const gaps = [];
   const runner = read(pkg('src/shared/api/host/git-process.ts'));
   const exec = read(pkg('src/shared/api/host/git-exec.ts'));
-  const policy = read(join(SHARED_SRC, 'host/env-policy.ts'));
+  const policy = read(join(SHARED_SRC, 'host/runtime/env-policy.ts'));
   if (!runner.includes('gitNoPromptProcessEnv')) gaps.push('git-process 没用共用的禁交互环境');
   if (!exec.includes('promptlessGitEnvOf') || !exec.includes('promptlessProcessEnvOf')) {
     gaps.push('git-exec 没接 env-policy');

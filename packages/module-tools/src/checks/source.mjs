@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import ts from 'typescript';
 import { dirname, join, relative, resolve } from 'node:path';
-import { discoverModulePackages } from '../discover.mjs';
-import { isSeedSpecifier } from '../seed.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
+import { isSeedSpecifier } from '../build/seed.mjs';
 import { LIB_CAPABILITIES, importsPreferred } from '@dsh-workbench/shared/host';
 
 const IMPORT = /from\s*'([^']+)'|import\s*\(?\s*'([^']+)'/g;

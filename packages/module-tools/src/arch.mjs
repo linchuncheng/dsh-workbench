@@ -11,10 +11,10 @@ import {
   styles,
 } from '@arch-guard/core/presets';
 import { createRule } from '@arch-guard/core';
-import { DECLARED_TOOLS_FILE } from './declared-tools.mjs';
-import { SITES_FILE } from './sites-file.mjs';
-import { SEED_SPECIFIERS } from './seed.mjs';
-import { CLIENT_FACE, HOST_FACE } from './faces.mjs';
+import { DECLARED_TOOLS_FILE } from './contract/declared-tools.mjs';
+import { SITES_FILE } from './contract/sites-file.mjs';
+import { SEED_SPECIFIERS } from './build/seed.mjs';
+import { CLIENT_FACE, HOST_FACE } from './contract/faces.mjs';
 
 const LAYERS = { model: 1, components: 2, host: 10 };
 

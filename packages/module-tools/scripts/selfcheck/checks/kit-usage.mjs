@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { BIN, FACES, PACKAGES_DIR, declaration, read } from '../lib.mjs';
 
-import { inlinedShellRules } from '../../../src/css-shell.mjs';
+import { inlinedShellRules } from '../../../src/build/css-shell.mjs';
 
 export const checks = [
   {

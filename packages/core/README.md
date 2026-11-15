@@ -103,7 +103,7 @@ dsh-workbench migrate --force  # 已经迁过一次、想再补并一次
 | `scripts/` | 随包出货的脚本：`seed-profile.sh` / `seed-workshop.sh` / `create-workbench.mjs` / `clone-profile.mjs` / `share-data-root.mjs` / `patch-blocks.mjs` / `profile-dsh-layer.mjs` |
 | `icon.svg` | 插件图标（dsh 插件页用） |
 
-「工作台 DIY 模式」不在这个表里：**启动时现场派生**，没有生成物 —— `src/shared/api/host/diy-preset.ts` 从本次 dsh 的 `standard` preset 克隆出插件表、叠加三处差分并注册；纯规则在 `../shared/src/host/diy-preset.ts`。dsh 加工具 / 改行时它自动跟上。
+「工作台 DIY 模式」不在这个表里：**启动时现场派生**，没有生成物 —— `src/shared/api/host/diy-preset.ts` 从本次 dsh 的 `standard` preset 克隆出插件表、叠加三处差分并注册；纯规则在 `../shared/src/host/diy/diy-preset.ts`。dsh 加工具 / 改行时它自动跟上。
 
 ## 数据落在哪
 

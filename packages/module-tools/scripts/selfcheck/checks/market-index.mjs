@@ -13,7 +13,7 @@ import {
   resolveIndexPlan,
   sanitizeManifest,
   updateMarketIndex,
-} from '../../../src/market-index.mjs';
+} from '../../../src/market/market-index.mjs';
 
 const COMMIT = 'a'.repeat(40);
 

@@ -6,19 +6,19 @@ import { WORKBENCH_API_VERSION } from '@dsh-workbench/shared/host';
 import { RELEASE_TARGETS } from '@dsh-workbench/shared/contract/protocol/release';
 import { build } from '../src/build.mjs';
 import { CHECKS, check } from '../src/check.mjs';
-import { changelog } from '../src/changelog.mjs';
-import { design } from '../src/design.mjs';
+import { changelog } from '../src/release/changelog.mjs';
+import { design } from '../src/contract/design.mjs';
 import { init } from '../src/init.mjs';
-import { marketInit } from '../src/market-init.mjs';
-import { migrate } from '../src/migrate.mjs';
-import { publish } from '../src/publish.mjs';
-import { release } from '../src/release.mjs';
-import { sync } from '../src/sync.mjs';
+import { marketInit } from '../src/market/market-init.mjs';
+import { migrate } from '../src/contract/migrate.mjs';
+import { publish } from '../src/release/publish.mjs';
+import { release } from '../src/release/release.mjs';
+import { sync } from '../src/contract/sync.mjs';
 
 async function lint({ root, args }) {
   const [{ CONFIG_FILE, lintPackage }, { discoverModulePackages }] = await Promise.all([
     import('../src/checks/lint.mjs'),
-    import('../src/discover.mjs'),
+    import('../src/support/discover.mjs'),
   ]);
   const fix = args.includes('--fix');
   const modulePackages = discoverModulePackages({ root });

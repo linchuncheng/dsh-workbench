@@ -65,7 +65,7 @@ export function contractPorts() {
   const arch = readText('ARCHITECTURE.md');
   const adapters = readText('ADAPTERS.md');
   const findings = [];
-  const env = interfaceFacts('packages/shared/src/host/port-types.ts', 'EnvSupplyPort').members;
+  const env = interfaceFacts('packages/shared/src/host/adapters/port-types.ts', 'EnvSupplyPort').members;
   const count = arch.match(/EnvSupplyPort[^\n]*?（(\d+) 个方法）/);
   if (count === null) {
     findings.push(finding('ARCHITECTURE.md', lineOf(arch, '`EnvSupplyPort`'), 'EnvSupplyPort 行没写方法数', '写「（N 个方法）」'));
@@ -77,7 +77,7 @@ export function contractPorts() {
       findings.push(finding('ADAPTERS.md', lineOf(adapters, '`EnvSupplyPort`'), `EnvSupplyPort 漏了 ${member.name}`, '补进方法列表'));
     }
   }
-  const runtime = interfaceFacts('packages/shared/src/host/port-types.ts', 'RuntimePort').members;
+  const runtime = interfaceFacts('packages/shared/src/host/adapters/port-types.ts', 'RuntimePort').members;
   for (const member of runtime) {
     if (!adapters.includes(`\`${member.name}\``)) {
       findings.push(finding('ADAPTERS.md', lineOf(adapters, '`RuntimePort`'), `RuntimePort 漏了 ${member.name}`, '补进成员列表'));
@@ -90,10 +90,10 @@ export function contractPorts() {
     }
   }
   for (const [label, members] of [
-    ['EnvSupplyPort', interfaceFacts('packages/shared/src/host/port-types.ts', 'EnvSupplyPort').members],
+    ['EnvSupplyPort', interfaceFacts('packages/shared/src/host/adapters/port-types.ts', 'EnvSupplyPort').members],
     ['RuntimePort', runtime],
-    ['ProbePort', interfaceFacts('packages/shared/src/host/port-types.ts', 'ProbePort').members],
-    ['PluginSurface', interfaceFacts('packages/shared/src/host/port-types.ts', 'PluginSurface').members],
+    ['ProbePort', interfaceFacts('packages/shared/src/host/adapters/port-types.ts', 'ProbePort').members],
+    ['PluginSurface', interfaceFacts('packages/shared/src/host/adapters/port-types.ts', 'PluginSurface').members],
   ]) {
     const known = new Set(members.map((member) => member.name));
     for (const name of documentedMembersOf(adapters, label)) {
@@ -178,7 +178,7 @@ export function skillsTools() {
 }
 
 export function skillsDesign() {
-  const design = 'packages/module-tools/src/design.mjs';
+  const design = 'packages/module-tools/src/contract/design.mjs';
   const findings = [];
   const checks = [
     { keys: arrayValuesOf(design, 'STATE_KEYS'), files: [`${SKILL_DIR}/PANEL.md`, `${SKILL_DIR}/DESIGN.md`], label: '状态键' },
@@ -264,7 +264,7 @@ export function needsKinds() {
 }
 
 export function mountContract() {
-  const facts = interfaceFacts('packages/shared/src/host/unit-face.ts', 'UnitMountResult');
+  const facts = interfaceFacts('packages/shared/src/host/unit/unit-face.ts', 'UnitMountResult');
   const file = `${SKILL_DIR}/BUILD.md`;
   const text = readText(file);
   const findings = [];

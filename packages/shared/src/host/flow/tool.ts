@@ -1,7 +1,7 @@
 import type { ToolDefinition, ToolRunContext } from '../../contract/module-context.js';
-import { TEXT_OUTPUT, sessionIdOf, sessionWorkspace } from '../tool-kit.js';
+import { TEXT_OUTPUT, sessionIdOf, sessionWorkspace } from '../unit/tool-kit.js';
 import type { FlowActionRegistry, FlowDefinition } from './types.js';
-import type { LongTaskBase, LongTaskRegistry } from '../long-task.js';
+import type { LongTaskBase, LongTaskRegistry } from '../unit/long-task.js';
 import { startFlow } from './task.js';
 
 function recordOf(value: unknown): Readonly<Record<string, unknown>> {

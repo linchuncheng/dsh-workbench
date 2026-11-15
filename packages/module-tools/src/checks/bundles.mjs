@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { inlinedShellRules } from '../css-shell.mjs';
-import { discoverModulePackages } from '../discover.mjs';
+import { inlinedShellRules } from '../build/css-shell.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
 
 const CLIENT_FORBIDDEN = [
   ['node 内置', /\bnode:[a-z]/],

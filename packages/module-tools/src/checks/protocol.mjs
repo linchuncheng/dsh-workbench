@@ -3,7 +3,7 @@ import { declarationProblemsOf } from '@dsh-workbench/shared/host';
 export const title = '模块声明协议';
 
 export async function run() {
-  const { discoverPackages } = await import('../discover.mjs');
+  const { discoverPackages } = await import('../support/discover.mjs');
   const packages = discoverPackages({ root: process.cwd() });
   const problems = [];
   const versions = new Set();

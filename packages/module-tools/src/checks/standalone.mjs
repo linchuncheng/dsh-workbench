@@ -1,7 +1,7 @@
 import { existsSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { execaSync } from 'execa';
-import { discoverModulePackages, discoverPackages } from '../discover.mjs';
+import { discoverModulePackages, discoverPackages } from '../support/discover.mjs';
 
 const SHELL = '@dsh-workbench/core';
 

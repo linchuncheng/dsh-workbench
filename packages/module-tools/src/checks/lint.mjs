@@ -3,7 +3,7 @@ import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { ESLint } from 'eslint';
-import { discoverModulePackages } from '../discover.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
 import { DIALECT_BLOCKS, DIALECT_IGNORES, FINGERPRINT, dialectShapeOf, isGlobalIgnoresBlock } from '../lint.mjs';
 
 export const title = '模块代码卫生（eslint）';

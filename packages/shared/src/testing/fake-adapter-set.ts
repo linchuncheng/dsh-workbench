@@ -7,12 +7,12 @@ import type {
   RecipeResults,
   RequestRecipe,
 } from '../contract/data.js';
-import type { AdapterSet } from '../host/adapters.js';
-import type { EnvSupplyPort, ModulePort, ProbePort, ProfilePort, RuntimePort, SupplyPort } from '../host/port-types.js';
-import type { HostActions } from '../host/port-types.js';
-import type { PluginSurface } from '../host/port-types.js';
-import { ADAPTER_SET_API_VERSION } from '../host/adapters.js';
-import { readBundleManager } from '../host/bundle-manager.js';
+import type { AdapterSet } from '../host/adapters/adapters.js';
+import type { EnvSupplyPort, ModulePort, ProbePort, ProfilePort, RuntimePort, SupplyPort } from '../host/adapters/port-types.js';
+import type { HostActions } from '../host/adapters/port-types.js';
+import type { PluginSurface } from '../host/adapters/port-types.js';
+import { ADAPTER_SET_API_VERSION } from '../host/adapters/adapters.js';
+import { readBundleManager } from '../host/profile/bundle-manager.js';
 import {
   declarationGaps,
   moduleDeclarationOf,
@@ -20,14 +20,14 @@ import {
   profileModules,
   readInstalledModule,
   readProfilePackage,
-} from '../host/installed-module.js';
-import { isNewerVersion } from '../host/version.js';
-import { refusalReason } from '../host/spec.js';
+} from '../host/supply/installed-module.js';
+import { isNewerVersion } from '../host/runtime/version.js';
+import { refusalReason } from '../host/data/spec.js';
 import { PLUGIN_ID } from '../config/constants.js';
-import { declarationRefusalOf, pathDeclarationOf } from '../host/local-declaration.js';
-import { createRegistryLookup } from '../host/registry-declaration.js';
-import { createPackageRouter } from '../host/package-route.js';
-import { createReleaseProbe } from '../host/release-probe.js';
+import { declarationRefusalOf, pathDeclarationOf } from '../host/unit/local-declaration.js';
+import { createRegistryLookup } from '../host/supply/registry-declaration.js';
+import { createPackageRouter } from '../host/supply/package-route.js';
+import { createReleaseProbe } from '../host/supply/release-probe.js';
 import { confirmEachStep } from './data.js';
 
 export const FAKE_ADAPTER_MARKER = { adapterSet: 'fake' } as const;

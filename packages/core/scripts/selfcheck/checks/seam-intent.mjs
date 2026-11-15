@@ -21,8 +21,8 @@ const ADAPTERS = [
   'adapters-chrome-mcp',
 ].map((name) => join(REPO, 'packages', name, 'src'));
 
-const SEAM_OWN = ['packages/shared/src/host/shell.ts', 'packages/shared/src/host/seam/run.ts'];
-const ROOT_OWN = ['packages/shared/src/host/data-root.ts'];
+const SEAM_OWN = ['packages/shared/src/host/shell/shell.ts', 'packages/shared/src/host/seam/run.ts'];
+const ROOT_OWN = ['packages/shared/src/host/data/data-root.ts'];
 
 const rel = (file) => relative(REPO, file).split('\\').join('/');
 const allowed = (file, prefixes) => prefixes.some((prefix) => rel(file) === prefix || rel(file).startsWith(prefix));
@@ -127,13 +127,13 @@ export function execEntryHits() {
   return hits;
 }
 
-const WRITE_ENTRY = 'packages/shared/src/host/fs-write.ts';
+const WRITE_ENTRY = 'packages/shared/src/host/runtime/fs-write.ts';
 const WRITE_CALL_OWN = [
   'packages/adapter-probe/src/self-update-node-script.ts',
-  'packages/shared/src/host/lib-capabilities.ts',
+  'packages/shared/src/host/supply/lib-capabilities.ts',
 ];
 
-const TIME_ENTRY = 'packages/shared/src/host/time.ts';
+const TIME_ENTRY = 'packages/shared/src/host/runtime/time.ts';
 
 function hostSide(rel) {
   return (
@@ -144,10 +144,10 @@ function hostSide(rel) {
   );
 }
 
-const ENV_ENTRY = 'packages/shared/src/host/env-policy.ts';
-const ENV_OWN = ['packages/adapter-probe/src/runtime-seed.ts'];
+const ENV_ENTRY = 'packages/shared/src/host/runtime/env-policy.ts';
+const ENV_OWN = ['packages/adapter-probe/src/toolchain/runtime-seed.ts'];
 
-const PATCH_PARSE_OWN = ['packages/shared/src/host/patch-blocks.ts'];
+const PATCH_PARSE_OWN = ['packages/shared/src/host/patch/patch-blocks.ts'];
 
 export function patchParseHits() {
   const hits = [];

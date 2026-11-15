@@ -27,7 +27,7 @@ export const checks = [
       const title = '★ DIY preset 在启动时从 dsh 的 standard 现场派生（没有生成物要维护）';
       const hostEntry = read(pkg('src/app/host.ts'));
       const hostSide = read(pkg('src/shared/api/host/diy-preset.ts'));
-      const derive = read(pkg('../shared/src/host/diy-preset.ts'));
+      const derive = read(pkg('../shared/src/host/diy/diy-preset.ts'));
       const manifest = JSON.parse(read(pkg('package.json')));
       const patches = manifest.dsh?.bundle?.patch;
       const patchList = Array.isArray(patches) ? patches : [patches];
@@ -50,7 +50,7 @@ export const checks = [
     title: '★ preset id 只有一处真相（派生那份从 DIY_PRESET_ID 来，宿主不另写一遍）',
     run(_ctx, report) {
       const presetId = /DIY_PRESET_ID = '([^']+)'/.exec(diyConstants())?.[1];
-      const derive = read(pkg('../shared/src/host/diy-preset.ts'));
+      const derive = read(pkg('../shared/src/host/diy/diy-preset.ts'));
       const hostSide = read(pkg('src/shared/api/host/diy-preset.ts'));
       const sameId = presetId !== undefined && derive.includes('id: DIY_PRESET_ID');
       const notCopied = presetId === undefined || (!hostSide.includes(`'${presetId}'`) && !hostSide.includes(`"${presetId}"`));
@@ -238,9 +238,9 @@ export const checks = [
     title: '★ DIY 模式挂不起来时，启动体检会摆出来并停在那一页（不是进去才发现）',
     run(_ctx, report) {
 
-      const preflight = read(pkg('../adapter-probe/src/preflight.ts'));
-      const route = read(pkg('../adapter-probe/src/preflight-route.ts'));
-      const health = read(pkg('../adapter-probe/src/diy-preset-health.ts'));
+      const preflight = read(pkg('../adapter-probe/src/preflight/preflight.ts'));
+      const route = read(pkg('../adapter-probe/src/preflight/preflight-route.ts'));
+      const health = read(pkg('../adapter-probe/src/preflight/diy-preset-health.ts'));
       const gate = read(pkg('src/app/layouts/env-gate/boot-gate.ts'));
       const gateText = read(pkg('src/app/layouts/env-gate/gate-text.ts'));
       const launcher = read(pkg('bin/dsh-workbench'));

@@ -60,11 +60,11 @@ for (const file of walk(join(SRC, 'host'))) {
 }
 
 const PROTOCOL_FILES = [
-  'host/port-types.ts',
-  'host/adapter-types.ts',
-  'host/http.ts',
-  'host/lib-runners.ts',
-  'host/adapter-set.ts',
+  'host/adapters/port-types.ts',
+  'host/adapters/adapter-types.ts',
+  'host/runtime/http.ts',
+  'host/supply/lib-runners.ts',
+  'host/adapters/adapter-set.ts',
   ...readdirSync(join(SRC, 'contract', 'protocol'))
     .filter((name) => name.endsWith('.ts'))
     .map((name) => join('contract', 'protocol', name).split(sep).join('/')),

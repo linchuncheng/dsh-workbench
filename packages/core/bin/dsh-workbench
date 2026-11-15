@@ -153,7 +153,7 @@ DSH_BIN="$(command -v dsh)"
 
 # ── 硬门禁：dsh 太旧就别起（DIY 模式会整个不见，而且一句错都不报）────────────
 #
-# DIY 模式是**启动时现场派生**的（`shared/host/diy-preset` + 宿主的 `diy-preset.ts`）：从这一轮
+# DIY 模式是**启动时现场派生**的（`shared/host/diy/diy-preset` + 宿主的 `diy-preset.ts`）：从这一轮
 # dsh 的 `standard` preset 克隆插件表、叠加三处差分，再走 `agentPresets.register()`。所以要两样
 # 东西都在：dsh 的 `loader` 能交出 `preset-standard` 那一行，`agentPresets` 有程序化注册口。
 # 少一样，preset 根本不在名册里；而 dsh 的模式选择器**只列挂得起来的**（healthy presets only），

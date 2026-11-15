@@ -1,4 +1,4 @@
-import { allSame } from '../host/plan-results.js';
+import { allSame } from '../host/data/plan-results.js';
 import type {
   CallOverrides,
   DataReader,

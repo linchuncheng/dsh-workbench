@@ -278,7 +278,7 @@ const suitesOwnTheirFolder = createRule({
   level: 'L2',
   severity: 'error',
   title: '套件只能通过外壳给的专属文件夹读写',
-  hint: '用注入的 `UnitMountDeps.store`（`store.for(unitId, workspace)`），别自己 import node:fs —— 见 shared/api/host/workspace-store.ts。',
+  hint: '用注入的 `UnitMountDeps.store`（`store.for(unitId, workspace)`），别自己 import node:fs —— 见 shared/src/host/runtime/workspace-store.ts。',
   run(ctx) {
     const findings = [];
     for (const record of ctx.records) {

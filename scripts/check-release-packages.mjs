@@ -8,7 +8,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TOOLCHAIN = '@dsh-workbench/module-tools';
 
 function releaseNames() {
-  const text = readFileSync(join(ROOT, 'packages/shared/src/host/release-packages.generated.ts'), 'utf8');
+  const text = readFileSync(join(ROOT, 'packages/shared/src/host/supply/release-packages.generated.ts'), 'utf8');
   return [...text.matchAll(/'([^']+)'/g)].map((one) => one[1]).filter((one) => one !== TOOLCHAIN);
 }
 

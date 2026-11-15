@@ -2,9 +2,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DSW_PREFIX, dshHome, nearestTokens, readTokens } from '@dsh-workbench/shared/host';
-import { shellRulesIn } from '../css-shell.mjs';
-import { discoverModulePackages } from '../discover.mjs';
-import { auditFontSizes, fontScaleNotes, fontScaleOf } from '../font-scale.mjs';
+import { shellRulesIn } from '../build/css-shell.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
+import { auditFontSizes, fontScaleNotes, fontScaleOf } from '../build/font-scale.mjs';
 
 const BARE_ANCHOR = /(?<![\w$])(?:h\(\s*['"]a['"]|jsx\(\s*['"]a['"]|<a(?=[\s>/]))/g;
 
@@ -228,9 +228,10 @@ function installedUnder(dir, tail) {
 
 function cssFilesIn(dir) {
   try {
-    return readdirSync(dir)
-      .filter((name) => name.endsWith('.css'))
-      .map((name) => join(dir, name));
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = join(dir, entry.name);
+      return entry.isDirectory() ? cssFilesIn(full) : entry.name.endsWith('.css') ? [full] : [];
+    });
   } catch {
     return [];
   }

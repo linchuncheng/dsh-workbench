@@ -107,7 +107,7 @@ jobs:
         run: node scripts/smoke/self-update-links.mjs 2>&1 | tee self-update-links.log
       - name: Renderer + seam tests
         shell: bash
-        run: pnpm --filter @dsh-workbench/shared exec vitest run src/host/__tests__/shell-render.test.ts src/host/__tests__/seam.test.ts src/host/seam/__tests__/process.test.ts 2>&1 | tee renderer-seam.log
+        run: pnpm --filter @dsh-workbench/shared exec vitest run src/host/shell/__tests__/shell-render.test.ts src/host/seam/__tests__/seam.test.ts src/host/seam/__tests__/process.test.ts 2>&1 | tee renderer-seam.log
       - name: Capture controller tests
         shell: bash
         run: pnpm --filter @dsh-workbench/core exec vitest run src/modules/panels/model/__tests__/diy-record-live.test.ts 2>&1 | tee capture.log

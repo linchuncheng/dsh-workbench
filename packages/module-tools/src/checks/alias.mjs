@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { discoverModulePackages } from '../discover.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
 
 const SPECIFIER = /(?:from|import)\s*\(?\s*['"](@\/[^'"]+)['"]/g;
 

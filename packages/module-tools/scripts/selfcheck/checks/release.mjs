@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { assembleMarketIndex, collectMarketEntryFiles } from '@dsh-workbench/shared/host';
 
-import { NeedsUser, ReleaseError, ResumableError, runRelease } from '../../../src/release.mjs';
+import { NeedsUser, ReleaseError, ResumableError, runRelease } from '../../../src/release/release.mjs';
 
 const FILES = [
   { path: 'client.js', size: 10 },

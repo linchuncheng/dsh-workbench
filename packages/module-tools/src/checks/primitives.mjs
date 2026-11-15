@@ -1,15 +1,15 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, relative } from 'node:path';
-import { flagValue, flagsOf } from '../check-flags.mjs';
-import { discoverModulePackages } from '../discover.mjs';
+import { flagValue, flagsOf } from '../support/check-flags.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
 import {
   PRIMITIVES_SPECIFIER,
   installedPrimitives,
   pinnedPrimitivesVersion,
   surfaceOf,
-} from '../primitives-surface.mjs';
-import { BROWSER_SEED_SPECIFIERS, SEED_SPECIFIERS } from '../seed.mjs';
+} from '../contract/primitives-surface.mjs';
+import { BROWSER_SEED_SPECIFIERS, SEED_SPECIFIERS } from '../build/seed.mjs';
 import { shellClientPathOf, shellKitOf } from './shell-artifact.mjs';
 
 const IMPORT = /from\s*'([^']+)'|import\s*\(?\s*'([^']+)'/g;

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { discoverPackages, workspaceRootOf } from '../../../src/discover.mjs';
+import { discoverPackages, workspaceRootOf } from '../../../src/support/discover.mjs';
 
 
 const TITLE =

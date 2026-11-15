@@ -1,7 +1,7 @@
 import type { AiAdapter, AiAgentResult, AiPart } from './adapter.js';
 import { partsOf } from './parts.js';
 import { problemsOf } from './schema.js';
-import { now } from '../time.js';
+import { now } from '../runtime/time.js';
 import {
   aiError,
   type AgentOptions,

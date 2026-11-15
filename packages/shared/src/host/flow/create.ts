@@ -5,7 +5,7 @@ import type {
   LongTaskBase,
   LongTaskHost,
   LongTaskRegistry,
-} from '../long-task.js';
+} from '../unit/long-task.js';
 import { flowTaskDeps, startFlow } from './task.js';
 import { flowTool } from './tool.js';
 

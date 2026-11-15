@@ -6,7 +6,7 @@ import type {
   LongTaskBase,
   LongTaskDeps,
   LongTaskRegistry,
-} from '../long-task.js';
+} from '../unit/long-task.js';
 import type { LongTaskStep } from '../../contract/long-task.js';
 
 interface FlowPayload {

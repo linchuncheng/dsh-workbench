@@ -6,7 +6,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SHARED = join(HERE, '..');
 const ROOT = join(SHARED, '..', '..');
 const PACKAGES = join(ROOT, 'packages');
-const OUTPUT = join(SHARED, 'src', 'host', 'release-packages.generated.ts');
+const OUTPUT = join(SHARED, 'src', 'host', 'supply', 'release-packages.generated.ts');
 
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 

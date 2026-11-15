@@ -3,8 +3,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { join } from 'node:path';
 
 import { BIN, PACKAGES_DIR, fillPendingDesign } from '../lib.mjs';
-import { sitesProblemOf } from '../../../src/sites-file.mjs';
-import { datasourceEntriesOf } from '../../../src/datasource-file.mjs';
+import { sitesProblemOf } from '../../../src/contract/sites-file.mjs';
+import { datasourceEntriesOf } from '../../../src/contract/datasource-file.mjs';
 
 const TITLE =
   '站点表：清单 host.sites → src/sites.ts；配方只写 site 时生成物填 origin / authLoss、信封展开成绝对路径；' +

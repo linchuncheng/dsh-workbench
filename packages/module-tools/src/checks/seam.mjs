@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 
-import { discoverModulePackages } from '../discover.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
 import { reachableFrom } from './source.mjs';
 
 export const title = '模块执行缝（写入域）';

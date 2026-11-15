@@ -5,13 +5,13 @@ const PNPM_TITLE = '★ pnpm 的 cache/state 钉在运行时根（执行缝里�
 
 function bootstrapGaps() {
   const gaps = [];
-  const route = read(pkg('../adapter-probe/src/preflight-route.ts'));
-  const toolchain = read(pkg('../adapter-probe/src/toolchain.ts'));
+  const route = read(pkg('../adapter-probe/src/preflight/preflight-route.ts'));
+  const toolchain = read(pkg('../adapter-probe/src/toolchain/toolchain.ts'));
   if (!route.includes('runBootstrapCommand')) gaps.push('preflight-route 没用 runBootstrapCommand');
   if (!/\binstall:\s*\(\)\s*=>/.test(route)) gaps.push('preflight-route 没把 install 覆盖掉');
   if (route.includes('runShell(')) gaps.push('preflight-route 还在走执行缝');
   if (!toolchain.includes('bootstrapEnv(')) gaps.push('provisionLocalPnpmSync 没钉自举环境');
-  const runner = read(pkg('../adapter-probe/src/bootstrap-run.ts'));
+  const runner = read(pkg('../adapter-probe/src/runtime/bootstrap-run.ts'));
   if (/process\.platform|versions\.electron/.test(runner)) gaps.push('bootstrap-run 自己判平台（走 platform.ts）');
   return gaps;
 }

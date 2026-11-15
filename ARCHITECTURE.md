@@ -356,15 +356,15 @@ packages/core/src/
 | 端口 | 位置 | 管什么 |
 |---|---|---|
 | `DataReader` | `shared/contract/data.ts` | 统一传输：`http` / `browser` / `command`，配方 `request` / `submit`，多跳读取计划 `plan` |
-| `ProfilePort` | `shared/host/port-types.ts` | profile 目录、dsh 插件、自更新视图 |
-| `EnvSupplyPort` | `shared/host/port-types.ts` | 供给窄口：插件来源、安装/卸载命令、救法命令、release（9 个方法） |
-| `ModulePort` | `shared/host/port-types.ts` | 已安装模块、registry、bundle、profile 包、自更新 |
-| `ProbePort` | `shared/host/port-types.ts` | `probeUnits` / `registerPreflight` / `declaredPluginCommands` |
-| `RuntimePort` | `shared/host/port-types.ts` | 包根、能力、运行时命令/执行器/状态（按名字给）、自举、运行时根 |
-| `PluginSurface` | `shared/host/port-types.ts` | 插件清单、已装插件合成单元 |
-| `HostActions` | `shared/host/port-types.ts` | config sync / profile create 的 handler 与写动作 |
+| `ProfilePort` | `shared/host/adapters/port-types.ts` | profile 目录、dsh 插件、自更新视图 |
+| `EnvSupplyPort` | `shared/host/adapters/port-types.ts` | 供给窄口：插件来源、安装/卸载命令、救法命令、release（9 个方法） |
+| `ModulePort` | `shared/host/adapters/port-types.ts` | 已安装模块、registry、bundle、profile 包、自更新 |
+| `ProbePort` | `shared/host/adapters/port-types.ts` | `probeUnits` / `registerPreflight` / `declaredPluginCommands` |
+| `RuntimePort` | `shared/host/adapters/port-types.ts` | 包根、能力、运行时命令/执行器/状态（按名字给）、自举、运行时根 |
+| `PluginSurface` | `shared/host/adapters/port-types.ts` | 插件清单、已装插件合成单元 |
+| `HostActions` | `shared/host/adapters/port-types.ts` | config sync / profile create 的 handler 与写动作 |
 | `LibReader` / `GitReader` / `CommandReader` | `shared/contract/{lib,git,command}.ts` | 三个可选读端口：本机库 / git / 命令面；挂在 `AdapterSet.libs` / `.git` / `.commands` |
-| `AdapterSet` | `shared/host/adapters.ts` | 上面这些端口的聚合，外加 `apiVersion` / `id` / `version` 与可选的 `libs` / `git` / `commands` |
+| `AdapterSet` | `shared/host/adapters/adapters.ts` | 上面这些端口的聚合，外加 `apiVersion` / `id` / `version` 与可选的 `libs` / `git` / `commands` |
 
 `AdapterSet` 是组合根交给业务的唯一适配器对象；`WorkbenchAdapters` 是保留的别名。
 `DataReader` 是模块作者最常用的端口；模块不 import adapter 包。
@@ -479,7 +479,7 @@ data.submit(recipe, overrides?)           // 写工具里调
 
 - **两个执行体**，同一份配方：
   1. **页面脚本**（默认，也是兜底）：壳把配方编译成页面脚本
-     （[`shared/src/host/recipe.ts`](packages/shared/src/host/recipe.ts)），底层是 `browserRead`
+     （[`shared/src/host/data/recipe.ts`](packages/shared/src/host/data/recipe.ts)），底层是 `browserRead`
      （opencli `browser <session> eval`）；凭据只在页面里取用、不回流宿主。
   2. **公共通道**（可选加速器）：`auth.source` 是 `cookie` / `cookieValue` 时，先试随壳出货的
      opencli 插件 [`adapter-runtime/channel`](packages/adapter-runtime/channel) —— 浏览器只当 cookie jar
@@ -999,7 +999,7 @@ pnpm run check:gates:target
 | 判据 | 判什么 |
 |---|---|
 | `WB-A1` | 只有组合根可以 import `adapters-default` / 具体 adapter |
-| `SH-A1` | shared 不依赖、不 import adapter / core；`shared/src/adapters` 为空（例外只有三个统一入口模块：`src/host/seam/process.ts` 可用 execa、`src/host/fs-write.ts` 可用 write-file-atomic、`src/host/lease.ts` 可用 proper-lockfile —— 它们是统一入口的机制，不是适配器实现） |
+| `SH-A1` | shared 不依赖、不 import adapter / core；`shared/src/adapters` 为空（例外只有三个统一入口模块：`src/host/seam/process.ts` 可用 execa、`src/host/runtime/fs-write.ts` 可用 write-file-atomic、`src/host/runtime/lease.ts` 可用 proper-lockfile —— 它们是统一入口的机制，不是适配器实现） |
 | `TEST-1` | 全仓测试文件都在同目录的 `__tests__/` 下（模板 `.tpl` 也算） |
 | `SK-2 / SK-3` | skill 链接与 SKILL.md 索引 |
 | `CHAIN-1/2` | 目标报告入口与并入时机 |

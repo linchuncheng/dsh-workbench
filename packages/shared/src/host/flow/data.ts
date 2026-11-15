@@ -1,5 +1,5 @@
 import type { DataError, PlanResults, RequestPlan } from '../../contract/data.js';
-import { planProblemOf } from '../data-plan.js';
+import { planProblemOf } from '../data/data-plan.js';
 import { withLoginRetry } from './login-retry.js';
 import type { FlowAction, FlowActionContext, FlowDataPort, FlowDataStep } from './types.js';
 

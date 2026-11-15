@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { applyChangelog, changelogProblemOf, readChangelogText } from '../../../src/changelog.mjs';
+import { applyChangelog, changelogProblemOf, readChangelogText } from '../../../src/release/changelog.mjs';
 
 function packageOf(version = '0.1.0') {
   const dir = mkdtempSync(join(tmpdir(), 'wb-changelog-'));

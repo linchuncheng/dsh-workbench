@@ -3,9 +3,9 @@ import { createHash } from 'node:crypto';
 import { builtinModules } from 'node:module';
 import { isAbsolute, join, relative } from 'node:path';
 import { build as esbuild } from 'esbuild';
-import { SEED_SPECIFIERS } from './seed.mjs';
-import { cssInjectionCode } from './css-injection.mjs';
-import { CLIENT_ENTRY_CANDIDATES, HOST_ENTRY_CANDIDATES } from './faces.mjs';
+import { SEED_SPECIFIERS } from './build/seed.mjs';
+import { cssInjectionCode } from './build/css-injection.mjs';
+import { CLIENT_ENTRY_CANDIDATES, HOST_ENTRY_CANDIDATES } from './contract/faces.mjs';
 
 const SHELL_CLIENT = '@dsh-workbench/core/client';
 const RESOLVE_EXTENSIONS = ['.ts', '.tsx', '.js', '.json'];

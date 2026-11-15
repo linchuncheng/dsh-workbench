@@ -369,7 +369,7 @@ describe('插件命令的审批详情座：从清单与参数把"跑哪条命令
 });
 
 describe('座位的查找顺序：模块自己的 renderer → 外壳那张表 → 参数里的 command → 空', () => {
-  const DETAIL = code(read('../../../../shared/src/components/ApprovalDetail.tsx'));
+  const DETAIL = code(read('../../../../shared/src/components/card/ApprovalDetail.tsx'));
   const CLIENT = code(read('../client.tsx'));
   const PANELS_INDEX = code(read('../../modules/panels/index.ts'));
 

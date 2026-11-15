@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { join, relative } from 'node:path';
 
 import { shellKitOf } from '../../../src/checks/shell-artifact.mjs';
-import { memberFilesOf } from '../../../src/shell-type-files.mjs';
+import { memberFilesOf } from '../../../src/contract/shell-type-files.mjs';
 import { BIN, FACES, PACKAGES_DIR, declaration, read } from '../lib.mjs';
 
 const PRIMITIVES = '@deepseek-ai/dsh-client-ui-primitives';

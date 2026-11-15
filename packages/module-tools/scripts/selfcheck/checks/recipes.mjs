@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { BIN, PACKAGES_DIR, fillPendingDesign } from '../lib.mjs';
-import { datasourceProblemOf, renderDatasource } from '../../../src/datasource-file.mjs';
+import { datasourceProblemOf, renderDatasource } from '../../../src/contract/datasource-file.mjs';
 
 const TITLE =
   '配方：读写共用 key + recipe（+ calls）生成 src/datasource.ts（幂等）；凭据头 / 枚举外 / 批量不合法 /' +

@@ -1,4 +1,4 @@
-import { productEnvOf, unitEnvOf, type ProductEnvInput, type UnitEnvInput } from '../env-policy.js';
+import { productEnvOf, unitEnvOf, type ProductEnvInput, type UnitEnvInput } from '../runtime/env-policy.js';
 
 export type SeamEnvInput = ProductEnvInput;
 

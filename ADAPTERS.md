@@ -107,7 +107,7 @@ pnpm add @acme/adapters-set@1.0.0
 
 ## 加载与回退
 
-`loadAdapterSet(ctx, spec)` 在 `shared/host/adapter-set.ts`：
+`loadAdapterSet(ctx, spec)` 在 `shared/host/adapters/adapter-set.ts`：
 
 1. 从 `profileContext.dir` 解析：先读那个包的 `package.json`，按 `exports` 的 `import` 条件 /
    `module` / `main` 定入口（纯 ESM 包、双条件包都拿 `import` 那一份）；

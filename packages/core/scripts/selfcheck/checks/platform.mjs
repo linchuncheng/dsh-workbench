@@ -9,12 +9,12 @@ const HOME_NEEDLE = ['process', 'env', 'HOME'].join('.');
 const HOME_ALLOWED = new Set();
 const ENV_PREFIX_ALLOWED = new Map([
   [
-    'packages/adapter-probe/src/toolchain.ts',
+    'packages/adapter-probe/src/toolchain/toolchain.ts',
     '写的是 node shim 脚本本体：#!/bin/sh 里用 env 设 ELECTRON_RUN_AS_NODE 才是对的',
   ],
 ]);
 
-const SHELL_INVOCATION_OWN = 'packages/shared/src/host/shell-render.ts';
+const SHELL_INVOCATION_OWN = 'packages/shared/src/host/shell/shell-render.ts';
 const LINK_TYPE_OWN = 'packages/core/scripts/selfcheck/checks/platform.mjs';
 const PATH_SPLIT_OWN = 'packages/core/scripts/selfcheck/checks/platform.mjs';
 const SHELL_PROBE_OWN = 'packages/core/scripts/selfcheck/lib.mjs';
@@ -57,9 +57,9 @@ const ADAPTERS = [
   'adapters/probe/runtime-seed.ts',
   'shared/api/platform/client.ts',
   'shared/api/platform/contract.ts',
-  'host/platform.ts',
-  'host/shell-text.ts',
-  'host/shell-render.ts',
+  'host/adapters/platform.ts',
+  'host/shell/shell-text.ts',
+  'host/shell/shell-render.ts',
   'host/git-exec.ts',
 ];
 

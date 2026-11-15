@@ -2,7 +2,7 @@ import { closeSync, openSync } from 'node:fs';
 import { win32 } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { execa, execaSync, type Options, type ResultPromise } from 'execa';
-import { shellKindOf } from '../shell-text.js';
+import { shellKindOf } from '../shell/shell-text.js';
 import type {
   ProcessChild,
   ProcessExitEvent,

@@ -361,7 +361,7 @@ export const checks = [
       const allowed = publicSurfaceFiles();
       const mustAllow = [
         'packages/shared/src/contract/unit.ts',
-        'packages/shared/src/host/data-root.ts',
+        'packages/shared/src/host/data/data-root.ts',
         'packages/shared/src/testing/declaration.ts',
         'packages/core/src/shared/hooks/use-api-resource.ts',
         'packages/core/src/shared/components/Tip.tsx',
@@ -627,11 +627,10 @@ export const checks = [
     run(_ctx, report) {
       const sharedComponents = join(SHARED_SRC, 'components');
       const sharedHits = [];
-      for (const entry of readdirSync(sharedComponents, { withFileTypes: true })) {
-        if (!/\.(tsx?)$/.test(entry.name) || /\.test\.tsx?$/.test(entry.name)) continue;
-        const text = read(join(sharedComponents, entry.name));
+      for (const file of srcTsFiles(sharedComponents)) {
+        const text = read(file);
         for (const cls of HAND_ROLLED_BUTTONS) {
-          if (new RegExp(`\\b${cls}\\b`).test(text)) sharedHits.push(`${entry.name} → ${cls}`);
+          if (new RegExp(`\\b${cls}\\b`).test(text)) sharedHits.push(`${relative(sharedComponents, file)} → ${cls}`);
         }
       }
       report(

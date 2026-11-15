@@ -163,6 +163,7 @@ export default {
     customRules: [...unitRules, ...kernelRules, testsLiveInFolders],
 
     structure: {
+      directoryItemLimits: [{ role: 'lib:shared/hooks', max: 32 }],
       runtimes: [
         { name: 'host', entries: ['src/app/host.ts'] },
         { name: 'client', entries: ['src/app/client.tsx'] },
@@ -273,13 +274,6 @@ export default {
           '本仓里天然没有引用者（selfcheck 的「跨包令牌账：定义的 --wb-* 都有人用」把这几条列为在册）。' +
           '包内的跨包消费者（packages/shared 的组件样式）已由 designSystem.externalConsumers 计入，' +
           '不再需要按整份文件静音；这条只兜「定义在本仓、消费者在仓外」的公开令牌面。',
-      },
-      {
-        rule: 'P06',
-        glob: 'src/modules/panels/model/diy-record.ts',
-        reason:
-          '这条判定命中的是**注入子进程的那段脚本字符串**里的 `process.argv[1]` —— 那是子脚本自己的入参，' +
-          '不是外壳在解析命令行（外壳的 argv 只在 bin 里读）。脚本以字符串形式随宿主下发，行内正则分不清。',
       },
     ],
   },

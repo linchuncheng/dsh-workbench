@@ -1,4 +1,4 @@
-import { discoverPackages } from './discover.mjs';
+import { discoverPackages } from './support/discover.mjs';
 
 export const CHECKS = {
   contracts: {

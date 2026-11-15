@@ -1,4 +1,4 @@
-import type { ShellResult } from '../shell.js';
+import type { ShellResult } from '../shell/shell.js';
 import type { ProcessChild } from './exec.js';
 
 export function abortedResult(): ShellResult {

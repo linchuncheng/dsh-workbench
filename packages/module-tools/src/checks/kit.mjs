@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { flagValue, flagsOf } from '../check-flags.mjs';
-import { discoverModulePackages } from '../discover.mjs';
-import { memberFilesOf } from '../shell-type-files.mjs';
+import { flagValue, flagsOf } from '../support/check-flags.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
+import { memberFilesOf } from '../contract/shell-type-files.mjs';
 import { shellClientPathOf, shellKitOf } from './shell-artifact.mjs';
 
 const SHELL = '@dsh-workbench/core';

@@ -1,5 +1,5 @@
 import type { AiPort } from '../ai/port.js';
-import { now as clockNow } from '../time.js';
+import { now as clockNow } from '../runtime/time.js';
 import { agentStopReasonText, agentSummaryOf } from './agent.js';
 import { dataActionOf } from './data.js';
 import { evalPredicate, resolveInput, resolveValue } from './expr.js';

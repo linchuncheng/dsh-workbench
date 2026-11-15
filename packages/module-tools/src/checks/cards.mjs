@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { discoverModulePackages } from '../discover.mjs';
+import { discoverModulePackages } from '../support/discover.mjs';
 import { shellClientPathOf, shellKitOf, shellSchemaCardOf } from './shell-artifact.mjs';
 
 export const title = '卡片渲染';
