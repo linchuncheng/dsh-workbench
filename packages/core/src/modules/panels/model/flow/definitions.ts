@@ -75,8 +75,8 @@ export const DIY_BOARD_FLOW: DiyFlow = {
   id: 'diy-board',
   title: '做一张看板卡片',
   steps: [
-    { id: 'judge', title: '确认你要看的数', tools: lockedTools, schema: JUDGE_SCHEMA },
-    { id: 'plan', title: '确认看板方案', when: isBoard, tools: lockedTools, schema: PLAN_SCHEMA },
+    { id: 'judge', title: '确认需求', tools: lockedTools, schema: JUDGE_SCHEMA },
+    { id: 'plan', title: '确认方案', when: isBoard, tools: lockedTools, schema: PLAN_SCHEMA },
     { id: 'probe', title: '查看数据来源', when: isBoard, tools: lockedTools, retry: { attempts: 2 }, schema: PROBE_SCHEMA },
     { id: 'build', title: '创建模块', when: isBoard, tools: openTools, retry: { attempts: 2 }, schema: BUILD_SCHEMA },
     { id: 'install', title: '添加模块到面板', when: isBoard, tools: lockedTools, schema: INSTALL_SCHEMA },
