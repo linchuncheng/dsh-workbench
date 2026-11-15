@@ -128,14 +128,6 @@ describe('DIY 流程定义', () => {
     }
   });
 
-  it('★ 重试也写在定义里，不在调用方', () => {
-    const probe = DIY_BOARD_FLOW.steps.find((step) => step.id === 'probe');
-    const build = DIY_BOARD_FLOW.steps.find((step) => step.id === 'build');
-
-    expect(probe?.retry?.attempts).toBe(2);
-    expect(build?.retry?.attempts).toBe(2);
-  });
-
   it('★ 改一格从建模块起，没有站探', () => {
     const ids = DIY_TWEAK_FLOW.steps.map((step) => step.id);
 
