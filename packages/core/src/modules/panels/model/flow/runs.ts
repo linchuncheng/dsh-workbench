@@ -4,6 +4,7 @@ import type { DiyFlow } from './definitions';
 interface Run {
   readonly flow: DiyFlow;
   readonly session: FlowSession;
+  readonly values: Record<string, unknown>;
 }
 
 export interface DiyAdvance {
@@ -14,6 +15,7 @@ export interface DiyAdvance {
 
 export interface DiyFlowRuns {
   stepOf(session: string): FlowNodeStep | null;
+  valuesOf(session: string): Readonly<Record<string, unknown>>;
   start(session: string): FlowNodeStep;
   provide(session: string, value: unknown): FlowProvideResult;
   advance(session: string, value: unknown): Promise<DiyAdvance>;
@@ -40,6 +42,10 @@ export function createDiyFlowRuns(options: {
       return run === undefined ? null : stepAt(run);
     },
 
+    valuesOf(session) {
+      return runs.get(session)?.values ?? {};
+    },
+
     start(session) {
       const existing = runs.get(session);
       if (existing !== undefined) {
@@ -53,7 +59,7 @@ export function createDiyFlowRuns(options: {
         workspace: options.workspaceOf(session),
         onStep: () => {},
       });
-      const run: Run = { flow: options.flow, session: session_ };
+      const run: Run = { flow: options.flow, session: session_, values: {} };
       runs.set(session, run);
       void session_.result.then(() => {
         if (runs.get(session) !== run) return;
@@ -70,7 +76,9 @@ export function createDiyFlowRuns(options: {
       if (run === undefined) return { ok: false, problem: '这条会话没有运行中的流程' };
       const position = run.session.current();
       if (position === null) return { ok: false, problem: '这条流程已经走完' };
-      return run.session.provide(position.stepId, value);
+      const provided = run.session.provide(position.stepId, value);
+      if (provided.ok) run.values[position.stepId] = value;
+      return provided;
     },
 
     async advance(session, value) {
@@ -80,6 +88,7 @@ export function createDiyFlowRuns(options: {
       if (before === undefined) return { ok: false, problem: '这条流程已经走完', step: null };
       const provided = run.session.provide(before, value);
       if (!provided.ok) return { ok: false, problem: provided.problem, step: stepAt(run) };
+      run.values[before] = value;
       for (let round = 0; round < 20; round += 1) {
         await new Promise((resolve) => setTimeout(resolve, 0));
         const after = run.session.current()?.stepId ?? undefined;

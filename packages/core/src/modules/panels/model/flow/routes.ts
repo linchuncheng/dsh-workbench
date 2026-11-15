@@ -1,4 +1,5 @@
 import type { RouteTable } from '@dsh-workbench/shared/host';
+import { evalPredicate } from '@dsh-workbench/shared/host';
 import { DIY_FLOW_ROUTE } from '@dsh-workbench/shared/contract/protocol/panels';
 import { DIY_BOARD_FLOW } from './definitions';
 import type { DiyFlowRuns } from './runs';
@@ -8,8 +9,12 @@ export interface FlowStepView {
   readonly title: string;
 }
 
-export function flowSteps(): readonly FlowStepView[] {
-  return DIY_BOARD_FLOW.steps.map((step) => ({ id: step.id, title: step.title ?? step.id }));
+export function flowSteps(values: Readonly<Record<string, unknown>> = {}): readonly FlowStepView[] {
+  const scope = { in: {}, steps: values };
+  const decided = values['judge'] !== undefined;
+  return DIY_BOARD_FLOW.steps
+    .filter((step) => !decided || step.when === undefined || evalPredicate(step.when, scope))
+    .map((step) => ({ id: step.id, title: step.title ?? step.id }));
 }
 
 export function diyFlowRoutes(runs: DiyFlowRuns): RouteTable {
@@ -17,7 +22,7 @@ export function diyFlowRoutes(runs: DiyFlowRuns): RouteTable {
     [DIY_FLOW_ROUTE]: (params) => {
       const session = params.get('session');
       const step = session === null ? null : runs.stepOf(session);
-      const steps = flowSteps();
+      const steps = flowSteps(session === null ? {} : runs.valuesOf(session));
       const current = step === null ? null : (steps.find((one) => one.id === step.id) ?? null);
       return { ok: true, steps, current };
     },

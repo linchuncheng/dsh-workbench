@@ -6,6 +6,7 @@ import type { DiyFlowRuns } from '../model/flow/runs';
 function runsWith(step: { id: string; title?: string } | null): DiyFlowRuns {
   return {
     stepOf: () => (step === null ? null : ({ ...step, title: step.title ?? step.id } as never)),
+    valuesOf: () => ({ judge: { destination: 'board', summary: '盯库存' } }),
   } as unknown as DiyFlowRuns;
 }
 
@@ -27,6 +28,25 @@ describe('面板顶部那条进度行读的接口', () => {
     const payload = diyFlowRoutes(runsWith(null))[DIY_FLOW_ROUTE]?.(new URLSearchParams());
 
     expect(payload).toMatchObject({ ok: true, current: null });
+  });
+
+  it('★ 判成没有看板就不显示「确认方案」那一步', () => {
+    const routes = diyFlowRoutes({
+      stepOf: () => ({ id: 'probe', title: '查看数据来源' }),
+      valuesOf: () => ({ judge: { destination: 'headless', summary: '加个工具' } }),
+    } as never);
+    const payload = routes['panels/diy-flow'](new URLSearchParams('session=s-1')) as {
+      steps: { id: string }[];
+    };
+
+    expect(payload.steps.map((one) => one.id)).toEqual([
+      'judge',
+      'probe',
+      'build',
+      'install',
+      'verify',
+      'ledger',
+    ]);
   });
 
   it('★ 走到哪一步就说哪一步', () => {
