@@ -67,7 +67,7 @@ describe('DIY 流程定义', () => {
 
     const result = await session.result;
 
-    expect(seen).toEqual(['judge', 'plan', 'probe', 'build', 'install', 'verify', 'ledger']);
+    expect(seen).toEqual(['judge', 'probe', 'plan', 'build', 'install', 'verify', 'ledger']);
     expect(result.status).toBe('ok');
     expect(events.filter((one) => one.status === 'skipped')).toEqual([]);
   });
@@ -106,6 +106,8 @@ describe('DIY 流程定义', () => {
     const { session } = openBoard();
 
     expect(session.provide('judge', { destination: 'board', summary: '盯库存' })).toEqual({ ok: true });
+    await tick();
+    expect(session.provide('probe', { sites: [] })).toEqual({ ok: true });
     await tick();
 
     const refused = session.provide('plan', { cells: '3' });

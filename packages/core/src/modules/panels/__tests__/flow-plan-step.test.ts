@@ -48,13 +48,50 @@ describe('计划工具推进流程', () => {
     expect(ended).toEqual(['s-1']);
   });
 
-  it('★ 计划能连续跑两次：先判去向，再补计划', async () => {
+  it('★ 先判去向停在站探；站探递完再调，才递方案', async () => {
     const { runs } = runsOf();
+    const first = await planStep(runs, 's-1', {
+      destination: 'board',
+      summary: '盯库存低于 10 的',
+      see: ['一眼'],
+      do: ['一点'],
+      agent: ['一件'],
+      data: ['一处'],
+    });
 
-    await planStep(runs, 's-1', { destination: 'board', summary: '盯库存低于 10 的', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
-    const second = await planStep(runs, 's-1', { destination: 'board', summary: '盯库存低于 10 的', cells: '2', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
+    expect(first.step).toBe('probe');
+    expect(first.index).toBe(2);
 
-    expect(second.step).toBe('probe');
+    runs.provide('s-1', { sites: ['库存表'] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const second = await planStep(runs, 's-1', {
+      destination: 'board',
+      summary: '盯库存低于 10 的',
+      cells: '2',
+      see: ['一眼'],
+      do: ['一点'],
+      agent: ['一件'],
+      data: ['一处'],
+    });
+
+    expect(second.step).toBe('build');
+    expect(runs.stepOf('s-1')?.id).toBe('build');
+  });
+
+  it('★ 已经在后面几步了，再调计划工具就说清该用哪把工具', async () => {
+    const { runs } = runsOf();
+    await planStep(runs, 's-1', { destination: 'board', summary: '盯库存', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
+    runs.provide('s-1', { sites: [] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await planStep(runs, 's-1', { destination: 'board', summary: '盯库存', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const again = await planStep(runs, 's-1', { destination: 'board', summary: '盯库存', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
+
+    expect(again.ok).toBe(false);
+    expect(again.text).toContain('workbench_diy_step');
+    expect(runs.stepOf('s-1')?.id).toBe('build');
   });
 
   it('★ 范围变了重新计划：旧流程被停掉，新流程从判去向开始', async () => {

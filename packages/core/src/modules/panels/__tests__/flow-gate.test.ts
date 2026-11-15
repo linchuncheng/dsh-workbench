@@ -44,10 +44,10 @@ describe('按会话跑的流程', () => {
     expect(runs.provide('s-1', { destination: 'board', summary: '盯库存', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] })).toEqual({ ok: true });
     await Promise.resolve();
 
-    expect(runs.stepOf('s-1')?.id).toBe('plan');
-    runs.provide('s-1', { cells: '3', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
-    await Promise.resolve();
     expect(runs.stepOf('s-1')?.id).toBe('probe');
+    runs.provide('s-1', { sites: [] });
+    await Promise.resolve();
+    expect(runs.stepOf('s-1')?.id).toBe('plan');
   });
 
   it('★ 非看板去向走完就收摊，闸重新放开', async () => {

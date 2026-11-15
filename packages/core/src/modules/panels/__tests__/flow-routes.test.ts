@@ -14,14 +14,14 @@ describe('面板顶部那条进度行读的接口', () => {
   it('★★ 七步按顺序给出，标题是面板上的说法', () => {
     expect(flowSteps().map((step) => step.id)).toEqual([
       'judge',
-      'plan',
       'probe',
+      'plan',
       'build',
       'install',
       'verify',
       'ledger',
     ]);
-    expect(flowSteps()[1]?.title).toBe('确认方案');
+    expect(flowSteps()[2]?.title).toBe('确认方案');
   });
 
   it('★★ 没开始走就什么都不说（不画假进度）', () => {

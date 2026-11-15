@@ -49,6 +49,7 @@ import { createFlowHost } from '@dsh-workbench/shared/host';
 import { DIY_BOARD_FLOW } from './model/flow/definitions';
 import { deniedAtStep } from './model/flow/gate';
 import { registerDiyPlanTool } from './model/flow/plan-tool';
+import { registerDiyStepTool } from './model/flow/step-tool';
 import { createDiyFlowRuns } from './model/flow/runs';
 import { diyFlowRoutes } from './model/flow/routes';
 import { capabilityBriefOf } from './model/capability-brief';
@@ -287,6 +288,7 @@ export const panelsHost: UnitOwnedFace = {
           installRuns,
         ),
         ...registerDiyPlanTool(ctx, diyRuns),
+        ...registerDiyStepTool(ctx, diyRuns),
         ...registerRecordTools(ctx, record),
         ...registerLongTaskTools(ctx, longTaskRuns),
       ],
