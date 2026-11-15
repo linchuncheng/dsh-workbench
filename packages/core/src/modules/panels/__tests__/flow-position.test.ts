@@ -3,16 +3,11 @@ import { positionOf, visibleSteps } from '../model/flow/position';
 import { PROGRESS_OUTPUT } from '../model/flow/progress-output';
 
 describe('第几步与还剩几步', () => {
-  it('★★ 看板六步、没有看板五步，顺序就是跑的顺序', () => {
-    expect(visibleSteps('board').map((one) => one.id)).toEqual([
-      'probe',
-      'plan',
-      'build',
-      'install',
-      'verify',
-      'ledger',
-    ]);
-    expect(visibleSteps('headless').map((one) => one.id)).toEqual(['probe', 'build', 'install', 'verify', 'ledger']);
+  it('★★ 两条路都是六步，顺序就是跑的顺序', () => {
+    const ids = ['probe', 'plan', 'build', 'install', 'verify', 'ledger'];
+
+    expect(visibleSteps('board').map((one) => one.id)).toEqual(ids);
+    expect(visibleSteps('headless').map((one) => one.id)).toEqual(ids);
   });
 
   it('★ 停在站探是第 1 步，后面还有 5 步', () => {

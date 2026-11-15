@@ -71,18 +71,19 @@ describe('DIY 流程定义', () => {
     expect(events.filter((one) => one.status === 'skipped')).toEqual([]);
   });
 
-  it('★ 没有看板的模块：跳过确认方案，照样创建、安装、检查、保存', async () => {
+  it('★ 没有看板的模块：确认方案照样要过，后面创建、安装、检查、保存', async () => {
     const { session } = openBoard('headless');
     const seen: string[] = [];
 
     const values: Record<string, unknown> = {
       probe: { sites: [] },
+      plan: { see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] },
       build: { unit: 'stock-tool' },
       install: { unit: 'stock-tool', installed: true },
       verify: { passed: [], unverified: [] },
       ledger: { design: 'design.json' },
     };
-    for (const stepId of ['probe', 'build', 'install', 'verify', 'ledger']) {
+    for (const stepId of ['probe', 'plan', 'build', 'install', 'verify', 'ledger']) {
       expect(session.current()?.stepId).toBe(stepId);
       seen.push(stepId);
       expect(session.provide(stepId, values[stepId])).toEqual({ ok: true });
@@ -91,9 +92,9 @@ describe('DIY 流程定义', () => {
 
     const result = await session.result;
 
-    expect(seen).toEqual(['probe', 'build', 'install', 'verify', 'ledger']);
+    expect(seen).toEqual(['probe', 'plan', 'build', 'install', 'verify', 'ledger']);
     expect(result.status).toBe('ok');
-    expect(result.steps['plan']).toBeUndefined();
+    expect(result.steps['plan']).toBeDefined();
   });
 
   it('★ 方案少写四段就递不上去，卡上不会是一张空壳', async () => {

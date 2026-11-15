@@ -58,6 +58,8 @@ describe('流程递交工具', () => {
     runs.start('s-1', { destination: 'headless', summary: '加个查库存的工具' });
     runs.provide('s-1', { sites: [] });
     await new Promise((resolve) => setTimeout(resolve, 0));
+    runs.provide('s-1', { see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
     runs.provide('s-1', { unit: 'stock-tool' });
     await new Promise((resolve) => setTimeout(resolve, 0));
     runs.provide('s-1', { unit: 'stock-tool', installed: true });

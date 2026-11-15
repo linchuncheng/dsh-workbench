@@ -30,7 +30,7 @@ describe('面板顶部那条进度行读的接口', () => {
     expect(payload).toMatchObject({ ok: true, current: null });
   });
 
-  it('★ 判成没有看板就不显示「确认方案」那一步', () => {
+  it('★★ 没有看板也照样有「确认方案」，只是后两步换了说法', () => {
     const routes = diyFlowRoutes({
       stepOf: () => ({ id: 'probe', title: '查看数据来源' }),
       valuesOf: () => ({}),
@@ -42,6 +42,7 @@ describe('面板顶部那条进度行读的接口', () => {
 
     expect(payload.steps.map((one) => one.id)).toEqual([
       'probe',
+      'plan',
       'build',
       'install',
       'verify',
