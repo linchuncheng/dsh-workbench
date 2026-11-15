@@ -47,6 +47,8 @@ describe('面板顶部那条进度行读的接口', () => {
       'verify',
       'ledger',
     ]);
+    expect(payload.steps.find((one) => one.id === 'install')?.title).toBe('安装模块');
+    expect(payload.steps.find((one) => one.id === 'verify')?.title).toBe('检查模块能用');
   });
 
   it('★ 走到哪一步就说哪一步', () => {

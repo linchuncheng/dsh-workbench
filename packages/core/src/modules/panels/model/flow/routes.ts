@@ -1,7 +1,7 @@
 import type { RouteTable } from '@dsh-workbench/shared/host';
 import { evalPredicate } from '@dsh-workbench/shared/host';
 import { DIY_FLOW_ROUTE } from '@dsh-workbench/shared/contract/protocol/panels';
-import { DIY_BOARD_FLOW } from './definitions';
+import { DIY_BOARD_FLOW, HEADLESS_TITLES } from './definitions';
 import type { DiyFlowRuns } from './runs';
 
 export interface FlowStepView {
@@ -12,9 +12,15 @@ export interface FlowStepView {
 export function flowSteps(values: Readonly<Record<string, unknown>> = {}): readonly FlowStepView[] {
   const scope = { in: {}, steps: values };
   const decided = values['judge'] !== undefined;
+  const judge = values['judge'];
+  const headless =
+    typeof judge === 'object' && judge !== null && (judge as { destination?: unknown }).destination === 'headless';
   return DIY_BOARD_FLOW.steps
     .filter((step) => !decided || step.when === undefined || evalPredicate(step.when, scope))
-    .map((step) => ({ id: step.id, title: step.title ?? step.id }));
+    .map((step) => ({
+      id: step.id,
+      title: (headless ? HEADLESS_TITLES[step.id] : undefined) ?? step.title ?? step.id,
+    }));
 }
 
 export function diyFlowRoutes(runs: DiyFlowRuns): RouteTable {
