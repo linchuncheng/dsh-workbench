@@ -1,7 +1,8 @@
 import { Fragment, createElement as h, useEffect, useState } from 'react';
 import type { ApprovalInput, Need, ReactNode, Translate, UnitManifest, UnitToolRuntime } from '@dsh-workbench/shared';
 import { APPROVAL_NOTE_ARG, ApprovalPlan } from '@dsh-workbench/shared';
-import { CodeBlock, MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives';
+import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives';
+import { PlanCard } from './approval-plan';
 import type { MarketSourcesPayload, PublishChangelog, PublishPreview } from '@/kernel/contract/market-index';
 import {
   ALL_TOOLS,
@@ -35,38 +36,6 @@ function labelsOf(args: Readonly<Record<string, unknown>>): readonly string[] {
   return [
     ...new Set(value.flatMap((one) => (typeof one === 'string' && one.trim() !== '' ? [one.trim()] : []))),
   ];
-}
-
-export function planSections(
-  args: Readonly<Record<string, unknown>>,
-  t: Translate,
-): readonly { label: string; items: readonly string[] }[] {
-  const sections: { label: string; items: readonly string[] }[] = [];
-  for (const [key, label] of [
-    ['see', 'approval.plan.see'],
-    ['do', 'approval.plan.do'],
-    ['agent', 'approval.plan.agent'],
-    ['data', 'approval.plan.data'],
-  ] as const) {
-    const raw = args[key];
-    const items = Array.isArray(raw)
-      ? raw.flatMap((one) => (typeof one === 'string' && one.trim() !== '' ? [one.trim()] : []))
-      : [];
-    if (items.length > 0) sections.push({ label: t(label), items });
-  }
-  return sections;
-}
-
-function planShots(args: Readonly<Record<string, unknown>>): readonly { caption: string; ascii: string }[] {
-  const raw = args['shots'];
-  if (!Array.isArray(raw)) return [];
-  return raw.flatMap((one) => {
-    if (typeof one !== 'object' || one === null) return [];
-    const shot = one as { caption?: unknown; ascii?: unknown };
-    const caption = typeof shot.caption === 'string' ? shot.caption.trim() : '';
-    const ascii = typeof shot.ascii === 'string' ? shot.ascii : '';
-    return ascii.trim() === '' ? [] : [{ caption, ascii }];
-  });
 }
 
 export function recordApprovalRows(
@@ -522,33 +491,7 @@ export function shellApprovalDetail(
     return h(MarketSourceApprovalSeat, { tool: input.tool, args: input.args, t });
   }
   if (input.tool === DIY_PLAN_TOOL) {
-    return (
-      <ApprovalPlan rows={[]}>
-        <p className={styles.planSummary}>{textOf(input.args, 'summary')}</p>
-        {planShots(input.args).map((shot, index) => (
-          <div className={styles.shot} key={String(index)}>
-            <CodeBlock
-              code={shot.ascii}
-              lang={shot.caption}
-              copyLabel={t('markdown.copy')}
-              copiedLabel={t('env.copied')}
-            />
-          </div>
-        ))}
-        {planSections(input.args, t).map((section) => (
-          <div className={styles.shot} key={section.label}>
-            <p className={styles.shotCaption}>{section.label}</p>
-            <ul className={styles.shotItems}>
-              {section.items.map((item, index) => (
-                <li className={styles.shotItem} key={String(index)}>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </ApprovalPlan>
-    );
+    return <ApprovalPlan rows={[]}>{h(PlanCard, { args: input.args, t })}</ApprovalPlan>;
   }
   const plan = shellApprovalPlan(input, t, pluginTools, manifests);
   if (plan === undefined) return undefined;

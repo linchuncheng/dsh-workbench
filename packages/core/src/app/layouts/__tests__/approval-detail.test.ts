@@ -5,7 +5,6 @@ import { ApprovalDetail, ApprovalPlan, zh } from '@dsh-workbench/shared';
 import {
   marketSourceRows,
   moduleSupplyRows,
-  planSections,
   pluginApprovalRows,
   pluginToolIndexOf,
   publishRows,
@@ -16,6 +15,7 @@ import {
   toolboxApprovalRows,
   versionLineOf,
 } from '../approval-detail';
+import { planSections } from '../approval-plan';
 import {
   ALL_TOOLS,
   DIY_RECORD_PREPARE_TOOL,
