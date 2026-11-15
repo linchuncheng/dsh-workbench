@@ -144,9 +144,32 @@ export interface FlowDataPort {
 }
 
 /**
- * 一步要么调动作，要么跑子流程，要么让一个子 agent / 模型判断，要么读一份数据计划。
+ * 一步只有位置、条件与策略，没有执行体：结果由外部递进来（配合 `open` 使用，`run` 碰见会报错）。
+ * `retry` / `poll` / `forEach` / `schema` / `tools` 都归外部执行体读，引擎只做校验：
+ * 它们是这一步的约定，不是引擎要执行的指令。
  */
-export type FlowStep = FlowActionStep | FlowSubFlowStep | FlowAgentStep | FlowAiStep | FlowDataStep;
+export interface FlowNodeStep {
+  readonly id: string;
+  readonly title?: string | undefined;
+  readonly when?: FlowPredicate | undefined;
+  readonly retry?: FlowRetry | undefined;
+  readonly poll?: FlowPoll | undefined;
+  readonly forEach?: FlowForEach | undefined;
+  readonly schema?: Readonly<Record<string, unknown>> | undefined;
+  readonly tools?: { readonly allow?: readonly string[]; readonly deny?: readonly string[] } | undefined;
+}
+
+/**
+ * 一步要么调动作，要么跑子流程，要么让一个子 agent / 模型判断，要么读一份数据计划，
+ * 要么只占一个位置、等外部递结果。
+ */
+export type FlowStep =
+  | FlowActionStep
+  | FlowSubFlowStep
+  | FlowAgentStep
+  | FlowAiStep
+  | FlowDataStep
+  | FlowNodeStep;
 
 /**
  * 步骤入参里的一个值：字面量、引用，或二选一。

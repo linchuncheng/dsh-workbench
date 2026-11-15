@@ -419,6 +419,10 @@ export async function runFlow(options: FlowRunOptions): Promise<FlowResult> {
         continue;
       }
 
+      if (!('action' in step) && !('agent' in step) && !('ai' in step) && !('data' in step) && !('flow' in step)) {
+        throw new Error(`步骤 ${step.id} 没有执行体，run 跑不了；要用 open 由外部递结果`);
+      }
+
       if ('flow' in step) {
         emit({ stepId: step.id, title, status: 'running' });
         const subInput = resolveInput(step.with, { in: input, steps });

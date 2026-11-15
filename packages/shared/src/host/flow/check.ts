@@ -283,6 +283,37 @@ function checkFlowAt(
     if (shapes.length > 0 && options.external === true) {
       add(`${at}`, `这一份流程由外部推进，步骤不能带执行体：现在有 ${shapes.join(' / ')}`);
     }
+    if (!('action' in step) && !('flow' in step) && !('data' in step) && !('agent' in step) && !('ai' in step)) {
+      if (options.external !== true) add(`${at}`, '没有执行体的步骤只能用 open 跑，run 跑不了');
+      if (step.when !== undefined) {
+        checkPredicate(step.when, `${at}.when`, { seen, item: false, value: false }, add);
+      }
+      if ('with' in step) add(`${at}`, '没有执行体的步骤不能带 with');
+      if (step.retry !== undefined) checkRetry(step.retry, at, add);
+      if (step.poll !== undefined) {
+        const poll = step.poll;
+        if (!Number.isFinite(poll.everyMs) || poll.everyMs < 1) add(`${at}.poll.everyMs`, 'poll.everyMs 要是正数');
+        if (!Number.isFinite(poll.maxMs) || poll.maxMs < 0) add(`${at}.poll.maxMs`, 'poll.maxMs 不能为负');
+        checkPredicate(poll.until, `${at}.poll.until`, { seen, item: false, value: true }, add);
+      }
+      if (step.forEach !== undefined) {
+        checkValue(step.forEach.over, `${at}.forEach.over`, { seen, item: false, value: false }, add);
+        if (step.forEach.as.trim() === '') add(`${at}.forEach.as`, 'forEach.as 不能为空');
+        if (!Number.isInteger(step.forEach.max) || step.forEach.max < 1 || step.forEach.max > 50) {
+          add(`${at}.forEach.max`, 'forEach.max 要在 1..50');
+        }
+      }
+      if (step.schema !== undefined && (typeof step.schema !== 'object' || step.schema === null)) {
+        add(`${at}.schema`, 'schema 要是对象');
+      }
+      if (step.tools !== undefined) {
+        for (const one of step.tools.allow ?? []) {
+          if (typeof one !== 'string' || one.trim() === '') add(`${at}.tools.allow`, '工具名不能为空');
+        }
+      }
+      seen.add(step.id);
+      return;
+    }
 
     if ('flow' in step) {
       if (step.when !== undefined) {

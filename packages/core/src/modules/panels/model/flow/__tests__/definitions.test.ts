@@ -1,75 +1,93 @@
 import { describe, expect, it } from 'vitest';
 import { createFlowHost } from '@dsh-workbench/shared/host';
-import type { FlowDefinition } from '@dsh-workbench/shared/host';
-import { DIY_BOARD_FLOW, DIY_FLOW_ACTIONS, DIY_TWEAK_FLOW } from '../definitions';
+import type { FlowStepEvent } from '@dsh-workbench/shared/host';
+import { DIY_BOARD_FLOW, DIY_BOARD_STEPS, DIY_TWEAK_FLOW } from '../definitions';
 
-const FAKE_AGENTS = {
-  open: async () => ({
-    run: async () => ({ text: 'ok', childId: 'c1', name: 'judge', stopReason: 'stop' }),
-    dispose: async () => {},
-  }),
-};
+const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
-function hostWithActions() {
-  const flowHost = createFlowHost({ agents: FAKE_AGENTS });
-  const actions = flowHost.createActions();
-  for (const name of Object.values(DIY_FLOW_ACTIONS)) {
-    actions.register(name, async () => 'ok', { title: name });
-  }
-  return { flowHost, actions };
-}
-
-function agentStepsOf(flow: FlowDefinition) {
-  return flow.steps.filter((step) => 'agent' in step);
+function openBoard() {
+  const events: FlowStepEvent[] = [];
+  const session = createFlowHost().open({
+    flow: DIY_BOARD_FLOW,
+    input: {},
+    workspace: '/w/a',
+    onStep: (event) => events.push(event),
+  });
+  return { session, events };
 }
 
 describe('DIY 流程定义', () => {
-  it('★★ 两条流程都能过引擎校验：动作名齐、引用指得到', () => {
-    const { flowHost, actions } = hostWithActions();
+  it('★★ 两条流程都能过外部推进的校验：节点没有执行体', () => {
+    const host = createFlowHost();
 
-    expect(flowHost.check(DIY_BOARD_FLOW, actions)).toEqual({ ok: true, problems: [] });
-    expect(flowHost.check(DIY_TWEAK_FLOW, actions)).toEqual({ ok: true, problems: [] });
+    expect(host.check(DIY_BOARD_FLOW, { has: () => false }, { external: true })).toEqual({
+      ok: true,
+      problems: [],
+    });
+    expect(host.check(DIY_TWEAK_FLOW, { has: () => false }, { external: true })).toEqual({
+      ok: true,
+      problems: [],
+    });
   });
 
-  it('★ 少注册一个动作就过不了校验，错误里点名那一步', () => {
-    const flowHost = createFlowHost({ agents: FAKE_AGENTS });
-    const actions = flowHost.createActions();
-    actions.register(DIY_FLOW_ACTIONS.awaitAnswer, async () => 'ok', {});
+  it('★ 有执行体的节点过不了外部推进的校验', () => {
+    const host = createFlowHost();
+    const withAction = {
+      id: 'bad',
+      title: '坏图',
+      steps: [{ id: 'a', title: 'A', action: 'read' }],
+    };
 
-    const checked = flowHost.check(DIY_BOARD_FLOW, actions);
+    const checked = host.check(withAction, { has: () => true }, { external: true });
 
     expect(checked.ok).toBe(false);
-    expect(checked.problems.map((one) => one.path)).toContain('steps[5].action');
+    expect(checked.problems.map((one) => one.path)).toContain('steps[0]');
   });
 
-  it('★ 写工具只在「建模块」一步可见', () => {
-    const board = agentStepsOf(DIY_BOARD_FLOW);
-    const allowingWrite = board.filter((step) => (step.agent.tools?.allow ?? []).includes('write'));
+  it('★★ 看板去向：七步依次停住，递一步走一步', async () => {
+    const { session, events } = openBoard();
+    const seen: string[] = [];
 
-    expect(allowingWrite.map((step) => step.id)).toEqual(['build']);
-    for (const step of board.filter((one) => one.id !== 'build')) {
-      expect(step.agent.tools?.deny ?? [], step.id).toContain('write');
+    for (const stepId of DIY_BOARD_STEPS) {
+      expect(session.current()?.stepId).toBe(stepId);
+      seen.push(stepId);
+      session.provide(stepId, stepId === 'judge' ? { destination: 'board' } : true);
+      await tick();
+    }
+
+    const result = await session.result;
+
+    expect(seen).toEqual(['judge', 'plan', 'confirm', 'probe', 'build', 'install', 'verify', 'ledger']);
+    expect(result.status).toBe('ok');
+    expect(events.filter((one) => one.status === 'skipped')).toEqual([]);
+  });
+
+  it('★ 非看板去向：判完就结束，后面全部跳过', async () => {
+    const { session, events } = openBoard();
+
+    session.provide('judge', { destination: 'once' });
+    const result = await session.result;
+
+    expect(result.status).toBe('ok');
+    expect(result.steps).toEqual({ judge: { destination: 'once' } });
+    expect(events.filter((one) => one.status === 'skipped').map((one) => one.stepId)).toEqual(
+      DIY_BOARD_STEPS.slice(1),
+    );
+  });
+
+  it('★ 写工具只在「建模块」与「留账」放行，其余步骤都写在定义里', () => {
+    const writeSteps = new Set(['build', 'ledger']);
+
+    for (const step of DIY_BOARD_FLOW.steps) {
+      const allowsWrite = (step.tools?.allow ?? []).includes('write');
+      const deniesWrite = (step.tools?.deny ?? []).includes('write');
+
+      expect(allowsWrite, step.id).toBe(writeSteps.has(step.id));
+      expect(deniesWrite, step.id).toBe(!writeSteps.has(step.id));
     }
   });
 
-  it('★ 判去向与计划都不给写工具，且确认排在计划之后、站探之前', () => {
-    const ids = DIY_BOARD_FLOW.steps.map((step) => step.id);
-    const judge = DIY_BOARD_FLOW.steps.find((step) => step.id === 'judge');
-    const plan = DIY_BOARD_FLOW.steps.find((step) => step.id === 'plan');
-
-    expect(judge !== undefined && 'agent' in judge ? judge.agent.tools?.deny : undefined).toContain('write');
-    expect(plan !== undefined && 'agent' in plan ? plan.agent.tools?.deny : undefined).toContain('write');
-    expect(ids.indexOf('confirm')).toBeGreaterThan(ids.indexOf('plan'));
-    expect(ids.indexOf('confirm')).toBeLessThan(ids.indexOf('probe'));
-  });
-
-  it('★ 非看板去向不进后续步骤：计划到留账都挂在「是看板」这个条件上', () => {
-    const gated = DIY_BOARD_FLOW.steps.filter((step) => step.when !== undefined).map((step) => step.id);
-
-    expect(gated).toEqual(['plan', 'confirm', 'probe', 'build', 'install', 'verify', 'ledger']);
-  });
-
-  it('★ 改一格那条从建模块开始：没有站探这一步', () => {
+  it('★ 改一格从建模块起，没有站探', () => {
     const ids = DIY_TWEAK_FLOW.steps.map((step) => step.id);
 
     expect(ids).toEqual(['plan', 'build', 'install', 'verify']);
