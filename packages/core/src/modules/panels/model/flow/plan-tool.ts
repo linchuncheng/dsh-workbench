@@ -11,6 +11,22 @@ function asText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function asList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((one) => (typeof one === 'string' && one.trim() !== '' ? [one.trim()] : []));
+}
+
+function asShots(value: unknown): { caption: string; ascii: string }[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((one) => {
+    if (typeof one !== 'object' || one === null) return [];
+    const shot = one as { caption?: unknown; ascii?: unknown };
+    const caption = asText(shot.caption);
+    const ascii = typeof shot.ascii === 'string' ? shot.ascii : '';
+    return ascii.trim() === '' ? [] : [{ caption, ascii }];
+  });
+}
+
 export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Array<() => void> {
   const tools = ctx.get('tools') as DshToolRegistry | undefined;
   if (tools === undefined) return [];
@@ -19,7 +35,8 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
     name: DIY_PLAN_TOOL,
     description:
       '动手前先判去向并给计划：是看板、一次性、用现成的、改道、还是没看板。判成看板才会往下走，其余当场收尾。' +
-      '判成看板时，用界面真实文案画出它的样子，并说清这个模块能给她什么：一眼看到、你能做、AI 能做什么、数据从哪来。',
+      '判成看板时四段必填（see / do / agent / data）：一眼看到、你能做、AI 能做什么、数据从哪来；' +
+      '再给一两张 shots（拿界面真实文案画的字符画），批卡上就照这些画。',
     parameters: {
       type: 'object',
       properties: {
@@ -53,7 +70,7 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         },
         data: { type: 'array', description: '数据从哪来、用谁的登录、读还是写。', items: { type: 'string' } },
       },
-      required: ['destination', 'summary'],
+      required: ['destination', 'summary', 'see', 'do', 'agent', 'data'],
       additionalProperties: false,
     },
     output: OUTPUT,
@@ -74,7 +91,11 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         ...(asText(record['cells']) === '' ? {} : { cells: asText(record['cells']) }),
         ...(asText(record['steps']) === '' ? {} : { steps: asText(record['steps']) }),
         ...(asText(record['minutes']) === '' ? {} : { minutes: asText(record['minutes']) }),
-        ...(asText(record['sketch']) === '' ? {} : { sketch: asText(record['sketch']) }),
+        ...(asShots(record['shots']).length === 0 ? {} : { shots: asShots(record['shots']) }),
+        ...(asList(record['see']).length === 0 ? {} : { see: asList(record['see']) }),
+        ...(asList(record['do']).length === 0 ? {} : { do: asList(record['do']) }),
+        ...(asList(record['agent']).length === 0 ? {} : { agent: asList(record['agent']) }),
+        ...(asList(record['data']).length === 0 ? {} : { data: asList(record['data']) }),
       });
 
       if (!result.ok) throw new Error(result.text);

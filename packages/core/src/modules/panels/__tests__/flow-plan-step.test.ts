@@ -22,6 +22,10 @@ describe('计划工具推进流程', () => {
     const result = await planStep(runs, 's-1', {
       destination: 'board',
       summary: '每天看一次报销审批卡在哪',
+      see: ['一眼'],
+      do: ['一点'],
+      agent: ['一件'],
+      data: ['一处'],
       cells: '3',
       minutes: '5',
     });
@@ -47,17 +51,24 @@ describe('计划工具推进流程', () => {
   it('★ 计划能连续跑两次：先判去向，再补计划', async () => {
     const { runs } = runsOf();
 
-    await planStep(runs, 's-1', { destination: 'board', summary: '盯库存低于 10 的' });
-    const second = await planStep(runs, 's-1', { destination: 'board', summary: '盯库存低于 10 的', cells: '2' });
+    await planStep(runs, 's-1', { destination: 'board', summary: '盯库存低于 10 的', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
+    const second = await planStep(runs, 's-1', { destination: 'board', summary: '盯库存低于 10 的', cells: '2', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
 
     expect(second.step).toBe('probe');
   });
 
   it('★ 范围变了重新计划：旧流程被停掉，新流程从判去向开始', async () => {
     const { runs } = runsOf();
-    await planStep(runs, 's-1', { destination: 'board', summary: '第一版' });
+    await planStep(runs, 's-1', { destination: 'board', summary: '第一版', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
 
-    const again = await planStep(runs, 's-1', { destination: 'board', summary: '改成另一件事' });
+    const again = await planStep(runs, 's-1', {
+      destination: 'board',
+      summary: '改成另一件事',
+      see: ['一眼'],
+      do: ['一点'],
+      agent: ['一件'],
+      data: ['一处'],
+    });
 
     expect(again.step).toBe('probe');
     expect(runs.stepOf('s-1')?.id).toBe('probe');

@@ -50,7 +50,7 @@ describe('DIY 流程定义', () => {
 
     const values: Record<string, unknown> = {
       judge: { destination: 'board', summary: '盯库存' },
-      plan: { cells: '3' },
+      plan: { cells: '3', ...{ see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] } },
       probe: { sites: [] },
       build: { unit: 'stock' },
       install: { unit: 'stock', installed: true },
@@ -70,6 +70,18 @@ describe('DIY 流程定义', () => {
     expect(seen).toEqual(['judge', 'plan', 'probe', 'build', 'install', 'verify', 'ledger']);
     expect(result.status).toBe('ok');
     expect(events.filter((one) => one.status === 'skipped')).toEqual([]);
+  });
+
+  it('★ 方案少写四段就递不上去，卡上不会是一张空壳', async () => {
+    const { session } = openBoard();
+
+    expect(session.provide('judge', { destination: 'board', summary: '盯库存' })).toEqual({ ok: true });
+    await tick();
+
+    const refused = session.provide('plan', { cells: '3' });
+
+    expect(refused.ok).toBe(false);
+    expect(refused.ok ? '' : refused.problem).toContain('see');
   });
 
   it('★ 非看板去向：判完就结束，后面全部跳过', async () => {

@@ -36,7 +36,7 @@ describe('计划工具', () => {
     if (tool === undefined) throw new Error('没有注册上');
 
     const out = (await tool.execute(
-      { destination: 'board', summary: '盯库存低于 10 的', cells: '3' },
+      { destination: 'board', summary: '盯库存低于 10 的', cells: '3', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] },
       exec,
     )) as { step: string; done: boolean; text: string };
 

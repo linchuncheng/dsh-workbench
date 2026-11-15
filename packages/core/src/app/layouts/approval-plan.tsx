@@ -44,9 +44,16 @@ export function PlanCard({
   readonly args: Readonly<Record<string, unknown>>;
   readonly t: Translate;
 }) {
+  const shots = planShots(args);
+  const sections = planSections(args, t);
+  const summary = typeof args['summary'] === 'string' ? args['summary'].trim() : '';
+
   return (
     <>
-      {planShots(args).map((shot, index) => (
+      {shots.length === 0 && sections.length === 0 && summary !== '' ? (
+        <p className={styles.shotCaption}>{summary}</p>
+      ) : null}
+      {shots.map((shot, index) => (
         <div className={styles.shot} key={String(index)}>
           <CodeBlock
             code={shot.ascii}
@@ -57,7 +64,7 @@ export function PlanCard({
           />
         </div>
       ))}
-      {planSections(args, t).map((section) => (
+      {sections.map((section) => (
         <div className={styles.shot} key={section.label}>
           <p className={styles.shotCaption}>{section.label}</p>
           <ul className={styles.shotItems}>

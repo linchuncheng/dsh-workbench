@@ -19,6 +19,7 @@ const JUDGE_SCHEMA = {
 
 const PLAN_SCHEMA = {
   type: 'object',
+  required: ['see', 'do', 'agent', 'data'],
   properties: {
     cells: { type: 'string' },
     steps: { type: 'string' },

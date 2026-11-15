@@ -41,11 +41,11 @@ describe('按会话跑的流程', () => {
     const runs = runsOf();
     runs.start('s-1');
 
-    expect(runs.provide('s-1', { destination: 'board', summary: '盯库存' })).toEqual({ ok: true });
+    expect(runs.provide('s-1', { destination: 'board', summary: '盯库存', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] })).toEqual({ ok: true });
     await Promise.resolve();
 
     expect(runs.stepOf('s-1')?.id).toBe('plan');
-    runs.provide('s-1', { cells: '3' });
+    runs.provide('s-1', { cells: '3', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
     await Promise.resolve();
     expect(runs.stepOf('s-1')?.id).toBe('probe');
   });
