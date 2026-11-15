@@ -14,7 +14,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--wb-len-8);
-  padding: var(--wb-len-10) var(--wb-len-12);
+  padding: var(--wb-len-6) var(--wb-len-12);
 }
 
 .headRow {
@@ -107,8 +107,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: var(--wb-len-28);
-  height: var(--wb-len-28);
+  width: var(--wb-len-24);
+  height: var(--wb-len-24);
   padding: 0;
   border: none;
   border-radius: var(--dsw-radius-full);
