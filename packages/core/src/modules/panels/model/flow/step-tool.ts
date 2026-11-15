@@ -2,8 +2,8 @@ import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunCont
 import { sessionIdOf } from '@dsh-workbench/shared/host';
 import { DIY_STEP_TOOL } from '../../unit';
 import { plainJson } from '../diy-context';
-import { textOutput } from '../tool-output';
 import { positionOf } from './position';
+import { PROGRESS_OUTPUT } from './progress-output';
 import type { DiyFlowRuns } from './runs';
 
 const STEP_FIELDS: Readonly<Record<string, readonly string[]>> = {
@@ -57,13 +57,7 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       },
       additionalProperties: false,
     },
-    output: textOutput({
-      step: { type: 'string' },
-      index: { type: 'number' },
-      total: { type: 'number' },
-      remaining: { type: 'number' },
-      done: { type: 'boolean' },
-    }),
+    output: PROGRESS_OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
       const session = sessionIdOf(exec);
       if (session === null) throw new Error('这条会话没有 id，递不进流程');
