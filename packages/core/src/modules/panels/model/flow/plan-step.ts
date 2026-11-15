@@ -1,4 +1,5 @@
 import type { FlowNodeStep } from '@dsh-workbench/shared/host';
+import { DIY_BOARD_FLOW } from './definitions';
 import type { DiyFlowRuns } from './runs';
 
 export type Destination = 'ready' | 'once' | 'reroute' | 'board' | 'headless';
@@ -24,8 +25,20 @@ export interface PlanInput {
 export interface PlanResult {
   readonly ok: boolean;
   readonly step: string | null;
+  readonly index: number;
+  readonly total: number;
+  readonly remaining: number;
   readonly done: boolean;
   readonly text: string;
+}
+
+const TOTAL = DIY_BOARD_FLOW.steps.length;
+
+function positionOf(step: string | null): { index: number; remaining: number } {
+  if (step === null) return { index: 0, remaining: 0 };
+  const at = DIY_BOARD_FLOW.steps.findIndex((one) => one.id === step);
+  if (at < 0) return { index: 0, remaining: 0 };
+  return { index: at + 1, remaining: TOTAL - at - 1 };
 }
 
 const NEXT: Readonly<Record<string, string>> = {
@@ -54,7 +67,15 @@ export async function planStep(
     summary: input.summary,
   });
   if (!judged.ok) {
-    return { ok: false, step: null, done: false, text: judged.problem ?? '这一次没递上去' };
+    return {
+      ok: false,
+      step: null,
+      index: 0,
+      total: TOTAL,
+      remaining: 0,
+      done: false,
+      text: judged.problem ?? '这一次没递上去',
+    };
   }
   let step: FlowNodeStep | null = judged.step;
   if (step?.id === 'plan') {
@@ -68,7 +89,16 @@ export async function planStep(
       ...(input.agent === undefined ? {} : { agent: input.agent }),
       ...(input.data === undefined ? {} : { data: input.data }),
     });
-    if (!planned.ok) return { ok: false, step: null, done: false, text: planned.problem ?? '计划没递上去' };
+    if (!planned.ok)
+      return {
+        ok: false,
+        step: null,
+        index: 0,
+        total: TOTAL,
+        remaining: 0,
+        done: false,
+        text: planned.problem ?? '计划没递上去',
+      };
     step = planned.step;
   }
 
@@ -82,15 +112,22 @@ export async function planStep(
     return {
       ok: true,
       step: null,
+      index: 0,
+      total: TOTAL,
+      remaining: 0,
       done: true,
       text: `判成「${short[input.destination] ?? input.destination}」，流程到此为止：这一单不进面板。`,
     };
   }
 
+  const { index, remaining } = positionOf(step.id);
   return {
     ok: true,
     step: step.id,
+    index,
+    total: TOTAL,
+    remaining,
     done: false,
-    text: `停在第 ${step.id} 步（${step.title ?? step.id}）。下一步：${NEXT[step.id] ?? step.id}。`,
+    text: `停在第 ${index}/${TOTAL} 步（${step.title ?? step.id}）。下一步：${NEXT[step.id] ?? step.id}。`,
   };
 }

@@ -42,7 +42,68 @@ describe('计划工具', () => {
 
     expect(out.step).toBe('probe');
     expect(out.done).toBe(false);
-    expect(out.text).toContain('probe');
+    expect(out.text).toContain('查看数据来源');
+    expect(out.text).toContain('第 3/7 步');
+  });
+
+  it('★ 方案里留空的一条当场拒，不静默吞掉', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+
+    await expect(
+      tool.execute(
+        {
+          destination: 'board',
+          summary: '盯库存',
+          see: ['一眼', '  '],
+          do: ['一点'],
+          agent: ['一件'],
+          data: ['一处'],
+        },
+        exec,
+      ),
+    ).rejects.toThrow(/invalid plan: see\[1\]/);
+  });
+
+  it('★ 字符画没图注或没内容都当场拒', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+
+    await expect(
+      tool.execute(
+        {
+          destination: 'board',
+          summary: '盯库存',
+          see: ['一眼'],
+          do: ['一点'],
+          agent: ['一件'],
+          data: ['一处'],
+          shots: [{ caption: '卡片', ascii: '   ' }],
+        },
+        exec,
+      ),
+    ).rejects.toThrow(/shots\[0\]\.ascii/);
+  });
+
+  it('★ 回话带上第几步、还剩几步', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+
+    const out = (await tool.execute(
+      {
+        destination: 'board',
+        summary: '盯库存',
+        see: ['一眼'],
+        do: ['一点'],
+        agent: ['一件'],
+        data: ['一处'],
+      },
+      exec,
+    )) as { index: number; total: number; remaining: number };
+
+    expect(out.index).toBe(3);
+    expect(out.total).toBe(7);
+    expect(out.remaining).toBe(4);
   });
 
   it('★ 判成一次性：当场收尾，不再往下走', async () => {

@@ -1,7 +1,8 @@
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { sessionIdOf } from '@dsh-workbench/shared/host';
 import { DIY_PLAN_TOOL } from '../../unit';
-import { OUTPUT, plainJson } from '../diy-context';
+import { plainJson } from '../diy-context';
+import { textOutput } from '../tool-output';
 import { planStep, type Destination } from './plan-step';
 import type { DiyFlowRuns } from './runs';
 
@@ -11,20 +12,40 @@ function asText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function asList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((one) => (typeof one === 'string' && one.trim() !== '' ? [one.trim()] : []));
-}
-
 function asShots(value: unknown): { caption: string; ascii: string }[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((one) => {
-    if (typeof one !== 'object' || one === null) return [];
-    const shot = one as { caption?: unknown; ascii?: unknown };
+  return value.map((one, at) => {
+    const shot = typeof one === 'object' && one !== null ? (one as { caption?: unknown; ascii?: unknown }) : {};
     const caption = asText(shot.caption);
     const ascii = typeof shot.ascii === 'string' ? shot.ascii : '';
-    return ascii.trim() === '' ? [] : [{ caption, ascii }];
+    if (caption === '') throw new Error(`invalid plan: shots[${at}].caption 不能为空（卡片 / 设置面 / 审批）`);
+    if (ascii.trim() === '') throw new Error(`invalid plan: shots[${at}].ascii 不能为空，画一张空的批卡上看不见`);
+    return { caption, ascii };
   });
+}
+
+const SECTIONS = [
+  ['see', '一眼看到'],
+  ['do', '你能做'],
+  ['agent', 'AI 能做什么'],
+  ['data', '数据从哪来'],
+] as const;
+
+function validatedSections(record: Record<string, unknown>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [key, label] of SECTIONS) {
+    const raw = record[key];
+    if (!Array.isArray(raw)) throw new Error(`invalid plan: ${key} 要给（${label}）`);
+    const items = raw.map((one, at) => {
+      if (typeof one !== 'string' || one.trim() === '') {
+        throw new Error(`invalid plan: ${key}[${at}] 是空的，删掉或写一句`);
+      }
+      return one.trim();
+    });
+    if (items.length === 0) throw new Error(`invalid plan: ${key} 至少要写一条（${label}）`);
+    out[key] = items;
+  }
+  return out;
 }
 
 export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Array<() => void> {
@@ -34,11 +55,9 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
   const planTool: DshToolDefinition = {
     name: DIY_PLAN_TOOL,
     description:
-      '第一步是需求确认：先一句话问清她要什么（看哪份数据、哪个环节不顺、多久看一次），等她回答；' +
-      '她回答过之后再调这个工具，summary 用她的话复述。没问过就别调。' +
-      '然后判去向：看板、一次性、用现成的、改道、还是没看板。判成看板才会往下走，其余当场收尾。' +
-      '判成看板时四段必填（see / do / agent / data）：一眼看到、你能做、AI 能做什么、数据从哪来；' +
-      '再给一两张 shots（拿界面真实文案画的字符画），批卡上就照这些画。',
+      '要给她做一个面板模块、动手之前用它：先说清她要什么（先问、等她回答），再判去向。' +
+      '一次性任务、用现成的、只是问问题都别调。' +
+      '每次都是整份方案：四段（see/do/agent/data）必填，加一两张 shots；改方案就整份重发。',
     parameters: {
       type: 'object',
       properties: {
@@ -47,7 +66,7 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
           enum: [...DESTINATIONS],
           description: 'ready=用现成的 / once=一次性 / reroute=改道 / board=看板 / headless=没看板',
         },
-        summary: { type: 'string', description: '一句话复述她要什么，用她的话。' },
+        summary: { type: 'string', description: '一句话复述她要什么，用她的话（她说过的原话）。' },
         cells: { type: 'string', description: '看板几格。' },
         steps: { type: 'string', description: '几步：抓一次 → 判定 → 出卡。' },
         minutes: { type: 'string', description: '大概几分钟。' },
@@ -63,19 +82,25 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
             required: ['caption', 'ascii'],
           },
         },
-        see: { type: 'array', description: '她一眼看到什么。', items: { type: 'string' } },
-        do: { type: 'array', description: '她自己能点或能改的。', items: { type: 'string' } },
+        see: { type: 'array', description: '她一眼看到什么，整份重发。', items: { type: 'string' } },
+        do: { type: 'array', description: '她自己能点或能改的，整份重发。', items: { type: 'string' } },
         agent: {
           type: 'array',
-          description: 'agent 能替她做什么（写之前要不要批准）。',
+          description: 'AI 能替她做什么（写之前要不要批准），整份重发。',
           items: { type: 'string' },
         },
-        data: { type: 'array', description: '数据从哪来、用谁的登录、读还是写。', items: { type: 'string' } },
+        data: { type: 'array', description: '数据从哪来、用谁的登录、读还是写，整份重发。', items: { type: 'string' } },
       },
-      required: ['destination', 'summary', 'see', 'do', 'agent', 'data'],
+      required: ['destination', 'summary'],
       additionalProperties: false,
     },
-    output: OUTPUT,
+    output: textOutput({
+      step: { type: 'string' },
+      index: { type: 'number' },
+      total: { type: 'number' },
+      remaining: { type: 'number' },
+      done: { type: 'boolean' },
+    }),
     async execute(raw: unknown, exec: DshToolRunContext) {
       const session = sessionIdOf(exec);
       if (session === null) throw new Error('这条会话没有 id，推进不了流程');
@@ -86,6 +111,9 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       }
       const summary = asText(record['summary']);
       if (summary === '') throw new Error('summary 不能为空：用她的话复述一遍');
+      const board = destination === 'board';
+      const sections = board ? validatedSections(record) : {};
+      const shots = asShots(record['shots']);
 
       const result = await planStep(runs, session, {
         destination,
@@ -93,11 +121,11 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         ...(asText(record['cells']) === '' ? {} : { cells: asText(record['cells']) }),
         ...(asText(record['steps']) === '' ? {} : { steps: asText(record['steps']) }),
         ...(asText(record['minutes']) === '' ? {} : { minutes: asText(record['minutes']) }),
-        ...(asShots(record['shots']).length === 0 ? {} : { shots: asShots(record['shots']) }),
-        ...(asList(record['see']).length === 0 ? {} : { see: asList(record['see']) }),
-        ...(asList(record['do']).length === 0 ? {} : { do: asList(record['do']) }),
-        ...(asList(record['agent']).length === 0 ? {} : { agent: asList(record['agent']) }),
-        ...(asList(record['data']).length === 0 ? {} : { data: asList(record['data']) }),
+        ...(shots.length === 0 ? {} : { shots }),
+        ...(sections['see'] === undefined ? {} : { see: sections['see'] }),
+        ...(sections['do'] === undefined ? {} : { do: sections['do'] }),
+        ...(sections['agent'] === undefined ? {} : { agent: sections['agent'] }),
+        ...(sections['data'] === undefined ? {} : { data: sections['data'] }),
       });
 
       if (!result.ok) throw new Error(result.text);
