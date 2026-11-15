@@ -14,8 +14,6 @@ import { registerDiyTools } from './model/diy-tools';
 import { inferredAuthorOf, publishPreviewOf } from '@/shared/api/host/diy-publish-preview';
 import { stopObservers, withObserverCleanup } from './model/diy-observers';
 import { diyDebugRoutes } from './model/diy-debug-routes';
-import { flowStopAction } from './model/flow/stop-action';
-import type { AgentsLookup } from '@/shared/api/host/diy-debug-act';
 import { diyRecordRoutes } from './model/diy-record-routes';
 import { registerRecordTools } from './model/diy-record-tools';
 import { releaseQuietly } from './model/diy-record';
@@ -328,10 +326,6 @@ export const panelsHost: UnitOwnedFace = {
       },
       actions: [
         marketSourcesAction(marketSources, marketInit),
-        flowStopAction({
-          runs: diyRuns,
-          agents: () => ctx.get('agents') as AgentsLookup | undefined,
-        }),
       ],
       prefs: { resource: PANELS_PREF_RESOURCE, handle: (payload: unknown) => applyPanelsPref(panels, payload) },
       provision: {
