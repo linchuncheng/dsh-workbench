@@ -15,7 +15,7 @@ dsh-wb-module check     # 十四条判据：契约 / 声明协议 / 产物边界
 dsh-wb-module check --only cards   # 十四条可以单跑
 ```
 
-包自带的六个脚本（`build` / `typecheck` / `test` / `selfcheck` 是 `check` 的契约判据要求的那四个；`check` 跑全部判据，`lint` 只跑源码卫生那一条）：
+包自带的八个脚本（`build` / `typecheck` / `test` / `selfcheck` 是 `check` 的契约判据要求的那四个；`check` 跑全部判据，`lint` 只跑源码卫生那一条，`check:duplication` 用 jscpd 查重复代码）：
 
 ```bash
 pnpm build        # 构建产物
@@ -24,6 +24,8 @@ pnpm test         # vitest：路由真读数 + 卡片五态 + 长任务/工具�
 pnpm selfcheck    # 构建 + 把 client.js 当浏览器加载器跑一遍 + 真跑一趟流程 + 走 scripts/smoke.assert.mjs
 pnpm check        # dsh-wb-module check
 pnpm lint         # dsh-wb-module lint（`--fix` 就地改文件；`check` 永不动手）
+pnpm run check:duplication   # jscpd 扫 src / scripts，有克隆就红
+pnpm run duplication:report  # 全量报告到 coverage/duplication/
 ```
 
 ## 需求底稿（做之前填，做完自己逐条走一遍）
@@ -52,9 +54,10 @@ pnpm lint         # dsh-wb-module lint（`--fix` 就地改文件；`check` 永�
 
 | 文件 | 是什么 | 层 |
 |---|---|---|
-| `package.json` | 自述清单：`dsh.workbench.unit` = `__UNIT__`、两个面（`src/host.ts` / `src/client.tsx`）、八个脚本、peer 下限 | — |
+| `package.json` | 自述清单：`dsh.workbench.unit` = `__UNIT__`、两个面（`src/host.ts` / `src/client.tsx`）、十个脚本、peer 下限 | — |
 | `arch.config.mjs` | 本模块的架构方言：`moduleArch()`（`src/host/**` 默认在层序里）—— 层序表 / 两个运行时 / 阈值只有 `@dsh-workbench/module-tools/arch` 那一份，随工具链同代 | — |
 | `eslint.config.mjs` | 本模块的**语法卫生方言**，同样两行：`moduleLint()` —— 规则表只有 `@dsh-workbench/module-tools/lint` 那一份（`console` / `as any` / hooks 那几条 / 手搓颜色与 `!important`）；要开口子就 `moduleLint({ rules })` | — |
+| `.jscpd.json` | 重复代码：扫 `src` / `scripts` 的 TS / JS（不含测试与产物），阈值 0 —— 有克隆就红；`pnpm run duplication:report` 出全量报告 | — |
 | `cordis.patch.yml` | 插进 dsh 组合的补丁 | — |
 | `design.json` | 三张表 + 状态矩阵 + 数据源记录 + 验收清单（**唯一真相**，上面那段由它生成；`dsh-wb-module design check/render/accept` 读写它） | — |
 | `src/model/overview.ts` | 纯逻辑：类型 + 五态状态机 + `formatBytes`。两个运行时都读得到，不碰 react / kit / dsh / `node:*` | 1 |
@@ -179,7 +182,7 @@ GET /api/__UNIT__/overview?path=<绝对路径>&limit=<1..50>
 
 ## 开发与发布
 
-开发命令见上面的六个脚本；dsh / 工作台的模块约束见工作台模块指引（随外壳出货）；agent 的工作说明见 `AGENTS.md`。
+开发命令见上面的八个脚本；dsh / 工作台的模块约束见工作台模块指引（随外壳出货）；agent 的工作说明见 `AGENTS.md`。
 
 发布（维护者确认之后）：`dsh-wb-module release --target team|public|tarball|git`；
 `--dry-run` 只预览，`--verify` 只核已发布的包。

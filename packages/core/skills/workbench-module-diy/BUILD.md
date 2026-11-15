@@ -39,13 +39,13 @@ pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description 
 ``<unit>`：小写短横线，同时是单元 id、包名后缀与样式前缀；全局唯一（与已安装模块、外壳单元冲突时，注册会抛错）。
 `<目录>` 是模块的创建位置：在某个工作区里时，选择它 glob 覆盖的目录（`packages/`、`apps/`、`modules/` 等均可）；
 也可以使用独立目录，此时这个包自己就是根。
-生成的骨架默认能通过 `check`；`selfcheck` 还包含 `design check`，要等设计底稿填写完成才会通过（共 8 个脚本）。**只有一个模板**：`--template diy`（默认），
+生成的骨架默认能通过 `check`；`selfcheck` 还包含 `design check`，要等设计底稿填写完成才会通过（共 10 个脚本）。**只有一个模板**：`--template diy`（默认），
 包含真实数据源、五态卡片，以及可运行的长任务 / 工具 / 动作通道样板；维护两份模板的成本无人承担。
 
 骨架分层：`src/model/**`（纯逻辑）、`src/components/**`（视图 + 同目录 `*.module.css`）、
 `src/messages.ts`、`src/host.ts`（宿主面）+ `src/host/**`（宿主侧内部实现，
 `moduleArch()` 默认认这一层）、`src/client.tsx`、`scripts/smoke.mjs` +
-`scripts/smoke.assert.mjs`、`design.json`。模板原文可直接阅读。几个不明显的点：
+`scripts/smoke.assert.mjs`、`design.json`、`.jscpd.json`。模板原文可直接阅读。几个不明显的点：
 
 宿主面注册部分（`name` / `inject` / `apply`）使用 `@dsh-workbench/shared/host` 的
 `defineUnitHostPlugin`；写工具的审批口径用 `writeApprovalOf`；`recordOf` / `textOf` 也从那里获取，
@@ -65,9 +65,11 @@ pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description 
 
 用 `pnpm exec dsh-wb-module …`；命令、`--only` 判据名与模板参数看 `--help` / `check --list`，不在指引里抄。
 `package.json` 至少保留 `build` / `typecheck` / `test` / `selfcheck` 四个脚本，`contracts` 点名缺失；
-模板自带 8 个（另含 `check` / `lint` / `design` / `prepack`）。
+模板自带 10 个（另含 `check` / `check:duplication` / `duplication:report` / `lint` / `design` / `prepack`）。
 
 - `check` 不会运行 `pnpm test`；状态、换算与边界测试需要自行运行。
+- `check:duplication` 用 jscpd 扫 `src` / `scripts`（阈值与忽略面在 `.jscpd.json`），有克隆就红；
+  `duplication:report` 把 HTML / JSON 报告出到 `coverage/duplication/`。它不在 `check` 链里，改完源码要单独跑。
 - 「不适用」不等于「通过」：`standalone` 需要外壳源码在场，`markers` 只扫描公开包（DIY 模块 `private`）。
   汇总行会列出未检查项。
 

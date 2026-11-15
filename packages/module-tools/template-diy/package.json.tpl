@@ -15,6 +15,8 @@
     "test": "vitest run",
     "selfcheck": "dsh-wb-module build && dsh-wb-module design check && node scripts/smoke.mjs",
     "check": "dsh-wb-module check",
+    "check:duplication": "jscpd src scripts",
+    "duplication:report": "jscpd src scripts --reporters html,json --output coverage/duplication",
     "lint": "dsh-wb-module lint",
     "design": "dsh-wb-module design",
     "prepack": "dsh-wb-module build"
@@ -48,6 +50,7 @@
     "@dsh-workbench/module-tools": "__SHELL_RANGE__",
     "@types/node": "^24.19.0",
     "@types/react": "^19.3.0",
+    "jscpd": "5.4.2",
     "react": "^19.3.0",
     "typescript": "5.9",
     "vitest": "^5.0.2"

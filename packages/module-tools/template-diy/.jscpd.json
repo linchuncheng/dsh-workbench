@@ -1,0 +1,15 @@
+{
+  "format": ["typescript", "tsx", "javascript", "jsx"],
+  "minLines": 5,
+  "minTokens": 50,
+  "threshold": 0,
+  "ignore": [
+    "**/node_modules/**",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.d.ts"
+  ]
+}

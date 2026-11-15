@@ -43,7 +43,7 @@ pnpm design check # 设计底稿有没有空格、readme.json / README / DEVELOP
 同一个市场里，一个模块 id（`dsh.workbench.unit`）只能被一个条目使用；产物目录按包名走
 （`artifacts/<包名>/`）：换一个包名沿用旧 unit、或两个条目撞同一个 id / 目录，都会被拒。
 
-骨架自带脚本，日常不用记长命令：`build` · `typecheck` · `test` · `selfcheck` · `check` · `lint` · `design`。
+骨架自带脚本，日常不用记长命令：`build` · `typecheck` · `test` · `selfcheck` · `check` · `check:duplication` · `duplication:report` · `lint` · `design`。
 
 ## 命令
 
