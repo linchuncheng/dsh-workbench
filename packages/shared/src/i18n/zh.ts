@@ -769,6 +769,7 @@ export const zh = {
   'record.act.halt': '停',
   'rightbar.flow.label': '流程进度',
   'rightbar.flow.title': '进度',
+  'rightbar.flow.steps': '步骤',
   'approval.plan.see': '一眼看到',
   'approval.plan.do': '你能做',
   'approval.plan.agent': 'AI 能做什么',

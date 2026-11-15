@@ -773,6 +773,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'record.act.halt': 'Halt',
   'rightbar.flow.label': 'Flow progress',
   'rightbar.flow.title': 'Progress',
+  'rightbar.flow.steps': 'Steps',
   'approval.plan.see': 'At a glance',
   'approval.plan.do': 'You can',
   'approval.plan.agent': 'What the AI can do',
