@@ -17,6 +17,13 @@
 | 控制台 | `_logs_watch` → 操作 → `_logs_read` → `_logs_stop` |
 | 抓「用户点了之后发了什么」 | `_record_prepare` → 用户操作 → `_record_read` → `_record_detail` → `_record_stop` |
 
+## 1b 借来的七把
+
+DIY 包里还带着管理族的七把，因为工坊里会用到：`panels_hide`（只把一格收起来，不问）、
+`modules_list` / `modules_install` / `modules_install_bundle` / `modules_uninstall`（装现成的、卸掉，要问）、
+`long_tasks_list` / `long_tasks_stop`（看住/停掉正在跑的长任务，停要问）。
+其余管理工具（升级、换实现、插件装卸、市场源配置、面板排序）不在 DIY 会话里；要做得回普通会话。
+
 ## 2 前置
 
 - 只在 DIY 模式的会话出现；面板得画在屏上。

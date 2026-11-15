@@ -105,10 +105,14 @@ export default [
 
 先取证再改代码；某步有结论就停在对应侧修。
 
+**默认只读取证**：第 1、3、4 步与 `read=<地址>` 都不需要审批，先走这一圈。多数问题到这里就有结论，
+不需要动用户的屏幕。
+
 1. `workbench_diy_panel`：每卡的读取状态（宿主码与原文）、是否崩过（原因、次数）。有结论即止。
-2. 看卡片：`workbench_diy_screenshot` / `_html` / `_find` / `_eval`，作用于用户当前页的该卡（`unit=…`）。
-   这一族（14 把 + `logs_*`）需要先调用 `workbench_diy_debug_start`（`unit=…`，审批一次），否则会被拒绝；
-   `_panel` / `_status` / `read=` 这几档不需要。用完后调用 `_debug_pause`，结束时调用 `_debug_stop`。
+2. 看卡片（**需要真实交互才做**）：`workbench_diy_screenshot` / `_html` / `_find` / `_eval`，作用于用户
+   当前页的该卡（`unit=…`）。这一族（14 把 + `logs_*`）需要先调用 `workbench_diy_debug_start`（`unit=…`，
+   审批一次），否则会被拒绝；`_panel` / `_status` / `read=` 这几档不需要。申请时说清占用范围与大概多久
+   （占用会持续到你喊停或自动暂停）。用完后调用 `_debug_pause`，结束时调用 `_debug_stop`。
 3. `workbench_diy_status`（`unit=…`）：查看「起得来」一行（初始化错误 / 声明被拒原文）。
 4. 直接请求路由：`curl '<工作台地址>/workbench/api/<unit>/<route>'`（默认 `http://127.0.0.1:3081`）。
    接口对 → 渲染侧；接口错 → 宿主侧（按 [DATASOURCE.md](DATASOURCE.md) 重探）。需要在页面内请求时用
@@ -117,5 +121,6 @@ export default [
    宿主热换 / 装载错误在启动工作台的终端。
 
 不要求用户截图或转述报错。验收由 agent 用上述工具逐条对照三张表：读数、动作返回、收发包与日志都算证据；
-全部走通后才执行 `design accept`，走不通就记为「未验」。参数与返回保持 opencli 原样（[FAMILY.md](FAMILY.md)）。
+结果写成「验过 / 未验」两列贴给用户，未验必须明写「未验」。全部走通后才执行 `design accept`，走不通就
+记为「未验」。参数与返回保持 opencli 原样（[FAMILY.md](FAMILY.md)）。
 面板运行态由用户页面上报；第 1 步为空时，先让用户切到该工作区并刷新一次。

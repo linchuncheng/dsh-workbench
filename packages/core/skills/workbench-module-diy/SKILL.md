@@ -1,100 +1,177 @@
 ---
 name: workbench-module-diy
-description: 在工作台里查清当前面板的问题，或为它新增一块内容；适用于「这块看板为什么空白 / 这张卡不对 / 它到底发了什么」「我想在面板上看到 X / 加一张卡」「让 agent 读取或写入某个东西」「这件事以后还要运行 / 每次都要 / 固化 workflow / 多步需要等待与重试」这类说法。用户只说明需求，实现与验证由 agent 自行完成。
+description: 在工作台里查清当前面板的问题，或为它新增一块内容。适用于「这块看板为什么空白 / 这张卡不对 / 它到底发了什么」「我想在面板上看到 X / 加一张卡」「帮我盯着它 / 每天看一次 / 卡住了告我一声」「这件事就这一次」「有没有现成的」「让 agent 读取或写入某个东西」「以后每次都要按同样步骤跑」这类说法。先判去向（可能根本不需要模块），再决定问什么；用户只说明需求，实现与验证由 agent 自行完成。
 ---
 
 # workbench-module-diy
 
-| 触发 | 任务 | 前置 |
-|---|---|---|
-| 「这块板空白 / 这张卡不对 / 数据不对 / 它到底发了什么」 | 调：查现有面板 | `workbench_diy_panel` / `_status`；动屏要调试约定 |
-| 「我想在面板上看到 X / 加一张卡」 | 创建：新建模块 | 一个能放代码的包（没有就问用户） |
-| 「这件事以后还要运行 / 每次都要 / 固化 workflow / 多步需要等待与重试」 | **先分叉**：一次性直接执行；固化写一条 workflow | 先询问用户（[FLOW.md](FLOW.md) §1）；需要固化时再进入「创建」 |
-| 「让模型看一眼 / 判断一下 / 从材料里抽结论」 | 用 `deps.ai`（单次 / 长任务步骤 / 流程节点） | [AI.md](AI.md) |
+## 第 0 步：判去向（先做这一步，它能终止整个流程）
 
-> **先分叉**：面对多步、需要等待、需要重试、需要写平台的任务，先询问「只做一次，还是以后都按同样步骤运行」；只做一次就不建模块，需要固化时再按下面的「创建」流程处理。判断与问法见 [FLOW.md](FLOW.md) §1。
+她要的东西不一定是个模块。先判去向，再决定问什么、问几个、交付什么。
 
-「查」交付的是「面板现在怎么样」这一事实；「创建」交付的是面板上可打开的一块内容。两者都不交付技术方案。
+| 去向 | 判据 | 交付什么 | 问她几次 |
+|---|---|---|---|
+| **用现成的** | 市场里有、本机已装只差上板、或 dsh 现成能力（含定时） | 装 / 上板 / 直接用 | 0 |
+| **一次性** | 只做这一次 | 结果进对话 | 入口已明 0，否则 1 |
+| **改道** | 要改 dsh 本身（创造模式）；或要新凭据 / 新服务 / 新依赖（工程域） | 一句指路 + 一个现在就能用的替代 | 0 |
+| **有看板模块** | 每天要瞄一眼，要一格 | 面板上的一个模块（走下面的阶段） | 判断 ≤4 次 |
+| **无看板模块** | 要它替她盯/办，人不看 | 常驻工具 + 一个触发者（[TOOLS.md](TOOLS.md)） | 判断 ≤3 次 |
 
-> **Desktop**：屏调试不可用（`debug_*`、`logs_*`、不带 `read` 的看/动都不会出现）；**站点探索用
-> `read=<地址>`**，**录制 `_record_*` 照旧**，`_panel` / `_status` / build / install 照旧。
-> 验收时别调 `_debug_start`；用 `read` 或录制取证。
+判据只能是「工作台独有能力的正面清单」——脚本层是超集，永远能做，所以不能问「能不能做」。
 
-## 流程
+九项独有能力（碰到至少一项才可能要做模块）：卡片与五态 / 面板行提示与顺序 / 动作路由（要有卡片，
+四条条件缺一不可）/ 长任务（六态、等你处理、侧栏露出）/ 按工作区的模块配置与数据目录 / 站点表
+（登录复用、过期信号、信封、分页）/ 流程引擎（轮询、逐项、子流程、agent 节点）/ 市场 /
+工具包（按需开包）。
 
-**0. 定位**：运行 `workbench_diy_status`，取得 `工作区：<dir>`。
+不算独有的：**能写**（dsh 也能写文件、跑命令，只有落到那两档写缝才算）、**能跑长活**（dsh 自己有
+后台任务与定时，只有六态与「等你处理」才算）。
 
-**查**：按 [REVIEW.md](REVIEW.md) 的四步取证。动屏之前先调用 `workbench_diy_debug_start`（`unit` 可省略；Desktop 跳过）。
-要抓「用户点击之后发了什么」，依次调用 `workbench_diy_record_prepare` → 用户操作 → `_record_read`；结束时调用 `_debug_stop` / `_record_stop`。
-这一步不需要源码、工具链或工坊。
+三道测试：
 
-**先分叉**：用户描述的是多步、需要等待、需要重试、以后还要运行的任务时，先按 [FLOW.md](FLOW.md) §1 询问；只做一次就直接执行，需要固化时再进入「创建」。
+1. **剥离** —— 把工作台卸了，在纯 dsh 里这需求还成立吗？成立 → dsh 侧。
+2. **触碰** —— 碰到九项里至少一项吗？一项都没有 → dsh 侧。
+3. **目的** —— 碰到的那项是这个需求的目的，还是顺手的手段？只是顺手 → 剥掉再做。
 
-**创建**：模块创建在 `<dir>` 下。如果那里没有能放代码的包（没有 `package.json`，或有但未声明 workspace），请让用户二选一：
-在这里建立 workspace，还是使用工坊里的脚手架工作区。不要改动用户仓库结构。
-从「创建模块」入口进入的会话已经在工坊里，此时 `<dir>` 就是工坊。
+输出固定三行，对她说，不是给 agent 的日志：
 
-1. **判域** —— [DESIGN.md](DESIGN.md) §0。输出一句结论 + 下一步。
-2. **确认三张表**：问法见 [STEPS.md](STEPS.md)。只询问用户能决定的事，实现细节不必问。ASCII 画面与三张表当场写入
-   `design.json`（[DESIGN.md](DESIGN.md) §5）。
-3. **先落站点表，再探接口**：见 [DATASOURCE.md](DATASOURCE.md) 第 0 段——先探 origin / 登录页 / 过期信号 /
-   会话 / 超时 / 信封 / 分页，填进清单 `host.sites`，跑一次 `check --only contracts`；再探接口、写**配方**
-   （`design.json` 的 `key + recipe`，配方只写 `site` → `dsh-wb-module sync` → `data.request`）。
-   后一跳要用前一跳结果的写成**读取计划**（`data.plan({ steps })`，不写脚本）；配方和计划都覆盖不了的写
-   `custom: { why }`，并写清三种状态。写操作先读 [WRITES.md](WRITES.md) 的四步与执行体；有写工具时，
-   把审批屏画进 ASCII（[DESIGN.md](DESIGN.md) §3 末节）。
-4. **套用模板**：见 [BUILD.md](BUILD.md) §1–§2。先执行 `pnpm exec dsh-wb-module init <unit> --template diy`，
-   把 `design.json` 改成确认过的那份，再修改数据源与渲染。依赖由 setup 安装，通常无需再安装；
-   确实需要时，请在**工作区根**运行 `pnpm install`（在会话沙箱里运行会报 EPERM：link 目标位于可写根之外）。不要从零编写。
-   修改渲染时按 [COPY.md](COPY.md) 处理文案：先判断读者（卡片给人 / 描述给 agent / 原始输出进 detail）。
-5. **通过门禁**：运行 `dsh-wb-module build`、`check` 与 `design check`；出现失败先自行修复（[REVIEW.md](REVIEW.md)），
-   不要把报错原样抛给用户。
-6. **安装并添加到看板**：调用 `workbench_diy_install`（`unit=…`）。只需安装一次；之后用 `dsh-wb-module build` 即可。
-   状态不明确时询问 `workbench_diy_status`（`unit=…`）；只缺「添加到看板」这一步时调用 `workbench_diy_show`。安装不需要审批。
-7. **验收**：对照三张表，在真卡片上依次走「打开哪 → 看什么 → 点什么 → 应该看到什么」。
-   看屏或动屏之前先调用 `workbench_diy_debug_start`（否则整族工具都会被拒绝；Desktop 跳过，改用 `read=` 或录制）；`_panel` / `_status` / `read=` 这几档不需要。
-   工具全表见 [FAMILY.md](FAMILY.md)。全部走通后才执行 `dsh-wb-module design accept`；走不通就如实记为「未验」。
-   需要审批的项标注「要你真用一次」，不要打勾。结论只报告：是否已安装、在面板哪一格。
-8. **发布**：只在用户说「帮我发布」之后调用 `workbench_diy_publish`（`unit=…`）。如果这一版还没有更新日志，就带上 `changelogNote`（一行一条），
-   发布时一并写进 `CHANGELOG.md` 并随包发布，审批屏会展示将要写入的那一段。
-   如果还没有市集标签，就自行挑选 1–2 个短词放进 `labels`（说明它的用途，例如「发布编排」「构建状态」）；已有标签则不必传。
-   不要手动修改 `package.json`，不要补标题或署名，也不要询问发布出口：工具与审批屏已经处理；只有用户明确点名安装包 / 公开 / git 时才传 target。
-   只有用户要求更换作者时才传 `author="姓名 <邮箱>"`，不要自行编造；没有写作者时，审批屏会显示推断的署名，用户拒绝后再处理。
-   市场里一个包名归第一次发布的人所有：更换署名发布同名包会被拒绝；如果用户确实是接手的人，请让维护者先修改那一条的 `owner`。
-   一个 unit 在同一个市场里只能有一个条目：更换包名时要把 unit 一起换掉，不要沿用旧的。
-   验收未通过时先执行 `design accept`；收到 `needsUser` 时按 `text` 转述。细节见 [WIRING.md](WIRING.md) §5。
+```
+结论：这件事用不到面板，我直接做，不给你加模块。
+依据：不用一格显示、不用登站点、不用等你处理。
+要改就说：你要是希望以后每天在面板上看见它，我改成模块。
+```
+
+用词只用她见过的：**面板**、**模块**。不出现「看板」「长流程」「插件」——「插件」在本仓还指 opencli 插件。
+
+**不确定时往轻处错**：先一次性或先无看板，别先做卡片。事后升级便宜，拆掉等于重来。
+
+## 流程（判到「要做模块」之后）
+
+**A 接住需求**：入口会带一句草稿。先复述你理解到的需求（一行），再进判定。不要先提问。
+
+**B 判定**：按上面九项与三道测试，给出三行输出。
+
+**C 确认**（按去向给不同的确认物）：
+
+- 有看板 → 一张 ASCII 卡片（画法见 [DESIGN.md](DESIGN.md) §3），让她指着说「这格不对」。
+- 无看板 → 三行「它替你做这三件事 + 谁触发 + 上次何时跑、在哪看」。
+- 一次性 → 一句时间承诺（「十分钟后把结果放这儿」）。
+- 用现成 / 改道 → 一句「装这个 / 放这格」或一句指路 + 一个替代。
+
+**判断预算按内容决策算**，不按问句算：出草图算一次，改草图算一次，二选一算一次。复述与
+「还是这些吗」不计。超出预算就停手，按推荐走并标注假设。「随便你定」是合法答案，不追问。
+
+**D 动工**：顺序固定 —— 站点表 → 接口 → 配方 → 模板 → 构建（见 [STEPS.md](STEPS.md) 步骤 0.5
+与 [DATASOURCE.md](DATASOURCE.md) 第 0 段）。每完成一步，用一句话报进度；不许沉默超过两分钟。
+
+**E 装**：`workbench_diy_install`（`unit=…`，不需要审批）；要撤就 `workbench_modules_uninstall`（`id=…`，连包一起，要审批）。三种结果各说清：直接生效 / **需要退出工作台
+再打开一次**（不给按钮、不说稍后）/ 装不上（说人话 + 下一步）。状态不明确时问 `workbench_diy_status`。
+
+**三种情况下一定要说话**（不要让屏幕沉默）：
+
+- **构建失败**：说「代码写好了但没通过检查，正在修，不用你做任何事」；两轮修不好再说「卡在哪一步、
+  下一步怎么办」，不要贴报错原文。
+- **工具被拒**：只有一种要跟她说 —— 模块不在板上，说「这一步要先把模块放到面板上」；工具包没开、
+  桌面端没有页调试这两种，自己解决，别拿去烦她。
+- **要重启**：说「**需要退出工作台再打开一次**」，说完就等，不要再劝、不要给按钮。
+
+**F 验**：默认只读取证（`_panel`、`_status`、`read=<地址>`、直连路由），五态逐条；结果写成
+「验过 / 未验」两列贴给她，未验必须明写。确需真实交互才申请屏调试，并说清占用范围与大概多久
+（[REVIEW.md](REVIEW.md)）。**全部走通后才** `design accept`；走不通如实记「未验」，不要打勾。
+
+**G 交代**：固定三句话 —— 装在哪（面板第几格，或「它没有格子，是一把工具」）；现在能做的一件事；
+以后怎么改（说「改某某模块」就行，先复述上次设定）。
+
+**H 沉淀**：`design.json` 落盘；模块 `README.md` 从 `readme.json` 生成。
+
+## 这个会话只有 DIY 一个包
+
+它装着工坊族 33 把（状态 / 面板 / 安装 / 显示 / 发布 / 页面 / 日志 / 录制 / 调试），
+外加从管理族借来的七把：`panels_hide`、`modules_list`、`modules_install`、
+`modules_install_bundle`、`modules_uninstall`、`long_tasks_list`、`long_tasks_stop`。
+
+`manage` 包在 DIY 会话里**不提供**，也不要试着开。升级模块、换实现、装插件、改市场源、调面板顺序
+这些不在这个会话里做，回普通会话。
+
+审批口径一句话：**「加自己的、能撤的」不问；「引外来的、删掉的、占屏的、发出去的」问。**
+所以 `_install` / `_show` / `panels_hide` 不问；装外部包、卸模块、停长任务、开屏调试、录制、发布要问。
+
+## 无看板模块的三条硬约束
+
+1. 工具**必须常驻**（清单里 `onDemand: false`）。没有卡片时工具包默认关着，非常驻工具调不到。
+2. 必须交付一个**触发者**：dsh 的定时任务，或「你说一句我就跑」。定时能力属 dsh，但「谁触发」
+   是这个模块的交付物。
+3. 交代里必须有一句「它上一次什么时候跑过、在哪儿看」。
+
+这一档**不建 `design.json` 的面板表**，也**不跑 `design check`**（它要求面板表非空）；替代门禁是
+`build` + `check` + 真的跑一次给她看。`README.md` 手写。
+
+## 改已有模块
+
+她说「这个数不对 / 改一下」时，不要重新访谈：
+
+1. 读模块根 `design.json`。
+2. 复述三行：看什么（`panel[].cell`）/ 哪几格（`panel[]`）/ 什么时候会变（`linkage[].when`）。
+3. 只问「还是这些吗，要改哪一条」。
+
+## 查（她说面板不对时）
+
+按 [REVIEW.md](REVIEW.md) 的四步取证。「查」交付的是「面板现在怎么样」这一事实，不交付技术方案。
+要抓「她点击之后发了什么」，依次调用 `workbench_diy_record_prepare` → 用户操作 → `_record_read`；
+结束调 `_debug_stop` / `_record_stop`。
+
+> **Desktop**：屏调试不可用（`debug_*`、`logs_*`、不带 `read` 的看/动都不会出现）；站点探索用
+> `read=<地址>`，录制 `_record_*` 照旧，`_panel` / `_status` / build / install 照旧。
+
+## 创建落点
+
+模块创建在 `workbench_diy_status` 给出的「工作区：<dir>」下。那里没有能放代码的包时，让她二选一：
+在这里建 workspace，还是用工坊的脚手架工作区。不要改动她仓库的结构。
+从「创建模块」入口进来的会话已经在工坊里。
+
+套模板见 [BUILD.md](BUILD.md) §1–§2：先 `pnpm exec dsh-wb-module init <unit> --template diy`，
+再改数据源与渲染。依赖由 setup 装好；确实要装时在**工作区根**跑 `pnpm install`（会话沙箱里会 EPERM）。
+不要从零编写。渲染文案按 [COPY.md](COPY.md)：先判读者（卡片给人 / 描述给 agent / 原始输出进 detail）。
+
+## 发布
+
+只在她说「帮我发布」之后调用 `workbench_diy_publish`（`unit=…`）。缺更新日志就带 `changelogNote`；
+缺市集标签就挑 1–2 个短词放进 `labels`。不要手改 `package.json`，不要补标题或署名，也不要问她发布出口。
+发布工具返回 `needsUser` 时按 `text` 转述。细节见 [WIRING.md](WIRING.md) §5。
 
 ## 索引
 
 | 需要 | 读 |
 |---|---|
-| 判域、三张表、ASCII 规则 | [DESIGN.md](DESIGN.md) |
-| 一次性还是固化、workflow 怎么写 | [FLOW.md](FLOW.md) |
+| 去向判定的细节、三张表、ASCII 规则 | [DESIGN.md](DESIGN.md) |
 | 步骤与完成判据 | [STEPS.md](STEPS.md) |
+| 一次性还是固化、workflow 怎么写 | [FLOW.md](FLOW.md) |
 | 探测数据源、固化读、错误码 | [DATASOURCE.md](DATASOURCE.md) |
 | 站点表：先探站点，再探接口 | [SITES.md](SITES.md) |
 | 写通道四步、回读、撤销 | [WRITES.md](WRITES.md) |
 | 面板内容、状态矩阵、界面规则 | [PANEL.md](PANEL.md) |
 | 选组件、表单、hooks | [KIT.md](KIT.md) |
 | agent 能力、审批、长任务、外部供给 | [TOOLS.md](TOOLS.md) |
-| 文案：三类读者、语域、界面句 / 技术细节、人 / agent / 开发 | [COPY.md](COPY.md) |
+| 文案：三类读者、语域、界面句 / 技术细节 | [COPY.md](COPY.md) |
 | DIY 工具族的参数与返回 | [FAMILY.md](FAMILY.md) |
 | 面板何时刷新、事实名 | [LINKAGE.md](LINKAGE.md) |
 | 落点、模板文件、命令、两个面 | [BUILD.md](BUILD.md) |
 | 起子进程、写入域（执行缝门面） | [BUILD.md](BUILD.md) §5 |
 | 依赖、禁区、安装、热换、发布 | [WIRING.md](WIRING.md) |
 | 门禁报错、卡片故障取证 | [REVIEW.md](REVIEW.md) |
+| 让模型看一眼、判断一下 | [AI.md](AI.md) |
 
 ## 查不到时
 
 1. `dsh-wb-module check --only <判据>` 的报错原文。
-2. kit、dsh 原语与 CSS 令牌：调用 `workbench_diy_components`（DIY 会话中可用；令牌用 `scope: 'tokens'`，现读现返回）；
-   工程域使用 `check --only kit` / `--only primitives`。
+2. kit、dsh 原语与 CSS 令牌：调用 `workbench_diy_components`（令牌用 `scope: 'tokens'`）；
+   工程域用 `check --only kit` / `--only primitives`。
 3. 模板：`node_modules/@dsh-workbench/module-tools/template-diy/`。
-4. 安装包的类型面：`node_modules/@dsh-workbench/core/dist/types/**`；本指引：`node_modules/@dsh-workbench/core/skills/workbench-module-diy/**`。
+4. 安装包的类型面：`node_modules/@dsh-workbench/core/dist/types/**`；本指引：
+   `node_modules/@dsh-workbench/core/skills/workbench-module-diy/**`。
 
 ## 硬约束
 
-- dsh 已有的能力从 `kit` 获取（`@dsh-workbench/core/client`）；不要手写 DOM 与 CSS，也不要直接 import dsh 的包。
-- DIY 模块默认 `private: true`，不发布到任何来源；用户确认后走 `workbench_diy_publish`。
+- dsh 已有的能力从 `kit` 取（`@dsh-workbench/core/client`）；不要手写 DOM 与 CSS，也不要直接 import dsh 的包。
+- DIY 模块默认 `private: true`，不发布到任何来源；她确认后才走 `workbench_diy_publish`。
 - 源码零注释（`//`、块注释、`.css` 注释都不许）；用户说明写模块 `README.md`，作者说明写 `DEVELOPING.md` 或 spec。
