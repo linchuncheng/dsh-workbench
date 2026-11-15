@@ -4,20 +4,18 @@ import { DIY_BOARD_FLOW } from '../model/flow/definitions';
 import { deniedAtStep } from '../model/flow/gate';
 import { createDiyFlowRuns } from '../model/flow/runs';
 
-const UNIVERSE = ['workbench_diy_status', 'workbench_diy_plan', 'write', 'edit', 'bash', 'workbench_modules_install'];
-
-describe('这一步放行什么', () => {
-  it('★★ 判去向没有写工具，建模块才有', () => {
+describe('这一步拒什么', () => {
+  it('★★ 判去向拒写，建模块不拒任何工具', () => {
     const judge = DIY_BOARD_FLOW.steps[0];
     const build = DIY_BOARD_FLOW.steps.find((step) => step.id === 'build');
     if (judge === undefined || build === undefined) throw new Error('定义缺步骤');
 
-    const judgeDenied = deniedAtStep(judge, UNIVERSE);
-    const buildDenied = deniedAtStep(build, UNIVERSE);
+    const judgeDenied = deniedAtStep(judge);
+    const buildDenied = deniedAtStep(build);
 
-    expect([...judgeDenied]).toEqual(expect.arrayContaining(['write', 'edit', 'bash']));
-    expect(judgeDenied.has('workbench_diy_plan')).toBe(false);
-    expect([...buildDenied]).toEqual(['workbench_modules_install']);
+    expect([...judgeDenied]).toEqual(['write', 'edit', 'bash']);
+    expect(judgeDenied.has('workbench_diy_recon')).toBe(false);
+    expect([...buildDenied]).toEqual([]);
   });
 });
 

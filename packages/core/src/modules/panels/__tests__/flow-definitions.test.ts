@@ -75,14 +75,12 @@ describe('DIY 流程定义', () => {
     );
   });
 
-  it('★ 写工具只在「建模块」与「留账」放行，其余步骤都写在定义里', () => {
+  it('★ 写工具只在「建模块」与「留账」不拒，其余步骤都在定义里写明了拒', () => {
     const writeSteps = new Set(['build', 'ledger']);
 
     for (const step of DIY_BOARD_FLOW.steps) {
-      const allowsWrite = (step.tools?.allow ?? []).includes('write');
       const deniesWrite = (step.tools?.deny ?? []).includes('write');
 
-      expect(allowsWrite, step.id).toBe(writeSteps.has(step.id));
       expect(deniesWrite, step.id).toBe(!writeSteps.has(step.id));
     }
   });
