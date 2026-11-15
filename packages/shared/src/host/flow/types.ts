@@ -242,6 +242,32 @@ export interface FlowStepEvent {
  * 跑一条流程要的那几件：流程、输入、动作表、取消信号、身份与进度回调。
  * `sleep` / `now` 可注入，测试里用假时钟；`sessionId` / `agentRunner` / `maxAgents` 只给 agent 节点用。
  */
+/**
+ * 开一条由外部推进的流程：引擎不执行任何步骤，只算条件、报当前步、等外部递结果。
+ */
+export interface FlowOpenOptions {
+  readonly flow: FlowDefinition;
+  readonly input: unknown;
+  readonly workspace: string;
+  readonly onStep: (event: FlowStepEvent) => void;
+  readonly now?: (() => number) | undefined;
+}
+
+/** 现在停在哪一步：位置、步骤标识与人看的标题。 */
+export interface FlowStepPosition {
+  readonly index: number;
+  readonly stepId: string;
+  readonly title: string;
+}
+
+/** 一条进行中的流程：递结果、问当前步、中止。 */
+export interface FlowSession {
+  readonly result: Promise<FlowResult>;
+  current(): FlowStepPosition | null;
+  provide(stepId: string, value: unknown): boolean;
+  abort(): void;
+}
+
 export interface FlowRunOptions {
   readonly flow: FlowDefinition;
   readonly input: unknown;
@@ -338,4 +364,5 @@ export interface FlowCheckOptions {
   readonly agents?: boolean | undefined;
   readonly ai?: boolean | undefined;
   readonly data?: boolean | undefined;
+  readonly external?: boolean | undefined;
 }

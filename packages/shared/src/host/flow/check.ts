@@ -280,6 +280,9 @@ function checkFlowAt(
     if (seen.has(step.id)) add(`${at}.id`, `步骤 id 重复：${step.id}`);
     const shapes = ['flow', 'data', 'agent', 'ai', 'action'].filter((one) => one in step);
     if (shapes.length > 1) add(`${at}`, `一步只能是一种：现在同时有 ${shapes.join(' / ')}`);
+    if (shapes.length > 0 && options.external === true) {
+      add(`${at}`, `这一份流程由外部推进，步骤不能带执行体：现在有 ${shapes.join(' / ')}`);
+    }
 
     if ('flow' in step) {
       if (step.when !== undefined) {

@@ -1,6 +1,6 @@
 import { flowUsesAgents } from './agent.js';
 import { checkFlow } from './check.js';
-import { createFlowActionRegistry, runFlow } from './run.js';
+import { createFlowActionRegistry, openFlow, runFlow } from './run.js';
 import type { AiPort } from '../ai/port.js';
 import type {
   FlowActionRegistry,
@@ -11,7 +11,9 @@ import type {
   FlowDataPort,
   FlowDefinition,
   FlowResult,
+  FlowOpenOptions,
   FlowRunOptions,
+  FlowSession,
 } from './types.js';
 
 const DEFAULT_MAX_AGENTS = 16;
@@ -29,6 +31,7 @@ export interface FlowHost {
     options?: FlowCheckOptions,
   ): FlowCheck;
   run(options: FlowRunOptions): Promise<FlowResult>;
+  open(options: FlowOpenOptions): FlowSession;
 }
 
 export interface FlowHostOptions {
@@ -67,7 +70,9 @@ export function createFlowHost(
         agents: checkOptions?.agents ?? agents !== undefined,
         ai: checkOptions?.ai ?? (aiPort !== undefined && aiPort.supports('text')),
         data: checkOptions?.data ?? (dataPort !== undefined && typeof dataPort.plan === 'function'),
+        ...(checkOptions?.external === undefined ? {} : { external: checkOptions.external }),
       }),
+    open: (openOptions) => openFlow(openOptions),
     run: (runOptions) =>
       runWithAgents(
         {

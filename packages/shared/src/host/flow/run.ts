@@ -15,8 +15,11 @@ import type {
   FlowDataPort,
   FlowDataStep,
   FlowDefinition,
+  FlowOpenOptions,
   FlowResult,
   FlowRunOptions,
+  FlowSession,
+  FlowStepPosition,
   FlowRetry,
   FlowScope,
   FlowStepEvent,
@@ -316,6 +319,77 @@ async function runOne(options: RunOneOptions): Promise<unknown> {
  * @param options 流程、输入、动作表、取消信号、身份与进度回调。
  * @returns 成功 / 失败 / 停止；失败带 `failedStep`。
  */
+export function openFlow(options: FlowOpenOptions): FlowSession {
+  const steps: Record<string, unknown> = {};
+  let current: FlowStepPosition | null = null;
+  let pending: { readonly stepId: string; readonly resolve: (value: unknown) => void } | null = null;
+  let stopped = false;
+  let settle: (result: FlowResult) => void = () => {};
+
+  const emit = (event: FlowStepEvent): void => {
+    try {
+      options.onStep(event);
+    } catch {
+    }
+  };
+
+  const result = new Promise<FlowResult>((resolve) => {
+    settle = resolve;
+  });
+
+  const wait = (stepId: string): Promise<unknown> =>
+    new Promise<unknown>((resolve) => {
+      pending = { stepId, resolve };
+    });
+
+  void (async () => {
+    for (const [index, step] of options.flow.steps.entries()) {
+      if (stopped) break;
+      const title = step.title ?? step.id;
+      if (step.when !== undefined && !evalPredicate(step.when, { in: options.input, steps })) {
+        emit({ stepId: step.id, title, status: 'skipped' });
+        continue;
+      }
+      if (
+        options.flow.stopWhen !== undefined &&
+        evalPredicate(options.flow.stopWhen, { in: options.input, steps })
+      ) {
+        break;
+      }
+      current = { index, stepId: step.id, title };
+      emit({ stepId: step.id, title, status: 'running' });
+      const value = await wait(step.id);
+      pending = null;
+      if (stopped) break;
+      steps[step.id] = value;
+      current = null;
+    }
+    settle({
+      status: stopped ? 'stopped' : 'ok',
+      target: targetOf(options.flow, { in: options.input, steps }),
+      steps,
+    });
+  })();
+
+  return {
+    result,
+    current: () => current,
+    provide(stepId, value) {
+      if (pending === null || pending.stepId !== stepId || stopped) return false;
+      const resolve = pending.resolve;
+      pending = null;
+      resolve(value);
+      return true;
+    },
+    abort() {
+      stopped = true;
+      const waiting = pending;
+      pending = null;
+      waiting?.resolve(undefined);
+    },
+  };
+}
+
 export async function runFlow(options: FlowRunOptions): Promise<FlowResult> {
   const { flow, input, actions, signal, runId, workspace, onStep } = options;
   const sleep = options.sleep ?? defaultSleep;
