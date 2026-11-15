@@ -18,6 +18,7 @@ const STEP_NEXT: Readonly<Record<string, string>> = {
   probe: '做完站探，把读到的站点递上来',
   build: '写完模块，把模块标识递上来',
   install: '安装完成之后，把模块标识与安装结果递上来',
+  plan: '把方案四段和字符画补上（用 workbench_diy_plan）',
   verify: '走完一遍，把通过的与没验的递上来',
   ledger: '把这次的设计文件名递上来',
 };
@@ -68,7 +69,7 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         const reason = typeof record['reason'] === 'string' ? record['reason'].trim() : '';
         if (reason === '') throw new Error('要终止就给一句原因：她在卡上会看到这句话');
         runs.stop(session);
-        return plainJson({ ok: true, step: null, index: 0, total: 0, remaining: 0, done: true, text: `已终止：${reason}` });
+        return plainJson({ ok: true, step: '', index: 0, total: 0, remaining: 0, done: true, text: `已终止：${reason}` });
       }
       const fields = STEP_FIELDS[running.id];
       if (fields === undefined) {
@@ -89,7 +90,7 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       const at = positionOf(step?.id ?? null, destination);
       return plainJson({
         ok: true,
-        step: step?.id ?? null,
+        step: step?.id ?? '',
         index: at.index,
         total: at.total,
         remaining: at.remaining,

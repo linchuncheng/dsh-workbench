@@ -124,7 +124,7 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       });
 
       if (!result.ok) throw new Error(result.text);
-      return plainJson({ ...result });
+      return plainJson({ ...result, step: result.step ?? '' });
     },
   };
 

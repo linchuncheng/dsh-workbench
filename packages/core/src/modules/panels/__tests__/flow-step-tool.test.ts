@@ -53,6 +53,25 @@ describe('流程递交工具', () => {
     expect(runs.stepOf('s-1')).toBeNull();
   });
 
+  it('★★ 最后一步递完：流程收尾，回话里的步骤是空串而不是 null', async () => {
+    const { runs, tool } = rig();
+    runs.start('s-1', { destination: 'headless', summary: '加个查库存的工具' });
+    runs.provide('s-1', { sites: [] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    runs.provide('s-1', { unit: 'stock-tool' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    runs.provide('s-1', { unit: 'stock-tool', installed: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    runs.provide('s-1', { passed: [], unverified: [] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const out = (await tool.execute({ design: 'design.json' }, exec)) as { step: string; done: boolean; text: string };
+
+    expect(out.done).toBe(true);
+    expect(out.step).toBe('');
+    expect(out.text).toContain('走完了');
+  });
+
   it('★ 终止不给原因就拒', async () => {
     const { runs, tool } = rig();
     runs.start('s-1', { destination: 'board', summary: '盯库存' });

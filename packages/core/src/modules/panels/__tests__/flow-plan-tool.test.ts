@@ -119,7 +119,7 @@ describe('计划工具', () => {
     };
 
     expect(out.done).toBe(true);
-    expect(out.step).toBeNull();
+    expect(out.step).toBe('');
     expect(runs.stepOf('s-1')).toBeNull();
   });
 
