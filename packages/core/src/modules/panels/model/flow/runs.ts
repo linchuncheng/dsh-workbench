@@ -1,4 +1,4 @@
-import type { FlowHost, FlowNodeStep, FlowSession } from '@dsh-workbench/shared/host';
+import type { FlowHost, FlowNodeStep, FlowProvideResult, FlowSession } from '@dsh-workbench/shared/host';
 import type { DiyFlow } from './definitions';
 
 interface Run {
@@ -6,11 +6,17 @@ interface Run {
   readonly session: FlowSession;
 }
 
+export interface DiyAdvance {
+  readonly ok: boolean;
+  readonly problem?: string | undefined;
+  readonly step: FlowNodeStep | null;
+}
+
 export interface DiyFlowRuns {
   stepOf(session: string): FlowNodeStep | null;
   start(session: string): FlowNodeStep;
-  provide(session: string, value: unknown): boolean;
-  advance(session: string, value: unknown): Promise<FlowNodeStep | null>;
+  provide(session: string, value: unknown): FlowProvideResult;
+  advance(session: string, value: unknown): Promise<DiyAdvance>;
   stop(session: string): void;
 }
 
@@ -61,24 +67,27 @@ export function createDiyFlowRuns(options: {
 
     provide(session, value) {
       const run = runs.get(session);
-      if (run === undefined) return false;
+      if (run === undefined) return { ok: false, problem: '这条会话没有运行中的流程' };
       const position = run.session.current();
-      if (position === null) return false;
+      if (position === null) return { ok: false, problem: '这条流程已经走完' };
       return run.session.provide(position.stepId, value);
     },
 
     async advance(session, value) {
       const run = runs.get(session);
-      if (run === undefined) return null;
+      if (run === undefined) return { ok: false, problem: '这条会话没有运行中的流程', step: null };
       const before = run.session.current()?.stepId ?? undefined;
-      if (before === undefined) return null;
-      if (!run.session.provide(before, value)) return null;
+      if (before === undefined) return { ok: false, problem: '这条流程已经走完', step: null };
+      const provided = run.session.provide(before, value);
+      if (!provided.ok) return { ok: false, problem: provided.problem, step: stepAt(run) };
       for (let round = 0; round < 20; round += 1) {
         await new Promise((resolve) => setTimeout(resolve, 0));
         const after = run.session.current()?.stepId ?? undefined;
-        if (after !== before) return after === undefined ? null : runs.get(session) === undefined ? null : stepAt(run);
+        if (after !== before) {
+          return { ok: true, step: after === undefined ? null : runs.get(session) === undefined ? null : stepAt(run) };
+        }
       }
-      return stepAt(run);
+      return { ok: true, step: stepAt(run) };
     },
 
     stop(session) {

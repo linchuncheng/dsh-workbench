@@ -1,10 +1,12 @@
 import type { FlowOpenOptions, FlowResult, FlowSession, FlowStepEvent, FlowStepPosition } from './types.js';
 import { evalPredicate } from './expr.js';
 import { targetOf } from './run.js';
+import { schemaProblem } from './schema.js';
 
 export function openFlow(options: FlowOpenOptions): FlowSession {
   const steps: Record<string, unknown> = {};
   let current: FlowStepPosition | null = null;
+  let schemaOfCurrent: unknown;
   let pending: { readonly stepId: string; readonly resolve: (value: unknown) => void } | null = null;
   let stopped = false;
   let settle: (result: FlowResult) => void = () => {};
@@ -40,6 +42,7 @@ export function openFlow(options: FlowOpenOptions): FlowSession {
         break;
       }
       current = { index, stepId: step.id, title };
+      schemaOfCurrent = 'schema' in step ? step.schema : undefined;
       emit({ stepId: step.id, title, status: 'running' });
       const value = await wait(step.id);
       pending = null;
@@ -58,11 +61,15 @@ export function openFlow(options: FlowOpenOptions): FlowSession {
     result,
     current: () => current,
     provide(stepId, value) {
-      if (pending === null || pending.stepId !== stepId || stopped) return false;
+      if (pending === null || pending.stepId !== stepId || stopped) {
+        return { ok: false, problem: `现在不是在等 ${stepId} 的结果` };
+      }
+      const problem = schemaProblem(value, schemaOfCurrent, '结果');
+      if (problem !== null) return { ok: false, problem };
       const resolve = pending.resolve;
       pending = null;
       resolve(value);
-      return true;
+      return { ok: true };
     },
     abort() {
       stopped = true;

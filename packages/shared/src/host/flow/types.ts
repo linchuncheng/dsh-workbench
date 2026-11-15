@@ -279,11 +279,14 @@ export interface FlowStepPosition {
   readonly title: string;
 }
 
+/** 递结果的结果：值不合这一步的约定就拒收，并说清哪里不对。 */
+export type FlowProvideResult = { readonly ok: true } | { readonly ok: false; readonly problem: string };
+
 /** 一条进行中的流程：递结果、问当前步、中止。 */
 export interface FlowSession {
   readonly result: Promise<FlowResult>;
   current(): FlowStepPosition | null;
-  provide(stepId: string, value: unknown): boolean;
+  provide(stepId: string, value: unknown): FlowProvideResult;
   abort(): void;
 }
 

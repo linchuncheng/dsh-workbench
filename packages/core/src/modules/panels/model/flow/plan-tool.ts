@@ -11,12 +11,6 @@ function asText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function requiredOf(schema: Readonly<Record<string, unknown>> | undefined): readonly string[] {
-  const required = schema?.['required'];
-  if (!Array.isArray(required)) return [];
-  return required.filter((one): one is string => typeof one === 'string');
-}
-
 export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Array<() => void> {
   const tools = ctx.get('tools') as DshToolRegistry | undefined;
   if (tools === undefined) return [];
@@ -53,9 +47,6 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       }
       const summary = asText(record['summary']);
       if (summary === '') throw new Error('summary 不能为空：用她的话复述一遍');
-      for (const key of requiredOf(runs.stepOf(session)?.schema)) {
-        if (asText(record[key]) === '') throw new Error(`这一步要填 ${key}（定义里写着）`);
-      }
 
       const result = await planStep(runs, session, {
         destination,
@@ -66,6 +57,7 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         ...(asText(record['sketch']) === '' ? {} : { sketch: asText(record['sketch']) }),
       });
 
+      if (!result.ok) throw new Error(result.text);
       return plainJson({ ...result });
     },
   };

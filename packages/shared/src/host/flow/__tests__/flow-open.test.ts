@@ -26,9 +26,9 @@ describe('open：引擎不执行步骤，由外部逐步推进', () => {
     const { session, events } = openOf();
 
     expect(session.current()).toEqual({ index: 0, stepId: 'a', title: 'A' });
-    expect(session.provide('b', 1)).toBe(false);
+    expect(session.provide('b', 1).ok).toBe(false);
     await tick();
-    expect(session.provide('a', { go: true })).toBe(true);
+    expect(session.provide('a', { go: true }).ok).toBe(true);
     await tick();
     expect(session.current()?.stepId).toBe('b');
     session.provide('b', 2);
@@ -74,7 +74,7 @@ describe('open：引擎不执行步骤，由外部逐步推进', () => {
 
     expect(result.status).toBe('stopped');
     expect(result.steps).toEqual({});
-    expect(session.provide('a', 1)).toBe(false);
+    expect(session.provide('a', 1).ok).toBe(false);
   });
 
   it('★ 外部推进的流程不许带执行体，校验点名那一步', () => {

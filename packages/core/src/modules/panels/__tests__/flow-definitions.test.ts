@@ -48,10 +48,21 @@ describe('DIY 流程定义', () => {
     const { session, events } = openBoard();
     const seen: string[] = [];
 
+    const values: Record<string, unknown> = {
+      judge: { destination: 'board', summary: '盯库存' },
+      plan: { cells: '3' },
+      confirm: true,
+      probe: { sites: [] },
+      build: { unit: 'stock' },
+      install: { unit: 'stock', installed: true },
+      verify: { passed: [], unverified: [] },
+      ledger: { design: 'design.json' },
+    };
+
     for (const stepId of DIY_BOARD_STEPS) {
       expect(session.current()?.stepId).toBe(stepId);
       seen.push(stepId);
-      session.provide(stepId, stepId === 'judge' ? { destination: 'board' } : true);
+      expect(session.provide(stepId, values[stepId])).toEqual({ ok: true });
       await tick();
     }
 
@@ -65,11 +76,11 @@ describe('DIY 流程定义', () => {
   it('★ 非看板去向：判完就结束，后面全部跳过', async () => {
     const { session, events } = openBoard();
 
-    session.provide('judge', { destination: 'once' });
+    expect(session.provide('judge', { destination: 'once', summary: '算个数' })).toEqual({ ok: true });
     const result = await session.result;
 
     expect(result.status).toBe('ok');
-    expect(result.steps).toEqual({ judge: { destination: 'once' } });
+    expect(result.steps).toEqual({ judge: { destination: 'once', summary: '算个数' } });
     expect(events.filter((one) => one.status === 'skipped').map((one) => one.stepId)).toEqual(
       DIY_BOARD_STEPS.slice(1),
     );

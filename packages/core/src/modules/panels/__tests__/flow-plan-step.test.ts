@@ -26,6 +26,7 @@ describe('计划工具推进流程', () => {
       minutes: '5',
     });
 
+    expect(result.ok).toBe(true);
     expect(result.step).toBe('confirm');
     expect(runs.stepOf('s-1')?.id).toBe('confirm');
   });
@@ -38,6 +39,7 @@ describe('计划工具推进流程', () => {
 
     expect(result.done).toBe(true);
     expect(result.step).toBeNull();
+    expect(result.ok).toBe(true);
     expect(runs.stepOf('s-1')).toBeNull();
     expect(ended).toEqual(['s-1']);
   });

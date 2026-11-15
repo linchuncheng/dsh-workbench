@@ -13,6 +13,7 @@ export interface PlanInput {
 }
 
 export interface PlanResult {
+  readonly ok: boolean;
   readonly step: string | null;
   readonly done: boolean;
   readonly text: string;
@@ -40,17 +41,23 @@ export async function planStep(
   }
   if (runs.stepOf(session) === null) runs.start(session);
 
-  let step: FlowNodeStep | null = await runs.advance(session, {
+  const judged = await runs.advance(session, {
     destination: input.destination,
     summary: input.summary,
   });
+  if (!judged.ok) {
+    return { ok: false, step: null, done: false, text: judged.problem ?? '这一次没递上去' };
+  }
+  let step: FlowNodeStep | null = judged.step;
   if (step?.id === 'plan') {
-    step = await runs.advance(session, {
+    const planned = await runs.advance(session, {
       ...(input.cells === undefined ? {} : { cells: input.cells }),
       ...(input.steps === undefined ? {} : { steps: input.steps }),
       ...(input.minutes === undefined ? {} : { minutes: input.minutes }),
       ...(input.sketch === undefined ? {} : { sketch: input.sketch }),
     });
+    if (!planned.ok) return { ok: false, step: null, done: false, text: planned.problem ?? '计划没递上去' };
+    step = planned.step;
   }
 
   if (step === null) {
@@ -61,6 +68,7 @@ export async function planStep(
       headless: '没有看板，先说明能做什么',
     };
     return {
+      ok: true,
       step: null,
       done: true,
       text: `判成「${short[input.destination] ?? input.destination}」，流程到此为止：这一单不进面板。`,
@@ -68,6 +76,7 @@ export async function planStep(
   }
 
   return {
+    ok: true,
     step: step.id,
     done: false,
     text: `停在第 ${step.id} 步（${step.title ?? step.id}）。下一步：${NEXT[step.id] ?? step.id}。`,

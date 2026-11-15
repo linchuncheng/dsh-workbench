@@ -41,11 +41,11 @@ describe('按会话跑的流程', () => {
     const runs = runsOf();
     runs.start('s-1');
 
-    runs.provide('s-1', { destination: 'board' });
+    expect(runs.provide('s-1', { destination: 'board', summary: '盯库存' })).toEqual({ ok: true });
     await Promise.resolve();
 
     expect(runs.stepOf('s-1')?.id).toBe('plan');
-    runs.provide('s-1', true);
+    runs.provide('s-1', { cells: '3' });
     await Promise.resolve();
     expect(runs.stepOf('s-1')?.id).toBe('confirm');
   });
@@ -60,12 +60,12 @@ describe('按会话跑的流程', () => {
     });
     runs.start('s-1');
 
-    runs.provide('s-1', { destination: 'once' });
+    runs.provide('s-1', { destination: 'once', summary: '算个数' });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(ended).toEqual(['s-1']);
     expect(runs.stepOf('s-1')).toBeNull();
-    expect(runs.provide('s-1', true)).toBe(false);
+    expect(runs.provide('s-1', true).ok).toBe(false);
   });
 
   it('★ 停掉之后不再有流程，重复开始会重新起一条', async () => {
