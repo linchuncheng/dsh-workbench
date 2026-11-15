@@ -34,7 +34,7 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
   const planTool: DshToolDefinition = {
     name: DIY_PLAN_TOOL,
     description:
-      '第一步是需求确认：先一句话问清她要什么（看哪份数据、卡在哪个环节、多久看一次），等她回答；' +
+      '第一步是需求确认：先一句话问清她要什么（看哪份数据、哪个环节不顺、多久看一次），等她回答；' +
       '她回答过之后再调这个工具，summary 用她的话复述。没问过就别调。' +
       '然后判去向：看板、一次性、用现成的、改道、还是没看板。判成看板才会往下走，其余当场收尾。' +
       '判成看板时四段必填（see / do / agent / data）：一眼看到、你能做、AI 能做什么、数据从哪来；' +
