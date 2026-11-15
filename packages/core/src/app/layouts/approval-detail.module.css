@@ -27,7 +27,18 @@
 }
 
 .shot {
-  margin-top: var(--wb-len-10);
+  margin: 0;
+}
+
+.shot + .shot {
+  margin-top: var(--wb-len-12);
+}
+
+.shotCode {
+  --dsl-code-block-banner-background-color: var(--dsw-alias-markdown-code-block);
+
+  margin: 0;
+  overflow: hidden;
 }
 
 .shotCaption {

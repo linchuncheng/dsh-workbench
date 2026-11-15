@@ -51,6 +51,7 @@ export function PlanCard({
           <CodeBlock
             code={shot.ascii}
             lang={shot.caption}
+            className={styles.shotCode}
             copyLabel={t('markdown.copy')}
             copiedLabel={t('env.copied')}
           />
