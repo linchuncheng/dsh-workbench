@@ -14,8 +14,7 @@ describe('判成看板才问一句，其余去向不问', () => {
 
     expect(verdict?.kind).toBe('ask');
     const question = verdict?.kind === 'ask' ? verdict.question.zh : '';
-    expect(question).toContain('盯库存低于 10 的');
-    expect(question).toContain('3 格');
+    expect(question).toBe('计划：盯库存低于 10 的');
   });
 
   it('★★ 一次性：不问，直接走', () => {

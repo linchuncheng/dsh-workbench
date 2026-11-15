@@ -6,6 +6,7 @@ import type { MarketSourcesPayload, PublishChangelog, PublishPreview } from '@/k
 import {
   ALL_TOOLS,
   DIY_PUBLISH_TOOL,
+  DIY_PLAN_TOOL,
   DIY_RECORD_PREPARE_TOOL,
   LONG_TASKS_STOP_TOOL,
   MARKET_DISABLE_TOOL,
@@ -34,6 +35,39 @@ function labelsOf(args: Readonly<Record<string, unknown>>): readonly string[] {
   return [
     ...new Set(value.flatMap((one) => (typeof one === 'string' && one.trim() !== '' ? [one.trim()] : []))),
   ];
+}
+
+const PLAN_DESTINATIONS: Readonly<Record<string, string>> = {
+  board: 'approval.plan.destBoard',
+  once: 'approval.plan.destOnce',
+  ready: 'approval.plan.destReady',
+  reroute: 'approval.plan.destReroute',
+  headless: 'approval.plan.destHeadless',
+};
+
+export function planApprovalRows(
+  args: Readonly<Record<string, unknown>>,
+  t: Translate,
+): readonly ApprovalRow[] {
+  const destination = textOf(args, 'destination');
+  const destKey = PLAN_DESTINATIONS[destination];
+  const rows: ApprovalRow[] = [
+    {
+      label: t('approval.plan.destination'),
+      value: destKey === undefined ? t('approval.plan.destBoard') : t(destKey),
+    },
+    { label: t('approval.plan.summary'), value: textOf(args, 'summary') },
+  ];
+  for (const [key, label] of [
+    ['cells', 'approval.plan.cells'],
+    ['steps', 'approval.plan.steps'],
+    ['minutes', 'approval.plan.minutes'],
+    ['sketch', 'approval.plan.sketch'],
+  ] as const) {
+    const value = textOf(args, key);
+    if (value !== '') rows.push({ label: t(label), value });
+  }
+  return rows;
 }
 
 export function recordApprovalRows(
@@ -465,6 +499,9 @@ export function shellApprovalPlan(
   if (input.tool === MODULES_INSTALL_TOOL || input.tool === MODULES_UPDATE_TOOL) {
     const id = textOf(input.args, 'id');
     return { rows: moduleSupplyRows(manifests?.find((one) => one.id === id), id, t) };
+  }
+  if (input.tool === DIY_PLAN_TOOL) {
+    return { rows: planApprovalRows(input.args, t) };
   }
   if (input.tool === DIY_RECORD_PREPARE_TOOL) {
     return { rows: recordApprovalRows(input.args, t), warn: t('approval.record.noSwitch') };

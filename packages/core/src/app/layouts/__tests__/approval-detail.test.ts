@@ -8,6 +8,7 @@ import {
   pluginApprovalRows,
   pluginToolIndexOf,
   publishRows,
+  planApprovalRows,
   recordApprovalRows,
   shellApprovalDetail,
   shellApprovalRenderer,
@@ -161,6 +162,37 @@ describe('发布审批：版本单独一行，仓库 / 分支 / 两个 commit �
       t,
     );
     expect(path.find((row) => row.label === '打包文件位置')?.value).toBe('已被 @demo/other 占用');
+  });
+});
+
+describe('计划审批：把她要的那件事摊成几行', () => {
+  it('★★ 去向、复述与几格几步都来自参数', () => {
+    const rows = planApprovalRows(
+      {
+        destination: 'board',
+        summary: '盯库存低于 10 的',
+        cells: '3 格',
+        steps: '3 步',
+        minutes: '5 分钟',
+        sketch: '最久卡着 · 金额 · 部门',
+      },
+      t,
+    );
+
+    expect(rows.map((row) => [row.label, row.value])).toEqual([
+      ['去向', '看板'],
+      ['复述', '盯库存低于 10 的'],
+      ['几格', '3 格'],
+      ['几步', '3 步'],
+      ['多久', '5 分钟'],
+      ['样子', '最久卡着 · 金额 · 部门'],
+    ]);
+  });
+
+  it('★ 只填了复述就只画两行，不出现空行', () => {
+    const rows = planApprovalRows({ destination: 'board', summary: '盯库存' }, t);
+
+    expect(rows.map((row) => row.label)).toEqual(['去向', '复述']);
   });
 });
 

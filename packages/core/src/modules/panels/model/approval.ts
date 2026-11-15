@@ -236,21 +236,8 @@ export function confirmVerdictFor(call: ApprovalCall): ApprovalVerdict | undefin
   if (raw['destination'] !== 'board') return { kind: 'allow' };
   const summary = textOf(raw, 'summary');
   if (summary === '') return { kind: 'allow' };
-  const bits = [
-    textOf(raw, 'cells') === '' ? '' : `${textOf(raw, 'cells')} 格`,
-    textOf(raw, 'steps') === '' ? '' : `${textOf(raw, 'steps')} 步`,
-    textOf(raw, 'minutes') === '' ? '' : `约 ${textOf(raw, 'minutes')} 分钟`,
-  ].filter((one) => one !== '');
-  const sketch = textOf(raw, 'sketch');
-  const body = [bits.join(' · '), sketch].filter((one) => one !== '').join('\n');
-  return askOf(
-    'diy plan: build a board card once the user approves the plan',
-    pair(
-      `计划：${summary}${body === '' ? '' : `\n${body}`}\n就这样动手，允许吗？`,
-      `Plan: ${summary}${body === '' ? '' : `\n${body}`}\nStart building?`,
-    ),
-    pair(`计划：${summary}`, `Plan: ${summary}`),
-  );
+  const title = pair(`计划：${summary}`, `Plan: ${summary}`);
+  return askOf('diy plan: build a board card once the user approves the plan', title, title);
 }
 
 export function publishVerdictFor(
