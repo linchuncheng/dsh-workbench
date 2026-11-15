@@ -47,8 +47,11 @@ describe('计划工具', () => {
   });
 
   it('★ 方案里留空的一条当场拒，不静默吞掉', async () => {
-    const { tool, exec } = rig();
+    const { tool, exec, runs } = rig();
     if (tool === undefined) throw new Error('没有注册上');
+    runs.start('s-1', { destination: 'board', summary: '盯库存' });
+    runs.provide('s-1', { sites: [] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     await expect(
       tool.execute(

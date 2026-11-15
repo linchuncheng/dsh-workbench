@@ -106,8 +106,8 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       }
       const summary = asText(record['summary']);
       if (summary === '') throw new Error('summary 不能为空：用她的话复述一遍');
-      const board = destination === 'board';
-      const sections = board ? validatedSections(record) : {};
+      const atPlan = runs.stepOf(session)?.id === 'plan';
+      const sections = destination === 'board' && atPlan ? validatedSections(record) : {};
       const shots = asShots(record['shots']);
 
       const result = await planStep(runs, session, {
