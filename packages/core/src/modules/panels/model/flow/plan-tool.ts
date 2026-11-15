@@ -31,7 +31,18 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         cells: { type: 'string', description: '看板几格。' },
         steps: { type: 'string', description: '几步：抓一次 → 判定 → 出卡。' },
         minutes: { type: 'string', description: '大概几分钟。' },
-        sketch: { type: 'string', description: '草图：三行字。' },
+        shots: {
+          type: 'array',
+          description: '样子：一两张字符画（界面真实文案、按屏幕上到下的顺序画），每张带图注。',
+          items: {
+            type: 'object',
+            properties: {
+              caption: { type: 'string', description: '图注：卡片 / 设置面 / 审批。' },
+              ascii: { type: 'string', description: '这张画本身，用界面上的真实文案。' },
+            },
+            required: ['caption', 'ascii'],
+          },
+        },
       },
       required: ['destination', 'summary'],
       additionalProperties: false,

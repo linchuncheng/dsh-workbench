@@ -1,7 +1,7 @@
 import { Fragment, createElement as h, useEffect, useState } from 'react';
 import type { ApprovalInput, Need, ReactNode, Translate, UnitManifest, UnitToolRuntime } from '@dsh-workbench/shared';
 import { APPROVAL_NOTE_ARG, ApprovalPlan } from '@dsh-workbench/shared';
-import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives';
+import { CodeBlock, MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { MarketSourcesPayload, PublishChangelog, PublishPreview } from '@/kernel/contract/market-index';
 import {
   ALL_TOOLS,
@@ -37,37 +37,16 @@ function labelsOf(args: Readonly<Record<string, unknown>>): readonly string[] {
   ];
 }
 
-const PLAN_DESTINATIONS: Readonly<Record<string, string>> = {
-  board: 'approval.plan.destBoard',
-  once: 'approval.plan.destOnce',
-  ready: 'approval.plan.destReady',
-  reroute: 'approval.plan.destReroute',
-  headless: 'approval.plan.destHeadless',
-};
-
-export function planApprovalRows(
-  args: Readonly<Record<string, unknown>>,
-  t: Translate,
-): readonly ApprovalRow[] {
-  const destination = textOf(args, 'destination');
-  const destKey = PLAN_DESTINATIONS[destination];
-  const rows: ApprovalRow[] = [
-    {
-      label: t('approval.plan.destination'),
-      value: destKey === undefined ? t('approval.plan.destBoard') : t(destKey),
-    },
-    { label: t('approval.plan.summary'), value: textOf(args, 'summary') },
-  ];
-  for (const [key, label] of [
-    ['cells', 'approval.plan.cells'],
-    ['steps', 'approval.plan.steps'],
-    ['minutes', 'approval.plan.minutes'],
-    ['sketch', 'approval.plan.sketch'],
-  ] as const) {
-    const value = textOf(args, key);
-    if (value !== '') rows.push({ label: t(label), value });
-  }
-  return rows;
+function planShots(args: Readonly<Record<string, unknown>>): readonly { caption: string; ascii: string }[] {
+  const raw = args['shots'];
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((one) => {
+    if (typeof one !== 'object' || one === null) return [];
+    const shot = one as { caption?: unknown; ascii?: unknown };
+    const caption = typeof shot.caption === 'string' ? shot.caption.trim() : '';
+    const ascii = typeof shot.ascii === 'string' ? shot.ascii : '';
+    return ascii.trim() === '' ? [] : [{ caption, ascii }];
+  });
 }
 
 export function recordApprovalRows(
@@ -500,9 +479,6 @@ export function shellApprovalPlan(
     const id = textOf(input.args, 'id');
     return { rows: moduleSupplyRows(manifests?.find((one) => one.id === id), id, t) };
   }
-  if (input.tool === DIY_PLAN_TOOL) {
-    return { rows: planApprovalRows(input.args, t) };
-  }
   if (input.tool === DIY_RECORD_PREPARE_TOOL) {
     return { rows: recordApprovalRows(input.args, t), warn: t('approval.record.noSwitch') };
   }
@@ -524,6 +500,18 @@ export function shellApprovalDetail(
   if (input.tool === DIY_PUBLISH_TOOL) return h(PublishApprovalSeat, { args: input.args, t });
   if (input.tool === MARKET_ENABLE_TOOL || input.tool === MARKET_DISABLE_TOOL) {
     return h(MarketSourceApprovalSeat, { tool: input.tool, args: input.args, t });
+  }
+  if (input.tool === DIY_PLAN_TOOL) {
+    return (
+      <ApprovalPlan rows={[]}>
+        {planShots(input.args).map((shot, index) => (
+          <div className={styles.shot} key={String(index)}>
+            <p className={styles.shotCaption}>{shot.caption}</p>
+            <CodeBlock code={shot.ascii} copyLabel={t('blocker.copy')} copiedLabel={t('env.copied')} />
+          </div>
+        ))}
+      </ApprovalPlan>
+    );
   }
   const plan = shellApprovalPlan(input, t, pluginTools, manifests);
   if (plan === undefined) return undefined;

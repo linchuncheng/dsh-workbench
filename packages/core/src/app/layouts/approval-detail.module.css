@@ -25,3 +25,13 @@
   border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: var(--dsw-radius-lg);
 }
+
+.shot {
+  margin-top: var(--wb-len-10);
+}
+
+.shotCaption {
+  margin: 0 0 var(--wb-len-6);
+  font: var(--dsw-font-s-14);
+  color: var(--dsw-alias-label-secondary);
+}

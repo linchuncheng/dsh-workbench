@@ -3,13 +3,18 @@ import type { DiyFlowRuns } from './runs';
 
 export type Destination = 'ready' | 'once' | 'reroute' | 'board' | 'headless';
 
+export interface PlanShot {
+  readonly caption: string;
+  readonly ascii: string;
+}
+
 export interface PlanInput {
   readonly destination: Destination;
   readonly summary: string;
   readonly cells?: string | undefined;
   readonly steps?: string | undefined;
   readonly minutes?: string | undefined;
-  readonly sketch?: string | undefined;
+  readonly shots?: readonly PlanShot[] | undefined;
 }
 
 export interface PlanResult {
@@ -53,7 +58,7 @@ export async function planStep(
       ...(input.cells === undefined ? {} : { cells: input.cells }),
       ...(input.steps === undefined ? {} : { steps: input.steps }),
       ...(input.minutes === undefined ? {} : { minutes: input.minutes }),
-      ...(input.sketch === undefined ? {} : { sketch: input.sketch }),
+      ...(input.shots === undefined ? {} : { shots: input.shots }),
     });
     if (!planned.ok) return { ok: false, step: null, done: false, text: planned.problem ?? '计划没递上去' };
     step = planned.step;

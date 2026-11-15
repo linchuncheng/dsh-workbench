@@ -23,7 +23,14 @@ const PLAN_SCHEMA = {
     cells: { type: 'string' },
     steps: { type: 'string' },
     minutes: { type: 'string' },
-    sketch: { type: 'string' },
+    shots: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['caption', 'ascii'],
+        properties: { caption: { type: 'string' }, ascii: { type: 'string' } },
+      },
+    },
   },
 } as const;
 
