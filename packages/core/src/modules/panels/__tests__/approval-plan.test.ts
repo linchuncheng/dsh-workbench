@@ -9,12 +9,12 @@ const call = (destination: string, extra: Record<string, unknown> = {}) => ({
 });
 
 describe('判成看板才问一句，其余去向不问', () => {
-  it('★★ 看板：弹审批，标题就是一句人话加上她的原话', () => {
+  it('★★ 看板：标题说清这是模块设计方案，加上她的原话', () => {
     const verdict = panelsApprovalFor()(call('board'));
 
     expect(verdict?.kind).toBe('ask');
     const question = verdict?.kind === 'ask' ? verdict.question.zh : '';
-    expect(question).toBe('给你做一张看板：盯库存低于 10 的');
+    expect(question).toBe('模块设计方案：盯库存低于 10 的');
   });
 
   it('★★ 一次性：不问，直接走', () => {

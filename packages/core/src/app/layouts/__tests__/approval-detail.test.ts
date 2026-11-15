@@ -5,6 +5,7 @@ import { ApprovalDetail, ApprovalPlan, zh } from '@dsh-workbench/shared';
 import {
   marketSourceRows,
   moduleSupplyRows,
+  planSections,
   pluginApprovalRows,
   pluginToolIndexOf,
   publishRows,
@@ -161,6 +162,30 @@ describe('发布审批：版本单独一行，仓库 / 分支 / 两个 commit �
       t,
     );
     expect(path.find((row) => row.label === '打包文件位置')?.value).toBe('已被 @demo/other 占用');
+  });
+});
+
+describe('计划审批：除了那张画，还要说清这个模块能给她什么', () => {
+  const args = {
+    destination: 'board',
+    summary: '盯库存低于 10 的',
+    see: ['卡了几天', '', '金额'],
+    do: ['点一下就按金额排'],
+    agent: ['每天早上替我念一遍'],
+    data: ['从她的库存系统读，只读'],
+  };
+
+  it('★★ 四段都摊出来，空条目丢掉', () => {
+    expect(planSections(args, t).map((section) => [section.label, section.items])).toEqual([
+      ['一眼看到', ['卡了几天', '金额']],
+      ['你能做', ['点一下就按金额排']],
+      ['AI 能替你做', ['每天早上替我念一遍']],
+      ['数据从哪来', ['从她的库存系统读，只读']],
+    ]);
+  });
+
+  it('★ 一段都没填就什么也不画（不出现空标题）', () => {
+    expect(planSections({ destination: 'board', summary: '盯库存' }, t)).toEqual([]);
   });
 });
 

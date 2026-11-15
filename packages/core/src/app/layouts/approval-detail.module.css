@@ -35,3 +35,15 @@
   font: var(--dsw-font-s-14);
   color: var(--dsw-alias-label-secondary);
 }
+
+.shotItems {
+  margin: 0;
+  padding-left: var(--wb-len-18);
+  display: grid;
+  gap: var(--wb-len-4);
+}
+
+.shotItem {
+  font: var(--dsw-font-s-14);
+  color: var(--dsw-alias-label-primary);
+}

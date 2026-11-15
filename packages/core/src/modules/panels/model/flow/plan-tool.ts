@@ -18,7 +18,8 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
   const planTool: DshToolDefinition = {
     name: DIY_PLAN_TOOL,
     description:
-      '动手前先判去向并给计划：是看板、一次性、用现成的、改道、还是没看板。判成看板才会往下走，其余当场收尾。',
+      '动手前先判去向并给计划：是看板、一次性、用现成的、改道、还是没看板。判成看板才会往下走，其余当场收尾。' +
+      '判成看板时，用界面真实文案画出它的样子，并说清这个模块能给她什么：一眼看到、你能做、我能替你做、数据从哪来。',
     parameters: {
       type: 'object',
       properties: {
@@ -43,6 +44,14 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
             required: ['caption', 'ascii'],
           },
         },
+        see: { type: 'array', description: '她一眼看到什么。', items: { type: 'string' } },
+        do: { type: 'array', description: '她自己能点或能改的。', items: { type: 'string' } },
+        agent: {
+          type: 'array',
+          description: 'agent 能替她做什么（写之前要不要批准）。',
+          items: { type: 'string' },
+        },
+        data: { type: 'array', description: '数据从哪来、用谁的登录、读还是写。', items: { type: 'string' } },
       },
       required: ['destination', 'summary'],
       additionalProperties: false,

@@ -31,6 +31,10 @@ const PLAN_SCHEMA = {
         properties: { caption: { type: 'string' }, ascii: { type: 'string' } },
       },
     },
+    see: { type: 'array', items: { type: 'string' } },
+    do: { type: 'array', items: { type: 'string' } },
+    agent: { type: 'array', items: { type: 'string' } },
+    data: { type: 'array', items: { type: 'string' } },
   },
 } as const;
 
@@ -71,7 +75,7 @@ export const DIY_BOARD_FLOW: DiyFlow = {
   title: '做一张看板卡片',
   steps: [
     { id: 'judge', title: '判去向', tools: lockedTools, schema: JUDGE_SCHEMA },
-    { id: 'plan', title: '计划', when: isBoard, tools: lockedTools, schema: PLAN_SCHEMA },
+    { id: 'plan', title: '设计方案', when: isBoard, tools: lockedTools, schema: PLAN_SCHEMA },
     { id: 'probe', title: '站探', when: isBoard, tools: lockedTools, retry: { attempts: 2 }, schema: PROBE_SCHEMA },
     { id: 'build', title: '建模块', when: isBoard, tools: openTools, retry: { attempts: 2 }, schema: BUILD_SCHEMA },
     { id: 'install', title: '装', when: isBoard, tools: lockedTools, schema: INSTALL_SCHEMA },
@@ -84,7 +88,7 @@ export const DIY_TWEAK_FLOW: DiyFlow = {
   id: 'diy-tweak',
   title: '改一格',
   steps: [
-    { id: 'plan', title: '小计划', tools: lockedTools, schema: PLAN_SCHEMA },
+    { id: 'plan', title: '补设计方案', tools: lockedTools, schema: PLAN_SCHEMA },
     { id: 'build', title: '改模块', tools: openTools, schema: BUILD_SCHEMA },
     { id: 'install', title: '热换', tools: lockedTools, schema: INSTALL_SCHEMA },
     { id: 'verify', title: '只验那格', tools: lockedTools, schema: VERIFY_SCHEMA },

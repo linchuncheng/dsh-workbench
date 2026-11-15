@@ -15,6 +15,10 @@ export interface PlanInput {
   readonly steps?: string | undefined;
   readonly minutes?: string | undefined;
   readonly shots?: readonly PlanShot[] | undefined;
+  readonly see?: readonly string[] | undefined;
+  readonly do?: readonly string[] | undefined;
+  readonly agent?: readonly string[] | undefined;
+  readonly data?: readonly string[] | undefined;
 }
 
 export interface PlanResult {
@@ -26,7 +30,7 @@ export interface PlanResult {
 
 const NEXT: Readonly<Record<string, string>> = {
   judge: '先判去向',
-  plan: '补计划',
+  plan: '补设计方案',
   probe: '开始站探',
   build: '可以动工了',
   install: '装到面板上',
@@ -59,6 +63,10 @@ export async function planStep(
       ...(input.steps === undefined ? {} : { steps: input.steps }),
       ...(input.minutes === undefined ? {} : { minutes: input.minutes }),
       ...(input.shots === undefined ? {} : { shots: input.shots }),
+      ...(input.see === undefined ? {} : { see: input.see }),
+      ...(input.do === undefined ? {} : { do: input.do }),
+      ...(input.agent === undefined ? {} : { agent: input.agent }),
+      ...(input.data === undefined ? {} : { data: input.data }),
     });
     if (!planned.ok) return { ok: false, step: null, done: false, text: planned.problem ?? '计划没递上去' };
     step = planned.step;

@@ -37,6 +37,26 @@ function labelsOf(args: Readonly<Record<string, unknown>>): readonly string[] {
   ];
 }
 
+export function planSections(
+  args: Readonly<Record<string, unknown>>,
+  t: Translate,
+): readonly { label: string; items: readonly string[] }[] {
+  const sections: { label: string; items: readonly string[] }[] = [];
+  for (const [key, label] of [
+    ['see', 'approval.plan.see'],
+    ['do', 'approval.plan.do'],
+    ['agent', 'approval.plan.agent'],
+    ['data', 'approval.plan.data'],
+  ] as const) {
+    const raw = args[key];
+    const items = Array.isArray(raw)
+      ? raw.flatMap((one) => (typeof one === 'string' && one.trim() !== '' ? [one.trim()] : []))
+      : [];
+    if (items.length > 0) sections.push({ label: t(label), items });
+  }
+  return sections;
+}
+
 function planShots(args: Readonly<Record<string, unknown>>): readonly { caption: string; ascii: string }[] {
   const raw = args['shots'];
   if (!Array.isArray(raw)) return [];
@@ -507,7 +527,19 @@ export function shellApprovalDetail(
         {planShots(input.args).map((shot, index) => (
           <div className={styles.shot} key={String(index)}>
             <p className={styles.shotCaption}>{shot.caption}</p>
-            <CodeBlock code={shot.ascii} copyLabel={t('blocker.copy')} copiedLabel={t('env.copied')} />
+            <CodeBlock code={shot.ascii} copyLabel={t('markdown.copy')} copiedLabel={t('env.copied')} />
+          </div>
+        ))}
+        {planSections(input.args, t).map((section) => (
+          <div className={styles.shot} key={section.label}>
+            <p className={styles.shotCaption}>{section.label}</p>
+            <ul className={styles.shotItems}>
+              {section.items.map((item, index) => (
+                <li className={styles.shotItem} key={String(index)}>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </ApprovalPlan>
