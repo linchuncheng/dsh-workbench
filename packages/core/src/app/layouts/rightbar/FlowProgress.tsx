@@ -12,15 +12,21 @@ export function FlowProgress({
 }) {
   const flow = useDiyFlow(session);
   if (flow === null || flow.current === null) return null;
+  const at = flow.steps.findIndex((step) => step.id === flow.current?.id);
+  if (at < 0) return null;
 
   return (
-    <div className={styles.flow} role="status" aria-label={t('rightbar.flow.label')}>
-      <span className={styles.placeholder} aria-hidden="true">
-        <span className={styles.bar} />
-        <span className={styles.bar} />
-        <span className={styles.bar} />
+    <div className={styles.strip} role="status" aria-label={t('rightbar.flow.label')}>
+      <span className={styles.dots} aria-hidden="true">
+        {flow.steps.map((step, index) => (
+          <span
+            className={index === at ? styles.now : index < at ? styles.done : styles.pending}
+            key={step.id}
+          />
+        ))}
       </span>
-      <span className={styles.caption}>{flow.current.title}</span>
+      <span className={styles.title}>{flow.current.title}</span>
+      <span className={styles.spinner} aria-hidden="true" />
     </div>
   );
 }
