@@ -139,10 +139,11 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
   it('★ chevronHidden：箭头留在原位但藏起来，调用方在那个位置叠自己的操作钮', () => {
     const chevronOf = (props: Record<string, unknown>): AnyElement | undefined =>
       elementsOf(menuOf(render(props)).props['anchor']).find(
-        (one) => one.props['className'] === 'wb-selectChevron',
+        (one) => one.props?.['className'] === 'wb-selectChevron',
       );
 
     expect(chevronOf({})?.props['data-hidden']).toBeUndefined();
+    console.log('NULLPROPS', JSON.stringify((globalThis as Record<string, unknown>)['__probe']));
     expect(chevronOf({ chevronHidden: true })?.props['data-hidden']).toBe('');
   });
 
