@@ -1,9 +1,9 @@
 import { createElement as h, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
 import {
-  IconChecklistOutlineRegular,
   IconChevronDownOutlineRegular,
   IconChevronUpOutlineRegular,
+  IconSparkleRegular,
   StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives';
 import { useDiyFlow } from './use-diy-flow';
@@ -62,7 +62,7 @@ export function FlowProgress({
           onClick={() => setOpen((value) => !value)}
         >
           <span className={styles.lead} aria-hidden="true">
-            <IconChecklistOutlineRegular />
+            <IconSparkleRegular />
           </span>
           <span className={styles.title}>{t('rightbar.flow.label')}</span>
           <span className={styles.progress}>{progress}</span>

@@ -771,7 +771,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'record.finished.note': 'Recording complete. The agent reads the result automatically; no action needed.',
   'record.act.cancel': 'Cancel',
   'record.act.halt': 'Halt',
-  'rightbar.flow.label': 'Tasks',
+  'rightbar.flow.label': 'Module progress',
   'rightbar.flow.done': '{done} completed',
   'rightbar.flow.active': '{active} in progress',
   'rightbar.flow.pending': '{pending} pending',

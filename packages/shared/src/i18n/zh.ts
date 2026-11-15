@@ -767,7 +767,7 @@ export const zh = {
   'record.finished.note': '录制已完成。agent 会自动读取结果，无需操作。',
   'record.act.cancel': '取消',
   'record.act.halt': '停',
-  'rightbar.flow.label': '任务',
+  'rightbar.flow.label': '模块开发进度',
   'rightbar.flow.done': '{done} 已完成',
   'rightbar.flow.active': '{active} 进行中',
   'rightbar.flow.pending': '{pending} 待处理',
