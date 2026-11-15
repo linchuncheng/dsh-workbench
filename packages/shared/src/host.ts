@@ -60,6 +60,7 @@ export * from './host/flow/kit.js';
 export * from './host/flow/login-retry.js';
 export * from './host/flow/open.js';
 export * from './host/flow/run.js';
+export * from './host/flow/schema.js';
 export * from './host/flow/scan.js';
 export * from './host/flow/step.js';
 export * from './host/flow/task.js';
