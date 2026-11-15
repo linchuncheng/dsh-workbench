@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { UnitManifest } from '@dsh-workbench/shared';
+import { DIY_FLOW_ROUTE } from '@dsh-workbench/shared/contract/protocol/panels';
 import { DIY_RECORD_FACT, PANELS_FACT, panelsFactsOf, panelsHandoffEntry } from '../handoff';
 import {
   DIY_INSTALL_TOOL,
@@ -58,7 +59,7 @@ describe('panelsFactsOf', () => {
     for (const source of READ_TOOLS) {
       const facts = panelsFactsOf({ source, args: {}, result: {} }, manifests) ?? [];
       for (const fact of facts) {
-        expect([PANELS_FACT, 'capability', DIY_RECORD_FACT], `${source} · ${fact}`).toContain(fact);
+        expect([PANELS_FACT, 'capability', DIY_RECORD_FACT, DIY_FLOW_ROUTE], `${source} · ${fact}`).toContain(fact);
       }
       expect(panelsFactsOf({ source, args: { unit: 'inventory' }, result: {} }, manifests) ?? [], source).not.toContain(
         'inventory*',

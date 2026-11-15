@@ -11,6 +11,7 @@ import {
   PANELS_FACT,
 } from '@dsh-workbench/shared/contract/facts';
 import { affectedUnitsOf } from './market-dependency';
+import { DIY_FLOW_ROUTE } from '@dsh-workbench/shared/contract/protocol/panels';
 import {
   DIY_DEBUG_PAUSE_TOOL,
   DIY_DEBUG_RESUME_TOOL,
@@ -19,6 +20,8 @@ import {
   DIY_PANEL_TOOL,
   DIY_DEBUG_STOP_TOOL,
   DIY_INSTALL_TOOL,
+  DIY_PLAN_TOOL,
+  DIY_STEP_TOOL,
   MODULES_INSTALL_TOOL,
   MODULES_LIST_TOOL,
   MODULES_UNINSTALL_TOOL,
@@ -99,6 +102,7 @@ export function panelsFactsOf(
   if (call.source === MODULES_LIST_TOOL) return [PANELS_FACT, CAPABILITY_FACT];
   if (call.source === MODULES_UPDATE_WORKBENCH_TOOL) return [PANELS_FACT, CAPABILITY_FACT];
   if (call.source === DIY_STATUS_TOOL || call.source === DIY_PANEL_TOOL) return [PANELS_FACT];
+  if (call.source === DIY_PLAN_TOOL || call.source === DIY_STEP_TOOL) return [DIY_FLOW_ROUTE];
   if (DEBUG_TOOLS.includes(call.source)) return [DIY_DEBUG_FACT];
   if (RECORD_TOOLS.includes(call.source)) return [DIY_RECORD_FACT];
   const request = requestOf(call);
