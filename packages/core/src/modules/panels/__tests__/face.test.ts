@@ -129,13 +129,13 @@ describe('panelsHost', () => {
     expect(new Set(result.gate?.deniedTools({ workspace: workshop, preset: null, session: 's-2' }))).toEqual(all);
     const notBorrowed = MANAGE_TOOLS.filter((one) => !(DIY_BORROWED_TOOLS as readonly string[]).includes(one));
     expect(new Set(result.gate?.deniedTools({ workspace: '/w/a', preset: 'workbench-diy', session: 's-3' }))).toEqual(
-      new Set(notBorrowed),
+      new Set([...notBorrowed, 'write', 'edit']),
     );
     expect(new Set(result.gate?.deniedTools({ workspace: workshop, preset: 'workbench-diy', session: 's-4' }))).toEqual(
-      new Set(notBorrowed),
+      new Set([...notBorrowed, 'write', 'edit']),
     );
     expect(new Set(result.gate?.deniedTools({ workspace: null, preset: 'workbench-diy', session: 's-5' }))).toEqual(
-      new Set(notBorrowed),
+      new Set([...notBorrowed, 'write', 'edit']),
     );
   });
 

@@ -212,16 +212,16 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
     expect(deniedOf(mounted, 's-2')).toContain(MANAGE_TOOLS[0]);
   });
 
-  it('DIY 模式只开 diy（工坊族 + 借来的七把）；显式收掉之后不再默认开回来', async () => {
+  it('DIY 模式只开 diy（工坊族 + 借来的七把），判去向之前写文件被拒；显式收掉之后不再默认开回来', async () => {
     const { mounted, registered } = mount();
     const notBorrowed = MANAGE_TOOLS.filter((one) => !(DIY_BORROWED_TOOLS as readonly string[]).includes(one));
 
     expect(new Set(deniedOf(mounted, 's-1', 'workbench-diy'))).toEqual(
-      new Set([...notBorrowed, 'workbench_board_x_list', 'workbench_board_x_do']),
+      new Set([...notBorrowed, 'write', 'edit', 'workbench_board_x_list', 'workbench_board_x_do']),
     );
     await call(registered, TOOLBOX_CLOSE_TOOL, { targets: ['diy'] }, 's-1');
     expect(new Set(deniedOf(mounted, 's-1', 'workbench-diy'))).toEqual(
-      new Set([...MANAGE_TOOLS, ...DIY_PACK_TOOLS, 'workbench_board_x_list', 'workbench_board_x_do']),
+      new Set([...MANAGE_TOOLS, ...DIY_PACK_TOOLS, 'write', 'edit', 'workbench_board_x_list', 'workbench_board_x_do']),
     );
   });
 
@@ -234,7 +234,7 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
     expect(String(listed['text'])).not.toContain('manage');
     const notBorrowed = MANAGE_TOOLS.filter((one) => !(DIY_BORROWED_TOOLS as readonly string[]).includes(one));
     expect(new Set(deniedOf(mounted, 's-1', 'workbench-diy'))).toEqual(
-      new Set([...notBorrowed, 'workbench_board_x_list', 'workbench_board_x_do']),
+      new Set([...notBorrowed, 'write', 'edit', 'workbench_board_x_list', 'workbench_board_x_do']),
     );
 
     const again = await call(registered, TOOLBOX_OPEN_TOOL, { targets: ['manage'] }, 's-1');
