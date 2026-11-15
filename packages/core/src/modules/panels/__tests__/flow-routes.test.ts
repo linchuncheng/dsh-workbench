@@ -20,7 +20,7 @@ describe('面板顶部那条进度行读的接口', () => {
       'verify',
       'ledger',
     ]);
-    expect(flowSteps()[1]?.title).toBe('设计方案');
+    expect(flowSteps()[1]?.title).toBe('给你一个方案');
   });
 
   it('★★ 没开始走就什么都不说（不画假进度）', () => {
@@ -34,6 +34,6 @@ describe('面板顶部那条进度行读的接口', () => {
       new URLSearchParams({ session: 's-1' }),
     );
 
-    expect(payload).toMatchObject({ ok: true, current: { id: 'build', title: '建模块' } });
+    expect(payload).toMatchObject({ ok: true, current: { id: 'build', title: '开始动手做' } });
   });
 });

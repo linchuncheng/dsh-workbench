@@ -1,5 +1,5 @@
 import { DIY_FLOW_ROUTE } from '@dsh-workbench/shared/contract/protocol/panels';
-import { useApiResource } from './use-api-resource';
+import { useApiResource } from '@/shared/hooks/use-api-resource';
 
 export { DIY_FLOW_ROUTE };
 

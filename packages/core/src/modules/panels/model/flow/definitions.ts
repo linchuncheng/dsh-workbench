@@ -74,13 +74,13 @@ export const DIY_BOARD_FLOW: DiyFlow = {
   id: 'diy-board',
   title: '做一张看板卡片',
   steps: [
-    { id: 'judge', title: '判去向', tools: lockedTools, schema: JUDGE_SCHEMA },
-    { id: 'plan', title: '设计方案', when: isBoard, tools: lockedTools, schema: PLAN_SCHEMA },
-    { id: 'probe', title: '站探', when: isBoard, tools: lockedTools, retry: { attempts: 2 }, schema: PROBE_SCHEMA },
-    { id: 'build', title: '建模块', when: isBoard, tools: openTools, retry: { attempts: 2 }, schema: BUILD_SCHEMA },
-    { id: 'install', title: '装', when: isBoard, tools: lockedTools, schema: INSTALL_SCHEMA },
-    { id: 'verify', title: '验收', when: isBoard, tools: lockedTools, retry: { attempts: 1 }, schema: VERIFY_SCHEMA },
-    { id: 'ledger', title: '留账', when: isBoard, tools: openTools, schema: LEDGER_SCHEMA },
+    { id: 'judge', title: '先弄清你要什么', tools: lockedTools, schema: JUDGE_SCHEMA },
+    { id: 'plan', title: '给你一个方案', when: isBoard, tools: lockedTools, schema: PLAN_SCHEMA },
+    { id: 'probe', title: '看看你的系统里有什么', when: isBoard, tools: lockedTools, retry: { attempts: 2 }, schema: PROBE_SCHEMA },
+    { id: 'build', title: '开始动手做', when: isBoard, tools: openTools, retry: { attempts: 2 }, schema: BUILD_SCHEMA },
+    { id: 'install', title: '放到面板上', when: isBoard, tools: lockedTools, schema: INSTALL_SCHEMA },
+    { id: 'verify', title: '自己先走一遍', when: isBoard, tools: lockedTools, retry: { attempts: 1 }, schema: VERIFY_SCHEMA },
+    { id: 'ledger', title: '记下这次怎么做的', when: isBoard, tools: openTools, schema: LEDGER_SCHEMA },
   ],
 };
 
@@ -88,7 +88,7 @@ export const DIY_TWEAK_FLOW: DiyFlow = {
   id: 'diy-tweak',
   title: '改一格',
   steps: [
-    { id: 'plan', title: '补设计方案', tools: lockedTools, schema: PLAN_SCHEMA },
+    { id: 'plan', title: '补一下方案', tools: lockedTools, schema: PLAN_SCHEMA },
     { id: 'build', title: '改模块', tools: openTools, schema: BUILD_SCHEMA },
     { id: 'install', title: '热换', tools: lockedTools, schema: INSTALL_SCHEMA },
     { id: 'verify', title: '只验那格', tools: lockedTools, schema: VERIFY_SCHEMA },
