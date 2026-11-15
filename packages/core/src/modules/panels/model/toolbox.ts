@@ -106,6 +106,7 @@ export function createToolbox(options: {
   readonly manifests: () => readonly UnitManifest[];
   readonly visibleUnits?: ((workspace: string | null) => ReadonlySet<string>) | undefined;
   readonly mcp?: (() => readonly McpServerPacks[]) | undefined;
+  readonly flowDenied?: ((context: ToolScopeContext) => readonly string[]) | undefined;
 }): Toolbox {
   const states = new Map<string, SessionState>();
   const listeners = new Set<() => void>();
@@ -172,6 +173,9 @@ export function createToolbox(options: {
     }
     for (const name of allowed) deny.delete(name);
     for (const name of TOOLBOX_TOOLS) deny.delete(name);
+    for (const name of options.flowDenied?.(context) ?? []) {
+      if (!(TOOLBOX_TOOLS as readonly string[]).includes(name)) deny.add(name);
+    }
     return deny;
   };
 

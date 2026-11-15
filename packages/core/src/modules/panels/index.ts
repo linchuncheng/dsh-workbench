@@ -45,11 +45,16 @@ import { pluginDirOf } from './model/plugin-name';
 import { installedPackageRoutes } from './model/installed-package-routes';
 import { registerPanelTools } from './model/tools';
 import { createToolbox } from './model/toolbox';
+import { createFlowHost } from '@dsh-workbench/shared/host';
+import { DIY_BOARD_FLOW } from './model/flow/definitions';
+import { deniedAtStep } from './model/flow/gate';
+import { registerDiyPlanTool } from './model/flow/plan-tool';
+import { createDiyFlowRuns } from './model/flow/runs';
 import { capabilityBriefOf } from './model/capability-brief';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
 import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedReason } from './model/closed-tool';
 import { registerToolboxTools } from './model/toolbox-tools';
-import { panelsUnit, screenOnlyToolsFor } from './unit';
+import { DIY_PACK_TOOLS, panelsUnit, screenOnlyToolsFor } from './unit';
 
 export const panelsHost: UnitOwnedFace = {
   unit: panelsUnit.id,
@@ -83,10 +88,22 @@ export const panelsHost: UnitOwnedFace = {
           .map((manifest) => manifest.id),
       );
     };
+    const diyRuns = createDiyFlowRuns({
+      host: createFlowHost(),
+      flow: DIY_BOARD_FLOW,
+      workspaceOf: () => workbenchRoot(),
+      onEnd: () => {},
+    });
+    const diyGateNames = [...DIY_PACK_TOOLS, 'write', 'edit', 'bash'];
     const toolbox = createToolbox({
       manifests,
       visibleUnits,
       mcp: () => (ctx.get(MCP_TOOLS_SERVICE) as McpToolsPort | undefined)?.servers() ?? [],
+      flowDenied: (context) => {
+        if (context.preset !== DIY_PRESET_ID || context.session === null) return [];
+        const step = diyRuns.stepOf(context.session);
+        return step === null ? [] : [...deniedAtStep(step, diyGateNames)];
+      },
     });
     const toolboxPort: ToolboxPort = {
       packsOf: (session, preset) => toolbox.packsOf(session, preset),
@@ -268,6 +285,7 @@ export const panelsHost: UnitOwnedFace = {
           (unit) => inferredAuthorOf(workshopPathOf(ctx), unit),
           installRuns,
         ),
+        ...registerDiyPlanTool(ctx, diyRuns),
         ...registerRecordTools(ctx, record),
         ...registerLongTaskTools(ctx, longTaskRuns),
       ],

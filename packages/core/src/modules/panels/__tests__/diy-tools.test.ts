@@ -12,6 +12,7 @@ import {
   DIY_INSTALL_TOOL,
   DIY_RECORD_TOOLS,
   DIY_STATUS_TOOL,
+  DIY_PLAN_TOOL,
   DIY_TOOLS,
 } from '../unit';
 
@@ -270,7 +271,9 @@ describe('workbench_diy · 那道更窄的门', () => {
   it('★ 名字即动作：注册出来的每一把都是一个动词，没有带 action 的那种多路复用', () => {
     const { registered } = rig.harness();
 
-    const every = [...DIY_TOOLS, ...DIY_DEBUG_TOOLS, ...DIY_RECORD_TOOLS];
+    const every = [...DIY_TOOLS, ...DIY_DEBUG_TOOLS, ...DIY_RECORD_TOOLS].filter(
+      (one) => one !== DIY_PLAN_TOOL,
+    );
     expect(registered.map((one) => one.name).sort()).toEqual([...every].sort());
     for (const one of registered) {
       const properties = (one.parameters as { properties?: Record<string, unknown> }).properties ?? {};

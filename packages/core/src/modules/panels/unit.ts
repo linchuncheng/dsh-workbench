@@ -24,6 +24,7 @@ export const MARKET_ENABLE_TOOL = 'workbench_market_enable';
 export const MARKET_DISABLE_TOOL = 'workbench_market_disable';
 
 export const DIY_STATUS_TOOL = 'workbench_diy_status';
+export const DIY_PLAN_TOOL = 'workbench_diy_plan';
 export const DIY_PANEL_TOOL = 'workbench_diy_panel';
 export const DIY_COMPONENTS_TOOL = 'workbench_diy_components';
 export const DIY_RECON_TOOL = 'workbench_diy_recon';
@@ -96,6 +97,7 @@ export const ALL_TOOLS = [
   MARKET_ENABLE_TOOL,
   MARKET_DISABLE_TOOL,
   DIY_STATUS_TOOL,
+  DIY_PLAN_TOOL,
   DIY_PANEL_TOOL,
   DIY_COMPONENTS_TOOL,
   DIY_RECON_TOOL,
@@ -135,6 +137,7 @@ export const ALL_TOOLS = [
 export type PanelsToolName = (typeof ALL_TOOLS)[number];
 
 export const READ_TOOLS = [
+  DIY_PLAN_TOOL,
   TOOLBOX_LIST_TOOL,
   TOOLBOX_OPEN_TOOL,
   TOOLBOX_CLOSE_TOOL,
@@ -208,6 +211,7 @@ void NO_TOOL_IN_BOTH_LISTS;
 
 export const DIY_TOOLS = [
   DIY_STATUS_TOOL,
+  DIY_PLAN_TOOL,
   DIY_PANEL_TOOL,
   DIY_COMPONENTS_TOOL,
   DIY_RECON_TOOL,

@@ -10,6 +10,7 @@ export interface DiyFlowRuns {
   stepOf(session: string): FlowNodeStep | null;
   start(session: string): FlowNodeStep;
   provide(session: string, value: unknown): boolean;
+  advance(session: string, value: unknown): Promise<FlowNodeStep | null>;
   stop(session: string): void;
 }
 
@@ -49,6 +50,7 @@ export function createDiyFlowRuns(options: {
       const run: Run = { flow: options.flow, session: session_ };
       runs.set(session, run);
       void session_.result.then(() => {
+        if (runs.get(session) !== run) return;
         runs.delete(session);
         options.onEnd(session);
       });
@@ -63,6 +65,20 @@ export function createDiyFlowRuns(options: {
       const position = run.session.current();
       if (position === null) return false;
       return run.session.provide(position.stepId, value);
+    },
+
+    async advance(session, value) {
+      const run = runs.get(session);
+      if (run === undefined) return null;
+      const before = run.session.current()?.stepId ?? undefined;
+      if (before === undefined) return null;
+      if (!run.session.provide(before, value)) return null;
+      for (let round = 0; round < 20; round += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const after = run.session.current()?.stepId ?? undefined;
+        if (after !== before) return after === undefined ? null : runs.get(session) === undefined ? null : stepAt(run);
+      }
+      return stepAt(run);
     },
 
     stop(session) {
