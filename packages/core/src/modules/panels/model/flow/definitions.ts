@@ -8,7 +8,7 @@ const WRITE = ['write', 'edit'] as const;
 
 export const HEADLESS_TITLES: Readonly<Record<string, string>> = {
   install: '安装模块',
-  verify: '检查模块能用',
+  verify: '检查模块功能',
 };
 
 const isBoard = { $eq: [{ $ref: 'steps.judge.destination' }, { $lit: 'board' }] } as const;
