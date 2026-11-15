@@ -11,22 +11,8 @@ export const HEADLESS_TITLES: Readonly<Record<string, string>> = {
   verify: '检查模块功能',
 };
 
-const isBoard = { $eq: [{ $ref: 'steps.judge.destination' }, { $lit: 'board' }] } as const;
-const isBuild = {
-  $in: [
-    { $ref: 'steps.judge.destination' },
-    ['board', 'headless'],
-  ],
-} as const;
-
-const JUDGE_SCHEMA = {
-  type: 'object',
-  required: ['destination', 'summary'],
-  properties: {
-    destination: { enum: ['ready', 'once', 'reroute', 'board', 'headless'] },
-    summary: { type: 'string' },
-  },
-} as const;
+const isBoard = { $eq: [{ $ref: 'in.destination' }, { $lit: 'board' }] } as const;
+const isBuild = { $in: [{ $ref: 'in.destination' }, ['board', 'headless']] } as const;
 
 const PLAN_SCHEMA = {
   type: 'object',
@@ -86,7 +72,6 @@ export const DIY_BOARD_FLOW: DiyFlow = {
   id: 'diy-board',
   title: '做一张看板卡片',
   steps: [
-    { id: 'judge', title: '确认需求', tools: lockedTools, schema: JUDGE_SCHEMA },
     { id: 'probe', title: '查看数据来源', when: isBuild, tools: lockedTools, retry: { attempts: 2 }, schema: PROBE_SCHEMA },
     { id: 'plan', title: '确认方案', when: isBoard, tools: lockedTools, schema: PLAN_SCHEMA },
     { id: 'build', title: '创建模块', when: isBuild, tools: openTools, retry: { attempts: 2 }, schema: BUILD_SCHEMA },

@@ -26,10 +26,8 @@ function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 }
 
-function destinationOf(values: Readonly<Record<string, unknown>>): string | null {
-  const judge = values['judge'];
-  if (typeof judge !== 'object' || judge === null) return null;
-  const destination = (judge as { destination?: unknown }).destination;
+function destinationOf(input: Readonly<Record<string, unknown>>): string | null {
+  const destination = input['destination'];
   return typeof destination === 'string' ? destination : null;
 }
 
@@ -92,7 +90,7 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       for (const field of fields) value[field] = record[field];
       const advanced = await runs.advance(session, value);
       if (!advanced.ok) throw new Error(advanced.problem ?? '这一步没递进去');
-      const destination = destinationOf(runs.valuesOf(session));
+      const destination = destinationOf(runs.inputOf(session));
       const step = advanced.step;
       const at = positionOf(step?.id ?? null, destination);
       return plainJson({

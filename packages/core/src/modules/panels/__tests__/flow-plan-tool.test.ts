@@ -43,7 +43,7 @@ describe('计划工具', () => {
     expect(out.step).toBe('probe');
     expect(out.done).toBe(false);
     expect(out.text).toContain('查看数据来源');
-    expect(out.text).toContain('第 2/7 步');
+    expect(out.text).toContain('第 1/6 步');
   });
 
   it('★ 方案里留空的一条当场拒，不静默吞掉', async () => {
@@ -101,8 +101,8 @@ describe('计划工具', () => {
       exec,
     )) as { index: number; total: number; remaining: number };
 
-    expect(out.index).toBe(2);
-    expect(out.total).toBe(7);
+    expect(out.index).toBe(1);
+    expect(out.total).toBe(6);
     expect(out.remaining).toBe(5);
   });
 

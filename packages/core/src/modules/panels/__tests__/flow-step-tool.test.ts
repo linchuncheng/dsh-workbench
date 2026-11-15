@@ -26,9 +26,7 @@ describe('流程递交工具', () => {
   it('★★ 站探那步把站点递上去，流程走到确认方案', async () => {
     const { runs, tool } = rig();
     if (tool === undefined) throw new Error('没有注册上');
-    runs.start('s-1');
-    runs.provide('s-1', { destination: 'board', summary: '盯库存' });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    runs.start('s-1', { destination: 'board', summary: '盯库存' });
 
     const out = (await tool.execute({ sites: ['库存表'] }, exec)) as { step: string; text: string };
 
@@ -39,18 +37,14 @@ describe('流程递交工具', () => {
 
   it('★ 该递的字段没给就拒，并说清要递什么', async () => {
     const { runs, tool } = rig();
-    runs.start('s-1');
-    runs.provide('s-1', { destination: 'board', summary: '盯库存' });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    runs.start('s-1', { destination: 'board', summary: '盯库存' });
 
     await expect(tool.execute({}, exec)).rejects.toThrow(/sites/);
   });
 
   it('★ 她改主意了：带原因终止，流程立刻停下', async () => {
     const { runs, tool } = rig();
-    runs.start('s-1');
-    runs.provide('s-1', { destination: 'board', summary: '盯库存' });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    runs.start('s-1', { destination: 'board', summary: '盯库存' });
 
     const out = (await tool.execute({ cancel: true, reason: '她说不做了' }, exec)) as { done: boolean; text: string };
 
@@ -61,9 +55,9 @@ describe('流程递交工具', () => {
 
   it('★ 终止不给原因就拒', async () => {
     const { runs, tool } = rig();
-    runs.start('s-1');
+    runs.start('s-1', { destination: 'board', summary: '盯库存' });
 
     await expect(tool.execute({ cancel: true }, exec)).rejects.toThrow(/原因/);
-    expect(runs.stepOf('s-1')?.id).toBe('judge');
+    expect(runs.stepOf('s-1')?.id).toBe('probe');
   });
 });

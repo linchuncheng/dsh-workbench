@@ -8,7 +8,7 @@ export interface FlowPosition {
 }
 
 export function visibleSteps(destination: string | null): readonly { id: string; title: string }[] {
-  const scope = { in: {}, steps: destination === null ? {} : { judge: { destination } } };
+  const scope = { in: destination === null ? {} : { destination }, steps: {} };
   return DIY_BOARD_FLOW.steps
     .filter((step) => destination === null || step.when === undefined || evalPredicate(step.when, scope))
     .map((step) => ({ id: step.id, title: step.title ?? step.id }));

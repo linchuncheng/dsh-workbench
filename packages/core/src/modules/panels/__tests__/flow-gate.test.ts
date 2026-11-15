@@ -28,21 +28,18 @@ describe('按会话跑的流程', () => {
       onEnd: () => {},
     });
 
-  it('★★ 没开始时没有流程，开始时停在判去向', () => {
+  it('★★ 没开始时没有流程，开始时停在查看数据来源', () => {
     const runs = runsOf();
 
     expect(runs.stepOf('s-1')).toBeNull();
-    expect(runs.start('s-1').id).toBe('judge');
-    expect(runs.stepOf('s-1')?.id).toBe('judge');
+    expect(runs.start('s-1', { destination: 'board', summary: '盯库存' }).id).toBe('probe');
+    expect(runs.stepOf('s-1')?.id).toBe('probe');
     expect(runs.stepOf('s-2')).toBeNull();
   });
 
   it('★★ 每递一次结果就前进一步，闸跟着换', async () => {
     const runs = runsOf();
-    runs.start('s-1');
-
-    expect(runs.provide('s-1', { destination: 'board', summary: '盯库存', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] })).toEqual({ ok: true });
-    await Promise.resolve();
+    runs.start('s-1', { destination: 'board', summary: '盯库存' });
 
     expect(runs.stepOf('s-1')?.id).toBe('probe');
     runs.provide('s-1', { sites: [] });
@@ -50,32 +47,14 @@ describe('按会话跑的流程', () => {
     expect(runs.stepOf('s-1')?.id).toBe('plan');
   });
 
-  it('★ 非看板去向走完就收摊，闸重新放开', async () => {
-    const ended: string[] = [];
-    const runs = createDiyFlowRuns({
-      host: createFlowHost(),
-      flow: DIY_BOARD_FLOW,
-      workspaceOf: () => '/w/a',
-      onEnd: (session) => ended.push(session),
-    });
-    runs.start('s-1');
-
-    runs.provide('s-1', { destination: 'once', summary: '算个数' });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(ended).toEqual(['s-1']);
-    expect(runs.stepOf('s-1')).toBeNull();
-    expect(runs.provide('s-1', true).ok).toBe(false);
-  });
-
   it('★ 停掉之后不再有流程，重复开始会重新起一条', async () => {
     const runs = runsOf();
-    runs.start('s-1');
+    runs.start('s-1', { destination: 'board', summary: '盯库存' });
 
     runs.stop('s-1');
     await Promise.resolve();
 
     expect(runs.stepOf('s-1')).toBeNull();
-    expect(runs.start('s-1').id).toBe('judge');
+    expect(runs.start('s-1', { destination: 'board', summary: '盯库存' }).id).toBe('probe');
   });
 });

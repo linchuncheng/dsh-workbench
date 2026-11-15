@@ -4,6 +4,7 @@ import type { DiyFlow } from './definitions';
 interface Run {
   readonly flow: DiyFlow;
   readonly session: FlowSession;
+  readonly input: Readonly<Record<string, unknown>>;
   readonly values: Record<string, unknown>;
 }
 
@@ -16,7 +17,8 @@ export interface DiyAdvance {
 export interface DiyFlowRuns {
   stepOf(session: string): FlowNodeStep | null;
   valuesOf(session: string): Readonly<Record<string, unknown>>;
-  start(session: string): FlowNodeStep;
+  inputOf(session: string): Readonly<Record<string, unknown>>;
+  start(session: string, input?: Readonly<Record<string, unknown>>): FlowNodeStep;
   provide(session: string, value: unknown): FlowProvideResult;
   advance(session: string, value: unknown): Promise<DiyAdvance>;
   stop(session: string): void;
@@ -46,7 +48,11 @@ export function createDiyFlowRuns(options: {
       return runs.get(session)?.values ?? {};
     },
 
-    start(session) {
+    inputOf(session) {
+      return runs.get(session)?.input ?? {};
+    },
+
+    start(session, input = {}) {
       const existing = runs.get(session);
       if (existing !== undefined) {
         const step = stepAt(existing);
@@ -55,11 +61,11 @@ export function createDiyFlowRuns(options: {
       }
       const session_ = options.host.open({
         flow: options.flow,
-        input: {},
+        input,
         workspace: options.workspaceOf(session),
         onStep: () => {},
       });
-      const run: Run = { flow: options.flow, session: session_, values: {} };
+      const run: Run = { flow: options.flow, session: session_, input, values: {} };
       runs.set(session, run);
       void session_.result.then(() => {
         if (runs.get(session) !== run) return;

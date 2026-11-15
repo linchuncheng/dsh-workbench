@@ -48,51 +48,43 @@ export async function planStep(
 ): Promise<PlanResult> {
   const running = runs.stepOf(session);
   const at = running?.id ?? null;
-  const judged = runs.valuesOf(session)['judge'];
-  const known =
-    typeof judged === 'object' && judged !== null ? (judged as { summary?: unknown }).summary : undefined;
+  const buildable = input.destination === 'board' || input.destination === 'headless';
 
-  if (at !== null && at !== 'judge' && at !== 'plan') {
-    if (known === input.summary) {
+  if (running !== null) {
+    if (runs.inputOf(session)['summary'] !== input.summary) {
+      runs.stop(session);
+    } else if (at === 'plan') {
+      const planned = await runs.advance(session, planValue(input));
+      if (!planned.ok) return refused(input, planned.problem ?? '方案没递上去');
+      return advanced(planned.step, input.destination);
+    } else if (at !== null) {
+      const position = positionOf(at, input.destination);
       return refused(
         input,
-        `现在停在第 ${positionOf(at, input.destination).index}/${positionOf(at, input.destination).total} 步（${
-          running?.title ?? at
-        }），这一步用 workbench_diy_step 递`,
+        `现在停在第 ${position.index}/${position.total} 步（${running.title ?? at}），这一步用 workbench_diy_step 递`,
       );
     }
-    runs.stop(session);
   }
 
-  if (running === null || runs.stepOf(session) === null) runs.start(session);
-
-  const here = runs.stepOf(session)?.id ?? null;
-  if (here === 'plan') {
-    const planned = await runs.advance(session, planValue(input));
-    if (!planned.ok) return refused(input, planned.problem ?? '方案没递上去');
-    return advanced(planned.step, input.destination);
-  }
-
-  const started = await runs.advance(session, { destination: input.destination, summary: input.summary });
-  if (!started.ok) return refused(input, started.problem ?? '这一次没递上去');
-  if (started.step === null) {
+  if (!buildable) {
     const short: Record<string, string> = {
       ready: '用现成的，直接给她看',
       once: '一次性，做完就把结果说清楚',
       reroute: '改道，告诉她这一步不走面板',
     };
-    const position = positionOf(null, input.destination);
     return {
       ok: true,
       step: null,
       index: 0,
-      total: position.total,
+      total: 0,
       remaining: 0,
       done: true,
       text: `判成「${short[input.destination] ?? input.destination}」，流程到此为止：这一单不进面板。`,
     };
   }
-  return advanced(started.step, input.destination);
+
+  runs.start(session, { destination: input.destination, summary: input.summary });
+  return advanced(runs.stepOf(session), input.destination);
 }
 
 function planValue(input: PlanInput): Record<string, unknown> {
