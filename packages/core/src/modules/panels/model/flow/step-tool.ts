@@ -2,7 +2,7 @@ import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunCont
 import { sessionIdOf } from '@dsh-workbench/shared/host';
 import { DIY_STEP_TOOL } from '../../unit';
 import { plainJson } from '../diy-context';
-import { positionOf } from './position';
+import { positionOf, titleOf } from './position';
 import { PROGRESS_OUTPUT } from './progress-output';
 import type { DiyFlowRuns } from './runs';
 
@@ -14,11 +14,17 @@ const STEP_FIELDS: Readonly<Record<string, readonly string[]>> = {
   ledger: ['design'],
 };
 
+function nextOf(step: string, destination: string | null): string {
+  if (step === 'plan') {
+    return destination === 'headless' ? '把方案四段补上（用 workbench_diy_plan）' : '把方案四段和字符画补上（用 workbench_diy_plan）';
+  }
+  return STEP_NEXT[step] ?? step;
+}
+
 const STEP_NEXT: Readonly<Record<string, string>> = {
   probe: '做完站探，把读到的站点递上来',
   build: '写完模块，把模块标识递上来',
   install: '安装完成之后，把模块标识与安装结果递上来',
-  plan: '把方案四段和字符画补上（用 workbench_diy_plan）',
   verify: '走完一遍，把通过的与没验的递上来',
   ledger: '把这次的设计文件名递上来',
 };
@@ -73,12 +79,12 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       }
       const fields = STEP_FIELDS[running.id];
       if (fields === undefined) {
-        throw new Error(`现在停在「${running.title ?? running.id}」，这一步用 workbench_diy_plan 递`);
+        throw new Error(`现在停在「${titleOf(running.id, destinationOf(runs.inputOf(session)))}」，这一步用 workbench_diy_plan 递`);
       }
       const missing = fields.filter((field) => record[field] === undefined);
       if (missing.length > 0) {
         throw new Error(
-          `现在停在「${running.title ?? running.id}」，要递的是 ${fields.join(' / ')}；缺 ${missing.join(' / ')}`,
+          `现在停在「${titleOf(running.id, destinationOf(runs.inputOf(session)))}」，要递的是 ${fields.join(' / ')}；缺 ${missing.join(' / ')}`,
         );
       }
       const value: Record<string, unknown> = {};
@@ -98,8 +104,8 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         text:
           step === null
             ? `流程走完了：共 ${at.total} 步，全部递过。`
-            : `停在第 ${at.index}/${at.total} 步（${step.title ?? step.id}）。下一步：${
-                STEP_NEXT[step.id] ?? step.id
+            : `停在第 ${at.index}/${at.total} 步（${titleOf(step.id, destination)}）。下一步：${
+                nextOf(step.id, destination)
               }。`,
       });
     },

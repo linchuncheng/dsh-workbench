@@ -1,5 +1,5 @@
 import type { FlowNodeStep } from '@dsh-workbench/shared/host';
-import { positionOf } from './position';
+import { positionOf, titleOf } from './position';
 import type { DiyFlowRuns } from './runs';
 
 export type Destination = 'ready' | 'once' | 'reroute' | 'board' | 'headless';
@@ -134,7 +134,7 @@ function advanced(step: FlowNodeStep | null, destination: Destination): PlanResu
     total: position.total,
     remaining: position.remaining,
     done: false,
-    text: `停在第 ${position.index}/${position.total} 步（${step.title ?? step.id}）。下一步：${
+    text: `停在第 ${position.index}/${position.total} 步（${titleOf(step.id, destination)}）。下一步：${
       NEXT[step.id] ?? step.id
     }。`,
   };

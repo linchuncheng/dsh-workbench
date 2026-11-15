@@ -35,6 +35,30 @@ describe('流程递交工具', () => {
     expect(runs.stepOf('s-1')?.id).toBe('plan');
   });
 
+  it('★★ 无看板那两格的名字与面板一致：安装模块 / 检查模块功能', async () => {
+    const { runs, tool } = rig();
+    runs.start('s-1', { destination: 'headless', summary: '加个查库存的工具' });
+    runs.provide('s-1', { sites: [] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    runs.provide('s-1', { see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const out = (await tool.execute({ unit: 'stock-tool' }, exec)) as { text: string };
+
+    expect(out.text).toContain('安装模块');
+    expect(out.text).not.toContain('添加模块到面板');
+  });
+
+  it('★★ 无看板候确认方案时不说字符画', async () => {
+    const { runs, tool } = rig();
+    runs.start('s-1', { destination: 'headless', summary: '加个查库存的工具' });
+
+    const out = (await tool.execute({ sites: [] }, exec)) as { text: string };
+
+    expect(out.text).toContain('方案四段');
+    expect(out.text).not.toContain('字符画');
+  });
+
   it('★ 该递的字段没给就拒，并说清要递什么', async () => {
     const { runs, tool } = rig();
     runs.start('s-1', { destination: 'board', summary: '盯库存' });
