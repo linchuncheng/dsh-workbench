@@ -3,11 +3,6 @@ import type { Translate } from '@dsh-workbench/shared';
 import { CodeBlock } from '@deepseek-ai/dsh-client-ui-primitives';
 import styles from './approval-detail.module.css';
 
-function textOf(raw: Readonly<Record<string, unknown>>, key: string): string {
-  const value = raw[key];
-  return typeof value === 'string' ? value.trim() : '';
-}
-
 export function planShots(
   args: Readonly<Record<string, unknown>>,
 ): readonly { caption: string; ascii: string }[] {
@@ -51,7 +46,6 @@ export function PlanCard({
 }) {
   return (
     <>
-      <p className={styles.planSummary}>{textOf(args, 'summary')}</p>
       {planShots(args).map((shot, index) => (
         <div className={styles.shot} key={String(index)}>
           <CodeBlock

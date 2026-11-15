@@ -47,9 +47,3 @@
   font: var(--dsw-font-s-14);
   color: var(--dsw-alias-label-primary);
 }
-
-.planSummary {
-  margin: 0 0 var(--wb-len-10);
-  font: var(--dsw-font-m-16);
-  color: var(--dsw-alias-label-primary);
-}
