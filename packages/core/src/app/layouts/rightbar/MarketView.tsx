@@ -9,7 +9,7 @@ import { MIN_BUSY_MS } from '@dsh-workbench/shared';
 import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
 
 import { marketSettled } from './market-freshness';
-import { useSelfUpdateTold, useSettleHold } from './market-settle-hold';
+import { useSelfUpdateBusyRefresh, useSelfUpdateTold, useSettleHold } from './market-settle-hold';
 import { useMarketTransient } from './market-transient-state';
 import { useMarketDetail } from './use-market-detail';
 import type { MarketFreshness } from './market-freshness';
@@ -287,6 +287,7 @@ export function MarketView({
     },
   );
   useSettleHold({ pending, landed, t, onChanged, selfUpdate: effectiveSelfUpdate, setPending, setFailed });
+  useSelfUpdateBusyRefresh(effectiveSelfUpdate?.busy === true && mock === undefined, onChanged);
   const settled = marketSettled(freshness, installedRead);
   const nothing =
     shown.length === 0 && self === undefined && installedList.length === 0 && pluginList.length === 0;

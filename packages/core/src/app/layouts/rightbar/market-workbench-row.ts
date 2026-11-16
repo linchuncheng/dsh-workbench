@@ -46,6 +46,7 @@ export function workbenchRow(
   const local = version.local === true;
   const retry = !local && mark !== undefined && RESULT_KINDS.has(mark.kind);
   const swapping = selfUpdateSwapping(selfUpdate);
+  const busy = selfUpdate?.busy === true;
   const latest = local ? undefined : version.latest;
   const update =
     latest !== undefined && latest !== version.installed
@@ -54,10 +55,12 @@ export function workbenchRow(
   const staleNote = mark !== undefined && mark.kind === 'pending-restart' && update !== undefined;
   const reinstallNote = reinstallNoteOf(selfUpdate);
   const updateNote = mark === undefined || staleNote ? undefined : selfUpdateNote(mark);
+  const busyNote: MarketNote | undefined =
+    busy && !swapping ? { key: 'panels.market.selfUpdateBusy', params: {}, tone: 'plain' } : undefined;
   const note =
     reinstallNote !== undefined && (updateNote === undefined || updateNote.tone !== 'alert')
       ? reinstallNote
-      : updateNote;
+      : (updateNote ?? busyNote);
   const blocked = update === undefined ? undefined : version.latestBlocked;
   const blockedHint: MarketHint | undefined =
     blocked === undefined ? undefined : updateBlockHintOf(blocked);
@@ -77,7 +80,7 @@ export function workbenchRow(
           ? 'installed'
           : 'outdated',
     canInstall: false,
-    canUpdate: !swapping && blocked === undefined && (update !== undefined || retry),
+    canUpdate: !swapping && !busy && blocked === undefined && (update !== undefined || retry),
     canUninstall: false,
     ...(local ? { local: true } : {}),
     ...(stale || followUpState || blockedHint === undefined ? {} : { hint: blockedHint }),

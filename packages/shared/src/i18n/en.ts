@@ -164,6 +164,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.selfUpdateMigration': 'This update needs Desktop to be closed once: quit Desktop and it finishes automatically, with no further action.',
   'panels.market.selfUpdatePendingRestart': 'The new version is ready — restart to pick it up.',
   'panels.market.selfUpdateRetry': 'Update failed. Click Update to try again.',
+  'panels.market.selfUpdateBusy': 'The previous update is still finishing. You can update again once it settles.',
   'panels.market.selfUpdateReinstallFailed': 'Dependency reinstall failed. Restart the workbench to retry; if it still fails, reinstall manually with the command shown in the terminal.',
   'panels.market.selfUpdateReinstallStopped': 'Automatic dependency reinstall kept failing. Reinstall manually with the command shown in the terminal.',
   'panels.market.uninstall': 'Uninstall',

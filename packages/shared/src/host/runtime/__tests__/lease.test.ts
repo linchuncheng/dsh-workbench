@@ -73,16 +73,24 @@ describe('更新租约：同一个运行时根只许一个更新', () => {
     expect(acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'run-3' })).toBeDefined();
   });
 
-  it('★ 进程没了但锁还没过期 → 先不抢；过期后由锁目录回收接管', () => {
+  it('★ 拿到之后不占着锁目录：更新跑多久都不会把自己下一次挡住', () => {
+    const rootDir = root();
+    const lease = acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'long-run' });
+    expect(lease).toBeDefined();
+    expect(existsSync(`${updateLeaseFile(rootDir)}.d`)).toBe(false);
+
+    const older = new Date(Date.now() - 60 * 60_000);
+    utimesSync(updateLeaseFile(rootDir), older, older);
+    const next = acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'next' });
+    expect(next).toBeUndefined();
+    expect(readUpdateLease(rootDir)?.token).toBe('long-run');
+    lease?.release();
+  });
+
+  it('★ 进程没了 → 下一次直接接管，不用等锁过期', () => {
     const rootDir = root();
     const dead = acquireUpdateLease({ root: rootDir, pid: 999_999_999, token: 'dead' });
     expect(dead).toBeDefined();
-
-    expect(acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'next' })).toBeUndefined();
-
-    const lockDir = `${updateLeaseFile(rootDir)}.d`;
-    const old = new Date(Date.now() - 120_000);
-    utimesSync(lockDir, old, old);
 
     const next = acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'next' });
     expect(next?.record.token).toBe('next');

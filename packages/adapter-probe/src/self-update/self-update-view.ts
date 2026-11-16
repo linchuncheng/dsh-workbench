@@ -1,5 +1,10 @@
 import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
-import { readBootRecord, readReinstallRecord, reinstallRecordFile } from '@dsh-workbench/shared/host';
+import {
+  readBootRecord,
+  readReinstallRecord,
+  reinstallRecordFile,
+  updateLeaseActive,
+} from '@dsh-workbench/shared/host';
 import { selfUpdatePaths, selfUpdateUpFile } from './self-update-plan.js';
 import { pidAlive } from './self-update-alive.js';
 import {
@@ -53,9 +58,10 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
   const state = asText(record.state);
   if (state === undefined || !(SELF_UPDATE_STATES as readonly string[]).includes(state)) return undefined;
   const owner = asText(record.profile);
+  const busy = updateLeaseActive(paths.dir);
   if (profile !== undefined && owner !== undefined && owner !== profile) {
     const reinstall = reinstallOf(paths.dir, profile);
-    return reinstall === undefined ? undefined : { state: 'ok', profile, reinstall };
+    return reinstall === undefined ? undefined : { state: 'ok', busy, profile, reinstall };
   }
   const from = asText(record.from);
   const to = asText(record.to);
@@ -71,6 +77,7 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
   const reinstall = reinstallOf(paths.dir, profile ?? owner);
   return {
     state: (runnerGone ? 'failed' : confirmed ? 'ok' : state) as SelfUpdateState,
+    busy,
     ...(record.migration === true ? { migration: true } : {}),
     ...(owner === undefined ? {} : { profile: owner }),
     ...(from === undefined ? {} : { from }),

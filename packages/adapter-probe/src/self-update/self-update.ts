@@ -109,7 +109,7 @@ export function startSelfUpdate(
     return { started: false, paths, forward };
   }
   if (selfUpdateBusy(paths.marker)) {
-    onError('已经有一次工作台更新在跑 —— 等它落定再试（self-update.json 会说它到哪一步了）。');
+    onError('已经有一次工作台更新在运行 —— 等它结束再试。');
     return { started: false, paths, forward };
   }
   let lease;
@@ -120,7 +120,7 @@ export function startSelfUpdate(
     return { started: false, paths, forward };
   }
   if (lease === undefined) {
-    onError('已经有一次工作台更新在跑 —— 等它落定再试（self-update.json 会说它到哪一步了）。');
+    onError('已经有一次工作台更新在运行 —— 等它结束再试。');
     return { started: false, paths, forward };
   }
   let plan: SelfUpdatePlan;

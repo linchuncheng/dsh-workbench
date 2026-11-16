@@ -8,6 +8,16 @@ import type { Pending } from './market-view-text';
 
 const TOLD_KEY = 'dsh-workbench.market.selfUpdate.told';
 
+export const SELF_UPDATE_BUSY_POLL_MS = 3_000;
+
+export function useSelfUpdateBusyRefresh(busy: boolean, onChanged: () => void): void {
+  useEffect(() => {
+    if (!busy) return undefined;
+    const tick = window.setInterval(onChanged, SELF_UPDATE_BUSY_POLL_MS);
+    return () => window.clearInterval(tick);
+  }, [busy, onChanged]);
+}
+
 export function useSelfUpdateTold(
   update: WorkbenchSelfUpdate | null | undefined,
   mark = false,

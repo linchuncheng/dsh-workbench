@@ -177,7 +177,7 @@ describe('起更新：先落现场，再交给外面那个进程', () => {
       failure = message;
     }, seam);
     expect(started.started).toBe(false);
-    expect(failure).toContain('已经有一次工作台更新在跑');
+    expect(failure).toContain('已经有一次工作台更新在运行');
     expect(processes.calls).toHaveLength(0);
   });
 

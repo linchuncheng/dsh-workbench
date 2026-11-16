@@ -226,6 +226,7 @@ export function updateLeaseActive(root: string, at: number = now()): boolean {
 
 export function acquireUpdateLease(input: UpdateLeaseInput): UpdateLeaseHandle | undefined {
   mkdirSync(input.root, { recursive: true });
+  if (updateLeaseActive(input.root)) return undefined;
   const startedAt = input.startedAt ?? nowIso();
   const pid = input.pid ?? 0;
   const token = input.token === undefined || input.token === '' ? randomLeaseToken() : input.token;
@@ -244,6 +245,7 @@ export function acquireUpdateLease(input: UpdateLeaseInput): UpdateLeaseHandle |
     }
   }
   try {
+    if (updateLeaseActive(input.root)) return undefined;
     const body = {
       pid,
       startedAt,
@@ -259,13 +261,12 @@ export function acquireUpdateLease(input: UpdateLeaseInput): UpdateLeaseHandle |
       },
       rewrite: (nextPid: number) => rewriteUpdateLease({ root: input.root, token, pid: nextPid }),
     };
-  } catch (error) {
+  } finally {
     try {
       unlock();
     } catch {
       // 已经没了
     }
-    throw error;
   }
 }
 
@@ -333,11 +334,6 @@ export function releaseUpdateLease(input: {
     unlinkSync(record.file);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') return false;
-  }
-  try {
-    lockfile.unlockSync(record.file, { realpath: false, lockfilePath: `${record.file}.d` });
-  } catch {
-    // 锁目录可能已经被清掉或过期回收
   }
   return true;
 }

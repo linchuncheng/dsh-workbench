@@ -25,6 +25,17 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual(['update-workbench']);
   });
 
+  it('★ 上一次更新还在收尾（busy）→ 不给更新，并说清为什么', () => {
+    const row = workbenchRow(
+      { pkg: CORE, installed: '0.1.18', latest: '0.1.19' },
+      { state: 'ok', busy: true },
+    );
+
+    expect(row).toMatchObject({ state: 'outdated', canUpdate: false });
+    expect(row?.note).toEqual({ key: 'panels.market.selfUpdateBusy', params: {}, tone: 'plain' });
+    expect(marketActions(row as MarketRow)).toEqual([]);
+  });
+
   it('① 官方版本表说这一版跟当前 dsh 不兼容 → 有新版样式，但不给更新，说明要哪一版 dsh', () => {
     const blocked = {
       kind: 'incompatible' as const,

@@ -101,6 +101,7 @@ export interface SelfUpdateReinstall {
 
 export interface WorkbenchSelfUpdate {
   readonly state: SelfUpdateState;
+  readonly busy?: boolean;
   readonly migration?: boolean;
   readonly profile?: string;
   readonly from?: string;

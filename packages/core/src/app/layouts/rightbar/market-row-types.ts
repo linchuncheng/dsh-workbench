@@ -56,6 +56,7 @@ export interface MarketNote {
     | 'panels.market.selfUpdateQueued'
     | 'panels.market.selfUpdatePendingRestart'
     | 'panels.market.selfUpdateRetry'
+    | 'panels.market.selfUpdateBusy'
     | 'panels.market.selfUpdateReinstallFailed'
     | 'panels.market.selfUpdateReinstallStopped';
   readonly params: Readonly<Record<string, string>>;
