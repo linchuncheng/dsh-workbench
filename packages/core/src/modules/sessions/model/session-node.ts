@@ -194,3 +194,55 @@ export function sessionRows(
   }
   return orderByRecency(rows);
 }
+
+export interface VisibleSessionRows {
+  readonly rows: readonly SessionSummary[];
+  readonly hiddenCount: number;
+}
+
+export function visibleSessionRows(
+  rows: readonly SessionSummary[],
+  watermark: number,
+): VisibleSessionRows {
+  let count = 0;
+  const visible: SessionSummary[] = [];
+  for (const row of rows) {
+    if (row.blank) {
+      visible.push(row);
+      continue;
+    }
+    count += 1;
+    if (count <= watermark) visible.push(row);
+  }
+  return { rows: visible, hiddenCount: rows.length - visible.length };
+}
+
+export interface SessionWatermarkInput {
+  readonly rows: readonly SessionSummary[];
+  readonly currentId: string | undefined;
+  readonly attention: (row: SessionSummary) => boolean;
+  readonly ceiling: number;
+}
+
+export function requiredSessionWatermark(input: SessionWatermarkInput): number {
+  let index = 0;
+  let required = 0;
+  for (const row of input.rows) {
+    if (row.blank) continue;
+    index += 1;
+    if (row.id === input.currentId) required = index;
+    else if (index <= input.ceiling && input.attention(row)) required = index;
+  }
+  return required;
+}
+
+export function sessionNeedsAttention(node: SessionNode): boolean {
+  return (
+    node.running ||
+    node.runningSubagentCount > 0 ||
+    node.longTask ||
+    node.longTaskWaiting ||
+    node.pendingInteraction !== undefined ||
+    node.completed
+  );
+}

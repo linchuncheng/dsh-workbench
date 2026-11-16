@@ -411,7 +411,7 @@ export const checks = [
     },
   },
   {
-    title: '左栏 inject 提供十二个能力',
+    title: '左栏 inject 提供十三个能力',
     run(ctx, report) {
       const { sidebar } = ctx;
 
@@ -431,9 +431,10 @@ export const checks = [
         'selectPanel',
         'renameWorkspace',
         'openSessionMenu',
+        'searchSessions',
       ];
       report(
-        '左栏 inject 提供十二个能力',
+        '左栏 inject 提供十三个能力',
         SIDEBAR_CAPS.every((name) => typeof injected?.[name] === 'function'),
         SIDEBAR_CAPS.filter((name) => typeof injected?.[name] !== 'function').join('、') ||
           SIDEBAR_CAPS.join(','),

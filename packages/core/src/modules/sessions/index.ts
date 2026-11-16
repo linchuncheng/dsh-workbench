@@ -1,16 +1,31 @@
 export {
   currentSessionId,
   orderByRecency,
+  requiredSessionWatermark,
+  sessionNeedsAttention,
   sessionNode,
   orderSessionRows,
   sessionRows,
+  visibleSessionRows,
   workspaceOfSession,
   sessionStatuses,
   visiblePendingKind,
   type SessionNode,
   type SessionStatusDot,
+  type SessionWatermarkInput,
+  type VisibleSessionRows,
 } from './model/session-node';
 export { scrollEdgesOf, type ScrollEdges } from './model/scroll-edges';
+export {
+  SESSION_SEARCH_RESULT_LIMIT,
+  sessionSearchHits,
+  type SessionSearch,
+  type SessionSearchHit,
+  type SessionSearchHits,
+  type SessionSearchInput,
+  type SessionSearchItem,
+  type SessionSearchPage,
+} from './model/session-search';
 export {
   attentionLabel,
   attentionListRank,

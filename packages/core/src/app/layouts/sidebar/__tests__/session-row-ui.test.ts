@@ -128,7 +128,7 @@ describe('会话行的「更多」：交给 dsh 的共享上下文菜单，自�
 describe('滚动区两端的淡出：跟 dsh 的 TurnNavigator 同一套 24px mask', () => {
   it('★ 两端状态由滚动量算（scrollEdgesOf），挂在**滚动容器自己**的类上', () => {
     expect(VIEW).toContain('scrollEdgesOf');
-    expect(VIEW).toContain('const edges = useScrollEdges(listRef, rows)');
+    expect(VIEW).toContain('const edges = useScrollEdges(listRef, shownRows)');
     expect(VIEW).toContain("edges.canScrollUp && 'wb-fadeTop'");
     expect(VIEW).toContain("edges.canScrollDown && 'wb-fadeBottom'");
     expect(VIEW).toContain('ref={listRef}');

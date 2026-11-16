@@ -4,8 +4,8 @@
   --dsh-session-list-edge-inset: var(--dsh-sidebar-inline-padding);
   --dsh-session-list-scrollbar-width: 5px;
   --dsh-session-list-scrollbar-offset: 2px;
-  margin: 0 var(--dsh-session-list-scrollbar-offset) var(--wb-len-4) 0;
-  padding-right: calc( var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset) );
+  margin: 0 0 var(--wb-len-4) 0;
+  padding-right: 0;
 }.wb-sectionHeader {
   box-sizing: border-box;
   display: flex;
@@ -15,13 +15,11 @@
   height: var(--wb-len-36);
   flex: none;
   margin-bottom: var(--wb-len-4);
-  padding-left: var(--wb-len-8);
-  padding-right: var(--wb-len-2);
+  padding-left: var(--wb-len-4);
+  padding-right: var(--wb-len-4);
   border-radius: var(--dsw-radius-md);
   color: var(--dsw-alias-label-tertiary);
   overflow: hidden;
-}.wb-wsNew {
-  margin-left: auto;
 }.wb-sectionLabel {
   flex: none;
   min-width: 0;
@@ -38,8 +36,6 @@
   margin-bottom: 0;
   padding-left: 0;
   padding-right: 0;
-}.wb-collapsed .wb-wsNew {
-  margin-left: 0;
 }.wb-sessions {
   --dsh-session-list-edge-inset: var(--dsh-sidebar-inline-padding);
   --dsh-session-list-scrollbar-width: 5px;

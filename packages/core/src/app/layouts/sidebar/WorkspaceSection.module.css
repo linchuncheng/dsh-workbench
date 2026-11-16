@@ -1,0 +1,44 @@
+.label {
+  margin-left: var(--wb-len-4);
+  transition:
+    max-width var(--wb-dur-0-12) ease,
+    opacity var(--wb-dur-0-12) ease,
+    margin-right var(--wb-dur-0-12) ease,
+    margin-left var(--wb-dur-0-12) ease;
+}
+
+.labelHidden {
+  max-width: 0;
+  opacity: 0;
+  margin-right: var(--wb-len-neg-4);
+  margin-left: 0;
+}
+
+.actions {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--wb-len-4);
+  min-width: 0;
+}
+
+.actionsOpen {
+  gap: 0;
+}
+
+.newSession {
+  flex: none;
+  max-width: var(--wb-len-40);
+  opacity: 1;
+  overflow: hidden;
+  transition:
+    max-width var(--wb-dur-0-12) ease,
+    opacity var(--wb-dur-0-12) ease;
+}
+
+.newSessionHidden {
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+}

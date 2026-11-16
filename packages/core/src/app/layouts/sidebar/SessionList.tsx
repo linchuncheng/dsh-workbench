@@ -12,11 +12,17 @@ import type {
   Translate,
   WorkspaceView,
 } from '@dsh-workbench/shared';
-import { currentSessionId, orderSessionRows, scrollEdgesOf, sessionNode, sessionRows, sessionStatuses, type LongTaskPresence, type ScrollEdges, type SessionNode, type SessionStatusDot } from '@/modules/sessions';
+import { SESSION_SEARCH_RESULT_LIMIT, currentSessionId, orderSessionRows, scrollEdgesOf, sessionNode, sessionRows, sessionStatuses, type LongTaskPresence, type ScrollEdges, type SessionNode, type SessionSearch, type SessionStatusDot } from '@/modules/sessions';
 
 import { cx, relativeTimeAgo, relativeTimeCompact } from '@dsh-workbench/shared';
 
 import { HoverCard, IconEllipsisOutlineRegular, IconPinFillRegular, StateDot } from '@deepseek-ai/dsh-client-ui-primitives';
+
+import { SessionOverflow } from './SessionOverflow';
+import { useSessionSearch } from './use-session-search';
+import { useSessionWatermark } from './use-session-watermark';
+import { SessionSearchResult } from './SessionSearchResult';
+import { SessionSearchSkeleton } from './SessionSearchSkeleton';
 
 const MIN_TITLE_REVEAL_PX = 8;
 const TITLE_MARQUEE_PX_PER_MS = 0.03;
@@ -276,15 +282,19 @@ function useScrollEdges(list: { readonly current: HTMLElement | null }, rows: re
 
 export interface SessionListProps {
   workspace: WorkspaceView | null;
+  workspaces: readonly WorkspaceView[];
   pinnedIds: readonly string[];
   archived: readonly string[];
   panelActive: boolean;
   longTasks: LongTaskPresence;
+  query: string;
+  searchSessions: SessionSearch;
   useSessions: SnapshotSelectorHook<SessionsSnapshot>;
   useSessionStatus: SnapshotSelectorHook<SessionStatusSnapshot>;
   useSessionMenuTarget: SnapshotSelectorHook<DshContextMenuTarget | null>;
   useContextMenu: DshUseContextMenu;
   onOpen: (sessionId: string) => void;
+  onOpenSearchResult: (sessionId: string) => void;
   openSessionMenu: (sessionId: string, displayTitle: string, point: DshMenuPoint) => void;
   renderSlot: RenderSlot;
   t: Translate;
@@ -292,15 +302,19 @@ export interface SessionListProps {
 
 export function SessionList({
   workspace,
+  workspaces,
   pinnedIds,
   archived,
   panelActive,
   longTasks,
+  query,
+  searchSessions,
   useSessions,
   useSessionStatus,
   useSessionMenuTarget,
   useContextMenu,
   onOpen,
+  onOpenSearchResult,
   openSessionMenu,
   renderSlot,
   t,
@@ -317,32 +331,100 @@ export function SessionList({
     return orderSessionRows(sessionRows(workspace.sessionIds, list, archivedSet, currentId), pinned, archivedSet);
   }, [workspace, list, archivedSet, currentId, pinned]);
 
+  const workspaceId = workspace?.workspaceId;
+  const watermark = useSessionWatermark({
+    workspaceId,
+    rows,
+    currentId,
+    statusById,
+    list,
+    pinned,
+    archivedSet,
+    longTasks,
+  });
+  const search = useSessionSearch({
+    workspaceId,
+    query,
+    workspaces,
+    list,
+    archivedSet,
+    searchSessions,
+  });
+  const shownRows = search.searching ? search.rows : watermark.visible.rows;
+
   const listRef = useRef<HTMLDivElement>(null);
-  const edges = useScrollEdges(listRef, rows);
+  const edges = useScrollEdges(listRef, shownRows);
 
   if (workspace === null) return <div className="wb-empty">{t('session.noProject')}</div>;
-  if (rows.length === 0) return <div className="wb-empty">{t('session.empty')}</div>;
+  if (rows.length === 0 && !search.searching) return <div className="wb-empty">{t('session.empty')}</div>;
 
   return (
     <div
       ref={listRef}
       className={cx('wb-sessions', edges.canScrollUp && 'wb-fadeTop', edges.canScrollDown && 'wb-fadeBottom')}
       role="tree"
-      aria-label={t('session.list.label')}
+      aria-label={search.searching ? t('session.search.results') : t('session.list.label')}
     >
-      {rows.map((row) => (
-        <SessionRow
-          key={row.id}
-          node={sessionNode(row, statusById, list, pinned, archivedSet, longTasks.bySession, longTasks.waitingBySession)}
-          active={row.id === currentId}
-          onOpen={onOpen}
-          openSessionMenu={openSessionMenu}
-          useContextMenu={useContextMenu}
-          useSessionMenuTarget={useSessionMenuTarget}
-          renderSlot={renderSlot}
+      {search.searching
+        ? search.hits.hits.map((hit) => (
+            <SessionSearchResult
+              key={hit.row.id}
+              node={sessionNode(
+                hit.row,
+                statusById,
+                list,
+                pinned,
+                archivedSet,
+                longTasks.bySession,
+                longTasks.waitingBySession,
+              )}
+              workspace={hit.workspace}
+              snippet={hit.snippet}
+              active={hit.row.id === currentId}
+              onOpen={onOpenSearchResult}
+              t={t}
+            />
+          ))
+        : shownRows.map((row) => {
+            const node = watermark.nodesById.get(row.id);
+            if (node === undefined) return null;
+            return (
+              <SessionRow
+                key={row.id}
+                node={node}
+                active={row.id === currentId}
+                onOpen={onOpen}
+                openSessionMenu={openSessionMenu}
+                useContextMenu={useContextMenu}
+                useSessionMenuTarget={useSessionMenuTarget}
+                renderSlot={renderSlot}
+                t={t}
+              />
+            );
+          })}
+      {search.searching ? (
+        <>
+          {search.pending ? (
+            <div role="status" aria-label={t('session.search.pending')}>
+              <SessionSearchSkeleton rows={search.hits.hits.length === 0 ? 2 : 1} />
+            </div>
+          ) : null}
+          {!search.pending && search.hits.hits.length === 0 ? (
+            <div className="wb-empty" role="status">{t('session.search.empty')}</div>
+          ) : null}
+          {!search.pending && search.hits.hasMore ? (
+            <div className="wb-empty">{t('session.search.hasMore', { n: SESSION_SEARCH_RESULT_LIMIT })}</div>
+          ) : null}
+        </>
+      ) : watermark.expandedAll || watermark.visible.hiddenCount > 0 ? (
+        <SessionOverflow
+          hiddenCount={watermark.visible.hiddenCount}
+          expanded={watermark.expandedAll}
+          onExpand={watermark.expand}
+          onCollapse={watermark.collapse}
           t={t}
         />
-      ))}
+      ) : null}
     </div>
   );
 }

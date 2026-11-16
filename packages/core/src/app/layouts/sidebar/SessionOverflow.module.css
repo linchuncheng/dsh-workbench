@@ -1,0 +1,27 @@
+.overflow {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--wb-len-28);
+  padding: 0 var(--wb-len-12) 0
+    calc(var(--wb-len-12) + var(--wb-len-16) + var(--wb-len-6));
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  font-size: var(--dsw-font-xxs-12-font-size);
+  line-height: var(--wb-line-20);
+  text-align: left;
+  cursor: pointer;
+  flex: none;
+}
+
+.overflow:hover {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.overflow:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid
+    var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -2px;
+}

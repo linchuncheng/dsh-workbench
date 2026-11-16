@@ -39,7 +39,7 @@ import { installContextChips } from '@/shared/api/context-chips';
 import { installWorkbenchStyles } from '@/app/layouts/workbench-styles';
 import { setRuntimeTextResolver } from '@/shared/hooks/locale-text';
 import { reportBootOk } from '@/shared/hooks/boot-ok';
-import { currentSessionId, workspaceOfSession } from '@/modules/sessions';
+import { currentSessionId, workspaceOfSession, type SessionSearch } from '@/modules/sessions';
 import type { DshSidebarRight } from '@dsh-workbench/shared';
 import { createRightbarStore, type RightbarColumn, type RightbarState } from '@/app/layouts/rightbar/store';
 import {
@@ -323,6 +323,18 @@ function mount(ctx: DshClientContext): void {
   if (store.getSnapshot().column === 'workbench') armWorkbenchColumn();
 
   let ownSidebarRegistered = false;
+
+  const searchSessions: SessionSearch = async (query, signal) => {
+    const sessions = ctx.get('sessions');
+    if (sessions === undefined) throw new Error('sessions service unavailable');
+    const result = await sessions.search(query, signal);
+    if (!result.ok) throw new Error(result.error.message);
+    return {
+      items: result.value.items.map((item) => ({ sessionId: item.sessionId, snippet: item.snippet })),
+      hasMore: result.value.hasMore,
+    };
+  };
+
   const registerOwnSidebar = (): void => {
     if (ownSidebarRegistered) return;
     ownSidebarRegistered = true;
@@ -355,6 +367,7 @@ function mount(ctx: DshClientContext): void {
             startSession: startSessionIn,
             toggleSidebar: () => ctx.layout.toggleSidebar(),
             selectPanel: (panelId: string | null) => ctx.layout.selectPanel(panelId as MainPanelId | null),
+            searchSessions,
           }),
         },
         Sidebar,

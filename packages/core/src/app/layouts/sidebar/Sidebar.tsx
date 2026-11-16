@@ -1,4 +1,4 @@
-import { Fragment, createElement as h, useEffect, useMemo, useState } from 'react';
+import { createElement as h, useEffect, useMemo, useState } from 'react';
 import { Spinner } from '@dsh-workbench/shared';
 import type {
   DshContextMenuTarget,
@@ -15,10 +15,12 @@ import type {
 } from '@dsh-workbench/shared';
 import { selectProject, selectedProjectId, subscribeProject } from '@/app/layouts/project-selection';
 import { useBoardWorkspace } from '@/app/layouts/rightbar/use-panels';
+import type { SessionSearch } from '@/modules/sessions';
 import { openNewSession, openPickedProject } from './session-pick';
 import { SidebarHeader } from './SidebarHeader';
 import { WorkspaceSection } from './WorkspaceSection';
 import { useSidebarAttention, useLongTaskPresence } from './use-attention';
+import { useSidebarSearch } from './use-sidebar-search';
 import { usePanelEntries } from './use-panel-entries';
 import { workspaceRecencyOf } from './workspace-recency';
 import { cx } from '@dsh-workbench/shared';
@@ -54,6 +56,7 @@ export type SidebarProps = SidebarActions & {
   useSessionStatus: SnapshotSelectorHook<SessionStatusSnapshot>;
   useSessionMenuTarget: SnapshotSelectorHook<DshContextMenuTarget | null>;
   useContextMenu: DshUseContextMenu;
+  searchSessions: SessionSearch;
 };
 
 function addWorkspace(input: {
@@ -114,6 +117,8 @@ export function Sidebar(props: SidebarProps) {
     longTasks,
   });
 
+  const search = useSidebarSearch(props.openSession);
+
   const recency = useMemo(
     () => workspaceRecencyOf({ items, sessions, archivedIds: archivedSet }),
     [items, sessions, archivedSet],
@@ -160,46 +165,30 @@ export function Sidebar(props: SidebarProps) {
         t={t}
       />
 
-      {wide ? (
-        <>
-        <ProjectSwitcher
-          items={items}
-          current={current}
-          attention={attention}
-          recency={recency}
-          onPick={pickProject}
-          onAdd={addProject}
-          onAlias={props.renameWorkspace}
-          onDelete={props.deleteWorkspace}
-          onReveal={props.revealWorkspace}
-          t={t}
-        />
-        {creating ? (
-          <p className="wb-workspaceBusy" role="status">
-            <Spinner size={12} />
-            {t('project.add.busy')}
-          </p>
-        ) : null}
-        {createFailed ? <p className="wb-workspaceError">{t('project.add.failed')}</p> : null}
-        </>
-      ) : (
-        <ProjectSwitcher
-          items={items}
-          current={current}
-          attention={attention}
-          recency={recency}
-          compact
-          onPick={pickProject}
-          onAdd={addProject}
-          onAlias={props.renameWorkspace}
-          onDelete={props.deleteWorkspace}
-          onReveal={props.revealWorkspace}
-          t={t}
-        />
-      )}
+      <ProjectSwitcher
+        items={items}
+        current={current}
+        attention={attention}
+        recency={recency}
+        compact={!wide}
+        onPick={pickProject}
+        onAdd={addProject}
+        onAlias={props.renameWorkspace}
+        onDelete={props.deleteWorkspace}
+        onReveal={props.revealWorkspace}
+        t={t}
+      />
+      {wide && creating ? (
+        <p className="wb-workspaceBusy" role="status">
+          <Spinner size={12} />
+          {t('project.add.busy')}
+        </p>
+      ) : null}
+      {wide && createFailed ? <p className="wb-workspaceError">{t('project.add.failed')}</p> : null}
       <WorkspaceSection
         t={t}
         wide={wide}
+        search={search}
         onNewSession={() => {
           const { openSession, startSession } = props;
           openNewSession({ workspace: current, sessions, archivedIds: archivedSet, openSession, startSession });
@@ -209,13 +198,17 @@ export function Sidebar(props: SidebarProps) {
         {wide ? (
           <SessionList
             workspace={current}
+            workspaces={items}
             pinnedIds={pinnedIds}
             archived={archived}
             panelActive={activePanelId !== null}
             longTasks={longTasks}
+            query={search.query}
+            searchSessions={props.searchSessions}
             useSessions={props.useSessions}
             useSessionStatus={props.useSessionStatus}
             onOpen={props.openSession}
+            onOpenSearchResult={search.openResult}
             openSessionMenu={props.openSessionMenu}
             useContextMenu={props.useContextMenu}
             useSessionMenuTarget={props.useSessionMenuTarget}

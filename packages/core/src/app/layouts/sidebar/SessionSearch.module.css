@@ -1,0 +1,108 @@
+.search {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: 100%;
+  max-width: var(--wb-len-28);
+  height: var(--wb-len-28);
+  padding: 0;
+  border: 0.5px solid transparent;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  overflow: hidden;
+  transition:
+    max-width var(--wb-dur-0-12) ease,
+    height var(--wb-dur-0-12) ease,
+    padding-right var(--wb-dur-0-12) ease,
+    border-color var(--wb-dur-0-12) ease;
+}
+
+.expanded {
+  max-width: 100%;
+  height: var(--wb-len-32);
+  padding-right: var(--wb-len-4);
+  border-color: var(--dsw-alias-border-l4);
+}
+
+.button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--wb-len-28);
+  height: var(--wb-len-28);
+  padding: 0;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  transition: height var(--wb-dur-0-12) ease;
+}
+
+.expanded .button {
+  height: var(--wb-len-32);
+}
+
+.button:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.expanded .button:hover {
+  background: transparent;
+}
+
+.button:focus-visible,
+.clear:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid
+    var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -2px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  margin-left: var(--wb-len-neg-2);
+  padding: var(--wb-len-1) var(--wb-len-2);
+  font: inherit;
+  font-size: var(--dsw-font-xs-13-font-size);
+  line-height: var(--wb-line-18);
+  color: var(--dsw-alias-label-primary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--wb-dur-0-12) ease;
+}
+
+.expanded .input {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.input::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.clear {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--wb-len-24);
+  height: var(--wb-len-24);
+  padding: 0;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .clear:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
