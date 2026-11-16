@@ -36,6 +36,7 @@ export function createSupplyPort(): SupplyPort {
   const port = {
     isolatedRoot: () => layout.root,
     isolatedHome: () => layout.home,
+    beforeLibInstall: () => undefined,
     afterLibInstall: () => undefined,
     profileDirOf,
     profileModules,

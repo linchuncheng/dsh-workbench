@@ -2,11 +2,19 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PluginPlanStep } from '@dsh-workbench/shared/host';
 import { planLineOf, quoteShellArg } from '@dsh-workbench/shared/host';
-import { isolatedHome, toolchainOpencliDir, vendorPeerLink, vendorPluginsDir } from '../foundation/paths.js';
+import { isolatedHome, toolchainOpencliDir, vendorPeerLink, vendorPrefix, vendorPluginsDir } from '../foundation/paths.js';
 
 
 export const CHANNEL_PLUGIN_NAME = 'opencli-plugin-workbench';
 export const CHANNEL_PLUGIN_SITE = 'workbench';
+
+export function channelPluginDir(): string {
+  return join(vendorPrefix(), 'plugins', CHANNEL_PLUGIN_NAME);
+}
+
+export function legacyChannelPluginDir(): string {
+  return join(vendorPluginsDir(), CHANNEL_PLUGIN_NAME);
+}
 
 export interface ChannelPluginPlan {
   readonly dest: string;
@@ -37,10 +45,11 @@ export function channelPluginPlan(options: {
   const version = channelVersionOf(options.channelDir);
   if (version === undefined) return undefined;
   const command = options.command ?? 'opencli';
-  const dest = join(vendorPluginsDir(), CHANNEL_PLUGIN_NAME);
+  const dest = channelPluginDir();
   const peer = vendorPeerLink();
   const steps: PluginPlanStep[] = [
     { kind: 'copy', from: options.channelDir, to: dest },
+    { kind: 'remove', path: legacyChannelPluginDir() },
     { kind: 'remove', path: peer.dir },
     { kind: 'mkdir', path: peer.parent },
     { kind: 'link', target: toolchainOpencliDir(), path: peer.dir },
@@ -55,7 +64,7 @@ export function channelPluginPlan(options: {
 }
 
 export function channelInstalledVersion(): string | undefined {
-  return channelVersionOf(join(vendorPluginsDir(), CHANNEL_PLUGIN_NAME));
+  return channelVersionOf(channelPluginDir());
 }
 
 export function channelSiteInstalled(): boolean {

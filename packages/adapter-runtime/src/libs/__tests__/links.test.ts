@@ -1,8 +1,8 @@
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, delimiter } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ensureLibsBinOnPath, ensureLibsOpencliPeer } from '../links.js';
+import { detachLibsOpencliPeer, ensureLibsBinOnPath, ensureLibsOpencliPeer } from '../links.js';
 
 const LINK_TYPE = 'junction';
 
@@ -66,5 +66,23 @@ describe('ensureLibsBinOnPath', () => {
     expect(env.PATH.split(delimiter)[0].endsWith(expected)).toBe(true);
     expect(ensureLibsBinOnPath(env)).toBe(false);
     expect(env.PATH.split(delimiter).filter((one) => one.endsWith(expected))).toHaveLength(1);
+  });
+});
+
+describe('detachLibsOpencliPeer', () => {
+  it('★ 只拆链接：pnpm 清理 libs/node_modules 时没有 junction 可穿，工具链那份原封不动', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wb-peer-'));
+    vi.stubEnv('DSH_WORKBENCH_HOME', root);
+    const target = join(root, 'opencli/toolchain/node_modules/@jackwener/opencli');
+    mkdirSync(join(target, 'dist'), { recursive: true });
+    writeFileSync(join(target, 'package.json'), '{"name":"@jackwener/opencli"}');
+    expect(ensureLibsOpencliPeer()).toBe(true);
+
+    expect(detachLibsOpencliPeer()).toBe(true);
+
+    expect(existsSync(join(root, 'opencli/libs/node_modules/@jackwener/opencli'))).toBe(false);
+    expect(existsSync(join(target, 'package.json'))).toBe(true);
+    expect(existsSync(join(target, 'dist'))).toBe(true);
+    expect(detachLibsOpencliPeer()).toBe(false);
   });
 });

@@ -157,6 +157,7 @@ export function harness(options: {
   const selfUpdates: SelfUpdateRequest[] = [];
   const release = createReleaseProbe();
   const supply = {
+    beforeLibInstall: () => undefined,
     afterLibInstall: () => undefined,
     latestVersion: release.latestVersion,
     missingReleaseParts: release.missingReleaseParts,

@@ -8,7 +8,8 @@ import { CHANNEL_PLUGIN_NAME, CHANNEL_PLUGIN_SITE, channelPluginPlan } from '../
 
 const DSH_HOME = '/tmp/dshhome-channel-plan';
 const ROOT = path.join(DSH_HOME, 'workbench', 'opencli');
-const DEST = path.join(ROOT, 'plugins-npm', 'node_modules', CHANNEL_PLUGIN_NAME);
+const DEST = path.join(ROOT, 'plugins-npm', 'plugins', CHANNEL_PLUGIN_NAME);
+const LEGACY_DEST = path.join(ROOT, 'plugins-npm', 'node_modules', CHANNEL_PLUGIN_NAME);
 const PEER_DIR = path.join(ROOT, 'plugins-npm', 'node_modules', '@jackwener', 'opencli');
 const PEER_PARENT = path.join(ROOT, 'plugins-npm', 'node_modules', '@jackwener');
 const PEER_TARGET = path.join(ROOT, 'toolchain', 'node_modules', '@jackwener', 'opencli');
@@ -39,11 +40,12 @@ afterEach(() => {
 });
 
 describe('channelPluginPlan：有序步骤，不是一条 shell 行', () => {
-  it('★ 步骤种类与顺序：copy → remove → mkdir → link → 兜底卸载 → 安装', () => {
+  it('★ 步骤种类与顺序：copy → 清旧位置 → remove → mkdir → link → 兜底卸载 → 安装', () => {
     const built = plan();
 
     expect(built.steps.map((step) => step.kind)).toEqual([
       'copy',
+      'remove',
       'remove',
       'mkdir',
       'link',
@@ -51,15 +53,16 @@ describe('channelPluginPlan：有序步骤，不是一条 shell 行', () => {
       'run',
     ]);
     expect(built.steps[0]).toEqual({ kind: 'copy', from: channelDir, to: DEST });
-    expect(built.steps[1]).toEqual({ kind: 'remove', path: PEER_DIR });
-    expect(built.steps[2]).toEqual({ kind: 'mkdir', path: PEER_PARENT });
-    expect(built.steps[3]).toEqual({ kind: 'link', target: PEER_TARGET, path: PEER_DIR });
-    expect(built.steps[4]).toEqual({
+    expect(built.steps[1]).toEqual({ kind: 'remove', path: LEGACY_DEST });
+    expect(built.steps[2]).toEqual({ kind: 'remove', path: PEER_DIR });
+    expect(built.steps[3]).toEqual({ kind: 'mkdir', path: PEER_PARENT });
+    expect(built.steps[4]).toEqual({ kind: 'link', target: PEER_TARGET, path: PEER_DIR });
+    expect(built.steps[5]).toEqual({
       kind: 'run',
       line: `'opencli' plugin uninstall '${CHANNEL_PLUGIN_SITE}'`,
       optional: true,
     });
-    expect(built.steps[5]).toEqual({
+    expect(built.steps[6]).toEqual({
       kind: 'run',
       line: `'opencli' plugin install '${DEST}'`,
     });
