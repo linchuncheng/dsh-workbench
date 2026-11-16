@@ -29,7 +29,7 @@
 }
 
 .wb-activityLineText {
-  flex: none;
+  flex: 1 1 auto;
   min-width: 0;
   font-size: var(--dsw-font-xxs-12-font-size);
   line-height: var(--wb-line-18);

@@ -154,7 +154,10 @@ function rowsOf(items: readonly CardViewRow[], t: Translate, onRefresh: () => vo
             ? undefined
             : h(
                 'span',
-                { className: atClass(item.atTone), ...(item.atTitle === undefined ? {} : { title: item.atTitle }) },
+                {
+                  className: `${styles.activityAt} ${atClass(item.atTone) ?? ''}`.trim(),
+                  ...(item.atTitle === undefined ? {} : { title: item.atTitle }),
+                },
                 item.at,
               );
         return h(ActivityLine, {
@@ -164,12 +167,18 @@ function rowsOf(items: readonly CardViewRow[], t: Translate, onRefresh: () => vo
             'span',
             { className: styles.activityText },
             h('span', { className: styles.activityTitle, title }, title),
-            item.meta === undefined
-              ? null
-              : h('span', { className: styles.activityMeta }, item.meta),
+            h(
+              'span',
+              { className: styles.activityMetaRow },
+              item.meta === undefined
+                ? null
+                : h('span', { className: styles.activityMeta }, item.meta),
+              at,
+              actions === undefined
+                ? null
+                : h('span', { className: styles.activityActions }, actions),
+            ),
           ),
-          ...(at === undefined ? {} : { at }),
-          ...(actions === undefined ? {} : { actions }),
         });
       }
       return h(SchemaRow, {
