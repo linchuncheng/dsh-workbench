@@ -65,7 +65,7 @@ describe('模块用的模型：从工作台设置里取', () => {
 });
 
 describe('模块用的模型：目录读口', () => {
-  it('★ 按服务商分组：读不出来的一家跳过，空目录也不占一格，默认模型一起带上', async () => {
+  it('★ 按服务商分组：读不出来的一家跳过，空目录也不占一格', async () => {
     const ctx = ctxOf({
       llm: llmOf({
         providers: [
@@ -82,7 +82,6 @@ describe('模块用的模型：目录读口', () => {
           empty: [],
         },
       }),
-      agentDefaultModel: defaultModelOf_({ provider: 'deepseek', model: 'deepseek-chat' }),
     });
 
     expect(await moduleModelCatalogOf(ctx)).toEqual({
@@ -96,12 +95,11 @@ describe('模块用的模型：目录读口', () => {
           ],
         },
       ],
-      default: { provider: 'deepseek', model: 'deepseek-chat' },
     });
   });
 
   it('没有模型端口时给空分组，不假装有模型', async () => {
-    expect(await moduleModelCatalogOf(ctxOf({}))).toEqual({ groups: [], default: null });
+    expect(await moduleModelCatalogOf(ctxOf({}))).toEqual({ groups: [] });
   });
 
   it('★ 路由带回 ok: true（取数层只认 ok 的响应，少一个字段界面就一直 loading）', async () => {
@@ -116,7 +114,6 @@ describe('模块用的模型：目录读口', () => {
     expect(await routes['workbench-module-models']?.()).toEqual({
       ok: true,
       groups: [{ id: 'p', name: 'P', models: [{ id: 'm', name: 'M' }] }],
-      default: null,
     });
   });
 });

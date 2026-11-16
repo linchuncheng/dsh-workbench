@@ -46,15 +46,9 @@ export function ModuleModelItem({ t }: ModuleModelItemProps): JSX.Element {
   const stored = snapshot.value?.settings.moduleModel;
   const current = override === undefined ? (stored ?? null) : override;
   const groups = catalog.value?.groups ?? [];
-  const fallback = catalog.value?.default ?? null;
-  const followLabel =
-    fallback === null
-      ? t('moduleModel.followDefault')
-      : t('moduleModel.followDefaultNamed', { target: moduleModelLabelOf(groups, fallback) });
   const { options, selected } = moduleModelChoicesOf({
     groups,
     stored: current,
-    followLabel,
     savedLabel:
       current === null ? '' : t('moduleModel.unavailable', { target: moduleModelLabelOf(groups, current) }),
   });
@@ -95,6 +89,8 @@ export function ModuleModelItem({ t }: ModuleModelItemProps): JSX.Element {
             loadingText={t('moduleModel.reading')}
             search={options.length > 4}
             searchPlaceholder={t('moduleModel.search')}
+            placeholder={t('moduleModel.placeholder')}
+            emptyText={t('moduleModel.empty')}
             ariaLabel={t('moduleModel.nav')}
             selection="check"
           />

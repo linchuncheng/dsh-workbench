@@ -36,10 +36,9 @@ export function moduleModelLabelOf(
 export function moduleModelChoicesOf(input: {
   readonly groups: readonly WorkbenchModelGroup[];
   readonly stored: WorkbenchModelChoice | null;
-  readonly followLabel: string;
   readonly savedLabel: string;
 }): ModuleModelChoices {
-  const options: SelectFieldOption[] = [{ value: '', label: input.followLabel }];
+  const options: SelectFieldOption[] = [];
   let present = false;
   for (const group of input.groups) {
     for (const model of group.models) {
