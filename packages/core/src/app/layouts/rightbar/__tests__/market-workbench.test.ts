@@ -99,6 +99,81 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual([]);
   });
 
+  it('⑤ 盘上是旧版、正在运行的是新版 → 单独一档「需要更新」，不叫「重启后生效」', () => {
+    const row = workbenchRow({
+      pkg: CORE,
+      installed: '0.1.18',
+      running: '0.1.19',
+      diskOlder: true,
+    });
+
+    expect(row).toMatchObject({
+      state: 'older-on-disk',
+      canUpdate: true,
+      moduleUpdate: { installed: '0.1.18', latest: '0.1.19' },
+      version: { installed: '0.1.18', latest: '0.1.19' },
+      note: {
+        key: 'panels.market.olderOnDiskNote',
+        params: { installed: '0.1.18', running: '0.1.19' },
+        tone: 'alert',
+      },
+    });
+    expect(MARKET_STATE_KEY['older-on-disk']).toBe('panels.market.olderOnDisk');
+    expect(MARKET_DOT['older-on-disk']).toBe('warning');
+    expect(marketActions(row as MarketRow)).toEqual(['update-workbench']);
+  });
+
+  it('⑤ 源上还有更新的版本 → 目标是那个更新的版本，不是只修到运行中的那版', () => {
+    const row = workbenchRow({
+      pkg: CORE,
+      installed: '0.1.18',
+      running: '0.1.19',
+      latest: '0.1.20',
+      diskOlder: true,
+    });
+
+    expect(row).toMatchObject({
+      state: 'older-on-disk',
+      moduleUpdate: { installed: '0.1.18', latest: '0.1.20' },
+    });
+  });
+
+  it('⑤ 源上的新版被挡（不兼容）→ 仍旧以运行中的那版为目标，不把人卡住', () => {
+    const blocked = {
+      kind: 'incompatible' as const,
+      requirements: { 'engines.dsh': '>=2.0.0' },
+      runtimeVersion: '1.0.0',
+    };
+    const row = workbenchRow({
+      pkg: CORE,
+      installed: '0.1.18',
+      running: '0.1.19',
+      latest: '0.1.20',
+      latestBlocked: blocked,
+      diskOlder: true,
+    });
+
+    expect(row).toMatchObject({
+      state: 'older-on-disk',
+      canUpdate: true,
+      moduleUpdate: { installed: '0.1.18', latest: '0.1.19' },
+    });
+    expect(row?.hint).toBeUndefined();
+  });
+
+  it('⑤ 本仓那份（link: 装的）不按「盘上 vs 运行中」判，照旧打「本地」标', () => {
+    const row = workbenchRow({
+      pkg: CORE,
+      installed: '0.1.18',
+      running: '0.1.19',
+      diskOlder: true,
+      local: true,
+    });
+
+    expect(row).toMatchObject({ local: true, state: 'installed' });
+    expect(row?.note).toBeUndefined();
+  });
+
   it('④ 已经重启过（运行中 = 盘上）→ 就是绿的「已安装」，那半句不再挂', () => {
     const row = workbenchRow({ pkg: CORE, installed: '0.1.19', running: '0.1.19' });
 

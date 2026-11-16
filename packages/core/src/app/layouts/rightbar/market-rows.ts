@@ -36,6 +36,7 @@ export const MARKET_STATE_KEY: Readonly<Record<MarketState, string>> = {
   unusable: 'panels.market.notUsable',
   broken: 'panels.market.broken',
   outdated: 'panels.market.moduleOutdated',
+  'older-on-disk': 'panels.market.olderOnDisk',
   'pending-restart': 'panels.market.pendingRestart',
   'pending-followup': 'panels.market.pendingFollowUp',
   missing: 'panels.market.missing',
@@ -52,6 +53,7 @@ export const MARKET_DOT: Readonly<
   unusable: 'error',
   broken: 'error',
   outdated: 'warning',
+  'older-on-disk': 'warning',
   'pending-restart': 'warning',
   'pending-followup': 'warning',
   missing: 'idle',
@@ -284,7 +286,14 @@ function noteOf(
   capability: CapabilityMap[string] | undefined,
   manifest: UnitManifest,
 ): MarketNote | undefined {
-  if (state === 'installed' || state === 'inactive' || state === 'pending-restart') return undefined;
+  if (
+    state === 'installed' ||
+    state === 'inactive' ||
+    state === 'pending-restart' ||
+    state === 'older-on-disk'
+  ) {
+    return undefined;
+  }
   const problem: NeedState | undefined = capability?.needs.find((need) => need.status !== 'ok');
   if (problem === undefined) return undefined;
   if (problem.kind === 'env') return { key: 'panels.market.needEnv', params: { env: problem.name } };
@@ -312,6 +321,7 @@ function isOnMachine(state: MarketState): boolean {
   return (
     state === 'installed' ||
     state === 'outdated' ||
+    state === 'older-on-disk' ||
     state === 'pending-restart' ||
     state === 'inactive' ||
     state === 'unusable' ||

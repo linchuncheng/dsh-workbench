@@ -263,6 +263,9 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.sharedKindLib': 'Library',
   'panels.market.detailSharedUsedBy': 'Used by modules',
   'panels.market.moduleOutdated': 'update available',
+  'panels.market.olderOnDisk': 'update needed',
+  'panels.market.olderOnDiskNote':
+    'Installed {installed} while {running} is running. Update before restarting; a restart now runs {installed}.',
   'panels.market.updateNeedsWorkbench': 'this version needs a newer workbench first',
   'panels.market.updateNeedsDsh': 'this version needs {dsh}; the running dsh is {runtime}',
   'panels.market.updateIncompatible': 'the new version does not match this workbench, so it cannot be installed now',

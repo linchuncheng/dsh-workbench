@@ -6,6 +6,7 @@ import {
   ensureProfileBundle,
   ensureReleaseAge,
   readReinstallRecord,
+  reconcileWorkbenchLinks,
   reinstallRecordFile,
   removePath,
   restoreUpdateJournal,
@@ -306,6 +307,14 @@ async function applyStep(
     try {
       persist({ state: 'manifest' });
       writeManifest({ profileDir: step.profileDir, links: step.links });
+      try {
+        const aligned = reconcileWorkbenchLinks({ profileDir: step.profileDir, versionDir: plan.versionDir });
+        if (aligned.changed.length > 0) {
+          log(`工作台链接已对齐到 ${plan.version}（${aligned.changed.join('、')}）`);
+        }
+      } catch (error) {
+        log(`工作台链接没对齐（${messageOf(error)}）：下次在配置里装模块可能按旧版本安装`);
+      }
       writePendingReinstall(plan, now(), log);
       persist({ state: 'committed' });
     } catch (error) {

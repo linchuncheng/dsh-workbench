@@ -10,6 +10,7 @@ const ALL_STATES: Readonly<Record<MarketState, true>> = {
   unusable: true,
   broken: true,
   outdated: true,
+  'older-on-disk': true,
   'pending-restart': true,
   'pending-followup': true,
   missing: true,
@@ -43,6 +44,12 @@ describe('marketRows：状态点', () => {
     expect(MARKET_STATE_KEY.broken).toBe('panels.market.broken');
     expect(MARKET_STATE_KEY.unusable).not.toBe(MARKET_STATE_KEY.installed);
     expect(MARKET_STATE_KEY.broken).not.toBe(MARKET_STATE_KEY.installed);
+  });
+
+  it('★ 盘上比正在运行的旧（需要更新）→ 黄点 + 自己那句文案，不叫「重启后生效」', () => {
+    expect(MARKET_DOT['older-on-disk']).toBe('warning');
+    expect(MARKET_STATE_KEY['older-on-disk']).toBe('panels.market.olderOnDisk');
+    expect(MARKET_STATE_KEY['older-on-disk']).not.toBe(MARKET_STATE_KEY['pending-restart']);
   });
 
   it('★ 盘上换了、进程里还没换（重启后生效）→ 黄点 + 自己那句文案，不许糊成「已安装」', () => {

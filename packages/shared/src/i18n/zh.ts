@@ -260,6 +260,9 @@ export const zh = {
   'panels.market.sharedKindLib': '库',
   'panels.market.detailSharedUsedBy': '使用它的模块',
   'panels.market.moduleOutdated': '有新版',
+  'panels.market.olderOnDisk': '需要更新',
+  'panels.market.olderOnDiskNote':
+    '已安装 {installed}，正在运行 {running}。请先更新再重启；直接重启会运行 {installed}。',
   'panels.market.updateNeedsWorkbench': '新版本要先把工作台升级才能用',
   'panels.market.updateNeedsDsh': '新版本要 {dsh}，当前 dsh 是 {runtime}',
   'panels.market.updateIncompatible': '新版本和当前的工作台不匹配，暂时不能更新',

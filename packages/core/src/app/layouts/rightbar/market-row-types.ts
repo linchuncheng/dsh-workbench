@@ -31,6 +31,7 @@ export type MarketState =
   | 'unusable'
   | 'broken'
   | 'outdated'
+  | 'older-on-disk'
   | 'pending-restart'
   | 'pending-followup'
   | 'missing'
@@ -58,7 +59,8 @@ export interface MarketNote {
     | 'panels.market.selfUpdateRetry'
     | 'panels.market.selfUpdateBusy'
     | 'panels.market.selfUpdateReinstallFailed'
-    | 'panels.market.selfUpdateReinstallStopped';
+    | 'panels.market.selfUpdateReinstallStopped'
+    | 'panels.market.olderOnDiskNote';
   readonly params: Readonly<Record<string, string>>;
   readonly tone?: 'plain' | 'alert';
 }

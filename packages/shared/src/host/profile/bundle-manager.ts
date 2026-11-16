@@ -1,4 +1,7 @@
 import type { DshHostContext, DshPluginInstallRequestId, DshPluginManager } from '../../api/dsh.js';
+import { profileDirOf } from '../supply/installed-module.js';
+import { generationDirOf } from '../supply/module-root.js';
+import { reconcileWorkbenchLinks } from '../supply/workbench-links.js';
 import { RESTART_REASONS } from '../../contract/protocol/bundle-install.js';
 import type { BundleManager } from '../adapters/adapter-types.js';
 import type {
@@ -282,6 +285,30 @@ function asUpdateOutcome(raw: unknown): BundleUpdateOutcome | null {
   };
 }
 
+function requestOptionsOf(request: {
+  readonly registry?: BundleRegistry | undefined;
+  readonly requestId?: string | undefined;
+}): { registry?: BundleRegistry; requestId?: DshPluginInstallRequestId } {
+  return {
+    ...(request.registry === undefined ? {} : { registry: request.registry }),
+    ...(request.requestId === undefined
+      ? {}
+      : { requestId: request.requestId as DshPluginInstallRequestId }),
+  };
+}
+
+function alignWorkbenchLinks(ctx: DshHostContext): void {
+  const versionDir = generationDirOf(import.meta.url);
+  if (versionDir === undefined) return;
+  const profileDir = profileDirOf(ctx);
+  if (profileDir === null) return;
+  try {
+    reconcileWorkbenchLinks({ profileDir, versionDir });
+  } catch {
+    return;
+  }
+}
+
 export function readBundleManager(ctx: DshHostContext): BundleManager | undefined {
   const face = ctx.get(PLUGIN_MANAGER_SERVICE) as DshPluginManager | undefined;
   if (face === undefined) return undefined;
@@ -296,16 +323,15 @@ export function readBundleManager(ctx: DshHostContext): BundleManager | undefine
       return asInspection(await face.inspect(spec, registry === undefined ? undefined : { registry }));
     },
     async install(request) {
+      alignWorkbenchLinks(ctx);
       const options = {
-        ...(request.registry === undefined ? {} : { registry: request.registry }),
-        ...(request.requestId === undefined
-          ? {}
-          : { requestId: request.requestId as DshPluginInstallRequestId }),
+        ...requestOptionsOf(request),
         ...(request.approvedBuilds === undefined ? {} : { approvedBuilds: [...request.approvedBuilds] }),
       };
       return asChange(await face.installBundle?.(request.spec, options));
     },
     async remove(name) {
+      alignWorkbenchLinks(ctx);
       return asChange(await face.removeBundle?.(name));
     },
     async setEnabled(name, enabled) {
@@ -325,12 +351,8 @@ export function readBundleManager(ctx: DshHostContext): BundleManager | undefine
     },
     async updateBundle(name, version, request: BundleUpdateRequest = {}) {
       if (typeof face.updateBundle !== 'function') return null;
-      const options = {
-        ...(request.registry === undefined ? {} : { registry: request.registry }),
-        ...(request.requestId === undefined
-          ? {}
-          : { requestId: request.requestId as DshPluginInstallRequestId }),
-      };
+      alignWorkbenchLinks(ctx);
+      const options = requestOptionsOf(request);
       return asUpdateOutcome(await face.updateBundle(name, version, options));
     },
     async waitForInstall(requestId) {

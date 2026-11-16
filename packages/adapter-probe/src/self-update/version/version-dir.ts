@@ -1,6 +1,6 @@
-import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
-import { ensureDir, isManagedLinkSpec, linkDir, moveDir, removePath, withReleaseAge, writeJsonFile, writeTextFile } from '@dsh-workbench/shared/host';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
+import { ensureDir, isManagedLinkSpec, linkDir, moveDir, removePath, resolveLinkTarget, withReleaseAge, writeJsonFile, writeTextFile } from '@dsh-workbench/shared/host';
 import { installWithRetry, type InstallAttempt, type InstallRetryResult } from '../../install/install-retry.js';
 import { CORE_ARTIFACTS, SELF_UPDATE_PACKAGES } from '../self-update-plan.js';
 import { isRealDir } from './version-migrate.js';
@@ -173,7 +173,7 @@ export function previousVersionLinksOf(input: {
     profileLinkOf(
       input.profileDir,
       pkg,
-      linkTargetOf(join(input.profileDir, 'node_modules', pkg)) ?? join(kept, 'node_modules', pkg),
+      resolveLinkTarget(join(input.profileDir, 'node_modules', pkg)) ?? join(kept, 'node_modules', pkg),
     ),
   );
 }
@@ -202,15 +202,6 @@ export function carryPreviousVersion(input: {
     );
   }
   return moved;
-}
-
-function linkTargetOf(link: string): string | undefined {
-  try {
-    if (!lstatSync(link).isSymbolicLink()) return undefined;
-    return resolve(dirname(link), readlinkSync(link));
-  } catch {
-    return undefined;
-  }
 }
 
 export function flipProfileLinks(links: readonly VersionLink[]): void {

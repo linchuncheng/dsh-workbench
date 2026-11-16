@@ -137,6 +137,7 @@ export * from './host/supply/supply-index.js';
 export * from './host/supply/update-journal-manifest.js';
 export * from './host/supply/update-journal-types.js';
 export * from './host/supply/update-journal.js';
+export * from './host/supply/workbench-links.js';
 export * from './host/unit/board-fact.js';
 export * from './host/unit/context-ref.js';
 export * from './host/unit/extension.js';

@@ -198,12 +198,18 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
     latest === undefined
       ? undefined
       : dshBlockOf(visible.find((entry) => entry.version === latest)?.incompatible);
+  const diskOlder =
+    read.local !== true &&
+    input.running !== undefined &&
+    input.running !== read.version &&
+    supply.isNewerVersion(input.running, read.version);
   return {
     pkg: read.pkg,
     installed: read.version,
     ...(latest === undefined ? {} : { latest }),
     ...(blocked === undefined ? {} : { latestBlocked: blocked }),
     ...(input.running === undefined ? {} : { running: input.running }),
+    ...(diskOlder ? { diskOlder: true } : {}),
     ...(read.local === true ? { local: true } : {}),
     ...(input.followUp === undefined ? {} : { followUp: input.followUp }),
     ...(spec === undefined ? {} : { spec }),

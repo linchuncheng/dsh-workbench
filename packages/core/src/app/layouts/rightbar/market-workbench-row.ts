@@ -47,38 +47,59 @@ export function workbenchRow(
   const retry = !local && mark !== undefined && RESULT_KINDS.has(mark.kind);
   const swapping = selfUpdateSwapping(selfUpdate);
   const busy = selfUpdate?.busy === true;
+  const running = version.running;
+  const older = !local && version.diskOlder === true && running !== undefined;
   const latest = local ? undefined : version.latest;
+  const target = older
+    ? latest !== undefined && version.latestBlocked === undefined
+      ? latest
+      : running
+    : latest;
   const update =
-    latest !== undefined && latest !== version.installed
-      ? { installed: version.installed, latest }
+    target !== undefined && target !== version.installed
+      ? { installed: version.installed, latest: target }
       : undefined;
   const staleNote = mark !== undefined && mark.kind === 'pending-restart' && update !== undefined;
   const reinstallNote = reinstallNoteOf(selfUpdate);
   const updateNote = mark === undefined || staleNote ? undefined : selfUpdateNote(mark);
   const busyNote: MarketNote | undefined =
     busy && !swapping ? { key: 'panels.market.selfUpdateBusy', params: {}, tone: 'plain' } : undefined;
+  const olderNote: MarketNote | undefined = older
+    ? {
+        key: 'panels.market.olderOnDiskNote',
+        params: { installed: version.installed, running: running ?? '' },
+        tone: 'alert',
+      }
+    : undefined;
   const note =
-    reinstallNote !== undefined && (updateNote === undefined || updateNote.tone !== 'alert')
+    olderNote ??
+    (reinstallNote !== undefined && (updateNote === undefined || updateNote.tone !== 'alert')
       ? reinstallNote
-      : (updateNote ?? busyNote);
-  const blocked = update === undefined ? undefined : version.latestBlocked;
+      : (updateNote ?? busyNote));
+  const blocked = older || update === undefined ? undefined : version.latestBlocked;
   const blockedHint: MarketHint | undefined =
     blocked === undefined ? undefined : updateBlockHintOf(blocked);
   const stale =
-    !local && update === undefined && version.running !== undefined && version.running !== version.installed;
+    !older &&
+    !local &&
+    update === undefined &&
+    running !== undefined &&
+    running !== version.installed;
   const followUp = version.followUp;
-  const followUpState = !stale && followUp !== undefined;
+  const followUpState = !older && !stale && followUp !== undefined;
   return {
     id: WORKBENCH_ROW_ID,
     titleKey: WORKBENCH_TITLE_KEY,
     workbench: true,
-    state: stale
-      ? 'pending-restart'
-      : followUpState
-        ? 'pending-followup'
-        : update === undefined
-          ? 'installed'
-          : 'outdated',
+    state: older
+      ? 'older-on-disk'
+      : stale
+        ? 'pending-restart'
+        : followUpState
+          ? 'pending-followup'
+          : update === undefined
+            ? 'installed'
+            : 'outdated',
     canInstall: false,
     canUpdate: !swapping && !busy && blocked === undefined && (update !== undefined || retry),
     canUninstall: false,
@@ -90,7 +111,7 @@ export function workbenchRow(
     ...(note === undefined ? {} : { note }),
     version: {
       installed: version.installed,
-      ...(latest === undefined ? {} : { latest }),
+      ...(target === undefined ? {} : { latest: target }),
     },
     ...(update === undefined
       ? {}

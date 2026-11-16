@@ -179,6 +179,26 @@ describe('自更新：runner 按步骤跑，失败只落在 marker 上', () => {
     });
   });
 
+  it('★ 换完链接把 profile 的 pnpm 锁也一起换到新版（清单说新版、锁说旧版的缺口）', async () => {
+    const { request, paths } = caseDirs();
+    const plan = planOf(request, paths);
+    const lock = join(plan.profileDir, 'pnpm-lock.yaml');
+    const oldSpec = `link:../../workbench/versions/${FROM}/node_modules/${CORE}`;
+    writeFileSync(
+      lock,
+      `lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    dependencies:\n      '${CORE}':\n        specifier: ${oldSpec}\n        version: ${oldSpec}\n`,
+      'utf8',
+    );
+    const processes = installing(plan.packages, paths.versionsDir, TO);
+
+    const result = await runSelfUpdateSteps(plan, { processes: processes.host });
+
+    expect(result.ok).toBe(true);
+    const text = readFileSync(lock, 'utf8');
+    expect(text).toContain(`link:../../workbench/versions/${TO}/node_modules/${CORE}`);
+    expect(text).not.toContain(`versions/${FROM}/`);
+  });
+
   it('装失败：marker 落 failed，后面的步一步都不跑（没换链接）', async () => {
     const { request, paths } = caseDirs();
     const plan = planOf(request, paths);

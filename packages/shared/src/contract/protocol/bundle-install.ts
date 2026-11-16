@@ -300,6 +300,7 @@ export interface WorkbenchVersion {
   readonly latest?: string;
   readonly latestBlocked?: ModuleUpdateBlock;
   readonly running?: string;
+  readonly diskOlder?: boolean;
   readonly local?: boolean;
   readonly spec?: string;
   readonly registry?: string;
