@@ -235,10 +235,13 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
     expect(byText).toEqual([{ id: 'a', label: expect.anything() }]);
   });
 
-  it('★ 选中项：键盘游标没动时先用当前值（打开就能看出我在哪）', () => {
+  it('★ 选中项：键盘游标没动时先用当前值（打开就能看出我在哪，值是空串也照点）', () => {
     expect(menuOf(render({})).props['selectedId']).toBe('b');
     expect(menuOf(render({}, [true, '', 2])).props['selectedId']).toBe('c');
-    expect(menuOf(render({ value: '' })).props['selectedId']).toBeUndefined();
+    expect(menuOf(render({ value: '' })).props['selectedId']).toBe('');
+    expect(
+      menuOf(render({ value: '', options: [{ value: '', label: '默认' }, ...OPTIONS] })).props['selectedId'],
+    ).toBe('');
   });
 
   it('★ initialSelectedId：游标没动时高亮它，回车也选它；有查询时让位给匹配结果', () => {

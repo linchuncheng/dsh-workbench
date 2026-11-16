@@ -324,7 +324,7 @@ function selectHighlightId(
       ? shown[0]?.value
       : noTarget
         ? undefined
-        : (preferredId ?? (value === '' ? undefined : value)))
+        : (preferredId ?? value))
   );
 }
 
