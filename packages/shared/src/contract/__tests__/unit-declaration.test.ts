@@ -33,31 +33,15 @@ describe('清单里的工具声明', () => {
     }
   });
 
-  it('onDemand: false 是"这把工具不随工具包收"，只收 boolean', () => {
-    expect(
-      declarationProblemsOf('@t/demo', declared([{ name: 'workbench_demo_sync', writes: true, onDemand: false }])),
-    ).toEqual([]);
-    const problems = declarationProblemsOf(
-      '@t/demo',
-      declared([{ name: 'workbench_demo_sync', writes: true, onDemand: 'no' }]),
-    );
-
-    expect(problems.join('\n')).toMatch(/\.onDemand 要是 true \/ false/);
-  });
-
-  it('onDemand 写进外壳那份清单（工具包按它把常驻的那几把放过去）', () => {
+  it('★ onDemand 不再支持：旧清单仍能加载、清单里不再有这一格，只给一条提醒', () => {
     const read = readDeclaration(
       '@t/demo',
-      declared([
-        { name: 'workbench_demo_sync', writes: true, onDemand: false },
-        { name: 'workbench_demo_apply', writes: true },
-      ]),
+      declared([{ name: 'workbench_demo_sync', writes: true, onDemand: false }]),
     );
 
-    expect(read.manifest?.tools).toEqual([
-      { name: 'workbench_demo_sync', writes: true, onDemand: false },
-      { name: 'workbench_demo_apply', writes: true },
-    ]);
+    expect(read.problems).toEqual([]);
+    expect(read.manifest?.tools).toEqual([{ name: 'workbench_demo_sync', writes: true }]);
+    expect(read.warnings.join('\n')).toMatch(/onDemand 已不再支持/);
   });
 
   it('★ key 撞了当场红（生成物里的键只能有一个，不然生成出来是静默覆盖）', () => {

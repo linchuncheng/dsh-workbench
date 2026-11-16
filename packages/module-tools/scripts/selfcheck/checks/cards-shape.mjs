@@ -145,7 +145,7 @@ export function apply(ctx) {
             unit: 'demo-reconcile',
             title: { zh: '对账演示', en: 'Reconcile demo' },
             card: null,
-            tools: names.map((name) => ({ name, writes: false, onDemand: false })),
+            tools: names.map((name) => ({ name, writes: false })),
             host: { inject: [] },
           },
           workbenchFaces: FACES,

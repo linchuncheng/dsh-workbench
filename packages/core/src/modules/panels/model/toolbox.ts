@@ -21,7 +21,6 @@ export interface PackEntry {
   readonly label: PackLabel;
   readonly hint: string;
   readonly tools: readonly string[];
-  readonly alwaysOn: readonly string[];
   readonly writes: number;
   readonly kind: PackKind;
 }
@@ -38,7 +37,6 @@ const SHELL_PACKS: readonly PackEntry[] = [
     label: { zh: '工作台管理', en: 'workbench admin' },
     hint: '面板 · 模块 · 市场 · 长任务',
     tools: MANAGE_TOOLS,
-    alwaysOn: [],
     writes: writesOf(MANAGE_TOOLS),
     kind: 'shell',
   },
@@ -47,7 +45,6 @@ const SHELL_PACKS: readonly PackEntry[] = [
     label: { zh: 'DIY 工具', en: 'DIY tools' },
     hint: '工坊 · 调试 · 录制 · 日志 · 页面动作 · 借来的管理七把',
     tools: DIY_PACK_TOOLS,
-    alwaysOn: [],
     writes: writesOf(DIY_PACK_TOOLS),
     kind: 'shell',
   },
@@ -87,14 +84,11 @@ function unitPacks(manifests: readonly UnitManifest[]): readonly PackEntry[] {
       {
         id: `unit:${manifest.id}` as PackId,
         label: { zh: label.zh, en: label.en },
-        hint: `${
-          tools
-            .map((tool) => tool.name.replace(/^workbench_/, ''))
-            .join(' · ')
-            .slice(0, 80)
-        }${tools.some((tool) => tool.onDemand === false) ? ` · 常驻 ${String(tools.filter((tool) => tool.onDemand === false).length)} 把` : ''}`,
+        hint: tools
+          .map((tool) => tool.name.replace(/^workbench_/, ''))
+          .join(' · ')
+          .slice(0, 80),
         tools: tools.map((tool) => tool.name),
-        alwaysOn: tools.filter((tool) => tool.onDemand === false).map((tool) => tool.name),
         writes: tools.filter((tool) => tool.writes).length,
         kind: 'unit',
       },
@@ -129,7 +123,6 @@ export function createToolbox(options: {
       label: { zh: `${server.name}（MCP）`, en: `${server.name} (MCP)` },
       hint: 'dsh 的 MCP server —— 工具自己的审批仍走 dsh',
       tools: server.tools,
-      alwaysOn: [],
       writes: 0,
       kind: 'mcp',
     }));
@@ -162,9 +155,7 @@ export function createToolbox(options: {
     const deny = new Set<string>();
     for (const pack of catalog()) {
       if (open.has(pack.id)) continue;
-      for (const name of pack.tools) {
-        if (!pack.alwaysOn.includes(name)) deny.add(name);
-      }
+      for (const name of pack.tools) deny.add(name);
     }
     const allowed = new Set<string>();
     for (const pack of catalog()) {

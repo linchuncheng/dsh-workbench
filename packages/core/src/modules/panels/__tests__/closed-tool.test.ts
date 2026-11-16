@@ -13,7 +13,6 @@ const shellPack: PackEntry = {
   label: { zh: '工作台管理', en: 'workbench admin' },
   hint: '面板 · 模块 · 市场 · 长任务',
   tools: ['workbench_panels_show'],
-  alwaysOn: [],
   writes: 1,
   kind: 'shell',
 };
@@ -23,7 +22,6 @@ const mcpPack: PackEntry = {
   label: { zh: 'chrome（MCP）', en: 'chrome (MCP)' },
   hint: 'dsh 的 MCP server',
   tools: ['mcp__chrome__list_pages'],
-  alwaysOn: [],
   writes: 0,
   kind: 'mcp',
 };

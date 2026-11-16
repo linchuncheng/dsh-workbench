@@ -114,7 +114,7 @@ export function apply(ctx) {
                 client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
 
                 workbench: declaration('demo-approval', {
-                  tools: [{ name: 'demo_write', writes: true, onDemand: false }],
+                  tools: [{ name: 'demo_write', writes: true }],
                 }),
                 workbenchFaces: FACES,
               },

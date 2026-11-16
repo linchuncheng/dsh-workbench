@@ -9,8 +9,7 @@ function pack(id: PackEntry['id'], kind: PackEntry['kind']): PackEntry {
     label: { zh: id, en: id },
     hint: '',
     tools: [],
-    alwaysOn: [],
-    writes: 0,
+      writes: 0,
     kind,
   };
 }

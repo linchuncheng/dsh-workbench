@@ -790,16 +790,6 @@ export async function run() {
       }
     }
 
-    if (manifest !== undefined && manifest.card === null) {
-      for (const tool of manifest.tools) {
-        if (tool.onDemand === false) continue;
-        problems.push(
-          `${name}: 清单里没有卡片（card: null），能力 ${tool.name} 却不是常驻 —— 没有卡片时工具包默认关着，` +
-            `这把能力会被「工具包没开」挡住，用户那边什么都看不到。给它写 onDemand: false`,
-        );
-      }
-    }
-
     if (needs !== undefined) {
       const products = productsTextOf(pkg.dir);
       const extensions = needs.filter((need) => need?.kind === 'extension');

@@ -29,7 +29,6 @@ const boardUnit: UnitManifest = {
   tools: [
     { name: 'workbench_board_x_list', writes: false },
     { name: 'workbench_board_x_do', writes: true },
-    { name: 'workbench_board_x_always', writes: false, onDemand: false },
   ],
 };
 
@@ -268,8 +267,7 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
     expect(text).toContain('diy');
     expect(text).toContain('unit:board-x');
     expect(text).toContain('工作台管理');
-    expect(text).toContain('3 把：读 2 / 写 1');
-    expect(text).toContain('常驻 1 把');
+    expect(text).toContain('2 把：读 1 / 写 1');
   });
 });
 
@@ -324,10 +322,10 @@ describe('收起的工具：拒绝理由指回包与下一步', () => {
     expect(reasonOf(mounted, 'team_task_get', 's-1')).toBeUndefined();
   });
 
-  it('常驻 opt-out 的工具、控制工具自己：都不是「被收起」', () => {
+  it('模块的工具都在包里：没开包就是被收起；控制工具自己不算', () => {
     const { mounted } = mount();
 
-    expect(reasonOf(mounted, 'workbench_board_x_always', 's-1')).toBeUndefined();
+    expect(reasonOf(mounted, 'workbench_board_x_list', 's-1')).toContain('unit:board-x');
     for (const name of [TOOLBOX_LIST_TOOL, TOOLBOX_OPEN_TOOL, TOOLBOX_CLOSE_TOOL]) {
       expect(reasonOf(mounted, name, 's-1')).toBeUndefined();
     }

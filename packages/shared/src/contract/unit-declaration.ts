@@ -28,7 +28,6 @@ export interface UnitToolDeclaration {
   readonly name: string;
   readonly writes: boolean;
   readonly key?: string;
-  readonly onDemand?: boolean;
 }
 
 /**
@@ -71,7 +70,8 @@ export const DECLARATION_REQUIRED_KEYS: readonly string[] = [
 
 const CARD_KEYS = ['order'] as const satisfies readonly (keyof UnitCardDeclaration)[];
 const TITLE_KEYS = ['zh', 'en'] as const satisfies readonly (keyof UnitTitle)[];
-const TOOL_KEYS = ['name', 'writes', 'key', 'onDemand'] as const satisfies readonly (keyof UnitToolDeclaration)[];
+const TOOL_KEYS = ['name', 'writes', 'key'] as const satisfies readonly (keyof UnitToolDeclaration)[];
+const LEGACY_TOOL_KEYS: readonly string[] = ['onDemand'];
 
 const TOOL_KEY_SHAPE = /^[a-z][a-zA-Z0-9]*$/;
 const HOST_KEYS = ['inject', 'optional', 'writes', 'origins', 'sites'] as const satisfies readonly (keyof UnitHostNeeds)[];
@@ -212,7 +212,7 @@ export function declarationProblemsOf(subject: string, raw: unknown): readonly s
           problems.push(`${subject}: ${at} 要是对象，现在是 ${JSON.stringify(tool)}`);
           return;
         }
-        const extra = outsideKeys(tool, TOOL_KEYS);
+        const extra = outsideKeys(tool, [...TOOL_KEYS, ...LEGACY_TOOL_KEYS]);
         if (extra.length > 0) {
           problems.push(`${subject}: ${at} 里有不认的键 ${listOf(extra)} —— tools 只有 ${listOf(TOOL_KEYS)}`);
         }
@@ -228,9 +228,6 @@ export function declarationProblemsOf(subject: string, raw: unknown): readonly s
           problems.push(
             `${subject}: ${at}.writes 要是 true / false（它是"这会写"的唯一声明，缺了审批无从认领）`,
           );
-        }
-        if (tool.onDemand !== undefined && typeof tool.onDemand !== 'boolean') {
-          problems.push(`${subject}: ${at}.onDemand 要是 true / false（false = 这把工具不随工具包收）`);
         }
         if (tool.key !== undefined) {
           const key = text(tool.key);
@@ -325,6 +322,8 @@ export function readDeclaration(subject: string, raw: unknown): DeclarationRead 
   if (needsRead.errors.length > 0) return { problems: needsRead.errors, warnings: needsRead.warnings };
   const card = declaration.card;
   const id = text(declaration.unit);
+  const legacyTools = isRecord(raw) && Array.isArray(raw.tools) ? raw.tools : [];
+  const legacyOnDemand = legacyTools.some((tool) => isRecord(tool) && tool['onDemand'] !== undefined);
   const sites =
     declaration.host.sites === undefined
       ? undefined
@@ -348,7 +347,6 @@ export function readDeclaration(subject: string, raw: unknown): DeclarationRead 
       tools: declaration.tools.map((tool) => ({
         name: text(tool.name),
         writes: tool.writes,
-        ...(tool.onDemand === false ? { onDemand: false } : {}),
       })),
       host: {
         inject: [...(declaration.host.inject ?? [])],
@@ -359,6 +357,11 @@ export function readDeclaration(subject: string, raw: unknown): DeclarationRead 
       },
       ...(declaration.needs === undefined ? {} : { needs: declaration.needs }),
     },
-    warnings: needsRead.warnings,
+    warnings: [
+      ...needsRead.warnings,
+      ...(legacyOnDemand
+        ? [`${subject}: tools 里的 onDemand 已不再支持（所有工具都收在工具包里），删掉这一位`]
+        : []),
+    ],
   };
 }
