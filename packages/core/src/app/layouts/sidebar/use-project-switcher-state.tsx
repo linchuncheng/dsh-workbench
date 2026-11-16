@@ -5,7 +5,7 @@ import type { WorkspaceMenuTarget } from './WorkspaceRowMenu';
 import { nextWorkspaceMenu } from './WorkspaceRowMenu';
 import styles from './ProjectSwitcher.module.css';
 import { displayNameOf } from './workspace-name';
-import { workspaceSections } from './workspace-groups';
+import { workspaceSections, revealTargetOf } from './workspace-groups';
 import { workspaceOptions } from './workspace-items';
 
 interface WorkspaceOrderSnapshot {
@@ -60,14 +60,20 @@ export function useProjectSwitcherState({
       ),
     [items, ordering, t],
   );
-  const hasWarning = [...ordering.attention.values()].some((one) => one.severity === 'warning');
-  const revealCurrentId = hasWarning ? null : current?.workspaceId ?? null;
+  const revealId = useMemo(() => {
+    const rankOf = (workspace: WorkspaceView): number => {
+      const own = ordering.attention.get(workspace.workspaceId);
+      if (own === undefined || own.severity === 'ongoing') return Number.POSITIVE_INFINITY;
+      return attentionListRank(own);
+    };
+    return revealTargetOf(sections, rankOf, current)?.workspaceId ?? null;
+  }, [sections, ordering.attention, current]);
   const options = useMemo(
     () =>
       workspaceOptions({
         sections,
         currentId,
-        revealCurrentId,
+        revealId,
         hoverId,
         openMenuId: menu?.workspace.workspaceId ?? null,
         t,
@@ -75,7 +81,7 @@ export function useProjectSwitcherState({
         onHover: setHoverId,
         onMenu: (workspace, open) => setMenu((current) => nextWorkspaceMenu(current, workspace, open)),
       }),
-    [sections, currentId, revealCurrentId, hoverId, menu, t, attention.byWorkspace],
+    [sections, currentId, revealId, hoverId, menu, t, attention.byWorkspace],
   );
   const valueNodes = useMemo(() => {
     const out = new Map<string, ReactNode>();
@@ -114,6 +120,7 @@ export function useProjectSwitcherState({
     byId,
     options,
     valueNodes,
+    revealId,
     triggerWorkspace,
     triggerMenuOpen,
     triggerActionActive,

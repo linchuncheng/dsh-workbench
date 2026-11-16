@@ -29,6 +29,31 @@ function isDefaultWorkspace(item: { readonly path: string; readonly title: strin
   return item.title === DEFAULT_WORKSPACE_TITLE || basenameOf(item.path) === DEFAULT_WORKSPACE_TITLE;
 }
 
+export function topRankedOf<T>(
+  sections: readonly WorkspaceSectionPlan<T>[],
+  rankOf: (item: T) => number,
+): T | null {
+  let best = Number.POSITIVE_INFINITY;
+  for (const section of sections) {
+    for (const item of section.items) best = Math.min(best, rankOf(item));
+  }
+  if (best === Number.POSITIVE_INFINITY) return null;
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (rankOf(item) === best) return item;
+    }
+  }
+  return null;
+}
+
+export function revealTargetOf<T>(
+  sections: readonly WorkspaceSectionPlan<T>[],
+  rankOf: (item: T) => number,
+  current: T | null,
+): T | null {
+  return topRankedOf(sections, rankOf) ?? current;
+}
+
 export function workspaceSections<T extends { readonly path: string; readonly title: string }>(
   items: readonly T[],
   headings: WorkspaceHeadings,

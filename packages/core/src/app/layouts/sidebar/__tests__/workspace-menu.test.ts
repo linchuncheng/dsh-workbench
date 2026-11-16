@@ -136,11 +136,15 @@ describe('工作区列表的排序与定位', () => {
     expect(SWITCHER).toContain('frozenOrder ?? { attention: attention.byWorkspace, recency }');
   });
 
-  it('★ 当前工作区那一行随菜单挂载滚进视野，且不抢焦点；有待审批时先让信号留在首屏', () => {
+  it('★ 打开时滚到该去的那行：待审批/有结果取最高优先级（同档取先出现的），只有在跑或无状态就回退当前工作区，没当前就传 null', () => {
     expect(ROW_LABEL).toContain("row.scrollIntoView({ block: 'nearest', inline: 'nearest' })");
     expect(ROW_LABEL).toContain('if (revealRef.current)');
-    expect(ITEMS).toContain('reveal={workspace.workspaceId === revealCurrentId}');
-    expect(SWITCHER).toContain("const revealCurrentId = hasWarning ? null : current?.workspaceId ?? null");
+    expect(ITEMS).toContain('reveal={workspace.workspaceId === revealId}');
+    expect(SWITCHER).toContain(
+      "if (own === undefined || own.severity === 'ongoing') return Number.POSITIVE_INFINITY",
+    );
+    expect(SWITCHER).toContain('revealTargetOf(sections, rankOf, current)?.workspaceId ?? null');
+    expect(SWITCHER).toContain('initialSelectedId={revealId}');
   });
 });
 

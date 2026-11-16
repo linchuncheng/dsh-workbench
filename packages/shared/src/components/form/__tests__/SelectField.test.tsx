@@ -1,13 +1,25 @@
 import { describe, expect, it, vi } from 'vitest';
 
 let states: unknown[] = [];
+let writes: Array<{ index: number; next: unknown }> = [];
+let hookAt = 0;
 vi.mock('../../../lib/react.js', () => ({
   Fragment: Symbol.for('react.fragment'),
   h: (type: unknown, props: unknown, ...children: unknown[]) => ({ type, props, children }),
   useEffect: () => {},
   useMemo: (compute: () => unknown) => compute(),
   useRef: () => ({ current: null }),
-  useState: (initial: unknown) => [states.length > 0 ? states.shift() : initial, () => {}],
+  useState: (initial: unknown) => {
+    const index = hookAt++;
+    const value = states.length > 0 ? states.shift() : initial;
+    return [
+      value,
+      (next: unknown) => {
+        const resolved = typeof next === 'function' ? (next as (previous: unknown) => unknown)(value) : next;
+        writes.push({ index, next: resolved });
+      },
+    ];
+  },
 }));
 
 vi.mock('../SelectField.css', () => ({ default: {} }));
@@ -23,6 +35,7 @@ import {
   defaultSelectFilter,
   selectCursorValue,
   selectEntries,
+  selectKeyboardOrigin,
   stepSelectCursor,
 } from '../SelectField.js';
 
@@ -66,12 +79,30 @@ function inputOf(root: unknown): AnyElement | undefined {
 
 function render(props: Record<string, unknown>, state: readonly unknown[] = []): unknown {
   states = [...state];
+  writes = [];
+  hookAt = 0;
   return SelectField({
     value: 'b',
     options: OPTIONS,
     onChange: () => {},
     ...props,
   } as never);
+}
+
+function pressKey(root: unknown, key: string): void {
+  const onKeyDown = inputOf(menuOf(root).props['anchor'])?.props['onKeyDown'] as
+    | ((event: unknown) => void)
+    | undefined;
+  onKeyDown?.({
+    key,
+    nativeEvent: { isComposing: false },
+    stopPropagation: () => {},
+    preventDefault: () => {},
+  });
+}
+
+function cursorWrites(): readonly unknown[] {
+  return writes.filter((one) => one.index === 2).map((one) => one.next);
 }
 
 const OPTIONS = [
@@ -186,13 +217,11 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
     const items = menuOf(root).props['items'] as readonly MenuEntry[];
     expect(items).toEqual([{ id: 'c', label: '默认工作区' }]);
 
-    states = [true, '甲', null];
     const byText = menuOf(
-      SelectField({
-        value: 'b',
-        options: [{ value: 'a', label: <span>看不见的字</span>, searchText: '工作区甲' }],
-        onChange: () => {},
-      } as never),
+      render(
+        { options: [{ value: 'a', label: <span>看不见的字</span>, searchText: '工作区甲' }] },
+        [true, '甲', null],
+      ),
     ).props['items'] as readonly MenuEntry[];
     expect(byText).toEqual([{ id: 'a', label: expect.anything() }]);
   });
@@ -201,6 +230,57 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
     expect(menuOf(render({})).props['selectedId']).toBe('b');
     expect(menuOf(render({}, [true, '', 2])).props['selectedId']).toBe('c');
     expect(menuOf(render({ value: '' })).props['selectedId']).toBeUndefined();
+  });
+
+  it('★ initialSelectedId：游标没动时高亮它，回车也选它；有查询时让位给匹配结果', () => {
+    const preferred = vi.fn();
+    const root = render({ initialSelectedId: 'c', onChange: preferred }, [true, '', null]);
+    expect(menuOf(root).props['selectedId']).toBe('c');
+    pressKey(root, 'Enter');
+    expect(preferred).toHaveBeenCalledWith('c');
+
+    const filtered = vi.fn();
+    const searched = render({ initialSelectedId: 'c', onChange: filtered }, [true, '甲', null]);
+    expect(menuOf(searched).props['selectedId']).toBe('a');
+    pressKey(searched, 'Enter');
+    expect(filtered).toHaveBeenCalledWith('a');
+
+    const plain = vi.fn();
+    pressKey(render({ onChange: plain }, [true, '', null]), 'Enter');
+    expect(plain).toHaveBeenCalledWith('a');
+  });
+
+  it('★ 方向键起点：游标没动时从默认高亮那一行接着走，不跳回第一行', () => {
+    const down = render({ initialSelectedId: 'a' }, [true, '', null]);
+    expect(menuOf(down).props['selectedId']).toBe('a');
+    pressKey(down, 'ArrowDown');
+    expect(cursorWrites()).toEqual([1]);
+
+    const up = render({ initialSelectedId: 'c' }, [true, '', null]);
+    pressKey(up, 'ArrowUp');
+    expect(cursorWrites()).toEqual([1]);
+
+    const searched = render({ initialSelectedId: 'c' }, [true, '工作区', null]);
+    expect(menuOf(searched).props['selectedId']).toBe('a');
+    pressKey(searched, 'ArrowDown');
+    expect(cursorWrites()).toEqual([1]);
+
+    const plain = render({}, [true, '', null]);
+    pressKey(plain, 'ArrowDown');
+    expect(cursorWrites()).toEqual([0]);
+  });
+
+  it('★ initialSelectedId=null：没有默认目标就不高亮、回车不动作；一输入查询仍取首条匹配', () => {
+    const onChange = vi.fn();
+    const idle = render({ value: '', initialSelectedId: null, onChange }, [true, '', null]);
+    expect(menuOf(idle).props['selectedId']).toBeUndefined();
+    pressKey(idle, 'Enter');
+    expect(onChange).not.toHaveBeenCalled();
+
+    const searched = render({ value: '', initialSelectedId: null, onChange }, [true, '工作区', null]);
+    expect(menuOf(searched).props['selectedId']).toBe('a');
+    pressKey(searched, 'Enter');
+    expect(onChange).toHaveBeenCalledWith('a');
   });
 
   it('搜不到 / 加载中 / 空名单退化成手填，三种态各有明确落点', () => {
@@ -274,6 +354,15 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
     expect(selectCursorValue(OPTIONS, 9)).toBe('c');
     expect(selectCursorValue(OPTIONS, null)).toBeNull();
     expect(selectCursorValue([], 0)).toBeNull();
+  });
+
+  it('方向键起点：游标动过就接着游标，没动过就落在高亮那一项', () => {
+    expect(selectKeyboardOrigin(OPTIONS, null, 'c')).toBe(2);
+    expect(selectKeyboardOrigin(OPTIONS, 1, 'c')).toBe(1);
+    expect(selectKeyboardOrigin(OPTIONS, null, undefined)).toBeNull();
+    expect(selectKeyboardOrigin(OPTIONS, null, null)).toBeNull();
+    expect(selectKeyboardOrigin(OPTIONS, null, 'missing')).toBeNull();
+    expect(selectKeyboardOrigin([], null, 'c')).toBeNull();
   });
 
   it('默认过滤：空查询全过、大小写不敏感、label 与 searchText 都认', () => {

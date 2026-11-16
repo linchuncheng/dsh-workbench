@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { workspaceSections } from '../workspace-groups';
+import { revealTargetOf, topRankedOf, workspaceSections } from '../workspace-groups';
 
 const HEADINGS = { workspaces: '工作区', defaultWorkspace: '默认工作区', workshop: '工坊' };
 
@@ -14,6 +14,9 @@ const WORKSHOP = at('/Users/you/.dsh/workbench/diy', '工作台DIY');
 
 const ranker = (ranks: Record<string, number>) => (item: { readonly path: string }): number | null =>
   ranks[item.path] ?? null;
+
+const priority = (ranks: Record<string, number>) => (item: { readonly path: string }): number =>
+  ranks[item.path] ?? Number.POSITIVE_INFINITY;
 
 describe('workspaceSections', () => {
   it('三类各归各的：用户的项目 / dsh 的默认工作区 / 工坊', () => {
@@ -180,5 +183,53 @@ describe('workspaceSections：条目少时不摆标题', () => {
   it('★ 四条起才画标题（分组有区分价值）', () => {
     const sections = workspaceSections([...PROJECTS, DEFAULT, WORKSHOP], HEADINGS);
     expect(sections.map((section) => section.heading)).toEqual(['工作区', '默认工作区', '工坊']);
+  });
+});
+
+describe('topRankedOf：打开时该滚到哪一条', () => {
+  it('★★ 不分段，只按档位挑：后面的「通知」压过前面的「在跑」', () => {
+    const ranks = { '/a/run': 2, '/a/done': 1 };
+    const sections = workspaceSections([at('/a/run', 'run'), DEFAULT, at('/a/done', 'done')], HEADINGS, {
+      rankOf: priority(ranks),
+    });
+
+    expect(topRankedOf(sections, priority(ranks))?.title).toBe('done');
+  });
+
+  it('★ 同档取列表里先出现的那条', () => {
+    const ranks = { '/a/first': 1, '/a/second': 1 };
+    const sections = workspaceSections([at('/a/first', 'first'), at('/a/second', 'second')], HEADINGS, {
+      rankOf: priority(ranks),
+    });
+
+    expect(topRankedOf(sections, priority(ranks))?.title).toBe('first');
+  });
+
+  it('★ 一条状态都没有就回 null（列表停在顶上，不乱滚）', () => {
+    const sections = workspaceSections(PROJECTS, HEADINGS);
+    expect(topRankedOf(sections, () => Number.POSITIVE_INFINITY)).toBeNull();
+  });
+});
+
+describe('revealTargetOf：打开时焦点落在哪', () => {
+  const CURRENT = at('/Users/you/项目/公司项目/current', 'current');
+  const RUNNING = at('/Users/you/项目/公司项目/running', 'running');
+  const DONE = at('/Users/you/项目/公司项目/done', 'done');
+  const noSignal = (): number => Number.POSITIVE_INFINITY;
+
+  it('★★ 有结果就取那一条（在跑不算），当前工作区只是兜底', () => {
+    const ranks = priority({ [DONE.path]: 1, [RUNNING.path]: 2 });
+    const sections = workspaceSections([CURRENT, RUNNING, DONE], HEADINGS, { rankOf: ranks });
+    expect(revealTargetOf(sections, ranks, CURRENT)?.title).toBe('done');
+  });
+
+  it('★★ 只有在跑 / 无状态时回退当前工作区，不拿「在跑」当焦点', () => {
+    const sections = workspaceSections([CURRENT, RUNNING], HEADINGS, { rankOf: noSignal });
+    expect(revealTargetOf(sections, noSignal, CURRENT)?.title).toBe('current');
+  });
+
+  it('★★ 连当前工作区都没有：没有目标（不滚、不高亮、回车不动作）', () => {
+    const sections = workspaceSections([RUNNING], HEADINGS, { rankOf: noSignal });
+    expect(revealTargetOf(sections, noSignal, null)).toBeNull();
   });
 });

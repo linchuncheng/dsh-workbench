@@ -54,6 +54,7 @@ export interface SelectFieldProps {
   readonly footer?: SelectFieldFooter | undefined;
   readonly onFooter?: (() => void) | undefined;
   readonly selection?: 'check' | 'fill' | undefined;
+  readonly initialSelectedId?: string | null | undefined;
   readonly variant?: 'ghost' | 'boxed' | undefined;
   readonly iconOnly?: boolean | undefined;
   readonly chevronHidden?: boolean | undefined;
@@ -225,6 +226,18 @@ export function stepSelectCursor(
   return (cursor + step + shown.length) % shown.length;
 }
 
+/** 方向键的起点：游标动过就接着游标走；游标还没动时从默认高亮那项算，高亮不在列表里就回旧口径（`null` → 第一项 / 最后一项）。 */
+export function selectKeyboardOrigin(
+  shown: readonly SelectFieldOption[],
+  cursor: number | null,
+  highlightId: string | null | undefined,
+): number | null {
+  if (cursor !== null) return cursor;
+  if (highlightId === null || highlightId === undefined) return null;
+  const at = shown.findIndex((option) => option.value === highlightId);
+  return at === -1 ? null : at;
+}
+
 /** 把候选排成 `Menu` 要的条目表：按 `group` 插分组标题（`groups: false` 时平铺）；一项都没有时退回 `emptyText` 那一行（不给就是空表）。 */
 export function selectEntries(
   shown: readonly SelectFieldOption[],
@@ -308,6 +321,65 @@ function useSelectState(props: SelectFieldProps) {
   };
 }
 
+interface SelectDefaultTarget {
+  readonly preferredId: string | undefined;
+  readonly noTarget: boolean;
+  readonly fromHighlight: boolean;
+}
+
+function selectDefaultTarget(initialSelectedId: string | null | undefined): SelectDefaultTarget {
+  return {
+    preferredId:
+      initialSelectedId === undefined || initialSelectedId === null || initialSelectedId === ''
+        ? undefined
+        : initialSelectedId,
+    noTarget: initialSelectedId === null,
+    fromHighlight: initialSelectedId !== undefined && initialSelectedId !== '',
+  };
+}
+
+function selectHighlightId(
+  shown: readonly SelectFieldOption[],
+  cursor: number | null,
+  query: string,
+  preferredId: string | undefined,
+  noTarget: boolean,
+  value: string,
+): string | undefined {
+  return (
+    selectCursorValue(shown, cursor) ??
+    (query.trim() !== ''
+      ? shown[0]?.value
+      : noTarget
+        ? undefined
+        : (preferredId ?? (value === '' ? undefined : value)))
+  );
+}
+
+function selectEnterPick(
+  shown: readonly SelectFieldOption[],
+  cursor: number | null,
+  query: string,
+  preferredId: string | undefined,
+  noTarget: boolean,
+): SelectFieldOption | undefined {
+  if (cursor !== null) return shown[Math.min(cursor, shown.length - 1)];
+  if (query.trim() !== '') return shown[0];
+  if (noTarget) return undefined;
+  if (preferredId === undefined) return shown[0];
+  return shown.find((option) => option.value === preferredId) ?? shown[0];
+}
+
+function selectStepFrom(
+  shown: readonly SelectFieldOption[],
+  cursor: number | null,
+  step: 1 | -1,
+  fromHighlight: boolean,
+  highlightId: string | undefined,
+): number | null {
+  return stepSelectCursor(shown, fromHighlight ? selectKeyboardOrigin(shown, cursor, highlightId) : cursor, step);
+}
+
 /**
  * 下拉选择：默认是跟 `TextField` 一套的常规下拉框（不是原生 `<select>`），无边框那种给 `variant: 'ghost'`。
  * `open` 不给就内部自己管（两种接法下 `onOpenChange` 都会通知），`loading` 把触发器换成转圈 + `loadingText`（默认 `…`），
@@ -319,6 +391,7 @@ function useSelectState(props: SelectFieldProps) {
  * @param props.renderValue - 自己渲染触发器上那份当前值；不给就用候选项的 `label`。
  * @param props.placeholder - 没选中时那句话；不给是 `—`。
  * @param props.chevronHidden - 箭头留着位置但不画：调用方在那个位置叠自己的操作钮。
+ * @param props.initialSelectedId - 游标还没动时默认高亮哪一项（不给就回退到当前值）；回车也选它，方向键从它那行走。给 `null` 表示明确没有默认目标：不画默认高亮、回车不动作。
  * @param props.search - 是否可搜（默认 true）；`false` 时不画搜索框、也不自动聚焦。
  * @param props.filter - 自定义匹配；不给用 `defaultSelectFilter`（空白查询一律命中）。
  * @param props.emptyText - 无匹配时的文案，或按查询生成文案的函数（能说"没有匹配 X 的项"）。
@@ -346,6 +419,7 @@ export function SelectField(props: SelectFieldProps) {
     loadingText,
     fallback,
     selection = 'fill',
+    initialSelectedId,
     variant = 'boxed',
     iconOnly = false,
     chevronHidden = false,
@@ -358,6 +432,8 @@ export function SelectField(props: SelectFieldProps) {
   } = props;
   const state = useSelectState(props);
   const current = options.find((option) => option.value === value);
+  const { preferredId, noTarget, fromHighlight } = selectDefaultTarget(initialSelectedId);
+  const highlightId = selectHighlightId(state.shown, state.cursor, state.query, preferredId, noTarget, value);
 
   const variantClass = variant === 'ghost' ? 'wb-selectGhost' : undefined;
   const triggerClass = triggerClassOf(variantClass, iconOnly);
@@ -423,13 +499,13 @@ export function SelectField(props: SelectFieldProps) {
               event.stopPropagation();
               event.preventDefault();
               state.setCursor((at) =>
-                stepSelectCursor(state.shown, at, event.key === 'ArrowDown' ? 1 : -1),
+                selectStepFrom(state.shown, at, event.key === 'ArrowDown' ? 1 : -1, fromHighlight, highlightId),
               );
               return;
             }
             if (event.key !== 'Enter') return;
             event.stopPropagation();
-            const pick = state.shown[Math.min(state.cursor ?? 0, state.shown.length - 1)];
+            const pick = selectEnterPick(state.shown, state.cursor, state.query, preferredId, noTarget);
             if (pick === undefined) return;
             state.close(true);
             onChange(pick.value);
@@ -446,7 +522,7 @@ export function SelectField(props: SelectFieldProps) {
       listClassName: mergeClass('wb-selectMenu', menuClassName),
       anchor,
       selection,
-      selectedId: selectCursorValue(state.shown, state.cursor) ?? (value === '' ? undefined : value),
+      selectedId: highlightId,
       items: selectEntries(state.shown, state.empty, { groups: state.query.trim() === '' }),
       footer:
         footer === undefined

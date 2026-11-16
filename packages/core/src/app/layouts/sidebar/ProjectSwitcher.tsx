@@ -45,6 +45,7 @@ export function ProjectSwitcher(props: ProjectSwitcherProps) {
     byId,
     options,
     valueNodes,
+    revealId,
     triggerWorkspace,
     triggerMenuOpen,
     triggerActionActive,
@@ -84,6 +85,7 @@ export function ProjectSwitcher(props: ProjectSwitcherProps) {
             setFrozenOrder(next ? { attention: attention.byWorkspace, recency } : null);
             setOpen(next);
           }}
+          initialSelectedId={revealId}
           icon={
             <Tip label={current?.path ?? ''} disabled={current === null}>
               <span className={styles.glyphBox}>
