@@ -1,6 +1,9 @@
 import { productWrite, quoteShellArg, type Seam, type WriteIntent } from '@dsh-workbench/shared/host';
 import { PAGE_PROBE } from './diy-scripts';
 
+const BACKGROUND_ENV: Readonly<Record<string, string>> = { OPENCLI_WINDOW: 'background' };
+const FOREGROUND_ENV: Readonly<Record<string, string>> = { OPENCLI_WINDOW: 'foreground' };
+
 export const LOOK_TIMEOUT_MS = 30000;
 
 export interface BrowserStep {
@@ -18,15 +21,16 @@ export function plainLine(command: string, argv: readonly string[]): string {
   return [command, ...argv].map(quoteShellArg).join(' ');
 }
 
-export async function runBrowserStep(
+async function runStep(
+  env: Readonly<Record<string, string>>,
   seam: Seam,
   command: string,
   argv: readonly string[],
-  timeoutMs = LOOK_TIMEOUT_MS,
-  line: LineMaker = plainLine,
-  intent: WriteIntent = productWrite(),
+  timeoutMs: number,
+  line: LineMaker,
+  intent: WriteIntent,
 ): Promise<BrowserStep> {
-  const result = await seam.run({ command: line(command, argv), intent, timeoutMs });
+  const result = await seam.run({ command: line(command, argv), intent, timeoutMs, env });
   return {
     ok: result.exitCode === 0 && !result.timedOut,
     stdout: result.stdout.trim(),
@@ -35,6 +39,28 @@ export async function runBrowserStep(
     timedOut: result.timedOut,
     truncated: result.truncated,
   };
+}
+
+export async function runBrowserStep(
+  seam: Seam,
+  command: string,
+  argv: readonly string[],
+  timeoutMs = LOOK_TIMEOUT_MS,
+  line: LineMaker = plainLine,
+  intent: WriteIntent = productWrite(),
+): Promise<BrowserStep> {
+  return runStep(BACKGROUND_ENV, seam, command, argv, timeoutMs, line, intent);
+}
+
+export async function runForegroundStep(
+  seam: Seam,
+  command: string,
+  argv: readonly string[],
+  timeoutMs = LOOK_TIMEOUT_MS,
+  line: LineMaker = plainLine,
+  intent: WriteIntent = productWrite(),
+): Promise<BrowserStep> {
+  return runStep(FOREGROUND_ENV, seam, command, argv, timeoutMs, line, intent);
 }
 
 export function jsonOf(raw: string): Record<string, unknown> | undefined {

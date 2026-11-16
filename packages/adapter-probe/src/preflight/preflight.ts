@@ -2,7 +2,7 @@ import type { RuntimeCapabilities } from '@dsh-workbench/shared';
 import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, WARM_TIMEOUT_MS, now } from '@dsh-workbench/shared/host';
 import { tailLines } from '@dsh-workbench/shared/host';
 import { quoteShellArgFor } from '@dsh-workbench/shared/host';
-import { opencliCommandLine } from '@dsh-workbench/adapter-runtime';
+import { opencliCommandLine, OPENCLI_SITE_SESSION_ENV, OPENCLI_WINDOW_ENV } from '@dsh-workbench/adapter-runtime';
 import { productWrite, type Seam } from '@dsh-workbench/shared/host';
 import { DIY_UPGRADE_COMMAND } from './diy-preset-health.js';
 import type { DiyPresetVerdict } from './diy-preset-health.js';
@@ -14,6 +14,8 @@ import { bridgeFixCommand } from '../runtime/browser-wake.js';
 import { probeOpencliVersion, type OpencliVersionRun, type OpencliVersionVerdict } from '../self-update/version/version-probe.js';
 
 export type PreflightFailure = 'permission' | 'network' | 'missing' | 'host' | 'unknown';
+
+const WARM_ENV: Readonly<Record<string, string>> = { ...OPENCLI_WINDOW_ENV, ...OPENCLI_SITE_SESSION_ENV };
 
 export function classifyFailure(text: string): PreflightFailure {
   const lower = text.toLowerCase();
@@ -153,6 +155,7 @@ export function createPreflight(options: {
     commandLine: string,
     timeoutMs: number,
     retry: 'safe' | 'never' = 'safe',
+    env?: Readonly<Record<string, string>>,
   ): Promise<
     | { kind: 'ok'; stdout: string }
     | { kind: 'nonzero'; detail: string }
@@ -164,7 +167,13 @@ export function createPreflight(options: {
     }
     appendLog(stepId, `> ${commandLine}`);
     try {
-      const result = await seam.run({ command: commandLine, intent: productWrite(), timeoutMs, retry });
+      const result = await seam.run({
+        command: commandLine,
+        intent: productWrite(),
+        timeoutMs,
+        retry,
+        ...(env === undefined ? {} : { env }),
+      });
       if (result.stalled) {
         shellStalled = true;
         appendLog(stepId, `没返回：${commandLine}`);
@@ -241,7 +250,9 @@ export function createPreflight(options: {
       action: '预热浏览器站点',
     });
     const results = await Promise.all(
-      reads.map((read) => exec('warm', opencliCommandLine(command, read, 'persistent', platform), WARM_TIMEOUT_MS)),
+      reads.map((read) =>
+        exec('warm', opencliCommandLine(command, read, 'none', platform), WARM_TIMEOUT_MS, 'safe', WARM_ENV),
+      ),
     );
     const failed = reads.filter((_, index) => results[index]?.kind !== 'ok');
     patchStep('warm', {

@@ -1,4 +1,4 @@
-import { appendFileSync, chmodSync, cpSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import writeFileAtomic from 'write-file-atomic';
 import type { ShellKind } from '../shell/shell-text.js';
@@ -198,6 +198,15 @@ export function moveDir(source: string, target: string): void {
   }
 }
 
+function removeLink(path: string): void {
+  try {
+    if (!lstatSync(path).isSymbolicLink()) return;
+  } catch {
+    return;
+  }
+  unlinkSync(path);
+}
+
 /**
  * 建一条指向目录的链接：POSIX 是符号链接，Windows 是 junction（不需要开发者模式或管理员）。
  * @param target 被指向的目录。
@@ -205,6 +214,7 @@ export function moveDir(source: string, target: string): void {
  * @param kind 目标 shell 种类，默认当前平台。
  */
 export function linkDir(target: string, path: string, kind: ShellKind = shellKindOf()): void {
+  removeLink(path);
   removePath(path);
   ensureDir(dirname(path));
   symlinkSync(target, path, dirLinkTypeOf(kind));
