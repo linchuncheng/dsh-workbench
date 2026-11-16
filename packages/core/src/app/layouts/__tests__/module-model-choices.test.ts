@@ -29,24 +29,26 @@ describe('模块用的模型：下拉候选与取值', () => {
     expect(moduleModelChoiceOf('%E0%A4%A/x')).toBeUndefined();
   });
 
-  it('★ 候选只有模型，按服务商分组；选中哪条由存下来的值定', () => {
+  it('★ 第一条是默认；其余按服务商分组，选中哪条由存下来的值定', () => {
     const chosen = moduleModelChoicesOf({
       groups,
       stored: { provider: 'relay', model: 'openai/gpt-4o' },
+      followLabel: '默认',
       savedLabel: '',
     });
 
     expect(chosen.options.map((option) => option.value)).toEqual([
+      '',
       moduleModelValueOf({ provider: 'deepseek', model: 'deepseek-chat' }),
       moduleModelValueOf({ provider: 'deepseek', model: 'deepseek-reasoner' }),
       moduleModelValueOf({ provider: 'relay', model: 'openai/gpt-4o' }),
     ]);
-    expect(chosen.options.map((option) => option.group)).toEqual(['DeepSeek', 'DeepSeek', '中转']);
+    expect(chosen.options.map((option) => option.group)).toEqual([undefined, 'DeepSeek', 'DeepSeek', '中转']);
     expect(chosen.selected).toBe(moduleModelValueOf({ provider: 'relay', model: 'openai/gpt-4o' }));
 
-    const unset = moduleModelChoicesOf({ groups, stored: null, savedLabel: '' });
+    const unset = moduleModelChoicesOf({ groups, stored: null, followLabel: '默认', savedLabel: '' });
     expect(unset.selected).toBe('');
-    expect(unset.options).toHaveLength(3);
+    expect(unset.options).toHaveLength(4);
   });
 
   it('★ 存着的模型不在目录里：留一条禁用的当前值，选中它还看得见', () => {
@@ -54,6 +56,7 @@ describe('模块用的模型：下拉候选与取值', () => {
     const chosen = moduleModelChoicesOf({
       groups,
       stored,
+      followLabel: '默认',
       savedLabel: 'Gone / model-x（不可用）',
     });
 
@@ -67,9 +70,9 @@ describe('模块用的模型：下拉候选与取值', () => {
     expect(chosen.selected).toBe(moduleModelValueOf(stored));
   });
 
-  it('目录为空时没有候选，值也还是空的', () => {
-    const chosen = moduleModelChoicesOf({ groups: [], stored: null, savedLabel: '' });
-    expect(chosen.options).toEqual([]);
+  it('目录为空时只剩默认这一条', () => {
+    const chosen = moduleModelChoicesOf({ groups: [], stored: null, followLabel: '默认', savedLabel: '' });
+    expect(chosen.options).toEqual([{ value: '', label: '默认' }]);
     expect(chosen.selected).toBe('');
   });
 

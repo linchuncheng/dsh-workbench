@@ -49,6 +49,7 @@ export function ModuleModelItem({ t }: ModuleModelItemProps): JSX.Element {
   const { options, selected } = moduleModelChoicesOf({
     groups,
     stored: current,
+    followLabel: t('moduleModel.followDefault'),
     savedLabel:
       current === null ? '' : t('moduleModel.unavailable', { target: moduleModelLabelOf(groups, current) }),
   });

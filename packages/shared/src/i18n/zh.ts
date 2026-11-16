@@ -738,6 +738,7 @@ export const zh = {
 
   'moduleModel.nav': '模块用的模型',
   'moduleModel.lead': '模块调用模型时用哪个模型；不选就跟 dsh 的默认模型。',
+  'moduleModel.followDefault': '默认',
   'moduleModel.unavailable': '{target}（不可用）',
   'moduleModel.placeholder': '选择模型',
   'moduleModel.empty': '没有可选的模型',

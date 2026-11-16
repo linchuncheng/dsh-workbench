@@ -742,6 +742,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
 
   'moduleModel.nav': 'Model for modules',
   'moduleModel.lead': 'The model workbench modules call; without a choice they use the dsh default.',
+  'moduleModel.followDefault': 'Default',
   'moduleModel.unavailable': '{target} (unavailable)',
   'moduleModel.placeholder': 'Select a model',
   'moduleModel.empty': 'No models available',
