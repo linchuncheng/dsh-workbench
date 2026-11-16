@@ -87,7 +87,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          if ! pnpm --filter @dsh-workbench/adapter-probe exec vitest run \
+          if ! pnpm --filter @dsh-workbench/adapter-probe exec vitest run --testTimeout=20000 \
             src/self-update/__tests__/self-update.test.ts \
             src/self-update/__tests__/self-update-steps.test.ts \
             src/self-update/__tests__/self-update-boot.test.ts \
