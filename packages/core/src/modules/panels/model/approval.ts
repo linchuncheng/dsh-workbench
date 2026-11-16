@@ -239,7 +239,8 @@ function planBodyOf(raw: Readonly<Record<string, unknown>>): boolean {
 export function confirmVerdictFor(call: ApprovalCall): ApprovalVerdict | undefined {
   if (call.name !== DIY_PLAN_TOOL) return undefined;
   const raw = argsOf(call);
-  if (raw['destination'] !== 'board' && raw['destination'] !== 'headless') return { kind: 'allow' };
+  const destination = raw['destination'];
+  if (destination !== 'board' && destination !== 'headless' && destination !== 'tweak') return { kind: 'allow' };
   const summary = textOf(raw, 'summary');
   if (summary === '' || !planBodyOf(raw)) return { kind: 'allow' };
   const title = pair('模块设计方案', 'Module design');

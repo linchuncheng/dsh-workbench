@@ -1,5 +1,6 @@
 import { evalPredicate } from '@dsh-workbench/shared/host';
-import { DIY_BOARD_FLOW, HEADLESS_TITLES } from './definitions';
+import type { DiyFlow } from './definitions';
+import { flowFor, HEADLESS_TITLES } from './definitions';
 
 export interface FlowPosition {
   readonly index: number;
@@ -8,8 +9,12 @@ export interface FlowPosition {
 }
 
 export function visibleSteps(destination: string | null): readonly { id: string; title: string }[] {
+  return visibleStepsOf(flowFor(destination), destination);
+}
+
+export function visibleStepsOf(flow: DiyFlow, destination: string | null): readonly { id: string; title: string }[] {
   const scope = { in: destination === null ? {} : { destination }, steps: {} };
-  return DIY_BOARD_FLOW.steps
+  return flow.steps
     .filter((step) => destination === null || step.when === undefined || evalPredicate(step.when, scope))
     .map((step) => ({
       id: step.id,

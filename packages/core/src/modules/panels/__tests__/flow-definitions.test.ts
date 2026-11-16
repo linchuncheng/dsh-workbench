@@ -128,10 +128,10 @@ describe('DIY 流程定义', () => {
     }
   });
 
-  it('★ 改一格从建模块起，没有站探', () => {
+  it('★ 改一格从补方案起，没有站探，最后照样留账', () => {
     const ids = DIY_TWEAK_FLOW.steps.map((step) => step.id);
 
-    expect(ids).toEqual(['plan', 'build', 'install', 'verify']);
+    expect(ids).toEqual(['plan', 'build', 'install', 'verify', 'ledger']);
     expect(ids).not.toContain('probe');
   });
 });

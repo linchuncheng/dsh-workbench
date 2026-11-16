@@ -2,7 +2,7 @@ import type { FlowNodeStep } from '@dsh-workbench/shared/host';
 import { positionOf, titleOf } from './position';
 import type { DiyFlowRuns } from './runs';
 
-export type Destination = 'ready' | 'once' | 'reroute' | 'board' | 'headless';
+export type Destination = 'ready' | 'once' | 'reroute' | 'board' | 'headless' | 'tweak';
 
 export interface PlanShot {
   readonly caption: string;
@@ -48,7 +48,7 @@ export async function planStep(
 ): Promise<PlanResult> {
   const running = runs.stepOf(session);
   const at = running?.id ?? null;
-  const buildable = input.destination === 'board' || input.destination === 'headless';
+  const buildable = ['board', 'headless', 'tweak'].includes(input.destination);
 
   if (running !== null) {
     if (runs.inputOf(session)['summary'] !== input.summary) {

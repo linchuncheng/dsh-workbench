@@ -52,6 +52,20 @@ describe('面板顶部那条进度行读的接口', () => {
     expect(payload.steps.find((one) => one.id === 'verify')?.title).toBe('检查模块功能');
   });
 
+  it('★★ 判成改已有模块：五步，第一格是补方案', () => {
+    const routes = diyFlowRoutes({
+      stepOf: () => ({ id: 'plan', title: '补一下方案' }),
+      valuesOf: () => ({}),
+      inputOf: () => ({ destination: 'tweak', summary: '库存阈值改成 20' }),
+    } as never);
+    const payload = routes['panels/diy-flow'](new URLSearchParams('session=s-1')) as {
+      steps: { id: string; title: string }[];
+    };
+
+    expect(payload.steps.map((one) => one.id)).toEqual(['plan', 'build', 'install', 'verify', 'ledger']);
+    expect(payload.steps[0]?.title).toBe('补一下方案');
+  });
+
   it('★ 走到哪一步就说哪一步', () => {
     const payload = diyFlowRoutes(runsWith({ id: 'build' }))[DIY_FLOW_ROUTE]?.(
       new URLSearchParams({ session: 's-1' }),

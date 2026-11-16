@@ -46,6 +46,10 @@ describe('判成看板才问一句，其余去向不问', () => {
     expect(panelsApprovalFor()(call('board', { summary: '' }))).toEqual({ kind: 'allow' });
   });
 
+  it('★ 改已有模块也要点头（改的是已经装上的东西）', () => {
+    expect(panelsApprovalFor()(call('tweak'))?.kind).toBe('ask');
+  });
+
   it('★★ 只定去向的那一次不弹（卡上还是空的），带上方案的那一次才弹', () => {
     const bare = { name: DIY_PLAN_TOOL, arguments: { destination: 'board', summary: '盯库存' }, session: 's1' };
 

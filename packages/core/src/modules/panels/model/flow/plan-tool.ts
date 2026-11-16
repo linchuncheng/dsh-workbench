@@ -6,7 +6,7 @@ import { planStep, type Destination } from './plan-step';
 import { PROGRESS_OUTPUT } from './progress-output';
 import type { DiyFlowRuns } from './runs';
 
-const DESTINATIONS: readonly Destination[] = ['ready', 'once', 'reroute', 'board', 'headless'];
+const DESTINATIONS: readonly Destination[] = ['ready', 'once', 'reroute', 'board', 'headless', 'tweak'];
 
 function asText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -65,7 +65,7 @@ export function registerDiyPlanTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
           type: 'string',
           enum: [...DESTINATIONS],
           description:
-            'ready=用现成的 / once=一次性 / reroute=改道 / board=要一块看板卡片 / headless=要能力不要卡片（照样创建、安装）',
+            'ready=用现成的 / once=一次性 / reroute=改道 / board=要一块看板卡片 / headless=要能力不要卡片（照样创建、安装） / tweak=改已有的那个模块（不新建）',
         },
         summary: { type: 'string', description: '一句话复述她要什么，用她的话（她说过的原话）。' },
         cells: { type: 'string', description: '看板几格。' },

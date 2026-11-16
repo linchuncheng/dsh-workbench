@@ -1,6 +1,7 @@
 import type { RouteTable } from '@dsh-workbench/shared/host';
 import { DIY_FLOW_ROUTE } from '@dsh-workbench/shared/contract/protocol/panels';
-import { visibleSteps } from './position';
+import { flowFor } from './definitions';
+import { visibleStepsOf } from './position';
 import type { DiyFlowRuns } from './runs';
 
 export interface FlowStepView {
@@ -10,7 +11,7 @@ export interface FlowStepView {
 
 export function flowSteps(input: Readonly<Record<string, unknown>> = {}): readonly FlowStepView[] {
   const destination = typeof input['destination'] === 'string' ? input['destination'] : null;
-  return visibleSteps(destination);
+  return visibleStepsOf(flowFor(destination), destination);
 }
 
 export function diyFlowRoutes(runs: DiyFlowRuns): RouteTable {

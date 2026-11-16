@@ -88,7 +88,12 @@ export const DIY_TWEAK_FLOW: DiyFlow = {
     { id: 'build', title: '改模块', tools: openTools, schema: BUILD_SCHEMA },
     { id: 'install', title: '热换', tools: lockedTools, schema: INSTALL_SCHEMA },
     { id: 'verify', title: '只验那格', tools: lockedTools, schema: VERIFY_SCHEMA },
+    { id: 'ledger', title: '保存这次的设计', tools: openTools, schema: LEDGER_SCHEMA },
   ],
 };
 
 export const DIY_BOARD_STEPS = DIY_BOARD_FLOW.steps.map((step) => step.id);
+
+export function flowFor(destination: unknown): DiyFlow {
+  return destination === 'tweak' ? DIY_TWEAK_FLOW : DIY_BOARD_FLOW;
+}
