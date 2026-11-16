@@ -8,9 +8,11 @@ import {
 import type { PackEntry } from './toolbox';
 
 export function packClosedReason(tool: string, pack: PackEntry): string {
+  const summary = pack.hint.replace(/[。；，、]+$/, '');
+  const what = summary === '' ? '' : `（${summary}）`;
   return (
-    `${tool} 收在 ${pack.id} 工具包里，这次会话没开：调 ${TOOLBOX_OPEN_TOOL}（targets: ["${pack.id}"]）开包` +
-    `（要用户审批），开完重调一次；不确定还有哪些包就先 ${TOOLBOX_LIST_TOOL}。`
+    `${tool} 收在 ${pack.id} 工具包里${what}，这次会话没开：调 ${TOOLBOX_OPEN_TOOL}（targets: ["${pack.id}"]）开包，` +
+    `开完重调一次；不确定还有哪些包就先 ${TOOLBOX_LIST_TOOL}。`
   );
 }
 

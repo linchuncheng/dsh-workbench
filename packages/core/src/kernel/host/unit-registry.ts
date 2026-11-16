@@ -23,6 +23,7 @@ export interface HostUnit {
 export interface UnitDeclarationSource {
   readonly pkg: string;
   readonly declaration: unknown;
+  readonly description?: string;
 }
 
 export function installableUnitsOf(registry: {
@@ -119,7 +120,9 @@ export function createUnitRegistry(options: {
       }
       const read = readDeclaration(source.pkg, source.declaration);
       if (read.manifest === undefined) return refuse(source.pkg, read.problems);
-      return add({ unit, manifest: read.manifest, face, source: { kind: 'package', pkg: source.pkg } });
+      const manifest =
+        source.description === undefined ? read.manifest : { ...read.manifest, description: source.description };
+      return add({ unit, manifest, face, source: { kind: 'package', pkg: source.pkg } });
     },
 
     registerOwned(face) {

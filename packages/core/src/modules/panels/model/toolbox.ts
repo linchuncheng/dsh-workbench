@@ -1,7 +1,7 @@
 import type { UnitManifest } from '@dsh-workbench/shared';
 import type { McpServerPacks, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
-import { DIY_PACK_TOOLS, MANAGE_TOOLS, TOOLBOX_TOOLS, WRITE_TOOLS } from '../unit';
+import { DIY_PACK_TOOLS, MANAGE_TOOLS, TOOLBOX_TOOLS } from '../unit';
 
 export { PACK_TARGET_LIMIT } from '../unit';
 
@@ -21,14 +21,22 @@ export interface PackEntry {
   readonly label: PackLabel;
   readonly hint: string;
   readonly tools: readonly string[];
-  readonly writes: number;
   readonly kind: PackKind;
 }
 
-const WRITING = new Set<string>(WRITE_TOOLS);
+const HINT_MAX = 80;
 
-function writesOf(tools: readonly string[]): number {
-  return tools.filter((name) => WRITING.has(name)).length;
+function clipped(text: string): string {
+  if (text.length <= HINT_MAX) return text;
+  const cut = text.slice(0, HINT_MAX);
+  const at = Math.max(cut.lastIndexOf(' · '), cut.lastIndexOf('，'), cut.lastIndexOf('；'), cut.lastIndexOf('。'));
+  return at > 0 ? cut.slice(0, at) : cut;
+}
+
+function unitHint(description: string | undefined, tools: readonly { readonly name: string }[]): string {
+  const summary = (description ?? '').trim();
+  if (summary !== '') return clipped(summary);
+  return clipped(tools.map((tool) => tool.name.replace(/^workbench_/, '')).join(' · '));
 }
 
 const SHELL_PACKS: readonly PackEntry[] = [
@@ -37,15 +45,13 @@ const SHELL_PACKS: readonly PackEntry[] = [
     label: { zh: '工作台管理', en: 'workbench admin' },
     hint: '面板 · 模块 · 市场 · 长任务',
     tools: MANAGE_TOOLS,
-    writes: writesOf(MANAGE_TOOLS),
     kind: 'shell',
   },
   {
     id: 'diy',
     label: { zh: 'DIY 工具', en: 'DIY tools' },
-    hint: '工坊 · 调试 · 录制 · 日志 · 页面动作 · 借来的管理七把',
+    hint: '工坊 · 调试 · 录制 · 日志 · 页面动作',
     tools: DIY_PACK_TOOLS,
-    writes: writesOf(DIY_PACK_TOOLS),
     kind: 'shell',
   },
 ];
@@ -84,12 +90,8 @@ function unitPacks(manifests: readonly UnitManifest[]): readonly PackEntry[] {
       {
         id: `unit:${manifest.id}` as PackId,
         label: { zh: label.zh, en: label.en },
-        hint: tools
-          .map((tool) => tool.name.replace(/^workbench_/, ''))
-          .join(' · ')
-          .slice(0, 80),
+        hint: unitHint(manifest.description, tools),
         tools: tools.map((tool) => tool.name),
-        writes: tools.filter((tool) => tool.writes).length,
         kind: 'unit',
       },
     ];
@@ -121,9 +123,8 @@ export function createToolbox(options: {
     (options.mcp?.() ?? []).map((server) => ({
       id: `mcp:${server.name}`,
       label: { zh: `${server.name}（MCP）`, en: `${server.name} (MCP)` },
-      hint: 'dsh 的 MCP server —— 工具自己的审批仍走 dsh',
+      hint: '',
       tools: server.tools,
-      writes: 0,
       kind: 'mcp',
     }));
 

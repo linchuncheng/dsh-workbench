@@ -13,25 +13,24 @@ const shellPack: PackEntry = {
   label: { zh: '工作台管理', en: 'workbench admin' },
   hint: '面板 · 模块 · 市场 · 长任务',
   tools: ['workbench_panels_show'],
-  writes: 1,
   kind: 'shell',
 };
 
 const mcpPack: PackEntry = {
   id: 'mcp:chrome',
   label: { zh: 'chrome（MCP）', en: 'chrome (MCP)' },
-  hint: 'dsh 的 MCP server',
+  hint: '',
   tools: ['mcp__chrome__list_pages'],
-  writes: 0,
   kind: 'mcp',
 };
 
 describe('收起的工具：理由要能让模型说出下一次调什么', () => {
-  it('外壳包：点名包 id、开包工具、以及不确定时的目录', () => {
+  it('外壳包：点名包 id、它能干什么、开包工具、以及不确定时的目录', () => {
     const reason = packClosedReason('workbench_panels_show', shellPack);
 
     expect(reason).toContain('workbench_panels_show');
     expect(reason).toContain('manage');
+    expect(reason).toContain('面板 · 模块 · 市场 · 长任务');
     expect(reason).toContain(`${TOOLBOX_OPEN_TOOL}（targets: ["manage"]）`);
     expect(reason).toContain(TOOLBOX_LIST_TOOL);
   });

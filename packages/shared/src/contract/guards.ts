@@ -6,6 +6,10 @@ export function isRecord(value: unknown): value is Readonly<Record<string, unkno
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+export function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
 export function outsideKeys(value: Readonly<Record<string, unknown>>, allowed: readonly string[]): string[] {
   return Object.keys(value).filter((key) => !allowed.includes(key));
 }

@@ -4,12 +4,12 @@ import { capabilityBriefOf } from '../model/capability-brief';
 import type { PackEntry } from '../model/toolbox';
 
 function pack(id: PackEntry['id'], kind: PackEntry['kind']): PackEntry {
+  const name = id.replace(/^unit:/, '');
   return {
     id,
-    label: { zh: id, en: id },
+    label: { zh: name, en: name },
     hint: '',
     tools: [],
-      writes: 0,
     kind,
   };
 }

@@ -105,6 +105,7 @@ export interface UnitManifest {
   readonly id: string;
   readonly title?: UnitTitle;
   readonly titleKey: string;
+  readonly description?: string;
   readonly card: UnitCard | null;
   readonly tools: readonly UnitTool[];
   readonly host: UnitHostNeeds;

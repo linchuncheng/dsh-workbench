@@ -5,7 +5,7 @@ import { DIY_PRESET_ID } from '@/shared/api/diy';
 import { toolScopeContextOf } from '@/shared/api/host/tool-scope';
 import { TOOLBOX_CLOSE_TOOL, TOOLBOX_LIST_TOOL, TOOLBOX_OPEN_TOOL } from '../unit';
 import { textOutput } from './tool-output';
-import type { PackEntry, PackId, Toolbox } from './toolbox';
+import type { PackId, Toolbox } from './toolbox';
 import { PACK_TARGET_LIMIT } from './toolbox';
 
 const OUTPUT = textOutput();
@@ -29,11 +29,6 @@ function presetOf(ctx: DshHostContext, exec: DshToolRunContext | undefined): str
   return toolScopeContextOf(exec?.agent, (handle) => presetOfSession(ctx, handle))?.preset ?? null;
 }
 
-function countLine(pack: PackEntry): string {
-  if (pack.kind === 'mcp') return `${pack.tools.length} 把工具`;
-  return `${pack.tools.length} 把：读 ${pack.tools.length - pack.writes} / 写 ${pack.writes}`;
-}
-
 function catalogText(
   toolbox: Toolbox,
   session: string | null,
@@ -41,11 +36,11 @@ function catalogText(
   workspace: string | null,
 ): string {
   const lines = [
-    '工作台工具包（默认仅启用三个控制工具；启用工具包需要用户审批，关闭工具包无需审批）：',
+    '工作台工具包：',
     ...toolbox
       .catalog(workspace)
       .filter((pack) => !(preset === DIY_PRESET_ID && pack.id === 'manage'))
-      .map((pack) => `- ${pack.id} — ${pack.label.zh}（${countLine(pack)}）· ${pack.hint}`),
+      .map((pack) => (pack.hint === '' ? `- ${pack.id}` : `- ${pack.id} — ${pack.hint}`)),
   ];
   const open = [...toolbox.packsOf(session, preset)];
   lines.push(open.length === 0 ? '当前已启用：无' : `当前已启用：${open.join('、')}`);
@@ -97,13 +92,10 @@ function hiddenText(hidden: readonly string[]): string {
 }
 
 function openedText(toolbox: Toolbox, session: string, preset: string | null, newly: readonly PackId[]): string {
-  const catalog = new Map(toolbox.catalog().map((pack) => [pack.id, pack] as const));
   const open = [...toolbox.packsOf(session, preset)];
   const already = open.filter((pack) => !newly.includes(pack));
   const parts = [
-    newly.length === 0
-      ? '这些工具包原本已启用。'
-      : `已开启：${newly.map((pack) => `${pack}（${countLine(catalog.get(pack) as PackEntry)}）`).join('、')}`,
+    newly.length === 0 ? '这些工具包原本已启用。' : `已开启：${newly.join('、')}`,
     already.length === 0 ? '' : `原本已启用：${already.join('、')}`,
     '下一次工具调用即可使用，无需等待用户再次发送消息。相关事项完成后，或后续不再需要时，请调用 workbench_toolbox_close 关闭。',
   ];
@@ -165,7 +157,7 @@ export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Arr
     TOOLBOX_OPEN_TOOL,
     '开启工作台工具包，将工具解锁到本次会话。' +
       '面板 / 模块界面 / 模块市场 启用 manage（DIY 模式下不提供，diy 已含这一族）；调试 / 录制 / 日志 / 页面 启用 diy；' +
-      'MCP server 启用 mcp:<server>；模块或插件自己的工具启用 unit:<模块或插件 id>。开启需要用户审批。',
+      'MCP server 启用 mcp:<server>；模块或插件自己的工具启用 unit:<模块或插件 id>。',
     false,
     (plan, exec) => {
       const newly = toolbox.open(plan.session, plan.packs, presetOf(ctx, exec));
@@ -180,7 +172,7 @@ export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Arr
   const closeTool = targetTool(
     TOOLBOX_CLOSE_TOOL,
     '关闭已开启的工作台工具包，将这些工具从本次会话的上下文中移除。' +
-      '相关事项完成后或后续不再需要时请关闭；无需审批。',
+      '相关事项完成后或后续不再需要时请关闭。',
     true,
     (plan, exec) => {
       const closed = toolbox.close(plan.session, plan.packs, presetOf(ctx, exec));

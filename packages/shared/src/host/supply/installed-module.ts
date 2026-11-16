@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { DshHostContext } from '../../api/dsh.js';
+import { asRecord } from '../../contract/guards.js';
 import { declarationProblemsOf, readDeclaration } from '../../contract/unit-declaration.js';
 import { packageSourceOf } from './installed-sources.js';
 import { scopeOf } from '../adapters/adapter-types.js';
@@ -10,10 +11,7 @@ import type { InstalledModule, ProfileModule, ProfilePackage } from '../adapters
 export interface UnitDeclarationSource {
   readonly pkg: string;
   readonly declaration: unknown;
-}
-
-function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  return typeof value === 'object' && value !== null ? (value as Readonly<Record<string, unknown>>) : undefined;
+  readonly description?: string;
 }
 
 function asText(value: unknown): string {
@@ -84,7 +82,13 @@ export function createDeclarationLookup(
       roster = scan();
       pkg = roster.get(unit);
     }
-    return pkg === undefined ? undefined : { pkg, declaration: moduleDeclarationOf(profileDir, pkg) };
+    if (pkg === undefined) return undefined;
+    const description = moduleDescriptionOf(profileDir, pkg);
+    return {
+      pkg,
+      declaration: moduleDeclarationOf(profileDir, pkg),
+      ...(description === undefined ? {} : { description }),
+    };
   };
 }
 
@@ -158,6 +162,17 @@ export function moduleDeclarationOf(profileDir: string | null, pkg: string): unk
   try {
     const text = fs.readFileSync(path.join(profileDir, 'node_modules', pkg, 'package.json'), 'utf8');
     return asRecord(asRecord(asRecord(JSON.parse(text))?.dsh)?.workbench);
+  } catch {
+    return undefined;
+  }
+}
+
+export function moduleDescriptionOf(profileDir: string | null, pkg: string): string | undefined {
+  if (profileDir === null || !isPackageName(pkg)) return undefined;
+  try {
+    const text = fs.readFileSync(path.join(profileDir, 'node_modules', pkg, 'package.json'), 'utf8');
+    const description = asText(asRecord(JSON.parse(text))?.description).trim();
+    return description === '' ? undefined : description;
   } catch {
     return undefined;
   }

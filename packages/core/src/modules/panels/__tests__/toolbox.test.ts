@@ -8,6 +8,7 @@ import type { DshToolDefinition } from '@dsh-workbench/shared/host';
 import { approvalFor, MCP_TOOLS_SERVICE, SESSION_PROJECTIONS_SERVICE, type McpServerPacks } from '@dsh-workbench/shared/host';
 import { createHostKit, createWorkspaceStore, hostSurface, WORKBENCH_ADAPTERS } from '@dsh-workbench/shared/host';
 import { panelsHost } from '../index';
+import { createToolbox } from '../model/toolbox';
 import {
   DIY_BORROWED_TOOLS,
   DIY_PACK_TOOLS,
@@ -257,7 +258,7 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
     expect(deniedOf(mounted, 's-1')).toContain(MANAGE_TOOLS[0]);
   });
 
-  it('list 目录：外壳两个包 + 板子上的单元包，带工具数与读写数', async () => {
+  it('list 目录：外壳两个包 + 板子上的单元包，每个一行 id 与一句简介', async () => {
     const { registered } = mount();
 
     const listed = await call(registered, TOOLBOX_LIST_TOOL, {}, 's-1');
@@ -266,8 +267,18 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
     expect(text).toContain('manage');
     expect(text).toContain('diy');
     expect(text).toContain('unit:board-x');
-    expect(text).toContain('工作台管理');
-    expect(text).toContain('2 把：读 1 / 写 1');
+    expect(text).toContain('面板 · 模块 · 市场 · 长任务');
+    expect(text).toContain('board_x_list · board_x_do');
+  });
+
+  it('★ 单元包的简介取模块自己的 description；没写才退回工具名', () => {
+    const described = createToolbox({
+      manifests: () => [{ ...boardUnit, description: '看本月的任务和状态。' }],
+    });
+    expect(described.catalog().find((pack) => pack.id === 'unit:board-x')?.hint).toBe('看本月的任务和状态。');
+
+    const fallback = createToolbox({ manifests: () => [boardUnit] });
+    expect(fallback.catalog().find((pack) => pack.id === 'unit:board-x')?.hint).toBe('board_x_list · board_x_do');
   });
 });
 
@@ -406,8 +417,7 @@ describe('MCP server 也是外部包', () => {
     const { mounted, registered } = mount(servers);
     const listed = await call(registered, TOOLBOX_LIST_TOOL, {}, 's-1');
 
-    expect(String(listed['text'])).toContain('mcp:chrome');
-    expect(String(listed['text'])).toContain('2 把工具');
+    expect(String(listed['text'])).toContain('- mcp:chrome\n');
     expect(deniedOf(mounted, 's-1')).toContain('mcp__chrome__navigate_page');
   });
 
