@@ -56,7 +56,7 @@ function npmAt(dshHome: string): string {
     { plugin: 'demo' },
   );
   if (!resolved.ok) throw new Error('应该解析得出');
-  return runLineOf(resolved.steps[1]);
+  return runLineOf(resolved.steps[2]);
 }
 
 function npm(
@@ -168,21 +168,21 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
 
     expect(resolved.steps.map((step) => step.kind)).toEqual([
       'mkdir',
-      'run',
       'remove',
+      'run',
       'mkdir',
       'link',
       'run',
       'run',
     ]);
     expect(resolved.steps[0]).toEqual({ kind: 'mkdir', path: PREFIX });
-    expect(resolved.steps[1]).toEqual({
+    expect(resolved.steps[1]).toEqual({ kind: 'remove', path: PEER_DIR });
+    expect(resolved.steps[2]).toEqual({
       kind: 'run',
       line:
         `pnpm add --dir '${PREFIX}' 'opencli-plugin-demo@latest' ` +
         `--registry '${REGISTRY}' --store-dir '${at('pnpm-store')}' --config.cache-dir='${at('pnpm-cache')}' --config.state-dir='${at('pnpm-state')}' --allow-build='opencli-plugin-demo'`,
     });
-    expect(resolved.steps[2]).toEqual({ kind: 'remove', path: PEER_DIR });
     expect(resolved.steps[3]).toEqual({ kind: 'mkdir', path: PEER_PARENT });
     expect(resolved.steps[4]).toEqual({
       kind: 'link',
@@ -203,6 +203,18 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
     });
   });
 
+  it("★ peer 链接在 `pnpm add` 之前先拆掉：pnpm 清理 extraneous 时不会顺着它把 toolchain 清空", () => {
+    const resolved = npm();
+
+    if (!resolved.ok) throw new Error("应该解析得出");
+    const removed = resolved.steps.findIndex((step) => step.kind === 'remove' && step.path === PEER_DIR);
+    const added = resolved.steps.findIndex((step) => step.kind === 'run' && step.line.startsWith('pnpm add'));
+
+    expect(removed).toBeGreaterThanOrEqual(0);
+    expect(added).toBeGreaterThan(removed);
+    expect(resolved.steps.some((step) => step.kind === 'link' && step.path === PEER_DIR)).toBe(true);
+  });
+
   it("★ 只有 opencli 那两条命令步走宿主通道；`pnpm add --dir` 与文件操作照旧受沙箱保护", () => {
     const resolved = npm();
 
@@ -210,7 +222,7 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
     const hosted = resolved.steps.flatMap((step, index) => ('host' in step && step.host === true ? [index] : []));
 
     expect(hosted).toEqual([5, 6]);
-    const pnpm = resolved.steps[1];
+    const pnpm = resolved.steps[2];
     expect(pnpm !== undefined && 'host' in pnpm).toBe(false);
     const upgrade = npm({ mode: 'update' });
     if (!upgrade.ok) throw new Error("应该解析得出");
@@ -233,8 +245,8 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
     expect(kinds[0]).toBe('mkdir');
     expect(resolved.steps[0]).toEqual({ kind: 'mkdir', path: PREFIX });
     expect(kinds.indexOf('mkdir')).toBeLessThan(kinds.indexOf('run'));
-    expect(runLineOf(resolved.steps[1])).toContain(`--dir '${PREFIX}'`);
-    expect(runLineOf(resolved.steps[1])).toContain(`--store-dir '${at('pnpm-store')}'`);
+    expect(runLineOf(resolved.steps[2])).toContain(`--dir '${PREFIX}'`);
+    expect(runLineOf(resolved.steps[2])).toContain(`--store-dir '${at('pnpm-store')}'`);
     expect(at('pnpm-store').startsWith(`${PREFIX}${path.sep}`)).toBe(false);
   });
 
@@ -292,9 +304,9 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
     expect(resolved.line).toBe(
       [
         `mkdir -p '${PREFIX}'`,
+        `rm -rf '${PEER_DIR}'`,
         `pnpm add --dir '${PREFIX}' 'opencli-plugin-demo@latest' ` +
           `--registry '${REGISTRY}' --store-dir '${at('pnpm-store')}' --config.cache-dir='${at('pnpm-cache')}' --config.state-dir='${at('pnpm-state')}' --allow-build='opencli-plugin-demo'`,
-        `rm -rf '${PEER_DIR}'`,
         `mkdir -p '${PEER_PARENT}'`,
         `ln -s '${PEER_TARGET}' '${PEER_DIR}'`,
         "'opencli' plugin uninstall 'demo'",
@@ -307,7 +319,7 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
     const resolved = npm({ version: "1.0.40" });
 
     if (!resolved.ok) throw new Error("应该解析得出");
-    expect(runLineOf(resolved.steps[1])).toContain(
+    expect(runLineOf(resolved.steps[2])).toContain(
       "'opencli-plugin-demo@1.0.40'",
     );
   });
@@ -318,13 +330,13 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
     if (!resolved.ok) throw new Error("应该解析得出");
     expect(resolved.steps.map((step) => step.kind)).toEqual([
       'mkdir',
-      'run',
       'remove',
+      'run',
       'mkdir',
       'link',
     ]);
     expect(resolved.steps[0]).toEqual({ kind: 'mkdir', path: PREFIX });
-    expect(runLineOf(resolved.steps[1])).toContain(
+    expect(runLineOf(resolved.steps[2])).toContain(
       "'opencli-plugin-demo@1.0.40'",
     );
     expect(resolved.line).not.toContain("plugin install");

@@ -62,6 +62,7 @@ function npmSource(
 
   const steps: PluginPlanStep[] = [
     { kind: 'mkdir', path: prefix },
+    { kind: 'remove', path: peer.dir },
     {
       kind: 'run',
       line: [
@@ -74,7 +75,6 @@ function npmSource(
         `--allow-build=${quoteShellArg(name)}`,
       ].join(' '),
     },
-    { kind: 'remove', path: peer.dir },
     { kind: 'mkdir', path: peer.parent },
     { kind: 'link', target: toolchainOpencliDir(), path: peer.dir },
   ];
