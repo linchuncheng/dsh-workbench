@@ -91,7 +91,7 @@ export const zh = {
   'time.short.years': '{n}年',
 
   'panels.title': '面板模块',
-  'panels.groupBoardless': '未加入看板的模块',
+  'panels.groupBoardless': '无看板模块',
   'panels.groupPlugins': '插件',
   'runtime.plugin': '插件',
   'runtime.pluginOf': '运行时提供的插件',

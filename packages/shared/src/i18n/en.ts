@@ -92,7 +92,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'time.short.years': '{n}y',
 
   'panels.title': 'Panel modules',
-  'panels.groupBoardless': 'Modules not on the board',
+  'panels.groupBoardless': 'Modules without a card',
   'panels.groupPlugins': 'Plugins',
   'runtime.plugin': 'plugin',
   'runtime.pluginOf': 'a plugin the runtime provides',
