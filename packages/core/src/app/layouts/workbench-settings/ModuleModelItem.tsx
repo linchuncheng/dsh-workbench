@@ -89,6 +89,9 @@ export function ModuleModelItem({ t }: ModuleModelItemProps): JSX.Element {
             className={styles.picker}
             value={selected}
             options={options}
+            renderValue={(option) =>
+              option?.value === '' ? t('moduleModel.followDefault') : option?.label
+            }
             onChange={choose}
             disabled={stored === undefined || write.busy}
             loading={reading}
