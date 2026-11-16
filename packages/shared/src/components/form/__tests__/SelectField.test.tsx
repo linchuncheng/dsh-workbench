@@ -7,6 +7,7 @@ vi.mock('../../../lib/react.js', () => ({
   Fragment: Symbol.for('react.fragment'),
   h: (type: unknown, props: unknown, ...children: unknown[]) => ({ type, props, children }),
   useEffect: () => {},
+  useLayoutEffect: () => {},
   useMemo: (compute: () => unknown) => compute(),
   useRef: () => ({ current: null }),
   useState: (initial: unknown) => {
@@ -38,6 +39,7 @@ import {
   selectKeyboardOrigin,
   stepSelectCursor,
 } from '../SelectField.js';
+import { scrollMenuRowIntoView } from '../use-select-scroll.js';
 
 interface AnyElement {
   readonly type: unknown;
@@ -131,6 +133,13 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
       { type: 'label', id: '__wb-select-group-3', text: '默认' },
       { id: 'c', label: '默认工作区' },
     ]);
+  });
+
+  it('★ 列表里留一个隐藏的滚动定位锚：打开时靠它把选中项滚进可视区', () => {
+    const marker = (menuOf(render({})).children as AnyElement[]).find((one) => one.type === 'span');
+
+    expect(marker?.props['hidden']).toBe(true);
+    expect(marker?.props['ref']).toBeDefined();
   });
 
   it('开着：锚点换成搜索框（这是这套交互的要点）', () => {
@@ -388,6 +397,40 @@ describe('SelectField：工作区那套下拉的公共形状', () => {
       { id: 'a', label: '甲', disabled: true },
       { id: 'b', label: '乙', icon: expect.anything() },
     ]);
+  });
+
+  it('★ 滚到选中项：按序号取可点行，最近滚动，不横向挪', () => {
+    const calls: unknown[] = [];
+    const seen: string[] = [];
+    const rows = [
+      { scrollIntoView: (options: unknown) => calls.push({ first: options }) },
+      { scrollIntoView: (options: unknown) => calls.push({ second: options }) },
+    ];
+    const viewport = {
+      querySelectorAll: (selector: string) => {
+        seen.push(selector);
+        return rows;
+      },
+    } as unknown as Element;
+
+    scrollMenuRowIntoView(viewport, 1);
+
+    expect(calls).toEqual([{ second: { block: 'nearest', inline: 'nearest' } }]);
+    expect(seen).toEqual(['button[role="menuitem"]']);
+  });
+
+  it('滚到选中项：序号越界、没有列表、那一行不会滚时都不炸', () => {
+    const calls: unknown[] = [];
+    const viewportOf = (rows: readonly Record<string, unknown>[]): Element =>
+      ({ querySelectorAll: () => rows }) as unknown as Element;
+
+    scrollMenuRowIntoView(viewportOf([{ scrollIntoView: (options: unknown) => calls.push(options) }]), -1);
+    scrollMenuRowIntoView(null, 0);
+    scrollMenuRowIntoView(undefined, 0);
+    scrollMenuRowIntoView(viewportOf([{}]), 0);
+    scrollMenuRowIntoView(viewportOf([]), 0);
+
+    expect(calls).toEqual([]);
   });
 
   it('★ 条目构造：groups: false 时平铺，不插分组标题', () => {

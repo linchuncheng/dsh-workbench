@@ -1,10 +1,12 @@
-import type { ReactNode, Ref } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, Ref, RefObject } from 'react';
 import { Fragment, h } from '../../lib/react.js';
 import {
   IconChevronDownOutlineRegular,
+  IconSearchOutlineRegular,
   TextShimmer,
 } from '@deepseek-ai/dsh-client-ui-primitives';
 import { Spinner } from '../feedback/Spinner.js';
+import { TextField } from './TextField.js';
 
 /**
  * 下拉触发器那颗按钮：图标 + 当前值 + 箭头，交给 `Menu` 当 anchor；宽窄两档共用一个形状。
@@ -101,5 +103,51 @@ export function selectLoadingNode(args: {
         <Spinner size={14} />
       </span>
     </button>
+  );
+}
+
+/**
+ * 菜单打开时的搜索框（取代触发器当锚点）：放大镜 + 输入框，上下键交回菜单、回车选中当前高亮那项。
+ * @param args.boxRef - 搜索框外层，打开时用它把焦点交给输入框。
+ * @param args.className - 外层类名（已含 variant 档）。
+ * @param args.id - 输入框 id。
+ * @param args.name - 输入框 name。
+ * @param args.ariaLabel - 读屏名。
+ * @param args.placeholder - 占位文案。
+ * @param args.query - 当前查询。
+ * @param args.onQuery - 查询变了做什么。
+ * @param args.onKey - 上下键与回车的处理。
+ * @returns 搜索框节点。
+ */
+export function selectSearchNode(args: {
+  readonly boxRef: RefObject<HTMLSpanElement | null>;
+  readonly className: string;
+  readonly id: string | undefined;
+  readonly name: string | undefined;
+  readonly ariaLabel: string | undefined;
+  readonly placeholder: string | undefined;
+  readonly query: string;
+  readonly onQuery: (next: string) => void;
+  readonly onKey: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
+}): ReactNode {
+  return (
+    <span ref={args.boxRef} className={args.className}>
+      <span className="wb-selectSearchIcon">
+        <IconSearchOutlineRegular size={14} />
+      </span>
+      <TextField
+        id={args.id}
+        name={args.name}
+        className="wb-selectSearchInput"
+        aria-label={args.ariaLabel}
+        placeholder={args.placeholder}
+        value={args.query}
+        onChange={(event) => args.onQuery(event.currentTarget.value)}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return;
+          args.onKey(event);
+        }}
+      />
+    </span>
   );
 }

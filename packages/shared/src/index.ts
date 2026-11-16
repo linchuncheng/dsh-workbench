@@ -30,6 +30,7 @@ export * from './components/form/SaveBar.js';
 export * from './components/form/SelectField.js';
 export * from './components/form/SelectFieldNodes.js';
 export * from './components/form/TextField.js';
+export * from './components/form/use-select-scroll.js';
 export * from './components/layout/Link.js';
 export * from './components/layout/Rows.js';
 export * from './components/layout/SettingsSection.js';

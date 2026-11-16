@@ -1,8 +1,9 @@
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react';
+import type { ReactNode } from 'react';
 import type { MenuEntry, MenuItem } from '@deepseek-ai/dsh-client-ui-primitives';
 import { h, useEffect, useMemo, useRef, useState } from '../../lib/react.js';
-import { IconSearchOutlineRegular, Menu } from '@deepseek-ai/dsh-client-ui-primitives';
-import { selectLoadingNode, selectTriggerNode } from './SelectFieldNodes.js';
+import { Menu } from '@deepseek-ai/dsh-client-ui-primitives';
+import { selectLoadingNode, selectSearchNode, selectTriggerNode } from './SelectFieldNodes.js';
+import { useSelectedRowScroll } from './use-select-scroll.js';
 import { Field } from './Field.js';
 import { TextField } from './TextField.js';
 import './SelectField.css';
@@ -55,6 +56,7 @@ export interface SelectFieldProps {
   readonly onFooter?: (() => void) | undefined;
   readonly selection?: 'check' | 'fill' | undefined;
   readonly initialSelectedId?: string | null | undefined;
+  readonly scrollToSelected?: boolean | undefined;
   readonly variant?: 'ghost' | 'boxed' | undefined;
   readonly iconOnly?: boolean | undefined;
   readonly chevronHidden?: boolean | undefined;
@@ -97,39 +99,6 @@ function selectValueNode(
   return renderValue === undefined ? current.label : renderValue(current);
 }
 
-function searchNode(args: {
-  readonly boxRef: RefObject<HTMLSpanElement | null>;
-  readonly className: string;
-  readonly id: string | undefined;
-  readonly name: string | undefined;
-  readonly ariaLabel: string | undefined;
-  readonly placeholder: string | undefined;
-  readonly query: string;
-  readonly onQuery: (next: string) => void;
-  readonly onKey: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
-}): ReactNode {
-  return (
-    <span ref={args.boxRef} className={args.className}>
-      <span className="wb-selectSearchIcon">
-        <IconSearchOutlineRegular size={14} />
-      </span>
-      <TextField
-        id={args.id}
-        name={args.name}
-        className="wb-selectSearchInput"
-        aria-label={args.ariaLabel}
-        placeholder={args.placeholder}
-        value={args.query}
-        onChange={(event) => args.onQuery(event.currentTarget.value)}
-        onKeyDown={(event) => {
-          if (event.nativeEvent.isComposing) return;
-          args.onKey(event);
-        }}
-      />
-    </span>
-  );
-}
-
 function menuNode(args: {
   readonly open: boolean;
   readonly listClassName: string;
@@ -138,6 +107,7 @@ function menuNode(args: {
   readonly selectedId: string | undefined;
   readonly items: readonly MenuEntry[];
   readonly footer: readonly MenuEntry[] | undefined;
+  readonly marker: ReactNode;
   readonly onPick: (id: string) => void;
   readonly onCancel: () => void;
 }): ReactNode {
@@ -156,7 +126,9 @@ function menuNode(args: {
       footer={args.footer}
       onSelect={args.onPick}
       onClose={args.onCancel}
-    />
+    >
+      {args.marker}
+    </Menu>
   );
 }
 
@@ -392,6 +364,7 @@ function selectStepFrom(
  * @param props.placeholder - 没选中时那句话；不给是 `—`。
  * @param props.chevronHidden - 箭头留着位置但不画：调用方在那个位置叠自己的操作钮。
  * @param props.initialSelectedId - 游标还没动时默认高亮哪一项（不给就回退到当前值）；回车也选它，方向键从它那行走。给 `null` 表示明确没有默认目标：不画默认高亮、回车不动作。
+ * @param props.scrollToSelected - 打开时把选中的那一项滚进列表可视区；默认开，给 `false` 关掉。
  * @param props.search - 是否可搜（默认 true）；`false` 时不画搜索框、也不自动聚焦。
  * @param props.filter - 自定义匹配；不给用 `defaultSelectFilter`（空白查询一律命中）。
  * @param props.emptyText - 无匹配时的文案，或按查询生成文案的函数（能说"没有匹配 X 的项"）。
@@ -420,6 +393,7 @@ export function SelectField(props: SelectFieldProps) {
     fallback,
     selection = 'fill',
     initialSelectedId,
+    scrollToSelected = true,
     variant = 'boxed',
     iconOnly = false,
     chevronHidden = false,
@@ -431,7 +405,7 @@ export function SelectField(props: SelectFieldProps) {
     menuClassName,
   } = props;
   const state = useSelectState(props);
-  const current = options.find((option) => option.value === value);
+  const markerRef = useSelectedRowScroll(state.open, scrollToSelected, value, state.shown);
   const { preferredId, noTarget, fromHighlight } = selectDefaultTarget(initialSelectedId);
   const highlightId = selectHighlightId(state.shown, state.cursor, state.query, preferredId, noTarget, value);
 
@@ -473,7 +447,7 @@ export function SelectField(props: SelectFieldProps) {
     ariaLabel,
     title,
     icon,
-    value: selectValueNode(current, renderValue, placeholder),
+    value: selectValueNode(options.find((option) => option.value === value), renderValue, placeholder),
     iconOnly,
     chevronHidden,
     onOpen: () => state.setOpen(true),
@@ -482,7 +456,7 @@ export function SelectField(props: SelectFieldProps) {
 
   const anchor =
     state.open && search
-      ? searchNode({
+      ? selectSearchNode({
           boxRef: state.boxRef,
           className: mergeClass('wb-selectSearch', variantClass),
           id,
@@ -519,6 +493,7 @@ export function SelectField(props: SelectFieldProps) {
     className,
     menuNode({
       open: state.open,
+      marker: <span ref={markerRef} hidden />,
       listClassName: mergeClass('wb-selectMenu', menuClassName),
       anchor,
       selection,
