@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import dayjs from 'dayjs';
 import lockfile from 'proper-lockfile';
@@ -234,8 +234,14 @@ export function acquireUpdateLease(input: UpdateLeaseInput): UpdateLeaseHandle |
   try {
     unlock = lockfile.lockSync(file, updateLockOptions(file));
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ELOCKED') return undefined;
-    throw error;
+    if ((error as NodeJS.ErrnoException).code !== 'ELOCKED') throw error;
+    if (!reclaimAbandonedUpdateLock(input.root)) return undefined;
+    try {
+      unlock = lockfile.lockSync(file, updateLockOptions(file));
+    } catch (retry) {
+      if ((retry as NodeJS.ErrnoException).code === 'ELOCKED') return undefined;
+      throw retry;
+    }
   }
   try {
     const body = {
@@ -266,6 +272,23 @@ export function acquireUpdateLease(input: UpdateLeaseInput): UpdateLeaseHandle |
 const UPDATE_LOCK_STALE_MS = 30_000;
 
 const UPDATE_LOCK_UPDATE_MS = 5_000;
+
+const UPDATE_LOCK_ABANDONED_MS = 5_000;
+
+function reclaimAbandonedUpdateLock(root: string): boolean {
+  if (readUpdateLease(root) !== undefined) return false;
+  const dir = `${updateLeaseFile(root)}.d`;
+  try {
+    const info = statSync(dir);
+    if (!info.isDirectory()) return false;
+    if (now() - info.mtimeMs < UPDATE_LOCK_ABANDONED_MS) return false;
+    if (readdirSync(dir).length > 0) return false;
+    rmdirSync(dir);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function updateLockOptions(file: string): lockfile.LockOptions {
   return {

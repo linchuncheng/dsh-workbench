@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -88,6 +88,22 @@ describe('更新租约：同一个运行时根只许一个更新', () => {
     expect(next?.record.token).toBe('next');
     expect(readUpdateLease(rootDir)?.pid).toBe(process.pid);
     next?.release();
+  });
+
+  it('★ 断电留下的空锁目录：过了心跳就回收，刚建的还等一下', () => {
+    const rootDir = root();
+    const lockDir = `${updateLeaseFile(rootDir)}.d`;
+    mkdirSync(lockDir);
+    const fresh = new Date(Date.now() - 1_000);
+    utimesSync(lockDir, fresh, fresh);
+    expect(acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'early' })).toBeUndefined();
+
+    const old = new Date(Date.now() - 6_000);
+    utimesSync(lockDir, old, old);
+    const lease = acquireUpdateLease({ root: rootDir, pid: process.pid, token: 'after-crash' });
+    expect(lease?.record.token).toBe('after-crash');
+    lease?.release();
+    expect(existsSync(lockDir)).toBe(false);
   });
 
   it('★ 刚起、还没拿到真实进程号 → 窗口内算忙，窗口外可以接管', () => {
