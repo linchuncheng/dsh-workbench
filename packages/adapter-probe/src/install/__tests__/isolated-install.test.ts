@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isOpencliReadyAt } from '@dsh-workbench/adapter-runtime';
 import { OPENCLI_PIN } from '@dsh-workbench/shared/host';
 import { cleanupToolchainSiblings, installIsolatedRuntime, rollbackToolchain } from '../isolated-install.js';
+import { installRecordFile, readInstallRecord } from '../install-record.js';
 import type { IsolatedInstallDeps } from '../isolated-install.js';
 
 const PREFIX = 'install ';
@@ -84,6 +85,21 @@ describe('installIsolatedRuntime（旧树先挪成 prev → 直接装进 live �
     const previous = readdirSync(dirname(live)).filter((entry) => entry.startsWith('toolchain.prev-'));
     expect(previous).toHaveLength(1);
     expect(existsSync(join(dirname(live), previous[0] ?? '', 'old.txt'))).toBe(true);
+  });
+
+  it('★ 装好顺手落一条记录，落在 toolchain 外面（树被删了也看得到上次装到哪）', async () => {
+    const live = liveDir();
+    const { deps } = depsOf({ live, results: [OK_RUN] });
+
+    const result = await installIsolatedRuntime(deps);
+
+    expect(result.ok).toBe(true);
+    expect(readInstallRecord(installRecordFile(live))).toMatchObject({
+      schema: 1,
+      dir: live,
+      pin: OPENCLI_PIN,
+    });
+    expect(existsSync(join(live, 'install-record.json'))).toBe(false);
   });
 
   it('★ 装失败 → 旧树换回来，装了一半的 live 清掉', async () => {

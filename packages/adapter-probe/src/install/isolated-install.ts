@@ -4,6 +4,7 @@ import { basename, dirname, join } from 'node:path';
 import { toolchainManifestOf, toolchainNpmrcOf } from '@dsh-workbench/adapter-runtime';
 import { OPENCLI_PIN, now, removePath, writeTextFile } from '@dsh-workbench/shared/host';
 import { installWithRetry, type InstallAttempt, type InstallRetryResult } from './install-retry.js';
+import { recordInstall } from './install-record.js';
 
 export type IsolatedInstallRun = InstallAttempt;
 
@@ -123,10 +124,9 @@ export async function installIsolatedRuntime(
       restore();
       return { ...result, ok: false, detail: `${result.detail}；装完复检不过` };
     }
-    writeTextFile(
-      join(deps.liveDir, '.ready.json'),
-      `${JSON.stringify({ pin: OPENCLI_PIN, at: new Date(now()).toISOString() })}\n`,
-    );
+    const at = new Date(now()).toISOString();
+    writeTextFile(join(deps.liveDir, '.ready.json'), `${JSON.stringify({ pin: OPENCLI_PIN, at })}\n`);
+    recordInstall(deps.liveDir, OPENCLI_PIN, at);
     return result;
   } catch (error) {
     restore();

@@ -3,12 +3,14 @@ import { basename, join } from 'node:path';
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { RouteTable } from '@dsh-workbench/shared/host';
-import { PREFLIGHT_INSTALL_TIMEOUT_MS, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
-import { isOpencliReady, isOpencliReadyAt, opencliBuiltAt, opencliPackageDir, storeDirFor, toolchainDir } from '@dsh-workbench/adapter-runtime';
+import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
+import { isOpencliReady, isOpencliReadyAt, opencliBuiltAt, opencliPackageDir, opencliReadinessAt, storeDirFor, toolchainDir } from '@dsh-workbench/adapter-runtime';
 import { WAKE_BROWSER_ROUTE } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 import { runBootstrapCommand } from '../runtime/bootstrap-run.js';
 import { createDiyPresetProbe } from './diy-preset-health.js';
 import { installIsolatedRuntime } from '../install/isolated-install.js';
+import { describeInstallRecord, installRecordFile, readInstallRecord } from '../install/install-record.js';
+import { smokeInstalledCli } from '../install/install-smoke.js';
 import { opencliInstallCommand } from '../install/install.js';
 import { hostSurface } from '../runtime/platform.js';
 import { createPreflight } from './preflight.js';
@@ -93,6 +95,13 @@ function describeToolchain(toolchain: string, pkgDir: string): string {
   return `包目录在，内容：${files === '' ? '读不到' : files}`;
 }
 
+function describeNotReady(toolchain: string): string {
+  const detail = opencliReadinessAt(toolchain).detail;
+  const record = readInstallRecord(installRecordFile(toolchain));
+  if (record === undefined) return detail;
+  return `${detail}；${describeInstallRecord(record, toolchain, OPENCLI_PIN)}`;
+}
+
 export function registerPreflight(input: {
   routes: RouteTable;
   ctx: DshHostContext;
@@ -133,13 +142,14 @@ export function registerPreflight(input: {
       const at = opencliBuiltAt(toolchainDir());
       return at === undefined ? undefined : `${at} 装好`;
     },
+    installedProblem: () => describeNotReady(toolchainDir()),
     versionAttempts: 3,
     withToolchainLock: (run) => holdToolchainLock(toolchainDir(), run).catch(() => run()),
     install: () =>
       holdToolchainLock(toolchainDir(), async () => {
         if (isOpencliReady()) return { ok: true, detail: '另一个实例已经装好，不再重装' };
         const store = storeDirFor(toolchainDir());
-        return installIsolatedRuntime({
+        const installed = await installIsolatedRuntime({
           liveDir: toolchainDir(),
           command: (dir) => opencliInstallCommand(undefined, undefined, dir, store),
           run: (line) =>
@@ -151,6 +161,17 @@ export function registerPreflight(input: {
           describe: (dir) => describeToolchain(dir, opencliPackageDir(dir)),
           ...(installLog === undefined ? {} : { log: installLog }),
         });
+        if (!installed.ok) return installed;
+        const smoke = await smokeInstalledCli({
+          command,
+          dir: toolchainDir(),
+          run: (line) =>
+            runBootstrapCommand(line, {
+              timeoutMs: PREFLIGHT_VERSION_TIMEOUT_MS,
+              seam: input.seam,
+            }),
+        });
+        return smoke.ok ? installed : smoke;
       }).catch((error: unknown) => ({ ok: false, detail: `等另一个实例装完时出错：${String(error)}` })),
     logger: input.ctx.logger,
     warmReads: input.warmReads,
