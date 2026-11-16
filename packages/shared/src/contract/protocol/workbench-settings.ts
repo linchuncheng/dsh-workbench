@@ -43,4 +43,5 @@ export interface WorkbenchSettingsRequest {
 
 export interface WorkbenchModuleModelsSnapshot {
   readonly groups: readonly WorkbenchModelGroup[];
+  readonly default: WorkbenchModelChoice | null;
 }

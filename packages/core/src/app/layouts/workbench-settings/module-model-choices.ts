@@ -30,7 +30,7 @@ export function moduleModelLabelOf(
 ): string {
   const group = groups.find((one) => one.id === choice.provider);
   const model = group?.models.find((one) => one.id === choice.model);
-  return `${group?.name ?? choice.provider} / ${model?.name ?? choice.model}`;
+  return `${group?.name ?? choice.provider}/${model?.name ?? choice.model}`;
 }
 
 export function moduleModelChoicesOf(input: {

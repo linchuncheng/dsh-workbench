@@ -73,7 +73,7 @@ export async function moduleModelCatalogOf(ctx: DshHostContext): Promise<Workben
       : (await Promise.all(llm.listProviders().map((provider) => groupOf(llm, provider)))).filter(
           (group): group is WorkbenchModelGroup => group !== undefined,
         );
-  return { groups };
+  return { groups, default: defaultModelOf(ctx) ?? null };
 }
 
 export function mountModuleModels(options: { readonly ctx: DshHostContext; readonly routes: RouteTable }): void {

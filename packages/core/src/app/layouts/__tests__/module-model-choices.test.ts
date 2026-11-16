@@ -78,9 +78,9 @@ describe('模块用的模型：下拉候选与取值', () => {
 
   it('给人看的标签先找服务商名与模型名，找不到就用 id', () => {
     expect(moduleModelLabelOf(groups, { provider: 'deepseek', model: 'deepseek-chat' })).toBe(
-      'DeepSeek / DeepSeek Chat',
+      'DeepSeek/DeepSeek Chat',
     );
-    expect(moduleModelLabelOf(groups, { provider: 'gone', model: 'm' })).toBe('gone / m');
-    expect(moduleModelLabelOf(groups, { provider: 'relay', model: 'other' })).toBe('中转 / other');
+    expect(moduleModelLabelOf(groups, { provider: 'gone', model: 'm' })).toBe('gone/m');
+    expect(moduleModelLabelOf(groups, { provider: 'relay', model: 'other' })).toBe('中转/other');
   });
 });
