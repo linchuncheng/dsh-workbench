@@ -1,5 +1,5 @@
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
-import { sessionIdOf } from '@dsh-workbench/shared/host';
+import { hostSurface, sessionIdOf } from '@dsh-workbench/shared/host';
 import { DIY_STEP_TOOL } from '../../unit';
 import { plainJson } from '../diy-context';
 import { positionOf, titleOf } from './position';
@@ -17,6 +17,9 @@ const STEP_FIELDS: Readonly<Record<string, readonly string[]>> = {
 function nextOf(step: string, destination: string | null): string {
   if (step === 'plan') {
     return destination === 'headless' ? '把方案四段补上（用 workbench_diy_plan）' : '把方案四段和字符画补上（用 workbench_diy_plan）';
+  }
+  if (step === 'verify' && !hostSurface().capabilities.pageDebug) {
+    return '这台机器没有页面调试：按只读取证逐条验，验不了的写进未验';
   }
   return STEP_NEXT[step] ?? step;
 }
