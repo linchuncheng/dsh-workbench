@@ -740,6 +740,16 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'workbenchSettings.advanced': 'Advanced',
   'workbenchSettings.readFailed': 'Could not read this setting. Try again.',
 
+  'moduleModel.nav': 'Model for modules',
+  'moduleModel.lead': 'The model workbench modules call; without a choice they use the dsh default.',
+  'moduleModel.followDefault': 'Follow the dsh default',
+  'moduleModel.followDefaultNamed': 'Follow the dsh default ({target})',
+  'moduleModel.unavailable': '{target} (unavailable)',
+  'moduleModel.reading': 'Reading…',
+  'moduleModel.search': 'Search models',
+  'moduleModel.readFailed': 'Could not read the model list. Try again.',
+  'moduleModel.failed': 'Could not save this setting',
+
   'sidebarEdition.nav': 'Session list',
   'sidebarEdition.lead': 'Which interface the session list in the left column uses.',
   'sidebarEdition.official': 'Official',

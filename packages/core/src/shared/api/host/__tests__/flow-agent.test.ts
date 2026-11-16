@@ -58,12 +58,14 @@ function contextOf(parts: {
   readonly agents?: unknown;
   readonly agentPresets?: unknown;
   readonly agentDefaultModel?: unknown;
+  readonly workbenchSettings?: unknown;
 }): DshHostContext {
   const services: Record<string, unknown> = {
     subagents: parts.subagents,
     agents: parts.agents,
     agentPresets: parts.agentPresets,
     agentDefaultModel: parts.agentDefaultModel,
+    workbenchSettingsStore: parts.workbenchSettings,
   };
   return { get: (name: string) => services[name] } as unknown as DshHostContext;
 }
@@ -91,6 +93,13 @@ describe('createFlowAgentGateway：把一步 agent 接到 dsh 的 subagents', ()
       contextOf({
         subagents: recorder.runtime,
         agents: { get: (id: string) => (id === 's-1' ? parent : undefined) },
+        workbenchSettings: {
+          read: () => ({
+            mcpOnDemand: false,
+            includePrerelease: false,
+            moduleModel: { provider: 'workbench', model: 'workbench-default' },
+          }),
+        },
       }),
     );
     const signal = new AbortController().signal;
@@ -111,6 +120,34 @@ describe('createFlowAgentGateway：把一步 agent 接到 dsh 的 subagents', ()
     expect(recorder.calls[0]?.['prompt']).toEqual([{ type: 'text', text: '看 diff' }]);
     expect(typeof recorder.calls[0]?.['childId']).toBe('string');
     expect(result).toMatchObject({ value: { verdict: 'go' }, text: '结论', stopReason: 'completed' });
+  });
+
+  it('★ 这一步没点名模型：子 agent 用工作台给模块选的那个模型', async () => {
+    const recorder = subagentsOf();
+    const gateway = createFlowAgentGateway(
+      contextOf({
+        subagents: recorder.runtime,
+        agents: { get: () => parentOf('s-1') },
+        workbenchSettings: {
+          read: () => ({
+            mcpOnDemand: false,
+            includePrerelease: false,
+            moduleModel: { provider: 'deepseek', model: 'deepseek-reasoner' },
+          }),
+        },
+      }),
+    );
+    const runner = await gateway.port?.open({
+      workspace: '/w/a',
+      sessionId: 's-1',
+      signal: new AbortController().signal,
+    });
+    await runner?.run({ stepId: 'review', prompt: '看' }, new AbortController().signal);
+
+    expect(recorder.calls[0]?.['agentOptions']).toEqual({
+      provider: 'deepseek',
+      model: 'deepseek-reasoner',
+    });
   });
 
   it('文本按 text 块拼起来', async () => {
@@ -209,6 +246,41 @@ describe('createFlowAgentGateway：把一步 agent 接到 dsh 的 subagents', ()
     });
     expect(recorder.calls[0]?.['parent']).toBe(owner);
     expect(disposed).toHaveLength(1);
+  });
+
+  it('★ 工作台给模块选了模型：自建的 owner 用那一个，不看 dsh 的默认模型', async () => {
+    const recorder = subagentsOf();
+    const created: Array<Record<string, unknown>> = [];
+    const gateway = createFlowAgentGateway(
+      contextOf({
+        subagents: recorder.runtime,
+        agents: {
+          get: () => undefined,
+          async create(input: Record<string, unknown>) {
+            created.push(input);
+            return { agent: parentOf('owner-1'), async dispose() {} };
+          },
+        },
+        agentPresets: { list: async () => [{ id: 'standard' }] },
+        agentDefaultModel: { currentSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-flash' }) },
+        workbenchSettings: {
+          read: () => ({
+            mcpOnDemand: false,
+            includePrerelease: false,
+            moduleModel: { provider: 'deepseek', model: 'deepseek-reasoner' },
+          }),
+        },
+      }),
+    );
+
+    const runner = await gateway.port?.open({
+      workspace: '/w/a',
+      sessionId: undefined,
+      signal: new AbortController().signal,
+    });
+    await runner?.dispose();
+
+    expect(created[0]?.['agentOptions']).toEqual({ provider: 'deepseek', model: 'deepseek-reasoner' });
   });
 
   it('没有 standard 就用名单里第一个能用的模式', async () => {

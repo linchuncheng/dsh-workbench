@@ -736,6 +736,16 @@ export const zh = {
   'workbenchSettings.advanced': '高级',
   'workbenchSettings.readFailed': '无法读取这项设置，请重试。',
 
+  'moduleModel.nav': '模块用的模型',
+  'moduleModel.lead': '模块调用模型时用哪个模型；不选就跟 dsh 的默认模型。',
+  'moduleModel.followDefault': '跟随 dsh 默认',
+  'moduleModel.followDefaultNamed': '跟随 dsh 默认（{target}）',
+  'moduleModel.unavailable': '{target}（不可用）',
+  'moduleModel.reading': '读取中…',
+  'moduleModel.search': '搜索模型',
+  'moduleModel.readFailed': '无法读取模型列表，请重试。',
+  'moduleModel.failed': '保存设置失败',
+
   'sidebarEdition.nav': '会话列表',
   'sidebarEdition.lead': '左栏会话列表使用哪套界面。',
   'sidebarEdition.official': '官方',

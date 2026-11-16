@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import type { WorkbenchModelChoice } from '@/kernel/contract/workbench-settings';
 import { createDshAi } from '../ai-adapter';
+import { moduleModelOf } from '../module-model';
 import { contentBlocksOf, type AttachmentStore } from '../ai-blocks';
 import { imagePartOf } from '@dsh-workbench/shared/host';
 import type {
@@ -118,12 +120,13 @@ export function createFlowAgentGateway(ctx: DshHostContext): FlowAgentGateway {
 
   const port: FlowAgentPort = {
     async open(context) {
+        const moduleModel = moduleModelOf(ctx);
         if (context.sessionId !== undefined) {
           const parent = agents.get(context.sessionId as DshSessionId);
           if (parent === undefined) {
             throw new Error('起这一趟的会话已经关了，agent 节点跑不了');
           }
-          return runnerOf({ subagents, parent, children, attachments: store });
+          return runnerOf({ subagents, parent, children, attachments: store, moduleModel });
         }
         const agentPreset = await ownerPresetOf(ctx);
         const agentOptions = ownerModelOf(ctx);
@@ -139,7 +142,13 @@ export function createFlowAgentGateway(ctx: DshHostContext): FlowAgentGateway {
             cause: error,
           });
         }
-        const runner = runnerOf({ subagents, parent: handle.agent, children, attachments: store });
+        const runner = runnerOf({
+          subagents,
+          parent: handle.agent,
+          children,
+          attachments: store,
+          moduleModel,
+        });
         return {
           run: runner.run,
           dispose: async () => {
@@ -169,6 +178,8 @@ async function ownerPresetOf(ctx: DshHostContext): Promise<string> {
 }
 
 function ownerModelOf(ctx: DshHostContext): DshAgentOptions {
+  const moduleModel = moduleModelOf(ctx);
+  if (moduleModel !== undefined) return { provider: moduleModel.provider, model: moduleModel.model };
   const defaults = ctx.get('agentDefaultModel') as unknown as
     | { currentSelection(): DshAgentOptions }
     | undefined;
@@ -200,6 +211,7 @@ function runnerOf(parts: {
   readonly parent: DshAgent;
   readonly children: Set<string>;
   readonly attachments?: AttachmentStore | undefined;
+  readonly moduleModel?: WorkbenchModelChoice | undefined;
 }): FlowAgentRunner {
   return {
     async run(request, signal) {
@@ -208,6 +220,7 @@ function runnerOf(parts: {
       }
       const childId = randomUUID() as DshSessionId;
       parts.children.add(childId);
+      const stepModel = stepModelOf(request, parts.moduleModel);
       let activation;
       try {
         activation = await parts.subagents.startActivation({
@@ -228,14 +241,7 @@ function runnerOf(parts: {
           signal,
           delivery: 'caller',
           ...(request.preset === undefined ? {} : { agentPreset: request.preset }),
-          ...(request.provider === undefined && request.model === undefined
-            ? {}
-            : {
-                agentOptions: {
-                  ...(request.provider === undefined ? {} : { provider: request.provider }),
-                  ...(request.model === undefined ? {} : { model: request.model }),
-                },
-              }),
+          ...(stepModel === undefined ? {} : { agentOptions: stepModel }),
           ...(request.schema === undefined
             ? {}
             : { outputSchema: request.schema as unknown as DshObjectJsonSchema }),
@@ -253,6 +259,21 @@ function runnerOf(parts: {
       }
     },
     dispose: async () => {},
+  };
+}
+
+function stepModelOf(
+  request: FlowAgentRequest,
+  moduleModel: WorkbenchModelChoice | undefined,
+): { readonly provider?: string; readonly model?: string } | undefined {
+  if (request.provider === undefined && request.model === undefined) {
+    return moduleModel === undefined
+      ? undefined
+      : { provider: moduleModel.provider, model: moduleModel.model };
+  }
+  return {
+    ...(request.provider === undefined ? {} : { provider: request.provider }),
+    ...(request.model === undefined ? {} : { model: request.model }),
   };
 }
 

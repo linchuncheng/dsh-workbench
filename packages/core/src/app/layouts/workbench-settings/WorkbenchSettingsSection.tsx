@@ -4,6 +4,7 @@ import { clientSurface } from '@/shared/api/platform/client';
 import { AdapterSetItem } from './AdapterSetItem';
 import { ConfigSyncItem } from './ConfigSyncItem';
 import { McpOnDemandItem } from './McpOnDemandItem';
+import { ModuleModelItem } from './ModuleModelItem';
 import { NewWorkbenchItem } from './NewWorkbenchItem';
 import { SidebarEditionItem } from './SidebarEditionItem';
 import { UpdatePrereleaseItem } from './UpdatePrereleaseItem';
@@ -26,6 +27,7 @@ export function WorkbenchSettingsSection({ t }: WorkbenchSettingsSectionProps): 
       <div className={styles.rows}>
         <AdapterSetItem t={t} />
         <SidebarEditionItem t={t} />
+        <ModuleModelItem t={t} />
         <McpOnDemandItem t={t} />
         <UpdatePrereleaseItem t={t} />
       </div>

@@ -13,6 +13,7 @@ function ctxOf(options: {
   readonly withAttachments?: boolean;
   readonly withLlm?: boolean;
   readonly selection?: { provider: string; model: string } | null;
+  readonly moduleModel?: { provider: string; model: string } | null;
 } = {}): { ctx: DshHostContext; saved: Saved[]; seen: Record<string, unknown>[] } {
   const saved: Saved[] = [];
   const seen: Record<string, unknown>[] = [];
@@ -51,6 +52,17 @@ function ctxOf(options: {
           currentSelection: () =>
             options.selection === null ? undefined : (options.selection ?? { provider: 'p', model: 'm' }),
         };
+      }
+      if (name === 'workbenchSettingsStore') {
+        return options.moduleModel === undefined
+          ? undefined
+          : {
+              read: () => ({
+                mcpOnDemand: false,
+                includePrerelease: false,
+                moduleModel: options.moduleModel ?? null,
+              }),
+            };
       }
       return undefined;
     },
@@ -154,6 +166,25 @@ describe('dsh 适配器', () => {
     const { ctx } = ctxOf({ withAttachments: false });
     const adapter = createDshAiAdapter(ctx, () => undefined);
     await expect(adapter.complete({ parts: [image] })).rejects.toMatchObject({ code: 'unsupported-input' });
+  });
+
+  it('★ 工作台设置了模块用的模型就先用它，没设才跟 dsh 的默认模型', async () => {
+    const chosen = ctxOf({ moduleModel: { provider: 'deepseek', model: 'deepseek-reasoner' } });
+    await createDshAiAdapter(chosen.ctx, () => undefined).complete({ parts: [{ kind: 'text', text: '你好' }] });
+    expect(chosen.seen[0]).toMatchObject({ provider: 'deepseek', model: 'deepseek-reasoner' });
+
+    const fallback = ctxOf({ moduleModel: null });
+    await createDshAiAdapter(fallback.ctx, () => undefined).complete({ parts: [{ kind: 'text', text: '你好' }] });
+    expect(fallback.seen[0]).toMatchObject({ provider: 'p', model: 'm' });
+  });
+
+  it('请求里点名模型时请求说话：只给模型也能借模块模型的 provider', async () => {
+    const { ctx, seen } = ctxOf({ moduleModel: { provider: 'deepseek', model: 'deepseek-reasoner' } });
+    await createDshAiAdapter(ctx, () => undefined).complete({
+      parts: [{ kind: 'text', text: '你好' }],
+      model: { model: 'other-model' },
+    });
+    expect(seen[0]).toMatchObject({ provider: 'deepseek', model: 'other-model' });
   });
 
   it('没有模型时给 no-model', async () => {

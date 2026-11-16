@@ -4,6 +4,7 @@ import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { PostResource, RouteTable } from '@dsh-workbench/shared/host';
 import { writeJsonFile } from '@dsh-workbench/shared/host';
 import type {
+  WorkbenchModelChoice,
   WorkbenchSettings,
   WorkbenchSettingsApplied,
   WorkbenchSettingsRequest,
@@ -14,7 +15,11 @@ export { WORKBENCH_SETTINGS_ROUTE } from '@/kernel/contract/workbench-settings';
 
 export const WORKBENCH_SETTINGS_SERVICE = 'workbenchSettingsStore';
 
-export const DEFAULT_WORKBENCH_SETTINGS: WorkbenchSettings = { mcpOnDemand: false, includePrerelease: false };
+export const DEFAULT_WORKBENCH_SETTINGS: WorkbenchSettings = {
+  mcpOnDemand: false,
+  includePrerelease: false,
+  moduleModel: null,
+};
 
 export interface WorkbenchSettingsStore {
   read(): WorkbenchSettings;
@@ -26,12 +31,43 @@ function booleanOf(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined;
 }
 
+function textOf(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
+function modelChoiceOf(value: unknown): WorkbenchModelChoice | null | undefined {
+  if (value === null) return null;
+  const record = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined;
+  if (record === undefined) return undefined;
+  const provider = textOf(record['provider']);
+  const model = textOf(record['model']);
+  return provider === undefined || model === undefined ? undefined : { provider, model };
+}
+
+function sameChoice(left: WorkbenchModelChoice | null, right: WorkbenchModelChoice | null): boolean {
+  if (left === null || right === null) return left === right;
+  return left.provider === right.provider && left.model === right.model;
+}
+
 function settingsOf(raw: unknown): WorkbenchSettings {
   const record = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
   return {
     mcpOnDemand: booleanOf(record['mcpOnDemand']) ?? DEFAULT_WORKBENCH_SETTINGS.mcpOnDemand,
     includePrerelease:
       booleanOf(record['includePrerelease']) ?? DEFAULT_WORKBENCH_SETTINGS.includePrerelease,
+    moduleModel: modelChoiceOf(record['moduleModel']) ?? null,
+  };
+}
+
+function storedOf(settings: WorkbenchSettings): Record<string, unknown> {
+  return {
+    mcpOnDemand: settings.mcpOnDemand,
+    includePrerelease: settings.includePrerelease,
+    ...(settings.moduleModel === null
+      ? {}
+      : { moduleModel: { provider: settings.moduleModel.provider, model: settings.moduleModel.model } }),
   };
 }
 
@@ -54,20 +90,27 @@ export function createWorkbenchSettingsStore(options: { readonly root: string })
     read,
     apply(payload) {
       const request = (typeof payload === 'object' && payload !== null ? payload : {}) as WorkbenchSettingsRequest;
-      const next: WorkbenchSettings = {
-        mcpOnDemand: booleanOf(request.mcpOnDemand) ?? read().mcpOnDemand,
-        includePrerelease: booleanOf(request.includePrerelease) ?? read().includePrerelease,
-      };
+      const current = read();
+      const requestedModel = request.moduleModel === undefined ? current.moduleModel : modelChoiceOf(request.moduleModel);
+      if (requestedModel === undefined) {
+        throw new Error('moduleModel 要是 { provider, model }，或者 null');
+      }
       if (request.mcpOnDemand !== undefined && booleanOf(request.mcpOnDemand) === undefined) {
         throw new Error('mcpOnDemand 要是 true / false');
       }
       if (request.includePrerelease !== undefined && booleanOf(request.includePrerelease) === undefined) {
         throw new Error('includePrerelease 要是 true / false');
       }
+      const next: WorkbenchSettings = {
+        mcpOnDemand: booleanOf(request.mcpOnDemand) ?? current.mcpOnDemand,
+        includePrerelease: booleanOf(request.includePrerelease) ?? current.includePrerelease,
+        moduleModel: requestedModel,
+      };
       const changed =
-        next.mcpOnDemand !== read().mcpOnDemand ||
-        next.includePrerelease !== read().includePrerelease;
-      if (changed) writeJsonFile(file, next);
+        next.mcpOnDemand !== current.mcpOnDemand ||
+        next.includePrerelease !== current.includePrerelease ||
+        !sameChoice(next.moduleModel, current.moduleModel);
+      if (changed) writeJsonFile(file, storedOf(next));
       cached = next;
       if (changed) for (const listener of [...listeners]) listener(next);
       return { ok: true, settings: next };

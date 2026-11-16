@@ -19,6 +19,7 @@ import { PANEL_STATE_SERVICE, createFactLog, createPanelStateStore, toolUnits, w
 
 import { createMcpScope } from '@/shared/api/host/pack-scope';
 import { mountWorkbenchSettings, workbenchSettingsAction } from '@/shared/api/host/workbench-settings';
+import { mountModuleModels } from '@/shared/api/host/module-model';
 import { basename } from 'node:path';
 import { registerFactStream } from '@/shared/api/host/events';
 import { WORKSHOP_TITLE } from '@/kernel/contract/diy';
@@ -179,6 +180,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   const store = createWorkspaceStore({ logger: ctx.logger });
   const unitsOfTool = (): ReturnType<typeof toolUnits> => toolUnits(liveManifests());
   const settings = mountWorkbenchSettings({ ctx, routes, root: workbenchRoot() });
+  mountModuleModels({ ctx, routes });
   const mcpScope = createMcpScope({ ctx, reapply: () => toolScope.reapply(), settings });
   const toolScope = createPresetScope({
     ctx,

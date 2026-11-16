@@ -13,6 +13,7 @@ import type {
 import { aiError, createAiPort, type AgentOptions, type AiPort } from '@dsh-workbench/shared/host';
 import { contentBlocksOf, type AttachmentStore } from './ai-blocks';
 import { registerBridgeTool } from './ai-tools';
+import { defaultModelOf, moduleModelOf } from './module-model';
 
 interface ToolRegistryLike {
   register(definition: Readonly<Record<string, unknown>>): () => void;
@@ -28,27 +29,13 @@ interface LlmLike {
   stream(options: Readonly<Record<string, unknown>>): AsyncIterable<unknown>;
 }
 
-interface ModelDefaults {
-  currentSelection(): { readonly provider?: unknown; readonly model?: unknown } | undefined;
-}
-
 function selectionOf(
   ctx: DshHostContext,
   override: { readonly provider?: string; readonly model?: string } | undefined,
 ): { readonly provider: string; readonly model: string } | undefined {
-  const defaults = ctx.get('agentDefaultModel') as unknown as ModelDefaults | undefined;
-  const current =
-    defaults !== undefined && typeof defaults.currentSelection === 'function'
-      ? (() => {
-          try {
-            return defaults.currentSelection();
-          } catch {
-            return undefined;
-          }
-        })()
-      : undefined;
-  const provider = override?.provider ?? (typeof current?.provider === 'string' ? current.provider : '');
-  const model = override?.model ?? (typeof current?.model === 'string' ? current.model : '');
+  const base = moduleModelOf(ctx) ?? defaultModelOf(ctx);
+  const provider = override?.provider ?? base?.provider ?? '';
+  const model = override?.model ?? base?.model ?? '';
   if (provider === '' || model === '') return undefined;
   return { provider, model };
 }

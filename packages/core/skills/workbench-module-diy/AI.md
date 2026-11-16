@@ -19,7 +19,7 @@ const rich = await deps.ai.askRich({ prompt: 'x' });   // + usage / model / elap
 - 除 `prompt` 外**全部可选**：新增字段不会破坏调用方。
 - `askJson` 保证返回对象：schema 的紧凑描述会附在提示词末尾，先解析、再校验，不合格**自动重试一次**，
   仍不合格抛 `schema-mismatch`（`details.raw` 里有原始输出）。
-- 模型默认使用用户在界面上选中的那个；需要覆盖时传 `model: { provider, model }`。
+- 模型默认用工作台设置里「模块用的模型」选中的那个；没选就跟 dsh 的默认模型。需要覆盖时传 `model: { provider, model }`。
 
 ## 2 图片：直接传入，不要自行编码
 
