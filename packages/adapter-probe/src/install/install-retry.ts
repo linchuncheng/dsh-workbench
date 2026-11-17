@@ -1,4 +1,15 @@
 import { storeMismatchIn } from '../runtime/store-mismatch.js';
+import { transientFetchIn } from '../runtime/transient-fetch.js';
+
+const TRANSIENT_ATTEMPTS = 3;
+
+const TRANSIENT_WAIT_MS = 5000;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
 export interface InstallAttempt {
   readonly ok: boolean;
@@ -12,6 +23,7 @@ export interface InstallRetryDeps {
   readonly log?: ((message: string) => void) | undefined;
   readonly mismatch?: ((attempt: InstallAttempt) => boolean) | undefined;
   readonly describe?: (() => string) | undefined;
+  readonly waitMs?: number | undefined;
 }
 
 export interface InstallRetryResult {
@@ -47,7 +59,14 @@ export async function installWithRetry(
   wording: InstallRetryWording,
 ): Promise<InstallRetryResult> {
   const mismatchOf = deps.mismatch ?? ((attempt: InstallAttempt) => !attempt.ok && storeMismatchIn(attempt.detail));
-  const first = await deps.run(command);
+  let first = await deps.run(command);
+  for (let tries = 1; tries < TRANSIENT_ATTEMPTS && !first.ok && transientFetchIn(first.detail); tries += 1) {
+    deps.log?.(
+      `${wording.logPrefix ?? '[dsh-workbench] '}${wording.what} 临时抓不到（第 ${String(tries)} 次）：源上可能还没铺开，${String((TRANSIENT_WAIT_MS * tries) / 1000)} 秒后重试`,
+    );
+    await wait((deps.waitMs ?? TRANSIENT_WAIT_MS) * tries);
+    first = await deps.run(command);
+  }
   const storeMismatch = mismatchOf(first);
   const unresolved = first.ok && !deps.resolves();
   if (!storeMismatch && !unresolved) return { ok: first.ok, detail: first.detail, reinstalled: false };

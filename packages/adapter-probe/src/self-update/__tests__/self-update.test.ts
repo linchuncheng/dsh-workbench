@@ -273,6 +273,28 @@ describe('自更新现场：界面要知道外面那个进程跑成什么样', (
     expect(view?.tail).toBe('二行 / 三行 / 四行 / 五行');
   });
 
+  it('★ 换版已提交、等重启：残留的更新租约不算「忙」（否则界面一直说「上一次更新还在收尾」）', () => {
+    const dshHome = home();
+    pathsOf(dshHome);
+    const dir = join(dshHome, 'workbench');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, 'self-update.lock'),
+      JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString(), token: 'lease-1' }),
+    );
+    const marker = join(dir, 'self-update.json');
+    writeFileSync(
+      marker,
+      JSON.stringify({ state: 'running', to: '1.4.0-beta.0', pid: process.pid, produced: '1.4.0-beta.0' }),
+    );
+    expect(readSelfUpdateView()?.busy).toBe(true);
+    writeFileSync(
+      marker,
+      JSON.stringify({ state: 'pending-restart', to: '1.4.0-beta.0', version: '1.4.0-beta.0', phase: 'committed', committed: true }),
+    );
+    expect(readSelfUpdateView()).toMatchObject({ state: 'pending-restart', busy: false });
+  });
+
   it('★ 迁移现场（真目录那一次）也带出来：界面要靠它说"这次得先退出"', () => {
     const dshHome = home();
     pathsOf(dshHome);

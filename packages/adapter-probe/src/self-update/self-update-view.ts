@@ -58,7 +58,8 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
   const state = asText(record.state);
   if (state === undefined || !(SELF_UPDATE_STATES as readonly string[]).includes(state)) return undefined;
   const owner = asText(record.profile);
-  const busy = updateLeaseActive(paths.dir);
+  const committed = state === 'pending-restart' && record.committed === true;
+  const busy = updateLeaseActive(paths.dir) && !committed;
   if (profile !== undefined && owner !== undefined && owner !== profile) {
     const reinstall = reinstallOf(paths.dir, profile);
     return reinstall === undefined ? undefined : { state: 'ok', busy, profile, reinstall };

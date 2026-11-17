@@ -158,7 +158,7 @@ describe('版本目录：自检与安装', () => {
     expect(result.detail).toContain('still wrong');
   });
 
-  it('第一遍就失败但不是 store 对不上：原样返回，不重装', async () => {
+  it('抓不到（404）是临时性的：重试几次，但不「清掉重装」，最后如实回报', async () => {
     const base = caseDir();
     const versionsDir = join(base, 'versions');
     const project = projectOf(fakeProfile(), versionsDir, V2);
@@ -167,8 +167,14 @@ describe('版本目录：自检与安装', () => {
       calls += 1;
       return { ok: false, detail: 'ERR_PNPM_FETCH_404  GET https://registry.npmjs.org/@dsh-workbench%2Fcore' };
     };
-    const result = await installVersionDir({ project, version: V2, command: 'pnpm install', deps: { run }, packages: PACKAGES });
-    expect(calls).toBe(1);
+    const result = await installVersionDir({
+      project,
+      version: V2,
+      command: 'pnpm install',
+      deps: { run, waitMs: 1 },
+      packages: PACKAGES,
+    });
+    expect(calls).toBe(3);
     expect(result).toEqual({
       ok: false,
       detail: 'ERR_PNPM_FETCH_404  GET https://registry.npmjs.org/@dsh-workbench%2Fcore',
