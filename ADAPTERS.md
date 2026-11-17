@@ -37,7 +37,9 @@ interface AdapterSet {
   `supply` 只给探针与市场用。
 - `ProbePort`：`probeUnits` / `registerPreflight` / `declaredPluginCommands`。
 - `RuntimePort`：必需 `packageRoot` / `capabilities` / `commands` / `runners` / `health` / `seed`；
-  可选 `profile` / `commandSurface` / `check`。
+  可选 `profile` / `commandSurface` / `check` / `frontApp` / `bringToFront`。
+  `frontApp` 问"现在前台是哪个应用"，`bringToFront` 把它带回前台 —— 录制结束时把工作台窗口
+  拉回来用的就是这一对；平台分支住在适配器里，外壳只问。
   它是**中立**的：端口不点名任何具体运行时，运行时叫什么由模块清单的 `runtime` / `runs` 声明。
 - `PluginSurface`：`declarationLookup` / `createUnits`。
 - `HostActions`：config sync 与 profile create 的 handler/action。

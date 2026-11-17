@@ -41,14 +41,16 @@ function readReport(file) {
   }
 }
 
-const barrelCache = new Map();
+const declarationCache = new Map();
 
-function isBarrel(file) {
-  const cached = barrelCache.get(file);
+function declarationOnly(file, start, end) {
+  const key = `${file}:${start ?? 0}-${end ?? 0}`;
+  const cached = declarationCache.get(key);
   if (cached !== undefined) return cached;
   let verdict;
   try {
-    const lines = readFileSync(file, 'utf8').split('\n');
+    const all = readFileSync(file, 'utf8').split('\n');
+    const lines = start === undefined ? all : all.slice(start - 1, end);
     const meaningful = lines
       .map((line) => line.trim())
       .filter((line) => line !== '' && !line.startsWith('//') && !line.startsWith('*') && !line.startsWith('/*'));
@@ -56,12 +58,19 @@ function isBarrel(file) {
   } catch {
     verdict = false;
   }
-  barrelCache.set(file, verdict);
+  declarationCache.set(key, verdict);
   return verdict;
 }
 
-function withoutBarrelClones(clones) {
-  return clones.filter((clone) => !(isBarrel(clone.firstFile.name) && isBarrel(clone.secondFile.name)));
+function withoutStructuralClones(clones) {
+  const only = (file, start, end) => declarationOnly(file, start, end);
+  return clones.filter((clone) => {
+    const first = clone.firstFile;
+    const second = clone.secondFile;
+    const barrels = only(first.name) && only(second.name);
+    const imports = only(first.name, first.start, first.end) && only(second.name, second.start, second.end);
+    return !barrels && !imports;
+  });
 }
 
 function check() {
@@ -76,7 +85,7 @@ function check() {
       return 2;
     }
     const total = report.statistics.total;
-    const clones = withoutBarrelClones(report.duplicates ?? []);
+    const clones = withoutStructuralClones(report.duplicates ?? []);
     const fresh = clones.filter((one) => one.isNew === true);
     const percent = total.percentage.toFixed(2);
     if (fresh.length === 0) {

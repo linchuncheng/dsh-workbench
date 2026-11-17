@@ -201,6 +201,8 @@ export interface RuntimePort {
   runners(ctx: DshHostContext, data: DataReader): Readonly<Record<string, LibRunner>>;
   health(ctx: DshHostContext): Readonly<Record<string, RuntimeStatus>>;
   seed(ctx: DshHostContext, options: RuntimeSeedOptions): void;
+  frontApp?(ctx: DshHostContext): Promise<string | undefined>;
+  bringToFront?(ctx: DshHostContext, app: string): Promise<boolean>;
 }
 
 export interface PluginDeclarationSource {

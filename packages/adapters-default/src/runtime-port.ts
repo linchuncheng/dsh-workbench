@@ -5,7 +5,7 @@ import type { RuntimePort } from '@dsh-workbench/shared/host';
 import { packageRootOf, seamOf } from '@dsh-workbench/shared/host';
 import { backgroundLine, libsBinDir } from '@dsh-workbench/adapter-runtime';
 
-import { lastBridgeFacts } from '@dsh-workbench/adapter-probe';
+import { bringBackWindow, frontAppNow, lastBridgeFacts } from '@dsh-workbench/adapter-probe';
 import {
   ensureLibsOpencliPeer,
   ensureVendorOpencliPeer,
@@ -159,6 +159,16 @@ export function createRuntimePort(): RuntimePort {
           ...(bridge === undefined ? {} : { bridge }),
         },
       };
+    },
+
+    async frontApp(ctx: DshHostContext) {
+      const seam = seamOf(ctx);
+      return seam === undefined ? undefined : frontAppNow(seam);
+    },
+
+    async bringToFront(ctx: DshHostContext, app: string) {
+      const seam = seamOf(ctx);
+      return seam === undefined ? false : bringBackWindow(seam, app);
     },
 
     seed(ctx: DshHostContext, options) {

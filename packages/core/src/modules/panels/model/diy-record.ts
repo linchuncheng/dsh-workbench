@@ -1,6 +1,6 @@
 import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { RecordState, RecordStore } from '@dsh-workbench/shared/host';
-import { shotDueOf, type Seam } from '@dsh-workbench/shared/host';
+import { adaptersOf, shotDueOf, type Seam } from '@dsh-workbench/shared/host';
 import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
 import {
   LIVE_TAIL_LINES,
@@ -34,6 +34,31 @@ export { STATIC_URL_PATTERN } from '@/shared/api/host/diy-capture-live';
 const RECORD_WATCH_MS = 3000;
 const RECORD_WATCH_TRIES = 5;
 export const DETAIL_MAX_BYTES = 60000;
+
+let workbenchApp: string | undefined;
+
+export function rememberWorkbenchApp(app: string | undefined): void {
+  workbenchApp = app !== undefined && app.trim() !== '' ? app.trim() : undefined;
+}
+
+export async function frontAppNow(ctx: DshHostContext): Promise<string | undefined> {
+  try {
+    return await adaptersOf(ctx).runtime.frontApp?.(ctx);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function bringBackWorkbench(ctx: DshHostContext): Promise<boolean> {
+  const app = workbenchApp;
+  workbenchApp = undefined;
+  if (app === undefined) return false;
+  try {
+    return (await adaptersOf(ctx).runtime.bringToFront?.(ctx, app)) === true;
+  } catch {
+    return false;
+  }
+}
 
 export const pauseFor = (ms: number) => new Promise<void>((resolve) => {
   setTimeout(resolve, ms);
@@ -117,6 +142,21 @@ async function stopCaptureQuiet(input: WatchFinishDeps): Promise<boolean> {
   }
 }
 
+async function leftoversAndStop(input: WatchFinishDeps): Promise<{ readonly stop: true; readonly delivered: false }> {
+  await releaseLeftoversOf(input);
+  return { stop: true, delivered: false };
+}
+
+async function finishWatcher(
+  input: WatchFinishDeps,
+  keepCapture: boolean,
+): Promise<{ readonly stop: true; readonly delivered: false }> {
+  if (keepCapture) await stopCaptureQuiet(input);
+  await closeRecordTabQuiet(input);
+  await bringBackWorkbench(input.ctx);
+  return { stop: true, delivered: false };
+}
+
 async function closeRecordTabQuiet(input: WatchFinishDeps): Promise<boolean> {
   try {
     return await closeRecordTab(input.seam, input.command, BROWSER_RECORD_SESSION, input.url);
@@ -129,15 +169,9 @@ export async function watchFinishStepOf(
   input: WatchFinishDeps,
 ): Promise<{ readonly stop: boolean; readonly delivered: boolean }> {
   const live = input.store.live(Date.now());
-  if (live === null) {
-    await releaseLeftoversOf(input);
-    return { stop: true, delivered: false };
-  }
+  if (live === null) return leftoversAndStop(input);
   if (live.sessionId !== input.sessionId) return { stop: true, delivered: false };
-  if (live.phase === 'finished') {
-    await closeRecordTabQuiet(input);
-    return { stop: true, delivered: false };
-  }
+  if (live.phase === 'finished') return finishWatcher(input, false);
   let page: ReturnType<typeof recordPageOf>;
   const started = Date.now();
   try {
@@ -148,16 +182,9 @@ export async function watchFinishStepOf(
   }
   if (page.beat) input.store.beat(input.sessionId, Math.max(0, Date.now() - started), Date.now());
   const held = input.store.live(Date.now());
-  if (held === null) {
-    await releaseLeftoversOf(input);
-    return { stop: true, delivered: false };
-  }
+  if (held === null) return leftoversAndStop(input);
   if (held.sessionId !== input.sessionId) return { stop: true, delivered: false };
-  if (held.phase === 'finished') {
-    await stopCaptureQuiet(input);
-    await closeRecordTabQuiet(input);
-    return { stop: true, delivered: false };
-  }
+  if (held.phase === 'finished') return finishWatcher(input, true);
   if (!page.ok) return { stop: false, delivered: false };
   const due = shotDueOf(held, page.shots);
   if (due !== null) await takeShotOf(input, held, due);
