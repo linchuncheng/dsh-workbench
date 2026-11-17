@@ -41,27 +41,43 @@ function readReport(file) {
   }
 }
 
-const barrelCache = new Map();
+const declarationCache = new Map();
 
-function isBarrel(file) {
-  const cached = barrelCache.get(file);
+function declarationOnly(file, start, end) {
+  const key = `${file}:${start ?? 0}-${end ?? 0}`;
+  const cached = declarationCache.get(key);
   if (cached !== undefined) return cached;
   let verdict;
   try {
-    const lines = readFileSync(file, 'utf8').split('\n');
+    const all = readFileSync(file, 'utf8').split('\n');
+    const lines = start === undefined ? all : all.slice(start - 1, end);
     const meaningful = lines
       .map((line) => line.trim())
       .filter((line) => line !== '' && !line.startsWith('//') && !line.startsWith('*') && !line.startsWith('/*'));
-    verdict = meaningful.length > 0 && meaningful.every((line) => /^(export|import)\b/.test(line));
+    verdict =
+      meaningful.length > 0 &&
+      meaningful.every(
+        (line) =>
+          /^(export|import)\b/.test(line) ||
+          /^[\w$]+,?$/.test(line) ||
+          /^}\s*from\s+['"]/.test(line),
+      );
   } catch {
     verdict = false;
   }
-  barrelCache.set(file, verdict);
+  declarationCache.set(key, verdict);
   return verdict;
 }
 
-function withoutBarrelClones(clones) {
-  return clones.filter((clone) => !(isBarrel(clone.firstFile.name) && isBarrel(clone.secondFile.name)));
+function withoutStructuralClones(clones) {
+  const only = (file, start, end) => declarationOnly(file, start, end);
+  return clones.filter((clone) => {
+    const first = clone.firstFile;
+    const second = clone.secondFile;
+    const barrels = only(first.name) && only(second.name);
+    const imports = only(first.name, first.start, first.end) && only(second.name, second.start, second.end);
+    return !barrels && !imports;
+  });
 }
 
 function check() {
@@ -76,17 +92,19 @@ function check() {
       return 2;
     }
     const total = report.statistics.total;
-    const all = report.duplicates ?? [];
-    const clones = withoutBarrelClones(all);
-    const dropped = all.length - clones.length;
-    const barrels = dropped === 0 ? '' : `；另有 ${dropped} 块纯 barrel 对按约定不计`;
+    const found = report.duplicates ?? [];
+    const clones = withoutStructuralClones(found);
+    const structural = found.length - clones.length;
+    const note = structural === 0 ? '' : `；另有 ${structural} 块纯声明 / 导入清单按约定不计`;
     const fresh = clones.filter((one) => one.isNew === true);
     const percent = total.percentage.toFixed(2);
     if (fresh.length === 0) {
-      console.log(`✔ 重复代码：${total.clones} 块 / ${total.duplicatedLines} 行（${percent}%）；没有新增克隆${barrels}`);
+      console.log(`✔ 重复代码：${total.clones} 块 / ${total.duplicatedLines} 行（${percent}%）；没有新增克隆${note}`);
       return 0;
     }
-    console.error(`✖ 重复代码：${fresh.length} 块不在基线里（共 ${total.clones} 块 / ${total.duplicatedLines} 行，${percent}%${barrels}）`);
+    console.error(
+      `✖ 重复代码：${fresh.length} 块不在基线里（共 ${total.clones} 块 / ${total.duplicatedLines} 行，${percent}%${note}）`,
+    );
     for (const clone of fresh.slice(0, LIST_LIMIT)) console.error(cloneLine(clone));
     if (fresh.length > LIST_LIMIT) console.error(`  · 还有 ${fresh.length - LIST_LIMIT} 块，跑 pnpm run duplication:report 看全量`);
     console.error('  → 消掉重复；确认可以接受就跑 pnpm run duplication:accept，并把 .jscpd-baseline.json 一起提交');

@@ -17,6 +17,10 @@ export function isolatedHome(): string {
   return layout().home;
 }
 
+export function sessionStateDir(): string {
+  return join(layout().root, 'state', 'sessions');
+}
+
 export function vendorPrefix(): string {
   return layout().vendorPrefix;
 }

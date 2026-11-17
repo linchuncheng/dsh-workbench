@@ -2,6 +2,7 @@ import { existsSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs'
 import {
   appendTextFile,
   productWrite,
+  sessionArgv,
   writeTextFile,
   type Seam,
 } from '@dsh-workbench/shared/host';
@@ -34,7 +35,7 @@ function plainOf(value: unknown): Record<string, unknown> | undefined {
 }
 
 function argvOf(command: string, session: string, args: readonly string[]): string[] {
-  return [command === '' ? 'runtime' : command, 'browser', session, ...args, '--window', 'background'];
+  return [command === '' ? 'runtime' : command, ...sessionArgv(['browser', session, ...args]), '--window', 'background'];
 }
 
 function parsedRecord(text: string): Record<string, unknown> | undefined {

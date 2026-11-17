@@ -1,4 +1,4 @@
-import { productWrite, quoteShellArg, type Seam, type WriteIntent } from '@dsh-workbench/shared/host';
+import { productWrite, quoteShellArg, sessionArgv, type Seam, type WriteIntent } from '@dsh-workbench/shared/host';
 import { PAGE_PROBE } from './diy-scripts';
 
 export const LOOK_TIMEOUT_MS = 30000;
@@ -15,7 +15,7 @@ export interface BrowserStep {
 export type LineMaker = (command: string, argv: readonly string[]) => string;
 
 export function plainLine(command: string, argv: readonly string[]): string {
-  return [command, ...argv].map(quoteShellArg).join(' ');
+  return [command, ...sessionArgv(argv)].map(quoteShellArg).join(' ');
 }
 
 export async function runBrowserStep(

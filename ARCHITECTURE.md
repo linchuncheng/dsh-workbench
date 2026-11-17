@@ -481,7 +481,7 @@ data.submit(recipe, overrides?)           // 写工具里调
 - **两个执行体**，同一份配方：
   1. **页面脚本**（默认，也是兜底）：壳把配方编译成页面脚本
      （[`shared/src/host/data/recipe.ts`](packages/shared/src/host/data/recipe.ts)），底层是 `browserRead`
-     （opencli `browser <session> eval`）；凭据只在页面里取用、不回流宿主。
+     （opencli `browser --session <name> eval`）；凭据只在页面里取用、不回流宿主。
   2. **公共通道**（可选加速器）：`auth.source` 是 `cookie` / `cookieValue` 时，先试随壳出货的
      opencli 插件 [`adapter-runtime/channel`](packages/adapter-runtime/channel) —— 浏览器只当 cookie jar
      （`page.getCookies`，HttpOnly 也读得到），请求在宿主进程里发。命令跑不起来就回落 1，且只回落一次。
@@ -506,7 +506,6 @@ const out = await data.plan(
   {
     origin: 'https://oa.example.com',
     loginUrl: 'https://oa.example.com/',
-    session: 'workbench-read',
     authLoss: { path: 'errorCode', equals: '002', messagePath: 'msg' },
     steps: [
       { name: 'key',
@@ -522,6 +521,16 @@ const out = await data.plan(
 );
 // out.key / out.rows：每步 { ok, data | error, elapsedMs }；失败后后面的步标 skipped
 ```
+
+读会话按**站点**分：配方没写 `session` 时，`origin` 的主机名决定会话（`workbench-read-<host>`），
+同一站点共用一个标签、排一次队；不同站点各用各的，并行读互不导航。池子上限 4 个（`readSessions`），
+超了按最久未用关掉，正在读的不动。
+
+写会话再分一层（`workbench-write-<host>`）：同一站点的读与写各用一个标签，读的导航不会把写到一半的
+页面顶掉；同站点的两次写仍在同一个会话里排队，服务端不会被并发打。录制固定 `workbench-rec`。
+
+会话名登记在运行时根下的 `state/sessions/<pid>.json`；启动时清掉已经不在的进程留下的会话（它们
+在浏览器里不会自己消失）。
 
 - 仍然是**一次 eval、多次 fetch**：凭据只在页面里，宿主不碰 cookie/token。
 - 每步 `response.kind` 是 `json`（可带 `path`）/ `text` / `bytes`（`{ base64, size, contentType }`）/
@@ -1108,7 +1117,8 @@ check:release-packages → check:release-artifacts
 出 `coverage/duplication/` 下的 HTML / JSON 全量报告。扫描面（`packages/` 与 `scripts/` 的
 TS / JS，不含测试、构建产物与词典）在 `.jscpd.json` —— 词典是逐条平铺的键值表，同名同形的行
 在 Type-2 下会被当成克隆，那里没有可抽的逻辑。纯 re-export 的 barrel（整份文件只有 `export` / `import`）
-由 `scripts/check-duplication.mjs` 在比对前滤掉，同理：那里没有可抽的东西。
+由 `scripts/check-duplication.mjs` 在比对前滤掉；整段只有 `import` / `export` 的命中区（import 块）同样滤掉。
+这两类看着像克隆，实则没有可抽的东西。
 
 覆盖两档克隆：**完全相同**（Type-1）与**改了名**（Type-2，`ignoreIdentifiers` + `ignoreLiterals`）。
 Type-2 不是全能的：一段整体改名、结构又短的代码可能漏过，所以它比只查 Type-1 强，但不是保证。

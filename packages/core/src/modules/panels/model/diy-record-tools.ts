@@ -11,6 +11,7 @@ import { readDesignOfModule } from '@/shared/api/host/diy-modules';
 import { actBrowser } from './diy-browser-act';
 import { stopLiveCapture } from '@/shared/api/host/diy-capture-live';
 import { openRecordPage } from './diy-record-open';
+import { bringBackWorkbench, frontAppNow, rememberWorkbenchApp } from './diy-record';
 import { RECORD_ARM_SCRIPT, RECORD_READ_SCRIPT, RECORD_STOP_SCRIPT } from './diy-record-scripts';
 import { captureEntriesOf, pickAllOf, pickOf } from './diy-record-capture';
 import {
@@ -128,6 +129,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
         held,
       );
 
+      rememberWorkbenchApp(await frontAppNow(ctx));
       try {
         const opened = await openRecordPage({ seam, command, session: BROWSER_RECORD_SESSION, url, captureFile });
         if (!opened.ok) throw new Error(opened.why);
@@ -155,6 +157,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
         });
       } catch (error) {
         await releaseQuietly({ seam, command, session: BROWSER_RECORD_SESSION, url, captureFile });
+        await bringBackWorkbench(ctx);
         store.stop(sessionId, Date.now());
         throw error;
       }
@@ -428,6 +431,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
         url: held.url,
         captureFile: held.captureFile,
       });
+      await bringBackWorkbench(ctx);
       store.stop(sessionId, Date.now());
       const probeCommand = probeCommandOf(bundle.merged);
       const lastFile = lastCaptureFileOf(held.captureFile);

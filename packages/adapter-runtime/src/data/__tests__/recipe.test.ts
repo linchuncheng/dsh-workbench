@@ -26,7 +26,7 @@ describe('DataReader.request · 配方读', () => {
     const result = await reader.request(RECIPE);
 
     expect(result).toEqual({ ok: true, data: { balance: 3 } });
-    expect(fake.commands()[0]).toContain("'browser' 'workbench-read' 'eval'");
+    expect(fake.commands()[0]).toContain("'browser' '--session' 'workbench-read-x-example-com' 'eval'");
     expect(fake.calls[0]?.env).toMatchObject({ OPENCLI_WINDOW: 'background' });
   });
 
@@ -155,7 +155,7 @@ describe('DataReader.requestMany · 批量读', () => {
     expect(results['balance']).toEqual({ ok: true, data: { n: 3 } });
     expect(results['feed']).toEqual({ ok: true, data: '<rss />' });
     expect(fake.commands()).toHaveLength(1);
-    expect(fake.commands()[0]).toContain("'browser' 'workbench-read' 'eval'");
+    expect(fake.commands()[0]).toContain("'browser' '--session' 'workbench-read-x-example-com' 'eval'");
   });
 
   it('一条失败不丢其余：逐格映射页面码', async () => {

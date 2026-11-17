@@ -50,7 +50,7 @@ describe('browserRead · 读成功', () => {
     expect(out.ok).toBe(true);
     expect(out.code).toBe('ok');
     expect(out.value).toEqual({ ok: true, n: 3 });
-    expect(commands[0]).toContain(`'browser' '${BROWSER_READ_SESSION}' 'eval'`);
+    expect(commands[0]).toContain(`'browser' '--session' '${BROWSER_READ_SESSION}' 'eval'`);
   });
 
   it('脚本没回 ok 字段（例如直接回一个数）也算读到了', async () => {
