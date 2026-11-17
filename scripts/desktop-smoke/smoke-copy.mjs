@@ -41,7 +41,26 @@ export function copyClauseOf(key) {
   return [...new Set(copyOf(key).map(clauseOf))];
 }
 
-export function copyPattern(keys, flags = 'iu') {
-  const parts = keys.flatMap((key) => copyClauseOf(key)).map(escapeRe);
-  return new RegExp(parts.join('|'), flags);
+export function copyStemOf(key) {
+  return [
+    ...new Set(
+      copyOf(key).map((text) => {
+        const cut = text.indexOf('{');
+        const stem = (cut < 0 ? clauseOf(text) : text.slice(0, cut)).trim();
+        return stem.length >= MIN_CLAUSE ? stem : text.trim();
+      }),
+    ),
+  ];
+}
+
+function patternFrom(parts) {
+  return new RegExp([...new Set(parts)].map(escapeRe).join('|'), 'iu');
+}
+
+export function copyPattern(keys) {
+  return patternFrom(keys.flatMap((key) => copyClauseOf(key)));
+}
+
+export function copyStemPattern(keys) {
+  return patternFrom(keys.flatMap((key) => copyStemOf(key)));
 }

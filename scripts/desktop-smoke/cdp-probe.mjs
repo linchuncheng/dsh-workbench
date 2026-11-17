@@ -1,4 +1,4 @@
-import { copyOf, copyPattern } from './smoke-copy.mjs';
+import { copyOf, copyPattern, copyStemPattern } from './smoke-copy.mjs';
 import fs from 'node:fs';
 import { execa } from 'execa';
 import { delimiter, join } from 'node:path';
@@ -48,8 +48,11 @@ const addRunTexts = copyOf('panels.market.install');
 const addCloseTexts = copyOf('panels.market.add.close');
 const specLabels = copyOf('panels.market.add.specLabel');
 const SPEC_FIELD_SELECTOR = specLabels.map((one) => `input[aria-label="${one}"]`).join(', ');
-const pluginPreviewRe = /这是一份[^\n]*插件|插件名：|This is [^\n]*plugin|Plugin name:/u;
-const pluginInstalledRe = /装上了：|Installed:/u;
+const pluginPreviewRe = copyStemPattern([
+  'panels.market.add.pluginPreview',
+  'panels.market.add.pluginAlias',
+]);
+const pluginInstalledRe = copyStemPattern(['panels.market.add.installedPlugin']);
 const workbenchTitles = copyOf('panels.market.workbenchName');
 const workbenchUpdateTexts = copyOf('panels.market.update');
 const selfUpdateReadyRe = copyPattern(['panels.market.selfUpdatePendingRestart']);
