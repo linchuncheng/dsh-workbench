@@ -31,10 +31,8 @@ import { browserRead, type BrowserReadResult } from '../browser/index.js';
 import { attachOf } from './attachment.js';
 import { readHttp } from './http.js';
 import { createCommandRead } from './command-read.js';
-import { productWrite } from '@dsh-workbench/shared/host';
 import { createSessionQueue } from './queue.js';
-import { createSessionPool } from './session-pool.js';
-import { createSessionRegistry } from './session-registry.js';
+import { createSessionKeeper } from './sessions.js';
 import { submitPlanOf, type SubmitRun } from './submit-plan.js';
 import { readSessionOf, sessionOf, writeSessionOf, type DataReaderOptions } from './types.js';
 import {
@@ -70,34 +68,15 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
   const command = options.command ?? 'opencli';
   const queue = createSessionQueue();
   const queueWaitMs = options.queueWaitMs ?? 30_000;
-  const pool = createSessionPool({
+  const sessions = createSessionKeeper({
+    seam: options.seam,
+    command,
     max: options.readSessions ?? 4,
-    close: (session) => {
-      void closeSession(session);
-    },
+    ...(options.sessionRegistryDir === undefined
+      ? {}
+      : { registryDir: options.sessionRegistryDir }),
   });
 
-  const registry =
-    options.sessionRegistryDir === undefined
-      ? undefined
-      : createSessionRegistry({ dir: options.sessionRegistryDir });
-
-  async function closeStale(): Promise<void> {
-    for (const session of registry?.stale() ?? []) await closeSession(session);
-  }
-  void closeStale();
-
-  async function closeSession(session: string): Promise<void> {
-    if (options.seam === undefined) return;
-    await options.seam
-      .run({
-        argv: ['browser', '--session', session, 'close'],
-        intent: productWrite(),
-        timeoutMs: 15_000,
-        bestEffort: true,
-      })
-      .catch(() => undefined);
-  }
   const readCommand = createCommandRead({ seam: options.seam, command });
 
   type BrowserReadInput = Parameters<typeof browserRead>[0];
@@ -168,24 +147,33 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
     readonly signal?: AbortSignal | undefined;
     readonly retry?: boolean | undefined;
     readonly purpose?: 'read' | 'write' | undefined;
+    readonly finalSession?: string | undefined;
   }): Promise<Guarded<BrowserReadResult>> {
     const argv = scriptArgProblemOf(input.script);
     if (argv !== undefined) return { kind: 'failed', result: failure('invalid-request', argv) };
+    const write = input.purpose === 'write';
     const session =
-      input.purpose === 'write'
-        ? writeSessionOf(input.session, input.url)
-        : readSessionOf(input.session, input.url);
-    return serialGuard(session, input.signal, () => browserRead(browserCall({ ...input, session })));
+      input.finalSession ??
+      (write ? writeSessionOf(input.session, input.url) : readSessionOf(input.session, input.url));
+    return serialGuard(
+      session,
+      input.signal,
+      () => browserRead(browserCall({ ...input, session })),
+      write,
+    );
   }
+
+  const inFlight = new Map<string, number>();
 
   async function serialGuard<T>(
     session: string,
     signal: AbortSignal | undefined,
     work: () => Promise<T>,
+    write = false,
   ): Promise<Guarded<T>> {
+    inFlight.set(session, (inFlight.get(session) ?? 0) + 1);
     const started = now();
-    registry?.claim(session);
-    pool.hold(session);
+    sessions.begin(session);
     const outcome = await queue.acquire(session, signal, queueWaitMs);
     try {
       options.onQueue?.({ session, waitedMs: now() - started, outcome });
@@ -204,7 +192,7 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
       return { kind: 'done', value: await work() };
     } finally {
       queue.release(session);
-      pool.idle(session);
+      await sessions.end(session, write);
     }
   }
 
@@ -461,24 +449,25 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
       if (options.seam === undefined) {
         return allSame(plan, { code: 'invalid-request', message: '没有执行缝，写不了' });
       }
+      const session = writeSessionOf(plan.session, plan.origin);
       const run: SubmitRun = async (script) => {
         const got = await guardedBrowser({
           seam: options.seam as Seam,
           script,
           url: plan.origin,
           ...(plan.loginUrl === undefined ? {} : { loginUrl: plan.loginUrl }),
-          ...(plan.session === undefined ? {} : { session: plan.session }),
           open: submitOptions.open ?? false,
           ...(plan.timeoutMs === undefined ? {} : { timeoutMs: plan.timeoutMs }),
           ...(submitOptions.signal === undefined ? {} : { signal: submitOptions.signal }),
           retry: false,
           purpose: 'write',
+          finalSession: session,
         });
         if (got.kind === 'failed') return got.result;
         if (!got.value.ok) return browserFailure(got.value, plan.loginUrl);
         return { ok: true, value: got.value.value };
       };
-      return submitPlanOf(plan, submitOptions, run, options.saveBytes);
+      return sessions.hold(session, () => submitPlanOf(plan, submitOptions, run, options.saveBytes));
     },
     async submit<T = unknown>(
       recipe: RequestRecipe,

@@ -37,6 +37,10 @@ function readerOf(
   };
 }
 
+function writtenOf(fake: ReturnType<typeof createFakeShell>): string[] {
+  return fake.commands().filter((line) => !/['"\s]close['"]?\s*$/.test(line));
+}
+
 function optionsOf(overrides: Partial<SubmitPlanOptions> = {}): SubmitPlanOptions {
   return {
     idempotencyKey: 'idem-1',
@@ -65,8 +69,9 @@ describe('DataReader.submitPlan', () => {
     expect(events).toEqual(['create', 'update']);
     expect(out['create']).toMatchObject({ ok: true, data: 'c-1' });
     expect(out['update']).toMatchObject({ ok: true, data: { done: true } });
-    expect(fake.commands()).toHaveLength(2);
-    const scripts = fake.commands();
+    expect(writtenOf(fake)).toHaveLength(2);
+    expect(fake.commands()).toHaveLength(3);
+    const scripts = writtenOf(fake);
     expect(scripts[0]).toContain('Idempotency-Key');
     expect(scripts[0]).toContain('idem-1:create');
     expect(scripts[1]).toContain('"create":{"value":"c-1"}');
@@ -145,7 +150,7 @@ describe('DataReader.submitPlan', () => {
   it('写失败不重试；后面的步标 skipped', async () => {
     const { fake, reader } = readerOf([{ exitCode: 1, stderr: 'boom' }]);
     const out = await reader.submitPlan(plan, optionsOf());
-    expect(fake.commands()).toHaveLength(1);
+    expect(writtenOf(fake)).toHaveLength(1);
     expect(out['create']).toMatchObject({ ok: false });
     expect(out['update']).toMatchObject({ ok: false, error: { code: 'skipped' } });
   });

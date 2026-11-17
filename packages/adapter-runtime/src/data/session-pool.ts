@@ -2,6 +2,7 @@ export interface SessionPool {
   touch(session: string): void;
   hold(session: string): void;
   idle(session: string): string | undefined;
+  drop(session: string): void;
 }
 
 export function createSessionPool(input: {
@@ -38,6 +39,10 @@ export function createSessionPool(input: {
       busy.add(session);
       mark(session);
       sweep(session);
+    },
+    drop(session) {
+      busy.delete(session);
+      seen.delete(session);
     },
     idle(session) {
       busy.delete(session);
