@@ -78,6 +78,7 @@ export * from './host/profile/profile-create.js';
 export * from './host/profile/profile-port.js';
 export * from './host/profile/profile-registries.js';
 export * from './host/runtime/boot-record.js';
+export * from './host/runtime/browser-argv.js';
 export * from './host/runtime/changelog.js';
 export * from './host/runtime/cli-error.js';
 export * from './host/runtime/cli.js';

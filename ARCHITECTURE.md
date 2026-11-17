@@ -481,7 +481,7 @@ data.submit(recipe, overrides?)           // 写工具里调
 - **两个执行体**，同一份配方：
   1. **页面脚本**（默认，也是兜底）：壳把配方编译成页面脚本
      （[`shared/src/host/data/recipe.ts`](packages/shared/src/host/data/recipe.ts)），底层是 `browserRead`
-     （opencli `browser <session> eval`）；凭据只在页面里取用、不回流宿主。
+     （opencli `browser --session <name> eval`）；凭据只在页面里取用、不回流宿主。
   2. **公共通道**（可选加速器）：`auth.source` 是 `cookie` / `cookieValue` 时，先试随壳出货的
      opencli 插件 [`adapter-runtime/channel`](packages/adapter-runtime/channel) —— 浏览器只当 cookie jar
      （`page.getCookies`，HttpOnly 也读得到），请求在宿主进程里发。命令跑不起来就回落 1，且只回落一次。

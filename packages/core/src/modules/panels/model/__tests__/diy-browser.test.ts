@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { plainLine } from '../diy-browser';
 import type { DshShell } from '@dsh-workbench/shared/host';
 import { quoteShellArg } from '@dsh-workbench/shared/host';
 import { bindCurrentTab, jsonOf, readyPageOf, runBrowserStep, writeShotsDir } from '../diy-browser';
@@ -144,5 +145,13 @@ describe('抠 JSON 与那一页的握手', () => {
 
   it('★ 卡锚点是外壳盖的那一个（模块自己写的卡壳也认）', () => {
     expect(cardSelectorOf('demo')).toBe('#wb-card-demo');
+  });
+});
+
+describe('会话参数：2.x 只认 --session', () => {
+  it('★ plainLine 把 browser <session> 改写成 browser --session <session>', () => {
+    const line = plainLine('opencli', ['browser', 'Record', 'eval', '1+1', '--window', 'background']);
+
+    expect(line).toBe("'opencli' 'browser' '--session' 'Record' 'eval' '1+1' '--window' 'background'");
   });
 });
