@@ -532,6 +532,9 @@ const out = await data.plan(
 会话名登记在运行时根下的 `state/sessions/<pid>.json`；启动时清掉已经不在的进程留下的会话（它们
 在浏览器里不会自己消失）。
 
+运行时的标签落在它自己的**容器窗口**里（Chrome 里那个名为 `OpenCLI Browser` 的标签组），不占用用户的
+窗口；容器窗口不随会话关闭而消失，用户关掉它，运行时下次自己再建一个。
+
 - 仍然是**一次 eval、多次 fetch**：凭据只在页面里，宿主不碰 cookie/token。
 - 每步 `response.kind` 是 `json`（可带 `path`）/ `text` / `bytes`（`{ base64, size, contentType }`）/
   `html`（`selector` + `fields`，用 `DOMParser` 解析 fetch 回来的文本）。

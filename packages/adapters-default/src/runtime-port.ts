@@ -5,7 +5,7 @@ import type { RuntimePort } from '@dsh-workbench/shared/host';
 import { packageRootOf, seamOf } from '@dsh-workbench/shared/host';
 import { backgroundLine, libsBinDir } from '@dsh-workbench/adapter-runtime';
 
-import { bringBackWindow, frontAppNow, lastBridgeFacts } from '@dsh-workbench/adapter-probe';
+import { lastBridgeFacts, rememberFrontApp, restoreFocus } from '@dsh-workbench/adapter-probe';
 import {
   ensureLibsOpencliPeer,
   ensureVendorOpencliPeer,
@@ -163,12 +163,12 @@ export function createRuntimePort(): RuntimePort {
 
     async frontApp(ctx: DshHostContext) {
       const seam = seamOf(ctx);
-      return seam === undefined ? undefined : frontAppNow(seam);
+      return seam === undefined ? undefined : rememberFrontApp(seam, opencliCommandOf(ctx).command);
     },
 
     async bringToFront(ctx: DshHostContext, app: string) {
       const seam = seamOf(ctx);
-      return seam === undefined ? false : bringBackWindow(seam, app);
+      return seam === undefined ? false : restoreFocus(seam, opencliCommandOf(ctx).command, app);
     },
 
     seed(ctx: DshHostContext, options) {

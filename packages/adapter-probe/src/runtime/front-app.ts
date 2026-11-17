@@ -26,3 +26,80 @@ export async function bringBackWindow(seam: Seam, app: string): Promise<boolean>
   const run = await runFrontApp(seam, bringBackCommand(app, currentHostOs()));
   return run?.ok === true;
 }
+
+export interface FocusedChromeTab {
+  readonly windowId: number;
+  readonly tabId: number;
+}
+
+let focusedTab: FocusedChromeTab | undefined;
+
+const BROWSER_APP = /chrome|chromium|edge|brave|vivaldi/i;
+
+export function isBrowserApp(app: string): boolean {
+  return BROWSER_APP.test(app);
+}
+
+async function chromeCall(seam: Seam, command: string, method: string, args: string): Promise<unknown> {
+  const result = await seam
+    .run({
+      argv: [command, 'browser', '--session', 'workbench-probe', 'chrome', 'call', method, args],
+      intent: noWrite(),
+      timeoutMs: 10_000,
+      bestEffort: true,
+    })
+    .catch(() => undefined);
+  if (result === undefined || result.timedOut || result.exitCode !== 0) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(result.stdout.trim());
+    if (typeof parsed !== 'object' || parsed === null) return undefined;
+    const data = (parsed as Record<string, unknown>)['data'];
+    return data;
+  } catch {
+    return undefined;
+  }
+}
+
+function numberField(value: unknown, key: string): number | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const found = (value as Record<string, unknown>)[key];
+  return typeof found === 'number' && Number.isInteger(found) ? found : undefined;
+}
+
+async function captureFocusedTab(seam: Seam, command: string): Promise<void> {
+  const windows = await chromeCall(seam, command, 'windows.getAll', '[]');
+  if (!Array.isArray(windows)) return;
+  const focused = windows.find((one) => {
+    if (typeof one !== 'object' || one === null) return false;
+    return (one as Record<string, unknown>)['focused'] === true;
+  });
+  const windowId = numberField(focused, 'id');
+  if (windowId === undefined) return;
+  const tabs = await chromeCall(seam, command, 'tabs.query', JSON.stringify([{ windowId, active: true }]));
+  if (!Array.isArray(tabs) || tabs.length === 0) return;
+  const tabId = numberField(tabs[0], 'id');
+  if (tabId === undefined) return;
+  focusedTab = { windowId, tabId };
+}
+
+export async function rememberFrontApp(seam: Seam, command: string): Promise<string | undefined> {
+  const app = await frontAppNow(seam);
+  if (app !== undefined && isBrowserApp(app)) await captureFocusedTab(seam, command);
+  return app;
+}
+
+export async function restoreFocus(seam: Seam, command: string, app: string): Promise<boolean> {
+  const saved = focusedTab;
+  focusedTab = undefined;
+  if (saved !== undefined && isBrowserApp(app)) {
+    const activated = await chromeCall(seam, command, 'tabs.update', JSON.stringify([saved.tabId, { active: true }]));
+    const raised = await chromeCall(
+      seam,
+      command,
+      'windows.update',
+      JSON.stringify([saved.windowId, { focused: true }]),
+    );
+    if (activated !== undefined || raised !== undefined) return true;
+  }
+  return bringBackWindow(seam, app);
+}
