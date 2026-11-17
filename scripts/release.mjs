@@ -22,7 +22,7 @@ const MAX_PUBLISH_ATTEMPTS = 3;
 const MAX_REGISTRY_ATTEMPTS = 3;
 
 const FAILURE_PROBE = { attempts: 2, delayMs: 2000 };
-const FINAL_PROBE = { attempts: 4, delayMs: 3000 };
+const FINAL_PROBE = { attempts: 12, delayMs: 6000 };
 
 const Stage = {
   PREFLIGHT: "preflight",
@@ -178,17 +178,31 @@ async function fetchVersions(name) {
   throw lastError;
 }
 
+async function tarballReady(tarball) {
+  if (typeof tarball !== "string" || tarball === "") return false;
+  const response = await fetch(tarball, { method: "HEAD" }).catch(() => undefined);
+  if (response === undefined) return false;
+  return response.ok;
+}
+
 async function inspectTarget(targetVersion) {
   const packages = listPublishablePackages();
   const versions = new Map(
     await Promise.all(packages.map(async (pkg) => [pkg.name, await fetchVersions(pkg.name)])),
   );
-  const published = packages
-    .filter((pkg) => versions.get(pkg.name)?.[targetVersion])
-    .map((pkg) => pkg.name);
+  const checked = await Promise.all(
+    packages.map(async (pkg) => {
+      const entry = versions.get(pkg.name)?.[targetVersion];
+      if (entry === undefined) return { name: pkg.name, inRegistry: false, ready: false };
+      return { name: pkg.name, inRegistry: true, ready: await tarballReady(entry?.dist?.tarball) };
+    }),
+  );
+  const published = checked.filter((one) => one.ready).map((one) => one.name);
+  const tarballsPending = checked.filter((one) => one.inRegistry && !one.ready).map((one) => one.name);
   return {
     packages: packages.map((pkg) => pkg.name),
     published,
+    tarballsPending,
     pending: packages.filter((pkg) => !published.includes(pkg.name)).map((pkg) => pkg.name),
   };
 }
@@ -196,8 +210,11 @@ async function inspectTarget(targetVersion) {
 async function verifyPublished(targetVersion, { attempts, delayMs }) {
   let progress = await inspectTarget(targetVersion);
   for (let attempt = 1; attempt < attempts && progress.pending.length; attempt += 1) {
+    const lagging = progress.tarballsPending;
     console.log(
-      `   … registry 还没同步到 v${targetVersion}（${progress.published.length}/${progress.packages.length}），${delayMs / 1000} 秒后复查`,
+      lagging.length === 0
+        ? `   … registry 还没同步到 v${targetVersion}（${progress.published.length}/${progress.packages.length}），${delayMs / 1000} 秒后复查`
+        : `   … 元数据有了、tarball 还拉不到：${lagging.join("、")}（${progress.published.length}/${progress.packages.length} 就绪），${delayMs / 1000} 秒后复查`,
     );
     await sleep(delayMs);
     progress = await inspectTarget(targetVersion);
