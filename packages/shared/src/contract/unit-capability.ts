@@ -35,3 +35,12 @@ export interface NeedProbeInput {
   readonly unit: string;
   readonly needs: readonly Need[];
 }
+
+export function depOnlyOutdated(capability: UnitCapability): boolean {
+  if (capability.status !== 'outdated') return false;
+  return capability.needs.every(
+    (need) =>
+      need.status === 'ok' ||
+      (need.status === 'outdated' && (need.missing ?? []).length === 0),
+  );
+}

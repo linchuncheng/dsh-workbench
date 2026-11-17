@@ -89,8 +89,8 @@ describe('包那一类行的图标', () => {
     expect(readFileSync(new URL('../market-section.tsx', import.meta.url), 'utf8')).toContain(
       'packageIcon(marketRowKind(row))',
     );
-    expect(readFileSync(new URL('../SharedSection.tsx', import.meta.url), 'utf8')).toContain(
-      'packageIcon(sharedRowKind(row))',
+    expect(readFileSync(new URL('../dependency-line.tsx', import.meta.url), 'utf8')).toContain(
+      'packageIcon(kind)',
     );
   });
 });

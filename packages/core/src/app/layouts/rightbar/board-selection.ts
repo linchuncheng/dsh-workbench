@@ -1,4 +1,5 @@
 import type { ModuleSummary } from '@dsh-workbench/shared';
+import { depOnlyOutdated } from '@dsh-workbench/shared';
 import type { BoardModule } from '@dsh-workbench/shared';
 import type { CapabilityMap } from '@/shared/hooks/use-capabilities';
 import type { PanelPluginUnit, PanelUnit } from './use-panels';
@@ -63,6 +64,7 @@ export function rowAtPoint(
 
 export function panelBadgeKey(capability: CapabilityMap[string] | undefined): string | undefined {
   if (capability === undefined || capability.status === 'ok') return undefined;
+  if (depOnlyOutdated(capability)) return 'panels.dep.depsNewer';
   if (capability.status === 'failed') return 'panels.dep.failed';
   if (capability.status === 'unsupported') return 'panels.dep.unsupported';
   if (capability.status === 'unchecked') return 'panels.dep.unchecked';

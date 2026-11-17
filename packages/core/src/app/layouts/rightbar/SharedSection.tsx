@@ -1,13 +1,14 @@
 import { createElement as h } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
-import { Button, StateDot } from '@deepseek-ai/dsh-client-ui-primitives';
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives';
 import { Spinner } from '@dsh-workbench/shared';
-import { SHARED_DOT, SHARED_STATE_KEY, sharedActions, type SharedRow } from './market-rows';
+import { sharedActions, type SharedRow } from './market-rows';
+import { DependencyLine } from './dependency-line';
 import type { MarketFailure } from './market-row-types';
 import { FailureCard } from './FailureCard';
 import { failureCardOf } from './failure-card-text';
 import { marketSectionIcon } from './market-section-icon';
-import { packageIcon, sharedRowKind } from './market-row-icon';
+import { sharedRowKind } from './market-row-icon';
 import { ACTION_LABEL_KEY, PROGRESS_KEY, UPDATE_ACTIONS, type Pending } from './market-view-text';
 import styles from '../market/MarketPage.module.css';
 import type { MarketRowAction } from './market-rows';
@@ -71,58 +72,21 @@ function SharedLine({
   const running = pending !== null && pending.id === row.id ? pending : null;
   const locked = pending !== null;
   const actions = sharedActions(row);
-  const stateText = t(SHARED_STATE_KEY[row.state]);
-  const version = row.version;
   const clickable = onOpenDetail !== undefined;
-  const name = (
-    <span className={styles.marketName}>
-      {clickable ? (
-        <button
-          type="button"
-          className={styles.marketNameOpen}
-          aria-label={t('panels.market.openDetail', { name: row.label })}
-          onClick={() => onOpenDetail?.(row.id)}
-        >
-          {row.label}
-        </button>
-      ) : (
-        row.label
-      )}
-      {version === undefined ? null : (
-        <span className={styles.marketVersion}>
-          {version.installed !== undefined &&
-          version.latest !== undefined &&
-          version.installed !== version.latest
-            ? t('panels.market.versionArrow', { from: version.installed, to: version.latest })
-            : (version.installed ?? version.latest ?? '')}
-        </span>
-      )}
-    </span>
-  );
 
   return (
     <li className={styles.marketRow} data-open={clickable ? 'true' : undefined}>
-      <span className={styles.marketIcon} aria-hidden="true">
-        {packageIcon(sharedRowKind(row))}
-      </span>
-
-      <div className={styles.marketMain}>
-        {name}
-        <span className={styles.marketStatus}>
-          {row.state === 'checking' ? (
-            <Spinner size={14} />
-          ) : (
-            <StateDot state={SHARED_DOT[row.state]} size={9} />
-          )}
-          <span className={styles.marketStateText}>{stateText}</span>
-          <span className={styles.marketSep} aria-hidden="true">·</span>
-          <span className={styles.marketReason}>
-            {t('panels.market.sharedUsedBy', {
-              modules: row.usedByKeys.map((key) => t(key)).join(t('panels.market.listSeparator')),
-            })}
-          </span>
-        </span>
-      </div>
+      <DependencyLine
+        t={t}
+        kind={sharedRowKind(row)}
+        label={row.label}
+        version={row.version}
+        state={row.state}
+        note={t('panels.market.sharedUsedBy', {
+          modules: row.usedByKeys.map((key) => t(key)).join(t('panels.market.listSeparator')),
+        })}
+        {...(onOpenDetail === undefined ? {} : { onOpen: () => onOpenDetail(row.id) })}
+      />
 
       <div className={styles.marketEnd}>
         <SharedActions t={t} actions={actions} running={running} locked={locked} onAct={onAct} />

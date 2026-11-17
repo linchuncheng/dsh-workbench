@@ -30,13 +30,27 @@ export const ACTION_LABEL_KEY: Readonly<Record<MarketRowAction, string>> = {
   'install-version': 'panels.market.update',
   'remove-bundle': 'panels.market.uninstall',
   uninstall: 'panels.market.uninstall',
-  'update-dependency': 'panels.market.update',
+  'update-dependency': 'panels.market.updateDeps',
   'update-plugin': 'panels.market.update',
   'uninstall-plugin': 'panels.market.uninstall',
   'update-workbench': 'panels.market.update',
   'migrate-workbench': 'panels.market.migrateAction',
   'dismiss-followup': 'panels.market.dismissFollowUp',
 };
+
+export function actionLabelKey(row: MarketRow | undefined, action: MarketRowAction): string {
+  if (action === 'update' && row?.staleDeps !== undefined && row.moduleUpdate === undefined) {
+    return 'panels.market.updateDeps';
+  }
+  return ACTION_LABEL_KEY[action];
+}
+
+export function progressKeyOf(row: MarketRow | undefined, action: MarketRowAction): string {
+  if (action === 'update' && row?.staleDeps !== undefined && row.moduleUpdate === undefined) {
+    return 'panels.market.updatingDeps';
+  }
+  return PROGRESS_KEY[action];
+}
 
 export const UPDATE_ACTIONS: readonly MarketRowAction[] = (
   Object.keys(ACTION_LABEL_KEY) as MarketRowAction[]

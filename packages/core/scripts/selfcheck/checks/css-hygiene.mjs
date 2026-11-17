@@ -73,6 +73,8 @@ const OWN_ICONS = new Set([
   'IconOpencli',
   'IconPanelScreen',
   'IconConversation',
+  'IconCommand',
+  'IconEnv',
 ]);
 
 const sharedImportsOf = (text) =>
@@ -555,7 +557,7 @@ export const checks = [
   },
   {
     title:
-      '★ 不再手搓图标（用 dsh 的 Icon*Regular；只剩 IconBrandMark / IconBrandMarkColor / IconModuleMark / IconModules / IconNpm / IconOpencli / IconPanelScreen / IconConversation 是我们的）',
+      '★ 不再手搓图标（用 dsh 的 Icon*Regular；只剩 IconBrandMark / IconBrandMarkColor / IconModuleMark / IconModules / IconNpm / IconOpencli / IconPanelScreen / IconConversation / IconCommand / IconEnv 是我们的）',
     run(_ctx, report) {
       const iconBack = [];
       for (const file of srcTsFiles(SRC)) {
@@ -565,7 +567,7 @@ export const checks = [
         if (icons.length > 0) iconBack.push(`${relative(SRC, file)} → ${icons.join('、')}`);
       }
       report(
-        '★ 不再手搓图标（用 dsh 的 Icon*Regular；只剩 IconBrandMark / IconBrandMarkColor / IconModuleMark / IconModules / IconNpm / IconOpencli / IconPanelScreen / IconConversation 是我们的）',
+        '★ 不再手搓图标（用 dsh 的 Icon*Regular；只剩 IconBrandMark / IconBrandMarkColor / IconModuleMark / IconModules / IconNpm / IconOpencli / IconPanelScreen / IconConversation / IconCommand / IconEnv 是我们的）',
         iconBack.length === 0,
         iconBack.join('、'),
       );

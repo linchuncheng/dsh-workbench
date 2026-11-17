@@ -70,15 +70,36 @@ describe('available（能不能上板 / 能不能进候选）', () => {
 });
 
 describe('panelBadgeKey（模块页那一行的角标）', () => {
-  it('起不来、需要更新工作台、缺依赖、旧了、检测不了各有各的说法（不是一个笼统的"不可用"）', () => {
+  it('起不来、需要更新工作台、缺依赖、检测不了各有各的说法（不是一个笼统的"不可用"）', () => {
     expect(panelBadgeKey(capability('failed'))).toBe('panels.dep.failed');
     expect(panelBadgeKey(capability('unsupported'))).toBe('panels.dep.unsupported');
     expect(panelBadgeKey(capability('missing'))).toBe('panels.dep.missing');
-    expect(panelBadgeKey(capability('outdated'))).toBe('panels.dep.outdated');
     expect(panelBadgeKey(capability('unchecked'))).toBe('panels.dep.unchecked');
     expect(panelBadgeKey({ ...capability('ok'), status: 'degraded' })).toBe('panels.dep.degraded');
     expect(panelBadgeKey(capability('ok'))).toBeUndefined();
     expect(panelBadgeKey(undefined)).toBeUndefined();
+  });
+
+  it('★ 只差依赖的新版本：不带 ⚠，写「依赖可升级」（模块本身没换版本、也照样能用）', () => {
+    expect(panelBadgeKey(capability('outdated'))).toBe('panels.dep.depsNewer');
+  });
+
+  it('★ 插件缺命令：那是模块真的会不好使，仍然算「需要更新」', () => {
+    const broken = {
+      ...capability('outdated'),
+      needs: [
+        {
+          id: 'extension:demo',
+          kind: 'extension' as const,
+          name: 'demo',
+          status: 'outdated' as const,
+          detail: '假探测',
+          missing: ['run'],
+        },
+      ],
+    };
+
+    expect(panelBadgeKey(broken)).toBe('panels.dep.outdated');
   });
 });
 

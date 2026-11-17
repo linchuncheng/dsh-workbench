@@ -47,10 +47,11 @@ pnpm run check                        # 门禁：整仓那一套（= `pnpm -w ru
 **门禁只有一份，两个入口跑的是同一条链**：包内这条就是 `pnpm -w run check`，也就是仓库根那条 ——
 
 <!-- doc-facts:begin gate-chain-inline -->
-`lint:commit` → `build` → `typecheck` → `lint` → `check:duplication` → `coverage` →
-`check:gates:target --fail-on-red` → `arch` → `check:docs` → `check:copy:strict` →
-`check:runtimes` → `selfcheck` → `check:modules` → `check:adapter-defaults` →
-`scripts/check-adapter-contract.mjs` → `check:release-packages` → `check:release-artifacts`
+`lint:commit` → `build` → `check:deps` → `typecheck` → `lint` → `check:duplication` →
+`coverage` → `check:gates:target --fail-on-red` → `arch` → `check:docs` →
+`check:copy:strict` → `check:runtimes` → `selfcheck` → `check:modules` →
+`check:adapter-defaults` → `scripts/check-adapter-contract.mjs` → `check:release-packages` →
+`check:release-artifacts`
 <!-- doc-facts:end gate-chain-inline -->
 
 `pnpm release` 的闸也是它。

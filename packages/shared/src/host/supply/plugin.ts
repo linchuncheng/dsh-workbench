@@ -36,3 +36,9 @@ export function pluginAt(dir: string, manifestFile: string): { readonly name?: s
   const name = manifest.name;
   return typeof name === 'string' && name.trim() !== '' ? { name: name.trim() } : {};
 }
+
+export function pluginFieldAt(dir: string, manifestFile: string, field: string): string | undefined {
+  const manifest = pluginManifestOf(dir, manifestFile);
+  const value = manifest?.[field];
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
+}

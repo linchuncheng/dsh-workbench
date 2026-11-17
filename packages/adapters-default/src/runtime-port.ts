@@ -5,7 +5,14 @@ import type { RuntimePort } from '@dsh-workbench/shared/host';
 import { packageRootOf, seamOf } from '@dsh-workbench/shared/host';
 import { backgroundLine, libsBinDir } from '@dsh-workbench/adapter-runtime';
 
-import { ensureLibsOpencliPeer, opencliCommandOf, opencliRunnerOf } from '@dsh-workbench/adapter-runtime';
+import {
+  ensureLibsOpencliPeer,
+  opencliCommandOf,
+  opencliHandshakeOk,
+  opencliHandshakeText,
+  opencliRunnerOf,
+  opencliVersionReport,
+} from '@dsh-workbench/adapter-runtime';
 import {
   isInstalledCopy,
   prependPath,
@@ -134,7 +141,14 @@ export function createRuntimePort(): RuntimePort {
     },
 
     health(ctx) {
-      return { opencli: opencliCommandOf(ctx) };
+      const versions = opencliVersionReport();
+      return {
+        opencli: {
+          ...opencliCommandOf(ctx),
+          versions,
+          handshake: { ok: opencliHandshakeOk(versions), detail: opencliHandshakeText(versions) },
+        },
+      };
     },
 
     seed(ctx: DshHostContext, options) {

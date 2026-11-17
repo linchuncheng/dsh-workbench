@@ -2,6 +2,7 @@ import { Fragment, createElement as h, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
 import type { MarketFailure, MarketRow, MarketRowAction } from './market-row-types';
 import type { Pending } from './market-view-text';
+import type { DetailDependency } from './market-detail-deps';
 import { MarketDetail } from './market-detail';
 import { UninstallConfirm } from './market-uninstall';
 import { useInstalledInfo } from '../market/use-installed-info';
@@ -25,6 +26,7 @@ export function MarketDetailPage({
   onAct,
   onRecheck,
   rechecking,
+  dependencies,
 }: {
   readonly t: Translate;
   readonly row: MarketRow;
@@ -41,6 +43,7 @@ export function MarketDetailPage({
   readonly onAct: (id: string, action: MarketRowAction) => Promise<void>;
   readonly onRecheck: () => void;
   readonly rechecking: boolean;
+  readonly dependencies?: readonly DetailDependency[] | undefined;
 }) {
   const [tab, setTab] = useState<DetailTab>('overview');
   const info = useInstalledInfo(row.pkg);
@@ -63,6 +66,7 @@ export function MarketDetailPage({
         tab={tab}
         onTab={setTab}
         info={info}
+        dependencies={dependencies}
       />
       <UninstallConfirm
         t={t}

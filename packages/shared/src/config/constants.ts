@@ -36,6 +36,10 @@ export const DEFAULT_NPM_REGISTRY = "https://registry.npmjs.org";
 
 export const OPENCLI_PIN = "1.8.8";
 
+export const OPENCLI_PIN_ENV = "DSH_WB_OPENCLI_PIN";
+
+export const CHANNEL_API_VERSION = 1;
+
 export const OPENCLI_NPM_PACKAGE = "@jackwener/opencli";
 
 export const OPENCLI_CATALOG_ENV = "DSH_WB_OPENCLI_CATALOG";

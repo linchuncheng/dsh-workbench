@@ -105,6 +105,17 @@ export function marketDetailFacts(
       'panels.market.detailInstalledAt',
       row.installedAt === undefined ? undefined : row.installedAt.slice(0, 10),
     );
+    if (row.runtimeProblem !== undefined) {
+      addFact(
+        facts,
+        'panels.market.detailRuntime',
+        t('panels.market.detailRuntimeMismatch', {
+          runtime: row.runtimeProblem.label,
+          need: row.runtimeProblem.need,
+          have: row.runtimeProblem.have,
+        }),
+      );
+    }
   } else {
     addFact(facts,
       'panels.market.detailRegistry',

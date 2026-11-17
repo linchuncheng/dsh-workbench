@@ -107,6 +107,7 @@ export interface ModulePort {
   isolatedHome(): string;
   pluginPackagePrefix?(): string;
   pluginManifestFile?(): string;
+  pluginRuntimeField?(): string;
   cliCatalogPath?(): string;
   vendorPluginsDir?(): string;
   runtimeInstallCommand?(): string;

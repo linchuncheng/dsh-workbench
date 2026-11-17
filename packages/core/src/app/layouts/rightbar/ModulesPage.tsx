@@ -202,8 +202,7 @@ export function ModulesPage({
   const rows = selectPanelRows(units, plugins, capabilities);
   const modules: PanelRow[] = rows.filter((row) => !row.plugin);
   const carded: PanelRow[] = modules.filter((row) => row.hasCard !== false);
-  const boardless: PanelRow[] = modules.filter((row) => row.hasCard === false);
-  const pluginRows: PanelRow[] = rows.filter((row) => row.plugin);
+  const background: PanelRow[] = rows.filter((row) => row.plugin || row.hasCard === false);
   const empty = !loading && rows.length === 0;
   const settle = useBoardSettle(panelBoardSignature(units, plugins, own));
   const { busy } = useVisibleBusy(writing || settle.pending, MIN_BUSY_MS);
@@ -290,8 +289,14 @@ export function ModulesPage({
         </ul>
       )}
 
-      <PanelGroupRows t={t} rows={boardless} titleKey="panels.groupBoardless" busy={busy} onWrite={writeRow} />
-      <PanelGroupRows t={t} rows={pluginRows} titleKey="panels.groupPlugins" busy={busy} onWrite={writeRow} />
+      <PanelGroupRows
+        t={t}
+        rows={background}
+        titleKey="panels.groupBackground"
+        kind="background"
+        busy={busy}
+        onWrite={writeRow}
+      />
 
       {own ? (
         <PanelFoot>

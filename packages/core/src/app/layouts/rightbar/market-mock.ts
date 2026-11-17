@@ -148,15 +148,10 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'outdated',
-      label: '要更新',
+      label: '缺必需命令（行上只说「有新版」，不点名缺什么）',
       manifests: [mine],
       capabilities: probe(id, 'outdated', { missing: ['x'] }),
-      expect: {
-        rows: 1,
-        state: 'outdated',
-        actions: ['update', 'uninstall'],
-        noteKey: 'panels.market.needCommands',
-      },
+      expect: { rows: 1, state: 'outdated', actions: ['update', 'uninstall'], note: 'none' },
     },
     {
       id: 'module-update',
@@ -174,7 +169,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'outdated-release',
-      label: '源上有新版（need outdated，模块行与共用依赖行都给「更新」）',
+      label: '依赖有新版本（模块版本没变，行上给「升级依赖」）',
       manifests: [mine],
       capabilities: probe(id, 'outdated', {
         plugins: [
@@ -186,7 +181,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
           },
         ],
       }),
-      expect: { rows: 1, state: 'outdated', actions: ['update', 'uninstall'], shared: 1, sharedActions: ['update-dependency'] },
+      expect: { rows: 1, state: 'installed', actions: ['update', 'uninstall'], shared: 1, sharedActions: ['update-dependency'] },
     },
     {
       id: 'missing',

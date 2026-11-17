@@ -43,7 +43,6 @@ export interface MarketNote {
     | 'panels.market.needEnv'
     | 'panels.market.noSource'
     | 'panels.market.badSource'
-    | 'panels.market.needCommands'
     | 'panels.market.needBinary'
     | 'panels.market.needLib'
     | 'panels.market.moduleRefused'
@@ -111,6 +110,7 @@ export interface MarketRow {
   readonly hint?: MarketHint;
   readonly version?: { readonly installed?: string; readonly latest?: string };
   readonly moduleUpdate?: ModuleUpdate;
+  readonly staleDeps?: number;
   readonly market?: MarketInstalledModule;
   readonly pkg?: string;
   readonly local?: boolean;
@@ -122,5 +122,8 @@ export interface MarketRow {
   readonly spec?: string;
   readonly registry?: string;
   readonly installedAt?: string;
+  readonly runtimeProblem?:
+    | { readonly label: string; readonly need: string; readonly have: string }
+    | undefined;
   readonly removeViaBundle?: boolean;
 }

@@ -214,3 +214,23 @@ describe('已安装包自己的元数据：作者 · 主页 · 关键词', () =>
     expect(facts.map((fact) => fact.labelKey)).not.toContain('panels.market.detailHomepage');
   });
 });
+
+describe('插件的运行环境那一格', () => {
+  it('★ 兼容时不占位（插件详情本来就短，不给一行废话）', () => {
+    const facts = factsOf(rowOf({ plugin: true, pkg: 'opencli-plugin-demo' }));
+
+    expect(facts['panels.market.detailRuntime']).toBeUndefined();
+  });
+
+  it('★ 不兼容时点出两边：插件要的那条范围 + 机器上跑的版本', () => {
+    const facts = factsOf(
+      rowOf({
+        plugin: true,
+        pkg: 'opencli-plugin-demo',
+        runtimeProblem: { label: 'opencli', need: '>=2.0.0', have: '1.8.8' },
+      }),
+    );
+
+    expect(facts['panels.market.detailRuntime']).toBe('panels.market.detailRuntimeMismatch');
+  });
+});

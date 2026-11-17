@@ -58,7 +58,7 @@ describe('面板配置那一屏的行：模块 + 插件行', () => {
     const view = `${read('PanelGroupRows.tsx')}\n${read('ModulesPage.tsx')}`;
 
     expect(view).toContain('row.title ?? t(row.titleKey ?? row.id)');
-    expect(view).toContain('titleKey="panels.groupPlugins"');
+    expect(view).toContain('titleKey="panels.groupBackground"');
     expect(view).not.toContain('t(row.id)');
   });
 
@@ -70,28 +70,35 @@ describe('面板配置那一屏的行：模块 + 插件行', () => {
     expect(read('ModulesPage.tsx')).toContain("action: 'move'");
   });
 
-  it('★ 三组：带卡片的（可拖）在前，无看板模块与 opencli 插件各成一组，各有自己的分组标题', () => {
+  it('★ 两组：带卡片的（可拖）在前，没卡片的与插件合成「后台模块」—— 用户只区分"有界面 / 没界面"', () => {
     const page = read('ModulesPage.tsx');
     const groups = read('PanelGroupRows.tsx');
 
     expect(page).toContain('const carded: PanelRow[] = modules.filter((row) => row.hasCard !== false)');
-    expect(page).toContain('const boardless: PanelRow[] = modules.filter((row) => row.hasCard === false)');
-    expect(page).toContain('rows={boardless} titleKey="panels.groupBoardless"');
-    expect(page).toContain('rows={pluginRows} titleKey="panels.groupPlugins"');
-    expect(page.indexOf('rows={boardless}')).toBeLessThan(page.indexOf('rows={pluginRows}'));
+    expect(page).toContain('const background: PanelRow[] = rows.filter((row) => row.plugin || row.hasCard === false)');
+    expect(page).toContain('titleKey="panels.groupBackground"');
+    expect(page).toContain('kind="background"');
+    expect(page).not.toContain('panels.groupBoardless');
+    expect(page).not.toContain('panels.groupPlugins');
     expect(groups).toContain('<h3 className={styles.groupTitle}>{t(titleKey)}</h3>');
   });
 
-  it('★ 两语言文案齐、无内部词（两个分组标题）', () => {
-    const internal = ['外壳', '协议', '声明', '清单', 'apiVersion'];
+  it('★ 后台模块不分"插件 / 无界面"：行上不挂标签，用户不必知道它从哪来', () => {
+    const groups = read('PanelGroupRows.tsx');
+
+    expect(groups).not.toContain('rowTag');
+    expect(groups).not.toContain('row.plugin');
+    expect(groups).not.toContain('row.hasCard');
+  });
+
+  it('★ 两语言文案齐、无内部词（后台模块这一组）', () => {
+    const internal = ['外壳', '协议', '声明', '清单', 'apiVersion', 'hasCard'];
     for (const language of ['zh', 'en'] as const) {
-      for (const key of ['panels.groupBoardless', 'panels.groupPlugins'] as const) {
-        const sentence = dictionaries[language][key] ?? '';
-        expect(sentence.length, `${language}:${key}`).toBeGreaterThan(0);
-        for (const word of internal) expect(sentence, `${language}:${key}:${word}`).not.toContain(word);
-      }
+      const sentence = dictionaries[language]['panels.groupBackground'] ?? '';
+      expect(sentence.length, `${language}:groupBackground`).toBeGreaterThan(0);
+      for (const word of internal) expect(sentence, `${language}:${word}`).not.toContain(word);
     }
-    expect(dictionaries.zh['panels.groupBoardless']).toBe('无看板模块');
-    expect(dictionaries.zh['panels.groupPlugins']).toBe('插件');
+    expect(dictionaries.zh['panels.groupBackground']).toBe('后台模块');
+    expect(dictionaries.en['panels.groupBackground']).toBe('Background modules');
   });
 });

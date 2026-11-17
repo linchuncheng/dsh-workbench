@@ -20,7 +20,7 @@ function unit(id: string, plugin?: string): UnitManifest {
 }
 
 describe('marketRows：交叉依赖（env.libs）', () => {
-  it('★ 单元自有库有新版 → need outdated：模块行与共用依赖行都亮，更新归共用依赖', () => {
+  it('★ 单元自有库有新版 → 模块行不说「有新版」，只挂「升级依赖」；版本不动', () => {
     const withLib: CapabilityMap = {
       inventory: {
         unit: 'inventory',
@@ -41,7 +41,9 @@ describe('marketRows：交叉依赖（env.libs）', () => {
     ];
 
     const row = marketRows(manifests, withLib)[0];
-    expect(row?.state).toBe('outdated');
+    expect(row?.state).toBe('installed');
+    expect(row?.staleDeps).toBe(1);
+    expect(row?.moduleUpdate).toBeUndefined();
     expect(row?.canUpdate).toBe(true);
     expect(row?.canInstall).toBe(false);
 
@@ -105,5 +107,36 @@ describe('marketRows：交叉依赖（env.libs）', () => {
     expect(libRow?.canUpdate).toBe(true);
     expect(sharedActions(libRow as never)).toEqual(['update-dependency']);
     expect(libRow?.version).toEqual({ installed: '1.1.19' });
+  });
+});
+
+describe('marketRows：件自己已经有一行', () => {
+  it('★ 用户直装过这个件（它在插件列表里）：模块行不再挂「依赖有新版本」', () => {
+    const withLib: CapabilityMap = {
+      inventory: {
+        unit: 'inventory',
+        status: 'outdated',
+        needs: [needStateOf(WORKFLOW, 'outdated', { installed: '1.1.22', latest: '1.1.23' })],
+        detail: '假探测',
+      },
+    };
+    const manifests = [
+      {
+        ...unit('inventory', 'inventory'),
+        needs: [
+          libNeedOf('opencli-workflow', {
+            sources: [{ kind: 'npm', registryEnv: 'X', registryDefault: 'https://r.invalid/' }],
+          }),
+        ],
+      },
+    ];
+
+    const free = marketRows(manifests, withLib)[0];
+    expect(free?.staleDeps).toBe(1);
+
+    const held = marketRows(manifests, withLib, {}, new Set(), {}, new Set(['opencli-workflow']))[0];
+    expect(held?.staleDeps).toBeUndefined();
+    expect(held?.state).toBe('installed');
+    expect(held?.canUpdate).toBe(true);
   });
 });

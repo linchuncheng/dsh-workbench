@@ -1,11 +1,24 @@
-import { requireSupply, param, type RouteTable, type Seam, type SupplyPort } from '@dsh-workbench/shared/host';
+import {
+  OPENCLI_PIN,
+  OPENCLI_PIN_ENV,
+  checkVersionRange,
+  pluginFieldAt,
+  requireSupply,
+  runtimePinOf,
+  param,
+  type RouteTable,
+  type Seam,
+  type SupplyPort,
+} from '@dsh-workbench/shared/host';
 import type { InstalledPlugin, InstalledPluginsPayload } from '@/shared/api/installed-plugins';
 import { INSTALLED_PLUGINS_ROUTE } from '@/shared/api/installed-plugins';
 import type { PluginLedger } from './plugin-ledger';
-import { pluginOnDisk } from './plugin-name';
+import { pluginDirOf, pluginOnDisk } from './plugin-name';
 
 export async function installedPlugins(options: {
   readonly ledger: PluginLedger;
+  readonly runtimeLabel?: string | undefined;
+  readonly runtimeField?: string | undefined;
   readonly seam?: Seam | undefined;
   readonly force?: boolean;
   readonly check?: boolean;
@@ -15,7 +28,24 @@ export async function installedPlugins(options: {
   const { ledger, seam, force = false, check = true, includePrerelease = false } = options;
   const supply = options.supply ?? requireSupply();
   const rows: InstalledPlugin[] = [];
+  const runtime = runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV);
+  const runtimeProblemOf = (entry: {
+    readonly package: string;
+    readonly local?: boolean | undefined;
+    readonly name?: string | undefined;
+  }): { readonly label: string; readonly need: string; readonly have: string } | undefined => {
+    const manifest = options.ledger.pluginFiles?.manifest ?? '';
+    if (manifest === '') return undefined;
+    const field = options.runtimeField ?? '';
+    if (field === '') return undefined;
+    const range = pluginFieldAt(pluginDirOf(entry, options.ledger.pluginFiles), manifest, field);
+    if (range === undefined) return undefined;
+    return checkVersionRange(range, runtime) === 'unsatisfied'
+      ? { label: options.runtimeLabel ?? '', need: range, have: runtime }
+      : undefined;
+  };
   for (const entry of ledger.list()) {
+    const runtimeProblem = runtimeProblemOf(entry);
     const release =
       seam === undefined || entry.local === true || entry.registry === undefined
         ? undefined
@@ -40,6 +70,7 @@ export async function installedPlugins(options: {
       ...(entry.registry === undefined ? {} : { registry: entry.registry }),
       ...(entry.installedAt === undefined ? {} : { installedAt: entry.installedAt }),
       ...(pluginOnDisk(entry, ledger.pluginFiles) ? {} : { broken: true }),
+      ...(runtimeProblem === undefined ? {} : { runtimeProblem }),
     });
   }
   return rows;
@@ -47,6 +78,8 @@ export async function installedPlugins(options: {
 
 export function pluginRoutes(options: {
   readonly ledger: PluginLedger;
+  readonly runtimeLabel?: string | undefined;
+  readonly runtimeField?: string | undefined;
   readonly seam?: Seam | undefined;
   readonly includePrerelease?: (() => boolean) | undefined;
   readonly supply?: SupplyPort | undefined;
@@ -55,6 +88,8 @@ export function pluginRoutes(options: {
     [INSTALLED_PLUGINS_ROUTE]: async (search) => {
       const plugins = await installedPlugins({
         ledger: options.ledger,
+        ...(options.runtimeLabel === undefined ? {} : { runtimeLabel: options.runtimeLabel }),
+        ...(options.runtimeField === undefined ? {} : { runtimeField: options.runtimeField }),
         ...(options.seam === undefined ? {} : { seam: options.seam }),
         ...(options.supply === undefined ? {} : { supply: options.supply }),
         force: param(search, 'force') === '1',

@@ -12,6 +12,9 @@ import { marketSettled } from './market-freshness';
 import { useSelfUpdateBusyRefresh, useSelfUpdateTold, useSettleHold } from './market-settle-hold';
 import { useMarketTransient } from './market-transient-state';
 import { useMarketDetail } from './use-market-detail';
+import { detailDependenciesFor } from './market-detail-deps';
+import { marketNothingOf, marketPluginReadOf } from './market-plugins-held';
+import { marketLandedOf } from './market-landed';
 import type { MarketFreshness } from './market-freshness';
 import type { InstalledPlugin } from '@/shared/api/installed-plugins';
 import {
@@ -29,7 +32,6 @@ import {
   type MarketRow,
   type SharedRow,
 } from './market-rows';
-import { installedPluginRows } from './market-plugin-rows';
 import { MarketSceneView } from './market-scene-view';
 import type { MarketNameMap, TitleResolve } from './market-names';
 import { workbenchRow } from './market-workbench-row';
@@ -39,7 +41,6 @@ import type { ModuleUpdateMap } from './market-rows';
 import type { WorkbenchSelfUpdate, WorkbenchVersion } from '@/kernel/contract/bundle-install';
 import {
   heldIdOf,
-  pendingLanded,
   pendingRowOf,
   pinnedRowOf,
   removingIdOf,
@@ -102,6 +103,7 @@ function useMarketScene(input: {
   readonly changed: Readonly<Record<string, number>>;
   readonly pending: Pending | null;
   readonly failed: MarketFailure | null;
+  readonly heldPlugins: ReadonlySet<string>;
 }): {
   readonly names: MarketNameMap;
   readonly catalog: readonly UnitManifest[];
@@ -116,7 +118,7 @@ function useMarketScene(input: {
   readonly removing: string | null;
   readonly busyId: string | null;
 } {
-  const { t, titleOf, manifests, installable, capabilities, updates, installed, settling, installing, mock, defaults, changed, pending, failed } = input;
+  const { t, titleOf, manifests, installable, capabilities, updates, installed, settling, installing, mock, defaults, changed, pending, failed, heldPlugins } = input;
   const names = marketNamesOf(t, installed ?? [], titleOf, mock !== undefined);
   const catalog = mock?.manifests ?? manifests;
   const marketable = mock === undefined ? marketCatalog(manifests, installable) : catalog;
@@ -125,7 +127,7 @@ function useMarketScene(input: {
   const source = liveManifests(marketable, effective, installedIds);
   const byDefault = new Set(defaults);
   const updateMap = mock?.updates ?? updates ?? {};
-  const rows = checkingRows(marketRows(source, effective, updateMap, byDefault, changed), {
+  const rows = checkingRows(marketRows(source, effective, updateMap, byDefault, changed, heldPlugins), {
     all: installing,
     units: settling ?? NO_UNITS,
   });
@@ -218,7 +220,12 @@ export function MarketView({
 }: MarketViewProps) {
   const { pending, setPending, confirming, setConfirming, failed, setFailed, notice, setNotice } =
     useMarketTransient({ mock, onPending });
-  const { names, effective, updateMap, rows, shared, installedList, byDefault, steady, pinned, removing, busyId } =
+  const { source: pluginSource, rows: pluginList, held: heldPlugins } = marketPluginReadOf(
+    mock?.plugins ?? plugins ?? null,
+    new Set(defaults),
+    changed,
+  );
+  const { names, effective, updateMap, rows, shared, installedList, steady, pinned, removing, busyId } =
     useMarketScene({
       t,
       titleOf,
@@ -234,6 +241,7 @@ export function MarketView({
       changed,
       pending,
       failed,
+      heldPlugins,
     });
   usePublishMarketBusy(busyId);
   const provision = useHostWrite({ channel: 'provision', networkText: t('panels.failed') });
@@ -254,8 +262,6 @@ export function MarketView({
     toldAt: mock === undefined ? selfUpdateTold : undefined,
   });
   const shown = withPinnedRow(pendingRow === undefined ? rows : [...rows, pendingRow], pinned);
-  const pluginSource = mock?.plugins ?? plugins ?? null;
-  const pluginList = installedPluginRows(pluginSource ?? [], byDefault, changed);
   const rowById = marketRowMap(shown, self, installedList, pluginList);
   const confirmingRow = confirming === null ? undefined : rowById.get(confirming);
   const { setDetailId, detailRow, detailShared } = useMarketDetail(
@@ -274,25 +280,21 @@ export function MarketView({
     onChanged,
   });
 
-  const landed = pendingLanded(
+  const landed = marketLandedOf({
     pending,
-    updateMap,
-    effective,
-    workbench?.installed,
+    updates: updateMap,
+    capabilities: effective,
+    installedVersion: workbench?.installed,
     shared,
-    pluginSource === null ? null : pluginList,
-    {
-      units: installed === undefined ? null : new Set(installed.map((module) => module.unit)),
-      plugins: pluginSource === null ? null : new Set(pluginList.map((row) => row.id)),
-    },
-  );
+    pluginSource,
+    pluginList,
+    installed,
+  });
   useSettleHold({ pending, landed, t, onChanged, selfUpdate: effectiveSelfUpdate, setPending, setFailed });
   useSelfUpdateBusyRefresh(effectiveSelfUpdate?.busy === true && mock === undefined, onChanged);
-  const settled = marketSettled(freshness, installedRead);
-  const nothing =
-    shown.length === 0 && self === undefined && installedList.length === 0 && pluginList.length === 0;
+  const nothing = marketNothingOf(shown, self, installedList, pluginList);
   const { busy: checkingShown } = useVisibleBusy(freshness.checking, MIN_BUSY_MS);
-  const recheck = () => {
+  const recheck = (): void => {
     setFailed(null);
     if (mock === undefined) onChanged({ force: true });
   };
@@ -314,7 +316,6 @@ export function MarketView({
       shown={shown}
       pluginList={pluginList}
       installedList={installedList}
-      shared={shared}
       pending={pending}
       failed={failed}
       notice={notice}
@@ -327,11 +328,14 @@ export function MarketView({
       rechecking={checkingShown}
       onOpenDetail={setDetailId}
       detailRow={detailRow}
+      detailDependencies={
+        detailRow === undefined ? [] : detailDependenciesFor(effective, manifests, detailRow.id)
+      }
       detailShared={detailShared}
       confirming={confirming}
       confirmingRow={confirmingRow}
       rowById={rowById}
-      settled={settled}
+      settled={marketSettled(freshness, installedRead)}
       nothing={nothing}
       settlingSize={settling?.size ?? 0}
       onBack={() => setDetailId(null)}

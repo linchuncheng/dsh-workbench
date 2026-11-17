@@ -7,6 +7,18 @@
   gap: var(--wb-len-2);
 }
 
+.marketListFlat {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.marketListFlat > .marketRow {
+  padding-inline: 0;
+}
+
 .marketRow {
   position: relative;
   display: grid;

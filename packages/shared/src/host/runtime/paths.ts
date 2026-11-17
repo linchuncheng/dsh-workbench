@@ -31,3 +31,12 @@ export function runtimeLayoutOf(id: string): RuntimeLayout {
     pnpmStoreDir: join(root, 'pnpm-store'),
   };
 }
+
+export function runtimePinOf(
+  pin: string,
+  envName: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const asked = env[envName]?.trim();
+  return asked === undefined || asked === '' ? pin : asked;
+}

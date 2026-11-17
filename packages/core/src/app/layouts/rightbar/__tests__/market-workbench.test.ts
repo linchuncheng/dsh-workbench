@@ -407,10 +407,10 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual(['update-workbench']);
   });
 
-  it('★ 那颗钮就叫「更新」：Desktop 与 dsh web 一样，重启交给用户自己点', () => {
+  it('★ 那颗钮就叫「升级」：Desktop 与 dsh web 一样，重启交给用户自己点', () => {
     expect(ACTION_LABEL_KEY['update-workbench']).toBe('panels.market.update');
-    expect(dictionaries.zh['panels.market.update']).toBe('更新');
-    expect(dictionaries.en['panels.market.update']).toBe('Update');
+    expect(dictionaries.zh['panels.market.update']).toBe('升级');
+    expect(dictionaries.en['panels.market.update']).toBe('Upgrade');
     expect((dictionaries.zh as Record<string, string>)['panels.market.updateAndRestart']).toBeUndefined();
     expect((dictionaries.en as Record<string, string>)['panels.market.updateAndRestart']).toBeUndefined();
     expect(readFileSync(new URL('../market-section.tsx', import.meta.url), 'utf8')).not.toContain(

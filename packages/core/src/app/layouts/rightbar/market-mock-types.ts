@@ -25,7 +25,7 @@ export interface MarketMockExpect {
   readonly pluginNoteKey?: 'panels.market.pluginBroken';
   readonly pluginState?: MarketState;
   readonly local?: boolean;
-  readonly noteKey?: 'panels.market.needCommands';
+  readonly note?: 'none';
   readonly version?: { readonly installed?: string; readonly latest?: string };
   readonly workbenchState?: MarketState;
   readonly workbenchActions?: readonly MarketRowAction[];

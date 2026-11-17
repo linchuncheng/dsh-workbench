@@ -17,7 +17,7 @@ import {
   marketRowTitle,
   marketSwitchLocked,
 } from './market-rows';
-import { ACTION_LABEL_KEY, PROGRESS_KEY, UPDATE_ACTIONS, type Pending } from './market-view-text';
+import { UPDATE_ACTIONS, actionLabelKey, progressKeyOf, type Pending } from './market-view-text';
 import { packageIcon, marketRowKind } from './market-row-icon';
 import type { MarketSectionIcon } from './market-section-icon';
 import { FailureCard } from './FailureCard';
@@ -100,6 +100,12 @@ export function MarketLineStatus({
         <StateDot state={MARKET_DOT[row.state]} size={9} />
       )}
       <span className={styles.marketStateText}>{stateText}</span>
+      {row.staleDeps === undefined || row.moduleUpdate !== undefined ? null : (
+        <>
+          <span className={styles.marketSep} aria-hidden="true">·</span>
+          <span className={styles.marketReason}>{t('panels.market.depsHaveUpdate')}</span>
+        </>
+      )}
       {row.hint === undefined ? null : (
         <>
           <span className={styles.marketSep} aria-hidden="true">·</span>
@@ -140,8 +146,16 @@ export function MarketRowFailure({
   return <div className={styles.marketFailure}>{failure.message}</div>;
 }
 
-function ActionLabel({ t, action }: { readonly t: Translate; readonly action: MarketRowAction }) {
-  return <>{t(ACTION_LABEL_KEY[action])}</>;
+function ActionLabel({
+  t,
+  row,
+  action,
+}: {
+  readonly t: Translate;
+  readonly row: MarketRow;
+  readonly action: MarketRowAction;
+}) {
+  return <>{t(actionLabelKey(row, action))}</>;
 }
 
 export function MarketRowControls({
@@ -170,7 +184,7 @@ export function MarketRowControls({
       {running !== null ? (
         <span className={styles.marketProgress}>
           <Spinner size={14} />
-          {t(PROGRESS_KEY[running.action])}
+          {t(progressKeyOf(row, running.action))}
         </span>
       ) : actions.length === 0 ? null : (
         <span className={styles.marketActions}>
@@ -195,7 +209,7 @@ export function MarketRowControls({
                   else onRequest(action);
                 }}
               >
-                <ActionLabel t={t} action={action} />
+                <ActionLabel t={t} row={row} action={action} />
               </Button>
             );
           })}

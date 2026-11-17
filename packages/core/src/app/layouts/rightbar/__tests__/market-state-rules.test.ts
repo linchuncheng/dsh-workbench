@@ -184,7 +184,7 @@ describe('本机那份（link: 装的，含 DIY 工坊造的）', () => {
 });
 
 describe('为什么该更新：一句话 + 底下说清缘由', () => {
-  it('★ 缺必需命令 → 状态就是「有新版」，底下说缺哪几条（不再另起一句「要更新」）', () => {
+  it('★ 缺必需命令 → 状态就是「有新版」，行上不点名缺哪几条（名字是内部细节，留给详情与 agent）', () => {
     const row = marketRows(
       [unit('issues', 'demo')],
       capability('issues', 'outdated', { missing: ['x', 'y'] }),
@@ -192,11 +192,7 @@ describe('为什么该更新：一句话 + 底下说清缘由', () => {
 
     expect(row?.state).toBe('outdated');
     expect(MARKET_STATE_KEY.outdated).toBe('panels.market.moduleOutdated');
-    expect(row?.note).toEqual({
-      key: 'panels.market.needCommands',
-      params: { commands: 'x、y' },
-      tone: 'plain',
-    });
+    expect(row?.note).toBeUndefined();
   });
 
   it('模块包有新版 → 同一句「有新版」，理由靠版本箭头说', () => {

@@ -12,8 +12,11 @@ const PANEL_KEYS = [
   'panels.followAllConfirmAck',
   'panels.followAllConfirmYes',
   'panels.followAllConfirmNo',
-  'panels.groupBoardless',
-  'panels.groupPlugins',
+  'panels.groupBackground',
+  'panels.onBoard',
+  'panels.offBoard',
+  'panels.enabled',
+  'panels.disabled',
 ] as const;
 
 const MARKET_KEYS = [
@@ -71,7 +74,7 @@ describe('两屏的分工：市场管机器级默认、面板管本工作区', (
     expect(css).toMatch(/\.rowOff:hover \{\s*opacity: 1;\s*\}/);
   });
 
-  it('★ 无看板那一组与插件那一组：同一份行组件、同一个标题样式（标题说了是哪一组，行上不再挂标签）', () => {
+  it('★ 后台那一组：同一份行组件、同一个标题样式（标题说了是哪一组，行上不再挂标签）', () => {
     const groups = read('PanelGroupRows.tsx');
     const css = readFileSync(new URL('../ModulesPage.module.css', import.meta.url), 'utf8');
 
@@ -80,6 +83,16 @@ describe('两屏的分工：市场管机器级默认、面板管本工作区', (
     expect(css).not.toContain('.rowTag');
     expect(css).toMatch(/\.groupTitle \{[^}]*color: var\(--dsw-alias-label-tertiary\)/);
     expect(read('ModulesPage.tsx')).not.toContain('tone="');
+  });
+
+  it('★ 开关的话按行所在的组来说：有看板的说"在看板显示"，后台的说"启用"', () => {
+    const controls = read('PanelRowControls.tsx');
+
+    expect(controls).toContain("panel: 'panels.onBoard'");
+    expect(controls).toContain("background: 'panels.enabled'");
+    expect(controls).toContain("panel: 'panels.offBoard'");
+    expect(controls).toContain("background: 'panels.disabled'");
+    expect(read('ModulesPage.tsx')).toContain('kind="background"');
   });
 
   it('★ 那两条只服务"勾选框 / 压暗"的文案已经删了（两语言都不许留着）', () => {
@@ -133,7 +146,7 @@ describe('两屏的分工：市场管机器级默认、面板管本工作区', (
 
     expect(row).toMatch(/danger \? 'wb-dangerAction' : update \? styles\.marketUpdateAction/);
     expect(read('market-view-text.ts')).toContain('UPDATE_ACTIONS');
-    expect(row).toMatch(/\{t\(ACTION_LABEL_KEY\[action\]\)\}/);
+    expect(row).toMatch(/\{t\(actionLabelKey\(row, action\)\)\}/);
     expect(row).not.toContain('marketIconAction');
   });
 
@@ -142,16 +155,17 @@ describe('两屏的分工：市场管机器级默认、面板管本工作区', (
     const section = read('market-section.tsx');
 
     expect(section).toMatch(/<StateDot state=\{MARKET_DOT\[row\.state\]\} size=\{9\} \/>/);
-    expect(shared).toMatch(/<StateDot state=\{SHARED_DOT\[row\.state\]\} size=\{9\} \/>/);
+    expect(shared).toContain('<DependencyLine');
+    expect(read('dependency-line.tsx')).toMatch(/<StateDot state=\{SHARED_DOT\[state\]\} size=\{9\} \/>/);
     expect(shared).toMatch(/UPDATE_ACTIONS\.includes\(action\) \? styles\.marketUpdateAction : undefined/);
-    expect(shared).toMatch(/<span className=\{styles\.marketStateText\}>\{stateText\}<\/span>/);
+    expect(read('dependency-line.tsx')).toContain('{stateText ?? t(SHARED_STATE_KEY[state])}');
   });
 
   it('★ 插件行吃的是同一套：机器板与改动数喂给插件行，写入还是那一行的 id + scope: machine', () => {
-    const view = read('MarketView.tsx');
+    const held = read('market-plugins-held.ts');
     const section = read('market-section.tsx');
 
-    expect(view).toMatch(/installedPluginRows\([^)]*byDefault[^)]*changed\)/);
+    expect(held).toMatch(/installedPluginRows\([^)]*byDefault[^)]*changed\)/);
     expect(read('use-market-default.ts')).toContain("{ action: next ? 'show' : 'hide', id, scope: 'machine' }");
     expect(section).toContain('onDefault?.(row.id, next)');
     expect(read('market-plugin-rows.ts')).toContain('defaultShown: defaults.has(id)');

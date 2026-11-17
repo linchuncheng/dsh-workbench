@@ -40,6 +40,7 @@ export function installedPluginRows(
       ...(note === undefined ? {} : { note }),
       ...(plugin.registry === undefined ? {} : { registry: plugin.registry }),
       ...(plugin.installedAt === undefined ? {} : { installedAt: plugin.installedAt }),
+      ...(plugin.runtimeProblem === undefined ? {} : { runtimeProblem: plugin.runtimeProblem }),
       ...(plugin.installed === undefined
         ? {}
         : { versionLabel: `${plugin.pkg}@${plugin.installed}` }),

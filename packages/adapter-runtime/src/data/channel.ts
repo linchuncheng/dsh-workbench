@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import {
+  CHANNEL_API_VERSION,
   DEFAULT_RECIPE_MAX_BYTES,
   PlanStepError,
   productWrite,
@@ -97,7 +98,7 @@ export function channelCallOf(
     'workbench',
     write ? 'send' : 'fetch',
     '--api',
-    '1',
+    String(CHANNEL_API_VERSION),
     '--url',
     channelUrlOf(recipe, overrides),
     '--jar',

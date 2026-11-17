@@ -24,7 +24,7 @@ import {
   splitNpmSpec,
 } from '@dsh-workbench/adapter-supply';
 import { PLUGIN_ID, readBundleManager, refusalReason } from '@dsh-workbench/shared/host';
-import { OPENCLI_MANIFEST_FILE } from '@dsh-workbench/adapter-runtime';
+import { OPENCLI_MANIFEST_FILE, OPENCLI_RUNTIME_FIELD } from '@dsh-workbench/adapter-runtime';
 
 export interface ProbeSupplyOptions {
   readonly seam?: Seam | undefined;
@@ -37,6 +37,7 @@ export function createSupplyPort(options: ProbeSupplyOptions = {}): SupplyPort {
     isolatedHome,
     pluginPackagePrefix: () => 'opencli-plugin-',
     pluginManifestFile: () => OPENCLI_MANIFEST_FILE,
+    pluginRuntimeField: () => OPENCLI_RUNTIME_FIELD,
     cliCatalogPath,
     vendorPluginsDir,
     runtimeInstallCommand: opencliInstallCommand,

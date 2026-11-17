@@ -1,7 +1,7 @@
 import type { BundleVersionList, LatestUnavailable, ModuleUpdateBlock, ModuleVersion } from '@/kernel/contract/bundle-install';
 import type { MarketInstalledModule } from '@/kernel/contract/market-index';
 import type { NeedState, SupplySource, Translate, UnitManifest, UnitTitle } from '@dsh-workbench/shared';
-import { supplyNeedsOf } from '@dsh-workbench/shared';
+import { depOnlyOutdated, supplyNeedsOf } from '@dsh-workbench/shared';
 import type { InstalledPlugin } from '@/shared/api/installed-plugins';
 import type { MarketNameMap } from './market-names';
 import type {
@@ -306,14 +306,6 @@ function noteOf(
   }
   if (problem.provision === 'not-declared') return { key: 'panels.market.noSource', params: {} };
   if (problem.provision === 'malformed') return { key: 'panels.market.badSource', params: {} };
-  const missing = problem.missing ?? [];
-  if (state === 'outdated' && missing.length > 0) {
-    return {
-      key: 'panels.market.needCommands',
-      params: { commands: missing.join('、') },
-      tone: 'plain',
-    };
-  }
   return undefined;
 }
 
@@ -362,7 +354,9 @@ export function liveManifests(
 export function marketHasUpdates(rows: readonly MarketRow[], shared: readonly SharedRow[] = []): boolean {
   return (
     rows.some((row) =>
-      row.moduleUpdate === undefined ? row.state === 'outdated' : row.moduleUpdate.blocked === undefined,
+      row.moduleUpdate === undefined
+        ? row.state === 'outdated' || row.staleDeps !== undefined
+        : row.moduleUpdate.blocked === undefined,
     ) ||
     shared.some((row) => row.state === 'outdated' || row.state === 'unsatisfied')
   );
@@ -437,6 +431,7 @@ export function marketRows(
   updates: ModuleUpdateMap = {},
   defaults: ReadonlySet<string> = new Set(),
   changed: Readonly<Record<string, number>> = {},
+  held: ReadonlySet<string> = new Set(),
 ): MarketRow[] {
   const rows: MarketRow[] = [];
   for (const manifest of manifests) {
@@ -447,7 +442,6 @@ export function marketRows(
     const local = entry?.local === true;
     const state: MarketState =
       capabilities === null ? 'checking' : stateOf(capability, manifest, entry !== undefined);
-    const note = noteOf(state, capability, manifest);
     const onMachine = isOnMachine(state);
     const reAdopt = capability?.released === true && !installDeclared;
 
@@ -463,7 +457,15 @@ export function marketRows(
             ...(entry.spec === undefined ? {} : { spec: entry.spec }),
             ...(entry.registry === undefined ? {} : { registry: entry.registry }),
           };
-    const shown = moduleUpdate === undefined ? state : 'outdated';
+    const staleAll = (capability?.needs ?? []).filter(
+      (need) => (need.kind === 'extension' || need.kind === 'lib') && need.status === 'outdated',
+    );
+    const staleDeps = staleAll.map((need) => need.name).filter((name) => !held.has(name));
+    const depsOnly =
+      moduleUpdate === undefined && capability !== undefined && depOnlyOutdated(capability);
+    const shown: MarketState =
+      moduleUpdate === undefined ? (depsOnly ? 'installed' : state) : 'outdated';
+    const note = noteOf(shown, capability, manifest);
     const hint: MarketHint | undefined =
       moduleUpdate?.blocked === undefined
         ? shown === 'unknown' || shown === 'unchecked'
@@ -474,9 +476,10 @@ export function marketRows(
       id: manifest.id,
       titleKey: manifest.titleKey,
       state: shown,
-      canInstall: state !== 'installed' && (install || reAdopt),
+      canInstall: !depsOnly && state !== 'installed' && (install || reAdopt),
       canUpdate: onMachine && isOutdated(capability),
       canUninstall: onMachine,
+      ...(staleDeps.length === 0 ? {} : { staleDeps: staleDeps.length }),
       ...(hint === undefined ? {} : { hint }),
       ...(entry === undefined
         ? {}

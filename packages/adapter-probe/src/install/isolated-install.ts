@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { toolchainManifestOf, toolchainNpmrcOf } from '@dsh-workbench/adapter-runtime';
-import { OPENCLI_PIN, now, removePath, writeTextFile } from '@dsh-workbench/shared/host';
+import { OPENCLI_PIN, OPENCLI_PIN_ENV, now, removePath, runtimePinOf, writeTextFile } from '@dsh-workbench/shared/host';
 import { installWithRetry, type InstallAttempt, type InstallRetryResult } from './install-retry.js';
 
 export type IsolatedInstallRun = InstallAttempt;
@@ -125,7 +125,7 @@ export async function installIsolatedRuntime(
     }
     writeTextFile(
       join(deps.liveDir, '.ready.json'),
-      `${JSON.stringify({ pin: OPENCLI_PIN, at: new Date(now()).toISOString() })}\n`,
+      `${JSON.stringify({ pin: runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV), at: new Date(now()).toISOString() })}\n`,
     );
     return result;
   } catch (error) {

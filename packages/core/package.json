@@ -90,7 +90,8 @@
   },
   "peerDependencies": {
     "react": "*",
-    "react-dom": "*"
+    "react-dom": "*",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.2-rc.2"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -123,7 +124,8 @@
     "prompts": "^2.4.2",
     "proper-lockfile": "^4.1.2",
     "which": "^7.0.0",
-    "write-file-atomic": "^8.0.0"
+    "write-file-atomic": "^8.0.0",
+    "execa": "^10.2.0"
   },
   "license": "MIT",
   "repository": {

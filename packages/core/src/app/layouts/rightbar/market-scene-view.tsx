@@ -1,11 +1,12 @@
 import { Fragment, createElement as h } from 'react';
 import type { ReactNode, Translate } from '@dsh-workbench/shared';
 import type { MarketFailure, MarketRow, MarketRowAction } from './market-row-types';
-import type { SharedRow } from './market-shared-rows';
 import type { VersionsPart } from '../market/use-module-versions';
 import type { Pending } from './market-view-text';
 import { MarketBody } from './market-body';
 import { MarketChecking, MarketEmpty } from './MarketStates';
+import type { DetailDependency } from './market-detail-deps';
+import type { SharedRow } from './market-shared-rows';
 import { MarketDetailPage } from './market-detail-page';
 import { SharedDetailPage } from './market-shared-detail';
 import { UninstallConfirm } from './market-uninstall';
@@ -17,7 +18,6 @@ export function MarketSceneView({
   shown,
   pluginList,
   installedList,
-  shared,
   pending,
   failed,
   notice,
@@ -31,6 +31,7 @@ export function MarketSceneView({
   onOpenDetail,
   detailRow,
   detailShared,
+  detailDependencies,
   confirming,
   confirmingRow,
   rowById,
@@ -45,7 +46,6 @@ export function MarketSceneView({
   readonly shown: readonly MarketRow[];
   readonly pluginList: readonly MarketRow[];
   readonly installedList: readonly MarketRow[];
-  readonly shared: readonly SharedRow[];
   readonly pending: Pending | null;
   readonly failed: MarketFailure | null;
   readonly notice: string | null;
@@ -59,6 +59,7 @@ export function MarketSceneView({
   readonly onOpenDetail: (id: string) => void;
   readonly detailRow: MarketRow | undefined;
   readonly detailShared: SharedRow | undefined;
+  readonly detailDependencies: readonly DetailDependency[];
   readonly confirming: string | null;
   readonly confirmingRow: MarketRow | undefined;
   readonly rowById: ReadonlyMap<string, MarketRow>;
@@ -88,6 +89,7 @@ export function MarketSceneView({
         key={detailRow.id}
         t={t}
         row={detailRow}
+        dependencies={detailDependencies}
         pending={pending}
         failure={failed?.id === detailRow.id ? failed : null}
         notice={notice}
@@ -116,7 +118,6 @@ export function MarketSceneView({
         shown={shown}
         pluginList={pluginList}
         installedList={installedList}
-        shared={shared}
         pending={pending}
         failed={failed}
         notice={notice}

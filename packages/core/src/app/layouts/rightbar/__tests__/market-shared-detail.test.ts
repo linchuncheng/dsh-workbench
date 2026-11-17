@@ -79,7 +79,7 @@ describe('共用依赖详情页：面包屑 · 名称 · 版本 · 依赖信息'
     expect(shown).toContain('panels.market.detailSharedUsedBy');
     const usedBy = shown.find((item) => item.includes('coding-analysis.title')) ?? '';
     expect(usedBy).toContain('coding-issues.title');
-    expect(shown).toContain('panels.market.update');
+    expect(shown).toContain('panels.market.updateDeps');
   });
 
   it('★ 已就绪且没有更新动作时不摆更新按钮', () => {
@@ -95,7 +95,7 @@ describe('共用依赖详情页：面包屑 · 名称 · 版本 · 依赖信息'
     });
     const shown = texts(tree);
 
-    expect(shown).not.toContain('panels.market.update');
+    expect(shown).not.toContain('panels.market.updateDeps');
     expect(shown).not.toContain('panels.market.sharedOk');
     expect(shown).toContain('panels.market.sharedKindPlugin');
     expect(shown).not.toContain('panels.market.detailLatest');

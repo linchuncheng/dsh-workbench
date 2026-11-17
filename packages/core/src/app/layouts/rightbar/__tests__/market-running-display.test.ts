@@ -149,13 +149,15 @@ const read = (name: string): string => readFileSync(new URL(name, HERE), 'utf8')
 describe('更新跑完那一格：解锁挂在读数上，不是挂到写响应上', () => {
   it('★ 面板把"读数追上了"算出来交给等待那一格，那一格才去清 pending', () => {
     const view = read('MarketView.tsx');
+    const landed = read('market-landed.ts');
     const text = read('market-view-text.ts');
     const hold = read('market-settle-hold.ts');
 
-    expect(view).toContain('pendingLanded(');
-    expect(view).toContain('workbench?.installed,');
-    expect(view).toContain('new Set(installed.map((module) => module.unit))');
-    expect(view).toContain('new Set(pluginList.map((row) => row.id))');
+    expect(landed).toContain('pendingLanded(');
+    expect(view).toContain('marketLandedOf({');
+    expect(landed).toContain('input.installedVersion,');
+    expect(landed).toContain('new Set(input.installed.map((one) => one.unit))');
+    expect(landed).toContain('new Set(input.pluginList.map((row) => row.id))');
     expect(view).toMatch(/useSettleHold\(\{/);
     expect(view).toContain('selfUpdate:');
     expect(text).toContain('settleLanded({');

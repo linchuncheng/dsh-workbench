@@ -68,6 +68,12 @@ All npm dependencies are declared in the `package.json` files and resolved by
 `pnpm-lock.yaml`; their licenses are listed in their own packages under
 `node_modules/`. No dependency source is vendored into this repository.
 
+## Icon asset from Icons8
+
+`packages/shared/src/components/layout/icon-command.tsx` is the "command line"
+icon from [Icons8](https://icons8.com/icons/set/command-line), used under the
+free license, which requires attribution: <https://icons8.com>.
+
 ## Assets
 
 The UI uses icons and design tokens provided at runtime by

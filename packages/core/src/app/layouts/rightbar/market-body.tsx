@@ -1,13 +1,11 @@
 import { Fragment, createElement as h } from 'react';
 import type { ReactNode, Translate } from '@dsh-workbench/shared';
 import type { MarketFailure, MarketRow, MarketRowAction } from './market-row-types';
-import type { SharedRow } from './market-shared-rows';
 import type { Pending } from './market-view-text';
 import { marketFootVisible } from './market-view-text';
 import { marketOrder, marketRowTitle, marketSections } from './market-rows';
 import type { VersionsPart } from '../market/use-module-versions';
 import { MarketSection } from './market-section';
-import { SharedSection } from './SharedSection';
 import { marketSectionIcon } from './market-section-icon';
 import { PanelFoot } from '@/shared/components/PanelFoot';
 import styles from '../market/MarketPage.module.css';
@@ -21,7 +19,6 @@ export function MarketBody({
   shown,
   pluginList,
   installedList,
-  shared,
   pending,
   failed,
   notice,
@@ -41,7 +38,6 @@ export function MarketBody({
   readonly shown: readonly MarketRow[];
   readonly pluginList: readonly MarketRow[];
   readonly installedList: readonly MarketRow[];
-  readonly shared: readonly SharedRow[];
   readonly pending: Pending | null;
   readonly failed: MarketFailure | null;
   readonly notice: string | null;
@@ -108,17 +104,6 @@ export function MarketBody({
       )}
 
       {foot ? <PanelFoot size="md" text={t('panels.market.foot')} /> : null}
-
-      <SharedSection
-        t={t}
-        rows={shared}
-        pending={pending}
-        failureOf={failureOf}
-        act={act}
-        onOpenDetail={onOpenDetail}
-        onRecheck={onRecheck}
-        rechecking={rechecking}
-      />
     </>
   );
 }

@@ -9,6 +9,9 @@ export interface InstalledPlugin {
   readonly broken?: boolean;
   readonly registry?: string;
   readonly installedAt?: string;
+  readonly runtimeProblem?:
+    | { readonly label: string; readonly need: string; readonly have: string }
+    | undefined;
 }
 
 export interface InstalledPluginsPayload {

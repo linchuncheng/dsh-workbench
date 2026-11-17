@@ -42,7 +42,8 @@
     "arch": "arch-guard"
   },
   "peerDependencies": {
-    "react": "*"
+    "react": "*",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.2-rc.2"
   },
   "devDependencies": {
     "@arch-guard/core": "^0.12.0",

@@ -2,7 +2,7 @@ import { createElement as h } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
 
 import type { PanelRow } from './board-selection';
-import { PanelRowControls } from './PanelRowControls';
+import { PanelRowControls, type PanelRowKind } from './PanelRowControls';
 import styles from './ModulesPage.module.css';
 
 export interface PanelGroupRowsProps {
@@ -10,10 +10,11 @@ export interface PanelGroupRowsProps {
   readonly rows: readonly PanelRow[];
   readonly titleKey: string;
   readonly busy: boolean;
+  readonly kind: PanelRowKind;
   readonly onWrite: (body: Record<string, unknown>) => void;
 }
 
-export function PanelGroupRows({ t, rows, titleKey, busy, onWrite }: PanelGroupRowsProps) {
+export function PanelGroupRows({ t, rows, titleKey, busy, kind, onWrite }: PanelGroupRowsProps) {
   if (rows.length === 0) return null;
 
   return (
@@ -31,7 +32,7 @@ export function PanelGroupRows({ t, rows, titleKey, busy, onWrite }: PanelGroupR
                   <span className={styles.dep}>{t(row.badgeKey)}</span>
                 )}
               </span>
-              <PanelRowControls t={t} unit={row} label={title} busy={busy} onWrite={onWrite} />
+              <PanelRowControls t={t} unit={row} label={title} kind={kind} busy={busy} onWrite={onWrite} />
             </li>
           );
         })}

@@ -12,7 +12,6 @@ function render(runtimePluginMarket: boolean | undefined): string[] {
     shown: [],
     pluginList: [],
     installedList: [],
-    shared: [],
     pending: null,
     failed: null,
     notice: null,

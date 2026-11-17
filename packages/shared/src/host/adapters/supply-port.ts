@@ -10,6 +10,7 @@ export function supplyPortOf(ctx: DshHostContext): SupplyPort {
   const modules = set.modules;
   const pluginPackagePrefix = modules.pluginPackagePrefix;
   const pluginManifestFile = modules.pluginManifestFile;
+  const pluginRuntimeField = modules.pluginRuntimeField;
   const cliCatalogPath = modules.cliCatalogPath;
   const vendorPluginsDir = modules.vendorPluginsDir;
   const runtimeInstallCommand = modules.runtimeInstallCommand;
@@ -29,6 +30,7 @@ export function supplyPortOf(ctx: DshHostContext): SupplyPort {
     isolatedHome: () => modules.isolatedHome(),
     ...(pluginPackagePrefix === undefined ? {} : { pluginPackagePrefix: () => pluginPackagePrefix() }),
     ...(pluginManifestFile === undefined ? {} : { pluginManifestFile: () => pluginManifestFile() }),
+    ...(pluginRuntimeField === undefined ? {} : { pluginRuntimeField: () => pluginRuntimeField() }),
     ...(cliCatalogPath === undefined ? {} : { cliCatalogPath: () => cliCatalogPath() }),
     ...(vendorPluginsDir === undefined ? {} : { vendorPluginsDir: () => vendorPluginsDir() }),
     ...(runtimeInstallCommand === undefined ? {} : { runtimeInstallCommand: () => runtimeInstallCommand() }),

@@ -1,6 +1,6 @@
 import type { UnitManifest } from '@dsh-workbench/shared';
 import type { DshHostContext, LongTaskBase, LongTaskRegistry, RecordStore, UnitOwnedFace } from '@dsh-workbench/shared/host';
-import { DIY_DEBUG_SERVICE, DIY_RECORD_SERVICE, MCP_TOOLS_SERVICE, TOOLBOX_SERVICE, createDebugStore, createLongTaskRegistry, createRecordStore, supplyNeedsOf, PANELS_SERVICE, dshHome, seamOf, supplyPortOf, workbenchRoot } from '@dsh-workbench/shared/host';
+import { DIY_DEBUG_SERVICE, DIY_RECORD_SERVICE, MCP_TOOLS_SERVICE, TOOLBOX_SERVICE, adaptersOf, createDebugStore, createLongTaskRegistry, createRecordStore, supplyNeedsOf, PANELS_SERVICE, dshHome, seamOf, supplyPortOf, workbenchRoot } from '@dsh-workbench/shared/host';
 import type { McpToolsPort, ToolboxPort, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { basename, join } from 'node:path';
 import { workshopPathOf } from '@/shared/api/host/diy';
@@ -64,6 +64,8 @@ export const panelsHost: UnitOwnedFace = {
   mount({ ctx: moduleCtx, logger, manifests, ownedUnits, installable, probe, store, values, longTaskRuns }) {
     const ctx = moduleCtx as unknown as DshHostContext;
     const supply = supplyPortOf(ctx);
+    const runtimeLabel = adaptersOf(ctx).runtime.profile?.(ctx)?.label ?? '';
+    const runtimeField = supply.pluginRuntimeField?.() ?? '';
     const pluginDir = supply.vendorPluginsDir?.();
     const pluginManifest = supply.pluginManifestFile?.();
     const ledger = createPluginLedger({
@@ -239,6 +241,8 @@ export const panelsHost: UnitOwnedFace = {
         ...panelRoutes(panels, values),
         ...pluginRoutes({
           ledger,
+          ...(runtimeLabel === '' ? {} : { runtimeLabel }),
+          ...(runtimeField === '' ? {} : { runtimeField }),
           supply,
           ...(seam === undefined ? {} : { seam }),
           includePrerelease,

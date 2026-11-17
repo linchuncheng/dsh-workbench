@@ -4,6 +4,7 @@ import { OPENCLI_NPM_PACKAGE, runtimeLayoutOf } from '@dsh-workbench/shared/host
 
 export const OPENCLI_RUNTIME_ID = 'opencli';
 export const OPENCLI_MANIFEST_FILE = 'opencli-plugin.json';
+export const OPENCLI_RUNTIME_FIELD = 'opencli';
 export { OPENCLI_NPM_PACKAGE };
 
 const layout = (): ReturnType<typeof runtimeLayoutOf> => runtimeLayoutOf(OPENCLI_RUNTIME_ID);

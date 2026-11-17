@@ -5,6 +5,9 @@
   padding: var(--wb-len-8) var(--wb-len-12);
   border-bottom: 0.5px solid var(--dsw-alias-border-l2);
   flex: none;
+  align-content: flex-start;
+  max-height: var(--wb-len-72);
+  overflow-y: auto;
 }
 
 .wb-mockNote {

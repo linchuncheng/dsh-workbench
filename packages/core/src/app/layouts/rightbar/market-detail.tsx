@@ -5,8 +5,13 @@ import type { MarketFailure, MarketRow, MarketRowAction, MarketState } from './m
 import { MARKET_STATE_KEY, marketRowTitle } from './market-rows';
 import { marketRowKind, packageIcon } from './market-row-icon';
 import type { Pending } from './market-view-text';
+import type { SharedState } from './market-shared-rows';
+import type { PackageKind } from './market-row-icon';
 import { MarketRowControls, MarketRowFailure } from './market-section';
+import { SharedActions } from './SharedSection';
 import { marketDetailFacts } from './market-detail-facts';
+import { dependencyRowActions, type DetailDependency } from './market-detail-deps';
+import { DependencyLine } from './dependency-line';
 import { detailFacts } from '../market/detail-facts';
 import {
   installedDescription,
@@ -16,6 +21,28 @@ import {
 } from './installed-detail-parts';
 import type { InstalledDetailRecheckProps, InstalledDetailTabProps } from './installed-detail-types';
 import styles from '../market/MarketPage.module.css';
+
+const DEPENDENCY_ICON_KIND: Readonly<Record<DetailDependency['kind'], PackageKind>> = {
+  extension: 'plugin',
+  lib: 'lib',
+  bin: 'command',
+  env: 'env',
+};
+
+const DEPENDENCY_STATE: Readonly<Record<DetailDependency['status'], SharedState>> = {
+  ok: 'installed',
+  outdated: 'outdated',
+  unsatisfied: 'unsatisfied',
+  missing: 'missing',
+  unchecked: 'unchecked',
+};
+
+const DEPENDENCY_KIND_KEY: Readonly<Record<DetailDependency['kind'], string>> = {
+  extension: 'panels.market.depKindExtension',
+  lib: 'panels.market.depKindLib',
+  bin: 'panels.market.depKindBin',
+  env: 'panels.market.depKindEnv',
+};
 
 const STATE_TONE: Readonly<Record<MarketState, 'neutral' | 'success' | 'warning' | 'danger'>> = {
   checking: 'neutral',
@@ -42,6 +69,7 @@ export interface MarketDetailProps extends InstalledDetailTabProps, InstalledDet
   readonly onBack: () => void;
   readonly onRequest: (action: MarketRowAction) => void;
   readonly onDefault?: ((next: boolean) => void) | undefined;
+  readonly dependencies?: readonly DetailDependency[] | undefined;
 }
 
 export function MarketDetail({
@@ -59,6 +87,7 @@ export function MarketDetail({
   tab,
   onTab,
   info,
+  dependencies = [],
 }: MarketDetailProps) {
   const activeTab = tab ?? 'overview';
   const title = marketRowTitle(row, t);
@@ -125,6 +154,49 @@ export function MarketDetail({
                 <h4 className={styles.discoverSectionTitle}>{t('panels.market.detailSourceTitle')}</h4>
                 {detailFacts({ t, facts })}
               </section>
+            )}
+            {row.plugin === true || row.workbench === true ? null : (
+            <section className={styles.discoverSection}>
+              <h4 className={styles.discoverSectionTitle}>{t('panels.market.detailDepsTitle')}</h4>
+              {dependencies.length === 0 ? (
+                <p className={styles.discoverMuted}>{t('panels.market.detailDepsEmpty')}</p>
+              ) : (
+                <ul className={styles.marketListFlat}>
+                  {dependencies.map((need) => (
+                    <li key={`${need.kind}:${need.name}`} className={styles.marketRow}>
+                      <DependencyLine
+                        t={t}
+                        kind={DEPENDENCY_ICON_KIND[need.kind]}
+                        label={need.name}
+                        version={{
+                          ...(need.installed === undefined ? {} : { installed: need.installed }),
+                          ...(need.latest === undefined ? {} : { latest: need.latest }),
+                        }}
+                        state={DEPENDENCY_STATE[need.status]}
+                        stateText={
+                          need.kind === 'env' && need.status === 'missing'
+                            ? t('panels.market.depEnvNotSet')
+                            : undefined
+                        }
+                        note={[
+                          t(DEPENDENCY_KIND_KEY[need.kind]),
+                          ...(need.optional === true ? [t('panels.market.depOptional')] : []),
+                        ].join(t('panels.market.listSeparator'))}
+                      />
+                      <div className={styles.marketEnd}>
+                        <SharedActions
+                          t={t}
+                          actions={dependencyRowActions(need)}
+                          running={null}
+                          locked={pending !== null}
+                          onAct={onRequest}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
             )}
           </Fragment>
         ),

@@ -6,7 +6,7 @@ import type {
 } from '@dsh-workbench/shared/contract/protocol/market-index';
 import type { MarketSourceInitializer } from '@/shared/api/host/market-source-init';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
-import { hostSurface } from '@dsh-workbench/shared/host';
+import { depOnlyOutdated, hostSurface } from '@dsh-workbench/shared/host';
 import type { InstalledModule } from '@dsh-workbench/shared/host';
 import type { BundleSupply, MarketEntry, MarketService } from './market';
 import type { SharedDependency } from './market-dependency';
@@ -42,7 +42,9 @@ function stateOf(entry: MarketEntry): string {
     case 'missing':
       return '未装';
     case 'outdated':
-      return `已装但版本旧（${entry.capability.detail}）`;
+      return depOnlyOutdated(entry.capability)
+        ? `已装，可用（依赖可升级：${entry.capability.detail ?? ''}）`
+        : `已装但版本旧（${entry.capability.detail}）`;
     case 'degraded':
       return `可选依赖没装（${entry.capability.detail}）`;
     case 'unsupported':

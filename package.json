@@ -13,6 +13,7 @@
     "test": "pnpm --filter \"./packages/*\" --if-present run test",
     "coverage": "node scripts/run-tests.mjs",
     "arch": "arch-guard --config arch.config.mjs && pnpm --filter \"./packages/*\" --if-present run arch",
+    "check:deps": "node scripts/check-declared-deps.mjs",
     "selfcheck": "pnpm --workspace-concurrency=4 --filter \"./packages/*\" --if-present run selfcheck",
     "check:runtimes": "pnpm --filter \"./packages/*\" --if-present run check:runtimes",
     "check:duplication": "node scripts/check-duplication.mjs",
@@ -27,7 +28,6 @@
     "check:modules": "node packages/module-tools/bin/dsh-wb-module.mjs check",
     "check:contracts": "node packages/module-tools/bin/dsh-wb-module.mjs check --only contracts",
     "check:protocol": "node packages/module-tools/bin/dsh-wb-module.mjs check --only protocol",
-    "check": "pnpm run lint:commit && pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run check:duplication && pnpm run coverage && pnpm run check:gates:target -- --fail-on-red && pnpm run arch && pnpm run check:docs && pnpm run check:copy:strict && pnpm run check:runtimes && pnpm run selfcheck && pnpm run check:modules && pnpm run check:adapter-defaults && node scripts/check-adapter-contract.mjs && pnpm run check:release-packages && pnpm run check:release-artifacts",
     "dev": "pnpm --filter @dsh-workbench/core run dev",
     "dev:desktop": "pnpm --filter @dsh-workbench/core run dev:desktop",
     "dev:docs": "pnpm --filter @dsh-workbench/docs run dev",
@@ -58,7 +58,8 @@
     "check:primitives": "node packages/module-tools/bin/dsh-wb-module.mjs check --only primitives",
     "check:kit": "node packages/module-tools/bin/dsh-wb-module.mjs check --only kit",
     "check:module-tools": "pnpm --filter @dsh-workbench/module-tools run selfcheck",
-    "check:adapter-defaults": "pnpm --filter @dsh-workbench/core run check:adapter-defaults"
+    "check:adapter-defaults": "pnpm --filter @dsh-workbench/core run check:adapter-defaults",
+    "check": "pnpm run lint:commit && pnpm run build && pnpm run check:deps && pnpm run typecheck && pnpm run lint && pnpm run check:duplication && pnpm run coverage && pnpm run check:gates:target -- --fail-on-red && pnpm run arch && pnpm run check:docs && pnpm run check:copy:strict && pnpm run check:runtimes && pnpm run selfcheck && pnpm run check:modules && pnpm run check:adapter-defaults && node scripts/check-adapter-contract.mjs && pnpm run check:release-packages && pnpm run check:release-artifacts"
   },
   "devDependencies": {
     "@arch-guard/core": "^0.12.0",

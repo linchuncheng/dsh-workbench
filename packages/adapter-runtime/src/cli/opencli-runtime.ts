@@ -4,7 +4,9 @@ import {
   DEFAULT_NPM_REGISTRY,
   OPENCLI_CATALOG_ENV,
   OPENCLI_PIN,
+  OPENCLI_PIN_ENV,
   OPENCLI_REGISTRY_ENV,
+  runtimePinOf,
 } from '@dsh-workbench/shared/host';
 import { quoteShellArg } from '@dsh-workbench/shared/host';
 import { isolatedRoot, libsPrefix, storeDirFor, toolchainOpencliDir } from '../foundation/paths.js';
@@ -23,7 +25,7 @@ export function toolchainManifestOf(): string {
     {
       name: 'dsh-workbench-toolchain',
       private: true,
-      dependencies: { [OPENCLI_NPM_PACKAGE]: OPENCLI_PIN },
+      dependencies: { [OPENCLI_NPM_PACKAGE]: runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV) },
     },
     null,
     2,
@@ -59,10 +61,10 @@ export function opencliReadinessAt(projectDir: string): { readonly ready: boolea
     return { ready: false, detail: '隔离副本缺 dist/src/main.js' };
   }
   const version = packageVersionOf(join(dir, 'package.json'));
-  if (version !== OPENCLI_PIN) {
-    return { ready: false, detail: `隔离副本是 ${version ?? '读不到的版本'}，要 ${OPENCLI_PIN}` };
+  if (version !== runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)) {
+    return { ready: false, detail: `隔离副本是 ${version ?? '读不到的版本'}，要 ${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)}` };
   }
-  return { ready: true, detail: OPENCLI_PIN };
+  return { ready: true, detail: runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV) };
 }
 
 export function opencliReadiness(): { readonly ready: boolean; readonly detail: string } {
@@ -120,7 +122,7 @@ export function isolatedInstallCommand(
   store: string = storeDirFor(dir),
 ): string {
   const pnpm = process.env.DSH_WB_PNPM?.trim() || 'pnpm';
-  return `${pnpm} add --dir ${quoteShellArg(dir)} ${OPENCLI_NPM_PACKAGE}@${OPENCLI_PIN} --store-dir ${quoteShellArg(store)} ${pnpmIsolationFlags()} --allow-build=${OPENCLI_NPM_PACKAGE} --save-exact`;
+  return `${pnpm} add --dir ${quoteShellArg(dir)} ${OPENCLI_NPM_PACKAGE}@${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)} --store-dir ${quoteShellArg(store)} ${pnpmIsolationFlags()} --allow-build=${OPENCLI_NPM_PACKAGE} --save-exact`;
 }
 
 export function isolatedPnpmInstallCommand(
@@ -130,7 +132,7 @@ export function isolatedPnpmInstallCommand(
 ): string {
   return (
     `node ${quoteShellArg(pnpmCjs)} add --dir ${quoteShellArg(dir)} ` +
-    `${OPENCLI_NPM_PACKAGE}@${OPENCLI_PIN} --store-dir ${quoteShellArg(store)} ` +
+    `${OPENCLI_NPM_PACKAGE}@${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)} --store-dir ${quoteShellArg(store)} ` +
     `${pnpmIsolationFlags()} --allow-build=${OPENCLI_NPM_PACKAGE} --save-exact`
   );
 }

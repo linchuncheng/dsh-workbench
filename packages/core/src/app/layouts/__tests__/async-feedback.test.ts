@@ -32,7 +32,8 @@ describe('每一次异步操作都要自己显形（ADR-0039）', () => {
     const row = read('rightbar/market-section.tsx');
     const add = read('market/AddModuleDialog.tsx');
 
-    expect(row).toContain('PROGRESS_KEY[running.action]');
+    expect(row).toContain('progressKeyOf(row, running.action)');
+    expect(read('rightbar/market-view-text.ts')).toContain('PROGRESS_KEY[action]');
     expect(row).toContain('<Spinner size={14} />');
     expect(add).toContain("t(state.removing ? 'panels.market.uninstalling' : 'panels.market.add.remove')");
     expect(add).toContain('disabled={state.removing}');

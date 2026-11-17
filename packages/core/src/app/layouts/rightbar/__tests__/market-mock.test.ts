@@ -59,8 +59,8 @@ describe('MARKET_MOCKS', () => {
       if (mock.expect.local !== undefined) {
         expect(rows[0]?.local, mock.id).toBe(mock.expect.local);
       }
-      if (mock.expect.noteKey !== undefined) {
-        expect(rows[0]?.note?.key, mock.id).toBe(mock.expect.noteKey);
+      if (mock.expect.note === 'none') {
+        expect(rows[0]?.note, mock.id).toBeUndefined();
       }
       if (mock.expect.plugins !== undefined) {
         const pluginList = installedPluginRows(mock.plugins ?? []);

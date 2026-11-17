@@ -1,12 +1,14 @@
 import { createElement as h } from 'react';
-import { IconBrandMarkColor, IconNpm, IconOpencli } from '@dsh-workbench/shared';
+import { IconBrandMarkColor, IconCommand, IconEnv, IconNpm, IconOpencli } from '@dsh-workbench/shared';
 import { PluginArtworkDefault } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { MarketRow } from './market-row-types';
 import type { SharedRow } from './market-rows';
 
-export type PackageKind = 'module' | 'plugin' | 'lib' | 'workbench';
+export type PackageKind = 'module' | 'plugin' | 'lib' | 'workbench' | 'command' | 'env';
 
 const SIZE = 28;
+
+const COMMAND_SIZE = 32;
 
 const ARTWORK = 36;
 
@@ -20,6 +22,10 @@ export function packageIcon(kind: PackageKind) {
       return h(IconNpm, { size: SIZE });
     case 'workbench':
       return h(IconBrandMarkColor, { size: SIZE });
+    case 'command':
+      return h(IconCommand, { size: COMMAND_SIZE });
+    case 'env':
+      return h(IconEnv, { size: SIZE });
   }
 }
 
