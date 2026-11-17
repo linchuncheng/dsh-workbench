@@ -246,8 +246,11 @@ c12() {
   lock="$m/workbench/diy/.sync.lock"
   k=0; while [ "$k" -lt 40 ]; do [ -d "$lock" ] && break; sleep 0.1; k=$((k + 1)); done
   [ -d "$lock" ] || fail "⑫ 后台没抢到锁（探针无法继续）"
-  rm -rf "$lock"
-  mkdir -p "$lock"; printf 'other-target\n' >"$lock/target"; printf 'someone-else\n' >"$lock/owner"; touch "$lock/heartbeat"
+  # 就地改成"别人的锁"，不要把锁删掉重铺：删和建之间的空档里后台会真的抢到新锁，
+  # 于是这格变成"后台自己抢到了"而不是"锁被抢"，在慢机器上随机判成 trap 删了别人的锁。
+  printf 'other-target\n' >"$lock/target"
+  printf 'someone-else\n' >"$lock/owner"
+  touch "$lock/heartbeat"
   wait_state "$m" failed || fail "⑫ 原持锁者没跑完"
   # 原持锁者是后台子进程：状态落盘之后它还要走到 EXIT trap。给它一段时间观察，
   # 期间锁一旦消失就是真错（原来只 sleep 1 秒，慢机器上会误判成"trap 删了别人的锁"）。
