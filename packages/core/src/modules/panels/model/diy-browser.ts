@@ -41,27 +41,22 @@ async function runStep(
   };
 }
 
-export async function runBrowserStep(
-  seam: Seam,
-  command: string,
-  argv: readonly string[],
-  timeoutMs = LOOK_TIMEOUT_MS,
-  line: LineMaker = plainLine,
-  intent: WriteIntent = productWrite(),
-): Promise<BrowserStep> {
-  return runStep(BACKGROUND_ENV, seam, command, argv, timeoutMs, line, intent);
+function stepper(env: Readonly<Record<string, string>>) {
+  return async function step(
+    seam: Seam,
+    command: string,
+    argv: readonly string[],
+    timeoutMs = LOOK_TIMEOUT_MS,
+    line: LineMaker = plainLine,
+    intent: WriteIntent = productWrite(),
+  ): Promise<BrowserStep> {
+    return runStep(env, seam, command, argv, timeoutMs, line, intent);
+  };
 }
 
-export async function runForegroundStep(
-  seam: Seam,
-  command: string,
-  argv: readonly string[],
-  timeoutMs = LOOK_TIMEOUT_MS,
-  line: LineMaker = plainLine,
-  intent: WriteIntent = productWrite(),
-): Promise<BrowserStep> {
-  return runStep(FOREGROUND_ENV, seam, command, argv, timeoutMs, line, intent);
-}
+export const runBrowserStep = stepper(BACKGROUND_ENV);
+
+export const runForegroundStep = stepper(FOREGROUND_ENV);
 
 export function jsonOf(raw: string): Record<string, unknown> | undefined {
   const start = raw.indexOf('{');
