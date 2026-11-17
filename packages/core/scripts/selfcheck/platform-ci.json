@@ -1,200 +1,216 @@
 {
-  "packages/adapter-probe/src/install/install-smoke.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/adapter-probe/src/install/__tests__/install-smoke.test.ts"
-    ]
+  "sites": {
+    "packages/adapter-probe/src/install/install-smoke.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/install/__tests__/install-smoke.test.ts"
+      ]
+    },
+    "packages/adapter-probe/src/preflight/preflight-route.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/preflight/__tests__/preflight-route.test.ts"
+      ]
+    },
+    "packages/adapter-probe/src/preflight/preflight.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/preflight/__tests__/preflight.test.ts"
+      ]
+    },
+    "packages/adapter-probe/src/probe/probe-units.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/probe/__tests__/probe-units.test.ts"
+      ]
+    },
+    "packages/adapter-probe/src/runtime/browser-wake.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/runtime/__tests__/browser-wake.test.ts"
+      ]
+    },
+    "packages/adapter-probe/src/runtime/platform.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/runtime/__tests__/platform.test.ts"
+      ]
+    },
+    "packages/adapter-probe/src/toolchain/runtime-seed.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/toolchain/__tests__/runtime-seed.test.ts"
+      ]
+    },
+    "packages/adapter-probe/src/toolchain/toolchain.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/toolchain/__tests__/toolchain.test.ts"
+      ]
+    },
+    "packages/adapter-runtime/src/browser/browser-read.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/browser/__tests__/browser-read.test.ts"
+      ]
+    },
+    "packages/adapter-runtime/src/cli/command.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/cli/__tests__/command.test.ts"
+      ]
+    },
+    "packages/adapter-runtime/src/cli/opencli-runtime.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/cli/__tests__/opencli-runtime.test.ts"
+      ]
+    },
+    "packages/adapter-runtime/src/cli/opencli-window.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/cli/__tests__/opencli-window.test.ts"
+      ]
+    },
+    "packages/adapter-runtime/src/cli/opencli.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/cli/__tests__/opencli.test.ts"
+      ]
+    },
+    "packages/adapter-runtime/src/data/index.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/data/__tests__/index.test.ts"
+      ]
+    },
+    "packages/core/src/shared/api/host/git-exec.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/core/src/shared/api/host/__tests__/git-process.test.ts"
+      ]
+    },
+    "packages/core/src/shared/api/platform/client.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/core/src/shared/api/platform/__tests__/client.test.ts"
+      ]
+    },
+    "packages/shared/src/host/adapters/platform.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/runtime/__tests__/platform.test.ts"
+      ]
+    },
+    "packages/shared/src/host/runtime/env-policy.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/runtime/__tests__/env-policy.test.ts"
+      ]
+    },
+    "packages/shared/src/host/runtime/front-app.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/shared/src/host/runtime/__tests__/front-app.test.ts"
+      ]
+    },
+    "packages/shared/src/host/seam/process.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/seam/__tests__/process.test.ts"
+      ]
+    },
+    "packages/shared/src/host/shell/shell-render.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/shell/__tests__/shell-render.test.ts"
+      ]
+    },
+    "packages/shared/src/host/shell/shell-text.ts": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/shell/__tests__/shell-text.test.ts"
+      ]
+    }
   },
-  "packages/adapter-probe/src/preflight/preflight-route.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
+  "suites": {
+    "self-update": [
+      "packages/adapter-probe/src/self-update/__tests__/self-update.test.ts",
+      "packages/adapter-probe/src/self-update/__tests__/self-update-steps.test.ts",
+      "packages/adapter-probe/src/self-update/__tests__/self-update-boot.test.ts",
+      "packages/adapter-probe/src/self-update/version/__tests__/version-dir.test.ts",
+      "packages/adapter-probe/src/self-update/version/__tests__/version-switch.test.ts",
+      "packages/adapter-probe/src/self-update/version/__tests__/version-migrate.test.ts",
+      "packages/adapter-probe/src/install/__tests__/isolated-install.test.ts"
     ],
-    "tests": [
-      "packages/adapter-probe/src/preflight/__tests__/preflight-route.test.ts"
-    ]
-  },
-  "packages/adapter-probe/src/preflight/preflight.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/adapter-probe/src/preflight/__tests__/preflight.test.ts"
-    ]
-  },
-  "packages/adapter-probe/src/probe/probe-units.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/adapter-probe/src/probe/__tests__/probe-units.test.ts"
-    ]
-  },
-  "packages/adapter-probe/src/runtime/browser-wake.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/adapter-probe/src/runtime/__tests__/browser-wake.test.ts"
-    ]
-  },
-  "packages/adapter-probe/src/runtime/platform.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/adapter-probe/src/runtime/__tests__/platform.test.ts"
-    ]
-  },
-  "packages/adapter-probe/src/toolchain/runtime-seed.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/adapter-probe/src/toolchain/__tests__/runtime-seed.test.ts"
-    ]
-  },
-  "packages/adapter-probe/src/toolchain/toolchain.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/adapter-probe/src/toolchain/__tests__/toolchain.test.ts"
-    ]
-  },
-  "packages/adapter-runtime/src/browser/browser-read.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/adapter-runtime/src/browser/__tests__/browser-read.test.ts"
-    ]
-  },
-  "packages/adapter-runtime/src/cli/command.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/adapter-runtime/src/cli/__tests__/command.test.ts"
-    ]
-  },
-  "packages/adapter-runtime/src/cli/opencli-runtime.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/adapter-runtime/src/cli/__tests__/opencli-runtime.test.ts"
-    ]
-  },
-  "packages/adapter-runtime/src/cli/opencli-window.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/adapter-runtime/src/cli/__tests__/opencli-window.test.ts"
-    ]
-  },
-  "packages/adapter-runtime/src/cli/opencli.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/adapter-runtime/src/cli/__tests__/opencli.test.ts"
-    ]
-  },
-  "packages/adapter-runtime/src/data/index.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/adapter-runtime/src/data/__tests__/index.test.ts"
-    ]
-  },
-  "packages/core/src/shared/api/host/git-exec.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/core/src/shared/api/host/__tests__/git-process.test.ts"
-    ]
-  },
-  "packages/core/src/shared/api/platform/client.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/core/src/shared/api/platform/__tests__/client.test.ts"
-    ]
-  },
-  "packages/shared/src/host/adapters/platform.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/adapter-probe/src/runtime/__tests__/platform.test.ts"
-    ]
-  },
-  "packages/shared/src/host/runtime/env-policy.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/shared/src/host/runtime/__tests__/env-policy.test.ts"
-    ]
-  },
-  "packages/shared/src/host/runtime/front-app.ts": {
-    "os": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "tests": [
-      "packages/shared/src/host/runtime/__tests__/front-app.test.ts"
-    ]
-  },
-  "packages/shared/src/host/seam/process.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/shared/src/host/seam/__tests__/process.test.ts"
-    ]
-  },
-  "packages/shared/src/host/shell/shell-render.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/shared/src/host/shell/__tests__/shell-render.test.ts"
-    ]
-  },
-  "packages/shared/src/host/shell/shell-text.ts": {
-    "os": [
-      "win32"
-    ],
-    "tests": [
-      "packages/shared/src/host/shell/__tests__/shell-text.test.ts"
+    "capture": [
+      "packages/core/src/modules/panels/model/__tests__/diy-record-live.test.ts"
     ]
   }
 }

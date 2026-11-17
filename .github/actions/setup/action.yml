@@ -1,0 +1,16 @@
+name: setup
+description: 装 pnpm / Node 与依赖；pnpm 版本取 packageManager，Node 版本取 .nvmrc
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - name: Install (immutable)
+      shell: bash
+      run: pnpm install --frozen-lockfile
+      env:
+        HUSKY: 0

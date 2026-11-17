@@ -1,0 +1,6 @@
+{
+  "market": "https://github.com/novaeth/dsh-workbench-market.git",
+  "module": "@dsh-workbench/module-hello",
+  "plugin": "opencli-plugin-hello",
+  "updateFrom": "1.2.3-beta.4"
+}

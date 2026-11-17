@@ -4,23 +4,13 @@ name: platform-smoke
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'packages/**/src/**'
-      - 'packages/**/scripts/**'
-      - 'packages/**/bin/**'
-      - 'package.json'
-      - '.husky/**'
-      - 'scripts/**'
-      - '.github/workflows/platform-smoke.yml'
+    paths-ignore: &paths-ignore
+      - '**.md'
+      - 'packages/docs/**'
+      - '.agents/**'
+      - 'assets/**'
   pull_request:
-    paths:
-      - 'packages/**/src/**'
-      - 'packages/**/scripts/**'
-      - 'packages/**/bin/**'
-      - 'package.json'
-      - '.husky/**'
-      - 'scripts/**'
-      - '.github/workflows/platform-smoke.yml'
+    paths-ignore: *paths-ignore
   schedule:
     - cron: '23 3 * * 1'
 
@@ -52,131 +42,37 @@ jobs:
       HUSKY: 0
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.32.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install (immutable)
-        shell: bash
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - name: Build (except docs)
         shell: bash
-        run: pnpm --filter "./packages/*" --filter "!@dsh-workbench/docs" --if-present run build
+        run: pnpm run build:libs
       - name: Assert pwsh (win32 引号往返要靠它)
         if: runner.os != 'Windows'
         shell: bash
         run: command -v pwsh
-      - name: Platform smoke (argv quoting / timeout / append)
-        shell: bash
-        run: node scripts/smoke/platform-shell.mjs 2>&1 | tee platform-shell.log
-      - name: Install plan smoke (真 shell 跑 run → remove → mkdir → copy → link → optional → env)
-        shell: bash
-        run: node scripts/smoke/install-plan.mjs 2>&1 | tee install-plan.log
-      - name: Runtime heal smoke (升级现场：既有 store 记录 + 断链 → store 不合 → 清一次重装)
-        shell: bash
-        run: |
-          if ! node scripts/smoke/runtime-heal.mjs 2>&1 | tee runtime-heal.log; then
-            body=$(grep -aE '❌|没过' runtime-heal.log | head -n 10 | sed -e 's/%/%25/g' | awk 'NF { printf "%s%%0A", $0 }')
-            echo "::error title=runtime heal smoke failed::${body:0:1800}"
-            exit 1
-          fi
-      - name: 自更新与自愈的判据（win32 的 $ComSpec / taskkill 分支在各腿上真跑）
-        shell: bash
-        run: |
-          set -o pipefail
-          if ! pnpm --filter @dsh-workbench/adapter-probe exec vitest run --testTimeout=20000 \
-            src/self-update/__tests__/self-update.test.ts \
-            src/self-update/__tests__/self-update-steps.test.ts \
-            src/self-update/__tests__/self-update-boot.test.ts \
-            src/self-update/version/__tests__/version-dir.test.ts \
-            src/self-update/version/__tests__/version-switch.test.ts \
-            src/self-update/version/__tests__/version-migrate.test.ts \
-            src/install/__tests__/isolated-install.test.ts > self-update-vitest.log 2>&1; then
-            tail -n 40 self-update-vitest.log
-            body=$(grep -aE 'FAIL |× |→ ' self-update-vitest.log | head -n 25 || tail -n 12 self-update-vitest.log)
-            body=$(printf '%s\n' "$body" | sed -e 's/%/%25/g' -e 's/\r$//' | awk 'NF { printf "%s%%0A", $0 }')
-            echo "::error title=self-update criteria failed::${body:0:1800}"
-            exit 1
-          fi
-          tail -n 5 self-update-vitest.log
-      - name: 换版本不就地覆盖（四条腿真跑：真目录→链接 · 旧目录不动 · 坏版本不回退错 · 回退不重装）
-        shell: bash
-        run: node scripts/smoke/self-update-links.mjs 2>&1 | tee self-update-links.log
-      - name: Renderer + seam tests
-        shell: bash
-        run: pnpm --filter @dsh-workbench/shared exec vitest run src/host/shell/__tests__/shell-render.test.ts src/host/seam/__tests__/seam.test.ts src/host/seam/__tests__/process.test.ts 2>&1 | tee renderer-seam.log
-      - name: Platform-sensitive unit tests（每个平台分支在本腿真跑）
-        shell: bash
-        run: |
-          set -o pipefail
-          run_tests() {
-            label=$1
-            shift
-            if ! "$@" > "$label.log" 2>&1; then
-              tail -n 40 "$label.log"
-              body=$(grep -aE 'FAIL |× |→ ' "$label.log" | head -n 25 || tail -n 12 "$label.log")
-              body=$(printf '%s\n' "$body" | sed -e 's/%/%25/g' -e 's/\r$//' | awk 'NF { printf "%s%%0A", $0 }')
-              echo "::error title=$label failed::${body:0:1800}"
-              exit 1
-            fi
-            tail -n 3 "$label.log"
-          }
-          run_tests platform-shared pnpm --filter @dsh-workbench/shared exec vitest run --testTimeout=20000 \
-            src/host/shell/__tests__/shell-text.test.ts \
-            src/host/runtime/__tests__/front-app.test.ts \
-            src/host/runtime/__tests__/env-policy.test.ts
-          run_tests platform-probe pnpm --filter @dsh-workbench/adapter-probe exec vitest run --testTimeout=20000 \
-            src/install/__tests__/install-smoke.test.ts \
-            src/preflight/__tests__/preflight-route.test.ts \
-            src/preflight/__tests__/preflight.test.ts \
-            src/probe/__tests__/probe-units.test.ts \
-            src/runtime/__tests__/browser-wake.test.ts \
-            src/runtime/__tests__/platform.test.ts \
-            src/toolchain/__tests__/runtime-seed.test.ts \
-            src/toolchain/__tests__/toolchain.test.ts
-          run_tests platform-runtime pnpm --filter @dsh-workbench/adapter-runtime exec vitest run --testTimeout=20000 \
-            src/cli/__tests__/command.test.ts \
-            src/cli/__tests__/opencli-runtime.test.ts \
-            src/cli/__tests__/opencli-window.test.ts \
-            src/cli/__tests__/opencli.test.ts \
-            src/data/__tests__/index.test.ts
-          run_tests platform-core pnpm --filter @dsh-workbench/core exec vitest run --testTimeout=20000 \
-            src/shared/api/host/__tests__/git-process.test.ts \
-            src/shared/api/platform/__tests__/client.test.ts
-      - name: Front app smoke（真开一个窗口：前台是谁、能不能带回、找不到不假装成功）
-        if: runner.os != 'Linux'
-        shell: bash
-        run: node scripts/smoke/front-app.mjs 2>&1 | tee front-app.log
       - name: Front app deps（Xvfb + openbox + xterm + xdotool）
         if: runner.os == 'Linux'
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends xvfb openbox xterm xdotool
-      - name: Front app smoke（Linux：无头 X 里真开一个 xterm）
+      - name: Smoke（Linux：无头 X + 目录发现）
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          set -o pipefail
           Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
           sleep 2
           export DISPLAY=:99
           openbox >/dev/null 2>&1 &
           sleep 2
-          if ! node scripts/smoke/front-app.mjs 2>&1 | tee front-app.log; then
-            body=$(grep -aE '❌|没过' front-app.log | head -n 10 | sed -e 's/%/%25/g' | awk 'NF { printf "%s%%0A", $0 }')
-            echo "::error title=front app smoke failed::${body:0:1800}"
-            exit 1
-          fi
-      - name: Capture controller tests
+          node scripts/smoke/index.mjs
+      - name: Smoke（目录发现）
+        if: runner.os != 'Linux'
         shell: bash
-        run: pnpm --filter @dsh-workbench/core exec vitest run src/modules/panels/model/__tests__/diy-record-live.test.ts 2>&1 | tee capture.log
-      - name: Browser read tests
+        run: node scripts/smoke/index.mjs
+      - name: 平台敏感单测（platform-ci.json 驱动，每个平台分支在本腿真跑）
         shell: bash
-        run: pnpm --filter @dsh-workbench/adapter-runtime exec vitest run src/browser/__tests__/browser-read.test.ts 2>&1 | tee browser-read.log
+        run: node scripts/ci/platform-tests.mjs
       - name: Selfcheck (core)
         if: runner.os != 'Windows'
         shell: bash
@@ -191,13 +87,12 @@ jobs:
           fi
           tail -n 3 selfcheck.log
 
-      - name: Selfcheck (core, 执行层那几条)
+      - name: Selfcheck (core, Windows 执行层判据)
         if: runner.os == 'Windows'
         shell: bash
         run: |
           set -o pipefail
-          only='起 shell 的写法|POSIX-only|执行缝只有一条路|每次执行缝调用都声明写入域|沙箱拒绝不被吞|起进程只有一个入口|宿主能力只在宿主接线里打开|宿主文件写只有一个入口|受控 env 只在 env-policy|跨平台调用点'
-          if ! node packages/core/scripts/selfcheck/index.mjs --only "$only" > selfcheck.log 2>&1; then
+          if ! node packages/core/scripts/selfcheck/index.mjs --tag win32 > selfcheck.log 2>&1; then
             tail -n 25 selfcheck.log
             body=$(grep -aE '❌|通过 —— 失败' selfcheck.log || tail -n 8 selfcheck.log)
             body=$(printf '%s\n' "$body" | sed -e 's/%/%25/g' -e 's/\r$//' | awk 'NF { printf "%s%%0A", $0 }')

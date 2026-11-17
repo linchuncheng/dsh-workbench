@@ -1,4 +1,5 @@
 import { sweepProbes } from '../../../../scripts/selfcheck-sweep.mjs';
+import { reportAndExit } from '../../../../scripts/selfcheck-report.mjs';
 import { readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -93,9 +94,4 @@ for (const module of MODULES) {
   }
 }
 
-const failed = results.filter((one) => !one.passed);
-console.log(
-  `\n${results.length - failed.length}/${results.length} 通过` +
-    (failed.length ? ` —— 失败：${failed.map((one) => one.name).join('、')}` : ''),
-);
-process.exit(failed.length === 0 ? 0 : 1);
+reportAndExit(results);

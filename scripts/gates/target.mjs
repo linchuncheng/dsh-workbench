@@ -615,6 +615,7 @@ const GATES = [
   {
     id: 'DOC-1',
     title: 'ARCHITECTURE roles 由 config 渲染',
+    tags: ['docs'],
     run() {
       const text = read(ARCHITECTURE);
       const ok = text.includes('arch-guard:begin roles') && text.includes('arch-guard:end roles');
@@ -627,6 +628,7 @@ const GATES = [
   {
     id: 'DOC-2',
     title: 'CHECKS 元数据 + --list',
+    tags: ['docs'],
     run() {
       const findings = checksMetadataFindings(read(join(MODULE_TOOLS_SRC, 'check.mjs')));
       return findings.length === 0 ? pass('元数据可生成文档') : fail(findings);
@@ -638,6 +640,7 @@ const GATES = [
   {
     id: 'DOC-3',
     title: '第一方文档的链接 / 锚点 / §N 引用',
+    tags: ['docs'],
     run() {
       const files = firstPartyDocs();
       const findings = [...missingDocLinksOf(files), ...referenceFindingsOf(files)];
@@ -1113,10 +1116,20 @@ function main() {
     process.exit(selfTest() ? 0 : 1);
   }
   const only = args.find((arg) => arg.startsWith('--only='))?.slice('--only='.length);
+  const tags = args
+    .filter((arg) => arg.startsWith('--tag='))
+    .flatMap((arg) => arg.slice('--tag='.length).split(','))
+    .map((tag) => tag.trim())
+    .filter((tag) => tag !== '');
   const failOnRed = args.includes('--fail-on-red');
-  const selected = only === undefined ? GATES : GATES.filter((gate) => gate.id === only);
+  const selected =
+    only !== undefined
+      ? GATES.filter((gate) => gate.id === only)
+      : tags.length > 0
+        ? GATES.filter((gate) => (gate.tags ?? []).some((tag) => tags.includes(tag)))
+        : GATES;
   if (selected.length === 0) {
-    console.error(`不认识的门禁：${only}`);
+    console.error(`不认识的门禁：${only ?? tags.join(',')}`);
     process.exit(2);
   }
 

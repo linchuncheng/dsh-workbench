@@ -4,10 +4,11 @@ import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { distModule, distTag, plantCopiedVersion } from './self-update-version-tree.mjs';
+import { FIXTURE } from './fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const CORE = '@dsh-workbench/core';
-const DEFAULT_FROM = '1.2.3-beta.4';
+const DEFAULT_FROM = FIXTURE.updateFrom;
 
 function out(line) {
   process.stdout.write(`${line}\n`);

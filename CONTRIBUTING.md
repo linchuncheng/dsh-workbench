@@ -12,8 +12,8 @@ map and the six hard constraints.
 
 ## Prerequisites
 
-- Node.js 22+
-- pnpm 10 (`packageManager` in the root `package.json`)
+- Node.js 22+ (CI uses the version in `.nvmrc`)
+- pnpm 10 (`packageManager` in the root `package.json`; CI reads it, so the version lives there only)
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) on `PATH`
   and at least one `dsh web` run, for the runtime/integration checks
 - macOS, Linux or Windows; the shell is developed primarily on macOS
@@ -136,8 +136,8 @@ the scan surface in `.jscpd.json` or after upgrading jscpd across a major versio
 
 GitHub Actions runs three workflows:
 
-- `.github/workflows/docs.yml` (ubuntu, pull requests and pushes to `main`): `pnpm run check:docs`,
-  the `DOC-3` link/§N gate, and `pnpm run lint`.
+- `.github/workflows/docs.yml` (ubuntu, pull requests and pushes to `main`): `pnpm run check:docs:strict`
+  — `check:docs` plus every gate tagged `docs` — and `pnpm run lint`.
 - `.github/workflows/desktop-smoke.yml` (pushes to `main`, a weekly cron, and manual dispatch; macOS
   plus Windows Server 2022/2025 through `desktop-smoke-windows.yml`): installs the shipped Desktop
   build, installs the workbench from the plugin page, runs preflight, loads the opencli extension,
@@ -147,33 +147,38 @@ GitHub Actions runs three workflows:
   turns `includePrerelease` on, so the registry's newer published beta shows up as an update; the probe
   clicks 「更新」 on the workbench row, asserts the interface stays up and the row says the new version
   is ready while the running version is still the old one, then a restarted instance asserts the
-  running version is the new one. The self-update legs are hard-gated. A failing run publishes the page/log evidence to
-  a `desktop-ui-log-*` branch; a green one only uploads the run artifacts.
-- `.github/workflows/platform-smoke.yml` (pull requests and pushes to `main` touching `packages/**/src/**`
-  or `scripts/smoke/**`, a weekly cron, and manual dispatch; ubuntu, macOS, Windows Server 2022/2025):
-  runs `pnpm run smoke:platform` — argv quoting through the real shell, win32 quoting parsed by a real
-  `pwsh`, timeout kill, and append writes — plus the renderer/seam/capture/browser-read test files,
-  every cross-platform call site's unit tests, and the core selfcheck. This is the cross-platform
-  guard for the execution seam: keep it green when touching `shell-render`, the seam, or the DIY
-  capture layer.
+  running version is the new one. The self-update legs are hard-gated. The install target and the
+  self-update fixture live in `scripts/desktop-smoke/fixture.json`; both OS legs load the same file.
+  A failing run publishes the page/log evidence to a `desktop-ui-log-*` branch; a green one only
+  uploads the run artifacts.
+- `.github/workflows/platform-smoke.yml` (pull requests and pushes to `main` except markdown-only and
+  docs-site-only changes, a weekly cron, and manual dispatch; ubuntu, macOS, Windows Server 2022/2025):
+  runs `scripts/smoke/index.mjs` — every `scripts/smoke/*.mjs` is discovered by directory, so a new
+  smoke script needs no workflow edit — plus `scripts/ci/platform-tests.mjs`, which derives the
+  platform-sensitive vitest invocations from the manifest, and the core selfcheck. Windows runs only
+  the selfcheck checks tagged `win32`. This is the cross-platform guard for the execution seam: keep
+  it green when touching `shell-render`, the seam, or the DIY capture layer.
 
 ### Cross-platform call sites
 
 A cross-platform call site is code that reads the host OS directly (`process.platform`, `hostOs`,
 an OS literal) or invokes an OS-native command. Every such file is listed in
-`packages/core/scripts/selfcheck/platform-ci.json` with the OSes it branches on and the test that
-covers it. The test has to run in a CI leg for each of those OSes: the full gate covers linux and
-macOS, and `platform-smoke` runs the platform-sensitive unit tests on all four legs.
+`packages/core/scripts/selfcheck/platform-ci.json` under `sites`, with the OSes it branches on and
+the test that covers it. Tests that are platform-sensitive without belonging to a single call site
+are listed under `suites`. `scripts/ci/platform-tests.mjs` reads that manifest, groups the tests by
+package and runs them on every leg, so adding a platform branch or test edits the manifest rather
+than the workflow.
 
-The `selfcheck` judge 「跨平台调用点」 checks the manifest against the source, the test files, and
-the workflow matrix and commands. It also checks that every `scripts/smoke/*.mjs` is run by
-`platform-smoke` (or imported by one that is). Adding a platform branch without a manifest entry,
-or a test that no CI leg runs, fails the judge. The scan covers every package's `src`, plus the
-`scripts` and `bin` entries that ship through `files`; development-only scripts are out of scope.
-Run it alone with:
+The `selfcheck` judge 「跨平台调用点」 checks the manifest against the source, the test files, the
+workflow matrix and that the runner runs on every OS leg. It also checks that
+`scripts/smoke/index.mjs` is invoked by `platform-smoke`, so a script added to that directory is
+picked up without touching CI. Adding a platform branch without a manifest entry, or a test that no
+CI leg runs, fails the judge. The scan covers every package's `src`, plus the `scripts` and `bin`
+entries that ship through `files`; development-only scripts are out of scope. Run it alone with:
 
 ```bash
 node packages/core/scripts/selfcheck/index.mjs --only '跨平台调用点'
+node packages/core/scripts/selfcheck/index.mjs --tag win32
 ```
 
 The full `pnpm run check` is still the release gate and is expected before pushing. CI runs the

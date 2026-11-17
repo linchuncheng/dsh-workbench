@@ -34,25 +34,15 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 25
     env:
-      HUSKY: 0
       DESKTOP_SMOKE_OS: mac
-      DESKTOP_SMOKE_MARKET: https://github.com/novaeth/dsh-workbench-market.git
-      DESKTOP_SMOKE_MODULE: '@dsh-workbench/module-hello'
-      DESKTOP_SMOKE_PLUGIN: opencli-plugin-hello
-      DESKTOP_SMOKE_UPDATE_FROM: 1.2.3-beta.4
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.32.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install build deps (immutable)
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
+      - name: Load desktop smoke fixture
+        shell: bash
+        run: node scripts/desktop-smoke/fixture-env.mjs >> "$GITHUB_ENV"
       - name: Build local workbench (except docs)
-        run: pnpm --filter "./packages/*" --filter "!@dsh-workbench/docs" --if-present run build
+        run: pnpm run build:libs
       - name: Install Desktop
         shell: bash
         run: |
@@ -186,56 +176,53 @@ jobs:
       - name: Assert opencli installed
         shell: bash
         run: |
-          root="$HOME/.dsh/workbench/opencli"
-          manifest="$root/toolchain/node_modules/@jackwener/opencli/package.json"
-          if [ ! -f "$manifest" ]; then
-            echo "opencli missing: $manifest"
+          if [ -z "${DESKTOP_SMOKE_OPENCLI:-}" ]; then
+            echo '::error title=opencli bin missing::prepare-browser 没导出 DESKTOP_SMOKE_OPENCLI'
             exit 1
           fi
-          node -e "const p=require('$manifest'); console.log('opencli', p.version)"
-          if [ ! -x "$root/bin/opencli" ]; then
-            echo "opencli bin missing: $root/bin/opencli"
+          if [ ! -x "$DESKTOP_SMOKE_OPENCLI" ]; then
+            echo "::error title=opencli bin missing::opencli bin 不在或不可执行：$DESKTOP_SMOKE_OPENCLI"
             exit 1
           fi
-          "$root/bin/opencli" --version
+          "$DESKTOP_SMOKE_OPENCLI" --version
       - name: Assert module installed
         shell: bash
         run: |
+          export SMOKE_MANIFEST="$HOME/.dsh/profiles/desktop/package.json"
           node -e "
           const fs = require('node:fs');
-          const manifest = JSON.parse(fs.readFileSync(process.env.HOME + '/.dsh/profiles/desktop/package.json', 'utf8'));
-          const name = '@dsh-workbench/module-hello';
+          const manifest = JSON.parse(fs.readFileSync(process.env.SMOKE_MANIFEST, 'utf8'));
+          const name = process.env.DESKTOP_SMOKE_MODULE;
           const spec = (manifest.dependencies ?? {})[name];
           const bundles = (manifest.dsh && manifest.dsh.profile && manifest.dsh.profile.bundles) || [];
-          if (spec === undefined && !bundles.includes(name)) throw new Error('module-hello 没进 profile');
-          console.log('module-hello', spec ?? 'bundle');
+          if (spec === undefined && !bundles.includes(name)) throw new Error(name + ' 没进 profile');
+          console.log(name, spec ?? 'bundle');
           "
       - name: Assert opencli plugin installed
         shell: bash
         run: |
-          if [ -z "$DESKTOP_SMOKE_PLUGIN" ]; then
+          if [ -z "${DESKTOP_SMOKE_PLUGIN:-}" ]; then
             echo '::error title=plugin spec missing::DESKTOP_SMOKE_PLUGIN is empty'
             exit 1
           fi
-          root="$HOME/.dsh/workbench/opencli"
-          plugin_root="$root/plugins-npm/node_modules/$DESKTOP_SMOKE_PLUGIN"
-          if [ ! -d "$plugin_root" ]; then
-            echo "::error title=plugin dir missing::opencli plugin dir missing: $plugin_root"
+          if [ -z "${DESKTOP_SMOKE_OPENCLI:-}" ]; then
+            echo '::error title=opencli bin missing::prepare-browser 没导出 DESKTOP_SMOKE_OPENCLI'
             exit 1
           fi
-          if ! list=$("$root/bin/opencli" plugin list 2>&1); then
+          plugin_id=$(node -p "require('./scripts/desktop-smoke/plugins/' + process.env.DESKTOP_SMOKE_PLUGIN + '/opencli-plugin.json').name")
+          if ! list=$("$DESKTOP_SMOKE_OPENCLI" plugin list 2>&1); then
             body=$(printf '%s\n' "$list" | sed -e 's/%/%25/g' | tail -n 30 | awk 'NF { printf "%s%%0A", $0 }')
             echo "::error title=plugin list failed::${body:0:1400}"
             exit 1
           fi
           printf '%s\n' "$list"
-          if ! printf '%s' "$list" | node -e "
+          if ! printf '%s' "$list" | SMOKE_PLUGIN_ID="$plugin_id" node -e "
             let raw = '';
             process.stdin.on('data', (chunk) => (raw += chunk)).on('end', () => {
               const parsed = JSON.parse(raw);
               const rows = Array.isArray(parsed) ? parsed : (parsed.data ?? []);
-              const hit = rows.some((one) => one && one.name === 'hello');
-              console.log(hit ? 'plugin hello 在列表里' : 'plugin list 里没有 hello');
+              const hit = rows.some((one) => one && one.name === process.env.SMOKE_PLUGIN_ID);
+              console.log(hit ? 'plugin ' + process.env.SMOKE_PLUGIN_ID + ' 在列表里' : 'plugin list 里没有 ' + process.env.SMOKE_PLUGIN_ID);
               process.exit(hit ? 0 : 1);
             });
           "; then
@@ -243,7 +230,7 @@ jobs:
             echo "::error title=plugin not listed::${body:0:1400}"
             exit 1
           fi
-          echo 'plugin hello @ present'
+          echo "plugin $plugin_id @ present"
       - name: Collect diagnostics
         if: always()
         continue-on-error: true

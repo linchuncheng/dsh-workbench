@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { join, relative } from 'node:path';
 import ts from 'typescript';
 
 import { REPO, read, walk } from '../lib.mjs';
@@ -7,7 +7,8 @@ import { REPO, read, walk } from '../lib.mjs';
 const WORKFLOW_DIR = join(REPO, '.github', 'workflows');
 const MANIFEST = join(REPO, 'packages', 'core', 'scripts', 'selfcheck', 'platform-ci.json');
 const PACKAGES_DIR = join(REPO, 'packages');
-const SMOKE_DIR = join(REPO, 'scripts', 'smoke');
+const PLATFORM_TEST_RUNNER = 'scripts/ci/platform-tests.mjs';
+const SMOKE_INDEX = 'scripts/smoke/index.mjs';
 const OS = ['darwin', 'win32', 'linux'];
 const OS_SET = new Set(OS);
 const CODE_EXT = /\.(?:ts|tsx|mjs|cjs|js)$/;
@@ -219,6 +220,7 @@ function jobCovers(job, testRel, pkgName) {
   const pkgRel = testRel.replace(/^packages\/[^/]+\//u, '');
   for (const command of job.commands) {
     if (command.includes(testRel) || command.includes(pkgRel)) return true;
+    if (command.includes(PLATFORM_TEST_RUNNER)) return true;
     if (fullSuiteOf(command, pkgName)) return true;
   }
   return false;
@@ -258,43 +260,11 @@ function smokeScriptFindings(workflowsList) {
   const missingOs = OS.filter((one) => !job.images.has(one));
   if (missingOs.length > 0) findings.push(`platform-smoke 少了 ${missingOs.join('、')} 腿`);
   const commands = job.commands.join('\n');
-  const files = existsSync(SMOKE_DIR)
-    ? readdirSync(SMOKE_DIR)
-        .filter((name) => name.endsWith('.mjs'))
-        .sort()
-    : [];
-  const referenced = new Set();
-  const pending = [];
-  for (const name of files) {
-    if (commands.includes(name)) {
-      referenced.add(name);
-      pending.push(name);
-    }
+  if (!commands.includes(SMOKE_INDEX)) {
+    findings.push(`${SMOKE_INDEX} 没被 platform-smoke 跑到：目录里新加的冒烟脚本不会被执行`);
   }
-  while (pending.length > 0) {
-    const name = pending.pop();
-    for (const imported of importsOfSmoke(name)) {
-      if (referenced.has(imported)) continue;
-      referenced.add(imported);
-      pending.push(imported);
-    }
-  }
-  for (const name of files) {
-    if (!referenced.has(name)) findings.push(`scripts/smoke/${name} 没被 platform-smoke 跑到（也没被跑到的那份 import）`);
-  }
+  if (!existsSync(join(REPO, SMOKE_INDEX))) findings.push(`${SMOKE_INDEX} 不存在：冒烟脚本没有入口`);
   return findings;
-}
-
-function importsOfSmoke(name) {
-  const file = join(SMOKE_DIR, name);
-  if (!existsSync(file)) return [];
-  const out = [];
-  for (const match of read(file).matchAll(/from\s+['"](\.[^'"]+)['"]/gu)) {
-    const target = resolve(dirname(file), match[1]);
-    const resolved = target.endsWith('.mjs') ? target : `${target}.mjs`;
-    if (existsSync(resolved)) out.push(relative(SMOKE_DIR, resolved).split('\\').join('/'));
-  }
-  return out;
 }
 
 function manifestFindings(sites, workflowsList) {
@@ -305,16 +275,17 @@ function manifestFindings(sites, workflowsList) {
   } catch (error) {
     return [`读不了清单 ${normal(relative(REPO, MANIFEST))}：${error instanceof Error ? error.message : String(error)}`];
   }
+  const declared = manifest.sites ?? {};
   for (const [rel, os] of sites) {
-    const entry = manifest[rel];
+    const entry = declared[rel];
     if (entry === undefined) {
       findings.push(`${rel} 是平台调用点，但清单里没有它`);
       continue;
     }
-    const declared = Array.isArray(entry.os) ? [...entry.os].sort() : [];
+    const declaredOs = Array.isArray(entry.os) ? [...entry.os].sort() : [];
     const found = [...os].sort();
-    if (declared.join(',') !== found.join(',')) {
-      findings.push(`${rel} 的平台分支变了：清单写 ${declared.join('+') || '空'}，源码是 ${found.join('+')}`);
+    if (declaredOs.join(',') !== found.join(',')) {
+      findings.push(`${rel} 的平台分支变了：清单写 ${declaredOs.join('+') || '空'}，源码是 ${found.join('+')}`);
     }
     const tests = Array.isArray(entry.tests) ? entry.tests : [];
     if (tests.length === 0) {
@@ -332,8 +303,30 @@ function manifestFindings(sites, workflowsList) {
       }
     }
   }
-  for (const rel of Object.keys(manifest)) {
+  for (const rel of Object.keys(declared)) {
     if (!sites.has(rel)) findings.push(`${rel} 在清单里，但已经不算平台调用点（或文件没了）`);
+  }
+  for (const [name, tests] of Object.entries(manifest.suites ?? {})) {
+    if (!Array.isArray(tests) || tests.length === 0) {
+      findings.push(`suites.${name} 是空的`);
+      continue;
+    }
+    for (const test of tests) {
+      if (!existsSync(join(REPO, test))) findings.push(`suites.${name} 登记的测试不存在：${test}`);
+    }
+  }
+  const runnerJobs = [];
+  for (const workflow of workflowsList) {
+    for (const job of workflow.jobs) {
+      if (job.commands.some((command) => command.includes(PLATFORM_TEST_RUNNER))) runnerJobs.push(job);
+    }
+  }
+  if (runnerJobs.length === 0) {
+    findings.push(`${PLATFORM_TEST_RUNNER} 没被任何 workflow 跑到：清单里的平台测试没有腿`);
+  } else {
+    for (const one of OS) {
+      if (!runnerJobs.some((job) => job.images.has(one))) findings.push(`${PLATFORM_TEST_RUNNER} 少了 ${one} 腿`);
+    }
   }
   return findings;
 }
@@ -341,6 +334,7 @@ function manifestFindings(sites, workflowsList) {
 export const checks = [
   {
     title: TITLE,
+    tags: ['win32'],
     run(_ctx, report) {
       const workflowsList = workflows();
       const sites = platformSites();
@@ -369,13 +363,25 @@ export const checks = [
         job.images.has('win32') &&
         jobCovers(job, 'packages/shared/src/host/shell/__tests__/shell-text.test.ts', '@dsh-workbench/shared') &&
         !jobCovers(job, 'packages/shared/src/host/seam/__tests__/process.test.ts', '@dsh-workbench/shared');
-      const ok = findings.length === 0 && negative && workflowNegative;
+      const runnerJob = jobsOf(
+        [
+          'jobs:',
+          '  smoke:',
+          '    runs-on: ubuntu-latest',
+          '    steps:',
+          `      - run: node ${PLATFORM_TEST_RUNNER}`,
+        ].join('\n'),
+      )[0];
+      const runnerNegative =
+        runnerJob !== undefined &&
+        jobCovers(runnerJob, 'packages/shared/src/host/shell/__tests__/shell-text.test.ts', '@dsh-workbench/shared');
+      const ok = findings.length === 0 && negative && workflowNegative && runnerNegative;
       report(
         TITLE,
         ok,
         ok
-          ? `${sites.size} 个平台调用点都在清单里，测试在对应 OS 的 CI 腿上跑；平台冒烟脚本也都在 platform-smoke 里（判据负例也过）`
-          : !negative || !workflowNegative
+          ? `${sites.size} 个平台调用点都在清单里；平台测试由 ${PLATFORM_TEST_RUNNER} 按清单跑在 ${OS.join('/')} 腿上；冒烟脚本由 ${SMOKE_INDEX} 目录发现（判据负例也过）`
+          : !negative || !workflowNegative || !runnerNegative
             ? '判据自己的负例没过：扫描或 workflow 解析不可信'
             : findings.join(' · '),
       );

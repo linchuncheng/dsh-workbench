@@ -19,25 +19,15 @@ jobs:
     runs-on: ${{ inputs.image }}
     timeout-minutes: 25
     env:
-      HUSKY: 0
       DESKTOP_SMOKE_OS: ${{ inputs.label }}
-      DESKTOP_SMOKE_MARKET: https://github.com/novaeth/dsh-workbench-market.git
-      DESKTOP_SMOKE_MODULE: '@dsh-workbench/module-hello'
-      DESKTOP_SMOKE_PLUGIN: opencli-plugin-hello
-      DESKTOP_SMOKE_UPDATE_FROM: 1.2.3-beta.4
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.32.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Install build deps (immutable)
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
+      - name: Load desktop smoke fixture
+        shell: bash
+        run: node scripts/desktop-smoke/fixture-env.mjs >> "$GITHUB_ENV"
       - name: Build local workbench (except docs)
-        run: pnpm --filter "./packages/*" --filter "!@dsh-workbench/docs" --if-present run build
+        run: pnpm run build:libs
       - name: Install Desktop
         shell: pwsh
         run: |
@@ -188,18 +178,13 @@ jobs:
       - name: Assert opencli installed
         shell: pwsh
         run: |
-          $root = "$env:USERPROFILE\.dsh\workbench\opencli"
-          $manifest = Join-Path $root 'toolchain\node_modules\@jackwener\opencli\package.json'
-          $bin = Join-Path $root 'bin\opencli.cmd'
+          if ([string]::IsNullOrEmpty($env:DESKTOP_SMOKE_OPENCLI)) { throw 'prepare-browser 没导出 DESKTOP_SMOKE_OPENCLI' }
+          $bin = $env:DESKTOP_SMOKE_OPENCLI
           $deadline = (Get-Date).AddSeconds(180)
-          while (!((Test-Path $manifest) -and (Test-Path $bin))) {
-            if ((Get-Date) -gt $deadline) {
-              throw "opencli missing after 180s: manifest=$(Test-Path $manifest) bin=$(Test-Path $bin)"
-            }
+          while (!(Test-Path $bin)) {
+            if ((Get-Date) -gt $deadline) { throw "opencli bin missing after 180s: $bin" }
             Start-Sleep -Seconds 5
           }
-          $version = (Get-Content $manifest -Raw | ConvertFrom-Json).version
-          "opencli $version"
           & $bin --version
           if ($LASTEXITCODE -ne 0) { throw "opencli --version failed: $LASTEXITCODE" }
       - name: Assert module installed
@@ -209,24 +194,19 @@ jobs:
           node -e "
           const fs = require('node:fs');
           const manifest = JSON.parse(fs.readFileSync(process.env.SMOKE_MANIFEST, 'utf8'));
-          const name = '@dsh-workbench/module-hello';
+          const name = process.env.DESKTOP_SMOKE_MODULE;
           const spec = (manifest.dependencies ?? {})[name];
           const bundles = (manifest.dsh && manifest.dsh.profile && manifest.dsh.profile.bundles) || [];
-          if (spec === undefined && !bundles.includes(name)) throw new Error('module-hello 没进 profile');
-          console.log('module-hello', spec ?? 'bundle');
+          if (spec === undefined && !bundles.includes(name)) throw new Error(name + ' 没进 profile');
+          console.log(name, spec ?? 'bundle');
           "
       - name: Assert opencli plugin installed
         shell: pwsh
         run: |
           if ([string]::IsNullOrEmpty($env:DESKTOP_SMOKE_PLUGIN)) { throw 'DESKTOP_SMOKE_PLUGIN is empty' }
-          $root = "$env:USERPROFILE\.dsh\workbench\opencli"
-          $pluginRoot = Join-Path $root "plugins-npm\node_modules\$env:DESKTOP_SMOKE_PLUGIN"
-          if (-not (Test-Path -LiteralPath $pluginRoot -PathType Container)) {
-            Write-Host "::error title=plugin dir missing::opencli plugin dir missing: $pluginRoot"
-            throw "plugin dir missing: $pluginRoot"
-          }
-          $bin = Join-Path $root 'bin\opencli.cmd'
-          $raw = (& $bin plugin list 2>&1 | Out-String)
+          if ([string]::IsNullOrEmpty($env:DESKTOP_SMOKE_OPENCLI)) { throw 'prepare-browser 没导出 DESKTOP_SMOKE_OPENCLI' }
+          $pluginId = (Get-Content "scripts/desktop-smoke/plugins/$env:DESKTOP_SMOKE_PLUGIN/opencli-plugin.json" -Raw | ConvertFrom-Json).name
+          $raw = (& $env:DESKTOP_SMOKE_OPENCLI plugin list 2>&1 | Out-String)
           Write-Host $raw
           if ($LASTEXITCODE -ne 0) {
             $body = ((($raw -split "`r?`n") | Where-Object { $_ -ne '' } | Select-Object -Last 30 | ForEach-Object { ($_ -replace '%', '%25') + '%0A' }) -join '')
@@ -235,12 +215,12 @@ jobs:
           }
           $parsed = $raw | ConvertFrom-Json
           $rows = if ($parsed -is [array]) { $parsed } elseif ($null -ne $parsed.data) { $parsed.data } else { @() }
-          if (-not ($rows | Where-Object { $_.name -eq 'hello' })) {
+          if (-not ($rows | Where-Object { $_.name -eq $pluginId })) {
             $body = ((($raw -split "`r?`n") | Where-Object { $_ -ne '' } | Select-Object -Last 30 | ForEach-Object { ($_ -replace '%', '%25') + '%0A' }) -join '')
             Write-Host "::error title=plugin not listed::$body"
-            throw 'plugin hello not listed'
+            throw "plugin $pluginId not listed"
           }
-          'plugin hello @ present'
+          "plugin $pluginId @ present"
       - name: Collect diagnostics
         if: always()
         continue-on-error: true

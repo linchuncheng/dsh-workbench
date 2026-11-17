@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --filter \"./packages/*\" --if-present run build",
+    "build:libs": "pnpm --filter \"./packages/*\" --filter \"!@dsh-workbench/docs\" --if-present run build",
     "build:host": "pnpm --filter \"./packages/*\" --if-present run build:host",
     "build:client": "pnpm --filter \"./packages/*\" --if-present run build:client",
     "typecheck": "pnpm --filter \"./packages/*\" --if-present run typecheck",
@@ -20,6 +21,7 @@
     "duplication:accept": "node scripts/check-duplication.mjs --accept",
     "duplication:report": "node scripts/check-duplication.mjs --report",
     "check:docs": "arch-guard --config packages/core/arch.config.mjs --check-docs && node packages/module-tools/scripts/check-docs.mjs && node scripts/doc-facts/index.mjs --check",
+    "check:docs:strict": "pnpm run check:docs && node scripts/gates/target.mjs --tag=docs --fail-on-red",
     "check:copy": "node scripts/check-copy.mjs",
     "check:copy:strict": "node scripts/check-copy.mjs --fail-on-red",
     "check:doc-facts": "node scripts/doc-facts/index.mjs --check",

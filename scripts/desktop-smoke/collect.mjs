@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { join } from 'node:path';
 import { homedir, release, version as osVersion } from 'node:os';
 import { execa } from 'execa';
+import { FIXTURE } from './fixture.mjs';
 
 const osLabel = process.env.DESKTOP_SMOKE_OS ?? (process.platform === 'win32' ? 'win' : 'mac');
 const prefix = `desktop-${osLabel}`;
@@ -10,6 +11,7 @@ const home = process.env.USERPROFILE || homedir();
 const dshHome = process.env.DSH_HOME?.trim() || join(home, '.dsh');
 const profileDir = join(dshHome, 'profiles', 'desktop');
 const workbenchHome = process.env.DSH_WORKBENCH_HOME?.trim() || join(dshHome, 'workbench');
+const moduleShortName = FIXTURE.module.split('/').pop();
 const probeLog = join(cwd, `${prefix}-probe.log`);
 const verifyLog = join(cwd, `${prefix}-after-restart-probe.log`);
 const report = join(cwd, `${prefix}-diagnostics.txt`);
@@ -126,19 +128,12 @@ function hostLogs() {
   return found;
 }
 
-function dependencyOf(manifestFile) {
+function dependencyStateOf(manifestFile, name) {
   if (!existsSync(manifestFile)) return { installed: false, spec: '' };
   const parsed = safe(() => JSON.parse(readFileSync(manifestFile, 'utf8')), {});
-  const spec = parsed?.dependencies?.['@dsh-workbench/core'];
-  return { installed: typeof spec === 'string', spec: typeof spec === 'string' ? spec : '' };
-}
-
-function moduleStateOf(manifestFile) {
-  if (!existsSync(manifestFile)) return { installed: false, spec: '' };
-  const parsed = safe(() => JSON.parse(readFileSync(manifestFile, 'utf8')), {});
-  const spec = parsed?.dependencies?.['@dsh-workbench/module-hello'];
+  const spec = parsed?.dependencies?.[name];
   const bundles = parsed?.dsh?.profile?.bundles ?? [];
-  const listed = Array.isArray(bundles) && bundles.includes('@dsh-workbench/module-hello');
+  const listed = Array.isArray(bundles) && bundles.includes(name);
   const installed = typeof spec === 'string' || listed;
   return { installed, spec: typeof spec === 'string' ? spec : listed ? 'bundle' : '' };
 }
@@ -203,11 +198,13 @@ async function main() {
   }
 
   const manifest = join(profileDir, 'package.json');
-  const dependency = dependencyOf(manifest);
-  const moduleState = moduleStateOf(manifest);
-  const opencliManifest = join(workbenchHome, 'opencli', 'toolchain', 'node_modules', '@jackwener', 'opencli', 'package.json');
+  const dependency = dependencyStateOf(manifest, '@dsh-workbench/core');
+  const moduleState = dependencyStateOf(manifest, FIXTURE.module);
+  const opencliBin =
+    process.env.DESKTOP_SMOKE_OPENCLI ??
+    join(workbenchHome, 'opencli', 'bin', process.platform === 'win32' ? 'opencli.cmd' : 'opencli');
   const marketListed = safe(
-    () => (/module-hello|Sample module/u.test(readFileSync(join(cwd, `${prefix}-market-body.txt`), 'utf8')) ? '是' : '否'),
+    () => (new RegExp(`${moduleShortName}|Sample module`, 'u').test(readFileSync(join(cwd, `${prefix}-market-body.txt`), 'utf8')) ? '是' : '否'),
     '否',
   );
   const marketInstalled = safe(
@@ -226,8 +223,8 @@ async function main() {
 
   section('checklist');
   push(`profile 里有 @dsh-workbench/core: ${dependency.installed ? `是（${dependency.spec}）` : '否'}`);
-  push(`profile 里有 @dsh-workbench/module-hello: ${moduleState.installed ? `是（${moduleState.spec}）` : '否'}`);
-  push(`opencli 装上了: ${existsSync(opencliManifest) ? '是' : '否'}（${opencliManifest}）`);
+  push(`profile 里有 ${FIXTURE.module}: ${moduleState.installed ? `是（${moduleState.spec}）` : '否'}`);
+  push(`opencli 装上了: ${opencliBin !== '' && existsSync(opencliBin) ? '是' : '否'}（${opencliBin || 'DESKTOP_SMOKE_OPENCLI 没导出'}）`);
   push(`市场索引列出模块: ${marketListed}`);
   push(`市场装上了模块: ${marketInstalled}`);
   push(`重启后看到了模块卡片: ${cardVisible}`);
@@ -300,7 +297,6 @@ async function main() {
   }
 
   section('opencli doctor');
-  const opencliBin = join(workbenchHome, 'opencli', 'bin', process.platform === 'win32' ? 'opencli.cmd' : 'opencli');
   push(`bin: ${opencliBin}（${existsSync(opencliBin) ? '在' : '不在'}）`);
   if (existsSync(opencliBin)) {
     const doctor =
@@ -403,9 +399,9 @@ async function main() {
     `- 探针总结：\`${lastLine(/SMOKE_SUMMARY/u)}\``,
     ...(knownUpstreamGap() === undefined ? [] : [`- 已知上游：${knownUpstreamGap()}`]),
     `- 第一处错误：\`${lastLine(/FATAL|Error:|FAIL /u) || '（没有）'}\``,
-    `- profile 里有 core：${dependency.installed ? '是' : '否'} · module-hello：${moduleState.installed ? '是' : '否'}`,
+    `- profile 里有 core：${dependency.installed ? '是' : '否'} · ${moduleShortName}：${moduleState.installed ? '是' : '否'}`,
     `- 市场列出模块：${marketListed} · 装了模块：${marketInstalled} · 卡片可见：${cardVisible}`,
-    `- opencli 装上了：${existsSync(opencliManifest) ? '是' : '否'}`,
+    `- opencli 装上了：${opencliBin !== '' && existsSync(opencliBin) ? '是' : '否'}`,
     `- 现场：\`${prefix}-probe.log\` · \`${prefix}-diagnostics.txt\` · ${shots === '' ? '（没有截图）' : shots}`,
     `- 日志分支：\`desktop-ui-log-${osLabel}-${process.env.GITHUB_RUN_ID ?? 'local'}\``,
   ];

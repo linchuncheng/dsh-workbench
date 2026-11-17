@@ -233,6 +233,16 @@ function reportOne(report, title, gaps, okText) {
   report(title, gaps.length === 0, gaps.length === 0 ? okText : gaps.slice(0, 6).join('、'));
 }
 
+const WIN32_TITLES = [
+  RAW_TITLE,
+  INTENT_TITLE,
+  SWALLOW_TITLE,
+  EXEC_TITLE,
+  HOST_TITLE,
+  WRITE_TITLE,
+  ENV_TITLE,
+];
+
 export const checks = [
   {
     title: RAW_TITLE,
@@ -294,4 +304,4 @@ export const checks = [
       reportOne(report, PATCH_TITLE, patchParseHits(), 'patch 解析只住在 patch-blocks.ts，patch / config-sync 只是用');
     },
   },
-];
+].map((check) => (WIN32_TITLES.includes(check.title) ? { ...check, tags: ['win32'] } : check));

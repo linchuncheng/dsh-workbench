@@ -241,6 +241,7 @@ export const checks = [
   },
   {
     title: '★ 起 shell 的写法只有一处：pwsh / bash 的启动参数由渲染层给',
+    tags: ['win32'],
     run(_ctx, report) {
       const hits = [];
       for (const { rel, source } of packageSources()) {
@@ -261,6 +262,7 @@ export const checks = [
   },
   {
     title: '★ DIY 录制这一层没有 POSIX-only 的壳命令（Windows 上没有那些东西）',
+    tags: ['win32'],
     run(_ctx, report) {
       const forbidden = [/\bpkill\b/, /\bkill -0\b/, /\bwc -l\b/, /\btail -n\b/, /\bgrep -m\b/, /\btr -d\b/, /\/dev\/null\b/];
       const hits = [];
@@ -282,6 +284,7 @@ export const checks = [
   },
   {
     title: '★ 安装计划里没有 POSIX-only 编排（Windows 上没有 rm -rf / ln -s / cp -R，pwsh 5.1 也不认 ||）',
+    tags: ['win32'],
     run(_ctx, report) {
       const hits = [];
       let scanned = 0;

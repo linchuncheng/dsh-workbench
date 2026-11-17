@@ -20,14 +20,6 @@ jobs:
       HUSKY: 0
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.32.1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run check:docs
-      - run: node scripts/gates/target.mjs --only=DOC-3 --fail-on-red
+      - uses: ./.github/actions/setup
+      - run: pnpm run check:docs:strict
       - run: pnpm run lint

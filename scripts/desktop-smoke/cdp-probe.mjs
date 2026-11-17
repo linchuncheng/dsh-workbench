@@ -1,4 +1,5 @@
 import { copyOf, copyPattern, copyStemPattern } from './smoke-copy.mjs';
+import { FIXTURE } from './fixture.mjs';
 import fs from 'node:fs';
 import { execa } from 'execa';
 import { delimiter, join } from 'node:path';
@@ -21,11 +22,11 @@ const addPluginFlagged = process.argv.some(
   (one) => one === '--add-plugin' || one.startsWith('--add-plugin='),
 );
 const addPluginSpec = (
-  flagValue('--add-plugin') || (addPluginFlagged ? (process.env.DESKTOP_SMOKE_PLUGIN ?? '') : '')
+  flagValue('--add-plugin') || (addPluginFlagged ? (process.env.DESKTOP_SMOKE_PLUGIN ?? FIXTURE.plugin) : '')
 ).trim();
 const workbenchSpec = process.env.DESKTOP_WORKBENCH_SPEC ?? '@dsh-workbench/core';
-const marketSource = process.env.DESKTOP_SMOKE_MARKET ?? 'https://github.com/novaeth/dsh-workbench-market.git';
-const moduleName = process.env.DESKTOP_SMOKE_MODULE ?? '@dsh-workbench/module-hello';
+const marketSource = process.env.DESKTOP_SMOKE_MARKET ?? FIXTURE.market;
+const moduleName = process.env.DESKTOP_SMOKE_MODULE ?? FIXTURE.module;
 const expectedRunningVersion = (process.env.DESKTOP_SMOKE_EXPECT_RUNNING_VERSION ?? '').trim();
 const deadlineAt = Date.now() + Number(process.env.DESKTOP_SMOKE_DEADLINE_MS ?? 720_000);
 const outDir = process.env.DESKTOP_SMOKE_OUT ?? process.cwd();
