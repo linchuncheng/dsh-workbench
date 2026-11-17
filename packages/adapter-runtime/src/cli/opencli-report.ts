@@ -1,8 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { OPENCLI_PIN, OPENCLI_PIN_ENV, checkVersionRange, runtimePinOf } from '@dsh-workbench/shared/host';
 import { toolchainOpencliDir, vendorPluginsDir } from '../foundation/paths.js';
+import { pluginPeerProblems, type PluginPeerProblem } from './plugin-peers.js';
+import { jsonAt as jsonOf, textOf } from './json-file.js';
 import { toolchainDir } from './opencli-runtime.js';
 
 export interface OpencliVersionReport {
@@ -11,26 +12,11 @@ export interface OpencliVersionReport {
   readonly channel?: string;
   readonly extension?: string;
   readonly peer: string;
+  readonly peerProblems: readonly PluginPeerProblem[];
   readonly compatible: boolean;
 }
 
 const CHANNEL_SOURCE = new URL('../../channel/opencli-plugin.json', import.meta.url);
-
-function textOf(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
-}
-
-function jsonOf(file: string): Readonly<Record<string, unknown>> | undefined {
-  if (!existsSync(file)) return undefined;
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
-    return typeof parsed === 'object' && parsed !== null
-      ? (parsed as Readonly<Record<string, unknown>>)
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 export function opencliChannelDir(): string {
   return join(vendorPluginsDir(), 'opencli-plugin-workbench');
@@ -50,13 +36,15 @@ export function opencliVersionReport(): OpencliVersionReport {
   const channel = textOf(jsonOf(join(opencliChannelDir(), 'opencli-plugin.json'))?.['version']);
   const extension = textOf(jsonOf(join(opencliExtensionDir(), 'manifest.json'))?.['version']);
   const peer = opencliPeerRange();
+  const peerProblems = pluginPeerProblems(pin);
   return {
     pin,
     ...(cli === undefined ? {} : { cli }),
     ...(channel === undefined ? {} : { channel }),
     ...(extension === undefined ? {} : { extension }),
     peer,
-    compatible: checkVersionRange(peer, pin) !== 'unsatisfied',
+    peerProblems,
+    compatible: checkVersionRange(peer, pin) !== 'unsatisfied' && peerProblems.length === 0,
   };
 }
 
@@ -68,6 +56,12 @@ export function opencliHandshakeNote(report: OpencliVersionReport): {
   readonly zh: string;
   readonly en: string;
 } {
+  if (report.peerProblems.length > 0) {
+    return {
+      zh: `${pluginRangesOf(report)}只适配别的运行时版本，本版是 ${report.pin} —— 升级这些插件，或换回兼容的运行时`,
+      en: `${pluginRangesOf(report)} only accept another runtime version; this build is ${report.pin} — upgrade those plugins, or switch back to a compatible runtime`,
+    };
+  }
   if (!report.compatible) {
     return {
       zh: `插件只认 ${report.peer}，这个版本用的是 ${report.pin} —— 换兼容的插件，或重装工作台`,
@@ -92,7 +86,22 @@ export function opencliHandshakeNote(report: OpencliVersionReport): {
   };
 }
 
+function pluginRangesOf(report: OpencliVersionReport): string {
+  const seen = new Map<string, string[]>();
+  for (const problem of report.peerProblems) {
+    const names = seen.get(problem.range) ?? [];
+    names.push(problem.name);
+    seen.set(problem.range, names);
+  }
+  return [...seen.entries()]
+    .map(([range, names]) => `${names.join('、')}（要 ${range}）`)
+    .join('；');
+}
+
 export function opencliHandshakeText(report: OpencliVersionReport): string {
+  if (report.peerProblems.length > 0) {
+    return `${pluginRangesOf(report)}不认本版的 ${report.pin}`;
+  }
   if (!report.compatible) {
     return `通道插件只接受 ${report.peer}，本版固定 ${report.pin}`;
   }

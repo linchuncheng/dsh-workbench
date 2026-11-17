@@ -89,3 +89,58 @@ describe('extensionStateOf：升级命令一律带引号', () => {
     expect(state.command).toBe("'opencli' plugin update 'inventory'");
   });
 });
+
+describe('extensionStateOf：模块声明的版本下限也要被判', () => {
+  const pinned = extensionNeedOf('inventory', { commands: ['envs'], version: '>=0.4.2' });
+
+  it('★ 装的是最新版、但低于声明下限 → unsatisfied（不是 ok，也不是 outdated）', () => {
+    const state = extensionStateOf({
+      need: pinned,
+      hit: { commands: ['envs'] },
+      command: 'opencli',
+      release: { installed: '0.4.0', latest: '0.4.0' },
+      sources: [],
+    });
+
+    expect(state.status).toBe('unsatisfied');
+    expect(state.detail).toContain('0.4.0');
+    expect(state.detail).toContain('>=0.4.2');
+  });
+
+  it('★ 低于下限、但源上有新版 → 仍然是 outdated（升级能修好，优先给升级）', () => {
+    const state = extensionStateOf({
+      need: pinned,
+      hit: { commands: ['envs'] },
+      command: 'opencli',
+      release: { installed: '0.4.0', latest: '0.5.0' },
+      sources: [],
+    });
+
+    expect(state.status).toBe('outdated');
+    expect(state.latest).toBe('0.5.0');
+  });
+
+  it('★ 达到下限 → ok（声明不额外加分）', () => {
+    const state = extensionStateOf({
+      need: pinned,
+      hit: { commands: ['envs'] },
+      command: 'opencli',
+      release: { installed: '0.4.5' },
+      sources: [],
+    });
+
+    expect(state.status).toBe('ok');
+  });
+
+  it('★ 没声明下限 → 照旧只看命令与新版', () => {
+    const state = extensionStateOf({
+      need: extensionNeedOf('inventory', { commands: ['envs'] }),
+      hit: { commands: ['envs'] },
+      command: 'opencli',
+      release: { installed: '0.0.1' },
+      sources: [],
+    });
+
+    expect(state.status).toBe('ok');
+  });
+});

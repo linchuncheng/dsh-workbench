@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, symlinkSync } from 'n
 import { tmpdir } from 'node:os';
 import { dirname, join, delimiter } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ensureLibsBinOnPath, ensureLibsOpencliPeer } from '../links.js';
+import { ensureLibsBinOnPath, ensureLibsOpencliPeer, ensureVendorOpencliPeer } from '../links.js';
 
 const LINK_TYPE = 'junction';
 
@@ -54,6 +54,34 @@ describe('ensureLibsOpencliPeer', () => {
     symlinkSync(other, link, LINK_TYPE);
 
     expect(ensureLibsOpencliPeer()).toBe(true);
+    expect(realpathSync(link).replaceAll('\\', '/')).toContain('toolchain/node_modules/@jackwener/opencli');
+  });
+});
+
+describe('ensureVendorOpencliPeer', () => {
+  it('★ 插件前缀也链到同一份运行时；重复调用不再动它', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wb-peer-'));
+    vi.stubEnv('DSH_WORKBENCH_HOME', root);
+    mkdirSync(join(root, 'opencli/toolchain/node_modules/@jackwener/opencli'), { recursive: true });
+
+    expect(ensureVendorOpencliPeer()).toBe(true);
+    const link = join(root, 'opencli/plugins-npm/node_modules/@jackwener/opencli');
+    expect(existsSync(link)).toBe(true);
+    expect(realpathSync(link).replaceAll('\\', '/')).toContain('toolchain/node_modules/@jackwener/opencli');
+    expect(ensureVendorOpencliPeer()).toBe(false);
+  });
+
+  it('★ 指向别处（旧版本留下的）→ 重指到现在的运行时那份', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wb-peer-'));
+    vi.stubEnv('DSH_WORKBENCH_HOME', root);
+    const link = join(root, 'opencli/plugins-npm/node_modules/@jackwener/opencli');
+    mkdirSync(dirname(link), { recursive: true });
+    mkdirSync(join(root, 'opencli/toolchain/node_modules/@jackwener/opencli'), { recursive: true });
+    const other = join(root, 'old-opencli');
+    mkdirSync(other, { recursive: true });
+    symlinkSync(other, link, LINK_TYPE);
+
+    expect(ensureVendorOpencliPeer()).toBe(true);
     expect(realpathSync(link).replaceAll('\\', '/')).toContain('toolchain/node_modules/@jackwener/opencli');
   });
 });

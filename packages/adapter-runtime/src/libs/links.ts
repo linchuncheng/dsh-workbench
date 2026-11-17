@@ -1,7 +1,13 @@
 import { existsSync, mkdirSync, realpathSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { linkDir } from '@dsh-workbench/shared/host';
-import { OPENCLI_NPM_PACKAGE, libsBinDir, libsPrefix, toolchainOpencliDir } from '../foundation/paths.js';
+import {
+  OPENCLI_NPM_PACKAGE,
+  libsBinDir,
+  libsPrefix,
+  toolchainOpencliDir,
+  vendorPluginsDir,
+} from '../foundation/paths.js';
 
 
 export function ensureLibsBinOnPath(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -20,8 +26,8 @@ function pointsAt(link: string, target: string): boolean {
   }
 }
 
-export function ensureLibsOpencliPeer(): boolean {
-  const link = join(libsPrefix(), 'node_modules', ...OPENCLI_NPM_PACKAGE.split('/'));
+function linkRuntimePeer(nodeModules: string): boolean {
+  const link = join(nodeModules, ...OPENCLI_NPM_PACKAGE.split('/'));
   const target = toolchainOpencliDir();
   if (!existsSync(target)) return false;
   if (pointsAt(link, target)) return false;
@@ -32,4 +38,12 @@ export function ensureLibsOpencliPeer(): boolean {
   } catch {
     return false;
   }
+}
+
+export function ensureLibsOpencliPeer(): boolean {
+  return linkRuntimePeer(join(libsPrefix(), 'node_modules'));
+}
+
+export function ensureVendorOpencliPeer(): boolean {
+  return linkRuntimePeer(vendorPluginsDir());
 }

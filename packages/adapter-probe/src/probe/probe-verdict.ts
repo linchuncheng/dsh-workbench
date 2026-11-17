@@ -9,7 +9,7 @@ import type {
   UnitCapability,
 } from '@dsh-workbench/shared/host';
 import { binInstallCommand } from '@dsh-workbench/adapter-runtime';
-import { needIdOf, quoteShellArg } from '@dsh-workbench/shared/host';
+import { checkVersionRange, needIdOf, quoteShellArg } from '@dsh-workbench/shared/host';
 import { resolvePluginSource } from '@dsh-workbench/adapter-supply';
 import { isNewerVersion } from '@dsh-workbench/adapter-profile';
 import { currentHostOs } from '../runtime/platform.js';
@@ -91,18 +91,27 @@ export function extensionStateOf(options: {
   const behind =
     release?.latest !== undefined && isNewerVersion(release.latest, release.installed);
   const outdated = missing.length > 0 || behind;
+  const declared = options.need.version;
+  const installed = release?.installed;
+  const unmet =
+    !outdated &&
+    declared !== undefined &&
+    installed !== undefined &&
+    checkVersionRange(declared, installed) === 'unsatisfied';
   const upgrade =
     behind && release?.latest !== undefined
       ? upgradeLine(options.need, options.command, release.latest, options.sources)
       : undefined;
   return {
     ...base,
-    status: outdated ? 'outdated' : 'ok',
+    status: outdated ? 'outdated' : unmet ? 'unsatisfied' : 'ok',
     detail: outdated
       ? missing.length > 0
         ? `${options.need.name} 缺 ${missing.length} 条命令：${missing.join('、')}`
         : `${options.need.name} 装的是 ${release?.installed ?? '未知'}，源上最新 ${release?.latest ?? '未知'}`
-      : `${options.need.name} 的命令都在`,
+      : unmet
+        ? `${options.need.name} 装的是 ${release?.installed ?? '未知'}，声明要 ${declared ?? ''}`
+        : `${options.need.name} 的命令都在`,
     ...(missing.length === 0 ? {} : { missing }),
     ...(release?.installed === undefined ? {} : { installed: release.installed }),
     ...(release?.latest === undefined ? {} : { latest: release.latest }),

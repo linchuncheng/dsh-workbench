@@ -7,6 +7,7 @@ import { backgroundLine, libsBinDir } from '@dsh-workbench/adapter-runtime';
 
 import {
   ensureLibsOpencliPeer,
+  ensureVendorOpencliPeer,
   opencliCommandOf,
   opencliHandshakeOk,
   opencliHandshakeNote,
@@ -166,6 +167,7 @@ export function createRuntimePort(): RuntimePort {
       const log = options.log;
       for (const file of seedRuntimeFiles({ root, home, packageRoot, log })) log(`自举写下 ${file}`);
       ensureLibsOpencliPeer();
+      ensureVendorOpencliPeer();
       for (const dir of prependRuntimePath(paths)) log(`PATH 前插 ${dir}`);
       void seedWorkbenchToolchain(root, log, seam).then(
         () => {
