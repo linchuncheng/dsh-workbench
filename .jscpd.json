@@ -1,5 +1,10 @@
 {
-  "format": ["typescript", "tsx", "javascript", "jsx"],
+  "format": [
+    "typescript",
+    "tsx",
+    "javascript",
+    "jsx"
+  ],
   "minLines": 5,
   "minTokens": 50,
   "ignore": [
@@ -18,5 +23,7 @@
   ],
   "baseline": ".jscpd-baseline.json",
   "failOnNewClones": 0,
-  "failOnEmpty": true
+  "failOnEmpty": true,
+  "ignoreIdentifiers": true,
+  "ignoreLiterals": true
 }

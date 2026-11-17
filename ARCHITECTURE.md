@@ -1106,6 +1106,10 @@ check:release-packages → check:release-artifacts
 出 `coverage/duplication/` 下的 HTML / JSON 全量报告。扫描面（`packages/` 与 `scripts/` 的
 TS / JS，不含测试与构建产物）在 `.jscpd.json`。
 
+覆盖两档克隆：**完全相同**（Type-1）与**改了名**（Type-2，`ignoreIdentifiers` + `ignoreLiterals`）。
+Type-2 不是全能的：一段整体改名、结构又短的代码可能漏过，所以它比只查 Type-1 强，但不是保证。
+Type-3（结构相似）与 Type-4（语义）没开门禁。
+
 目标门禁：
 
 ```bash

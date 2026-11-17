@@ -115,6 +115,8 @@ hooks for a one-off commit.
 `scripts/` (TypeScript / JavaScript; tests and build output excluded, see `.jscpd.json`) in
 baseline mode: the clones recorded in `.jscpd-baseline.json` are accepted, and anything
 outside the baseline fails the gate with the new clones printed as `file:line ~ file:line`.
+It catches both identical clones and renamed ones (`ignoreIdentifiers` + `ignoreLiterals`),
+which is not exhaustive: a short block whose names all differ can slip through.
 
 - Remove the duplication, or
 - accept it explicitly with `pnpm run duplication:accept` and commit the updated
