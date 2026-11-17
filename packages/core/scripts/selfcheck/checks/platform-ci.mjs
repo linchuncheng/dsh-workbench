@@ -375,13 +375,26 @@ export const checks = [
       const runnerNegative =
         runnerJob !== undefined &&
         jobCovers(runnerJob, 'packages/shared/src/host/shell/__tests__/shell-text.test.ts', '@dsh-workbench/shared');
-      const ok = findings.length === 0 && negative && workflowNegative && runnerNegative;
+      const crlfJob = jobsOf(
+        [
+          'jobs:',
+          '  smoke:',
+          '    runs-on: ubuntu-latest',
+          '    steps:',
+          `      - run: node ${PLATFORM_TEST_RUNNER}`,
+          '',
+        ].join('\r\n'),
+      )[0];
+      const crlfNegative =
+        crlfJob !== undefined &&
+        jobCovers(crlfJob, 'packages/shared/src/host/shell/__tests__/shell-text.test.ts', '@dsh-workbench/shared');
+      const ok = findings.length === 0 && negative && workflowNegative && runnerNegative && crlfNegative;
       report(
         TITLE,
         ok,
         ok
           ? `${sites.size} 个平台调用点都在清单里；平台测试由 ${PLATFORM_TEST_RUNNER} 按清单跑在 ${OS.join('/')} 腿上；冒烟脚本由 ${SMOKE_INDEX} 目录发现（判据负例也过）`
-          : !negative || !workflowNegative || !runnerNegative
+          : !negative || !workflowNegative || !runnerNegative || !crlfNegative
             ? '判据自己的负例没过：扫描或 workflow 解析不可信'
             : findings.join(' · '),
       );
