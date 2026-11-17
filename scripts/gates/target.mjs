@@ -45,6 +45,20 @@ function finding(file, line, text, fix) {
   return { file, line, text, fix };
 }
 
+function inProbe(files, run) {
+  const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-'));
+  try {
+    const at = (rel) => join(tmp, rel);
+    for (const [rel, text] of Object.entries(files)) {
+      mkdirSync(dirname(at(rel)), { recursive: true });
+      writeFileSync(at(rel), text);
+    }
+    return run({ tmp, at });
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 function repoFiles() {
   const out = [];
   const visit = (here) => {
@@ -139,18 +153,13 @@ const GATES = [
       return findings.length === 0 ? pass('两侧各住各的') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-kernel-'));
-      try {
-        const host = join(tmp, 'src/kernel/host/a.ts');
-        const client = join(tmp, 'src/kernel/client/b.ts');
-        mkdirSync(dirname(host), { recursive: true });
-        mkdirSync(dirname(client), { recursive: true });
-        writeFileSync(host, "import { b } from '../client/b';\nexport const a = b;\n");
-        writeFileSync(client, 'export const b = 1;\n');
-        return kernelSideFindings([host], tmp).length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        {
+          'src/kernel/host/a.ts': "import { b } from '../client/b';\nexport const a = b;\n",
+          'src/kernel/client/b.ts': 'export const b = 1;\n',
+        },
+        ({ tmp, at }) => kernelSideFindings([at('src/kernel/host/a.ts')], tmp).length === 1,
+      );
     },
   },
   {
@@ -163,21 +172,16 @@ const GATES = [
       return findings.length === 0 ? pass('shell 没有 dev 依赖') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-shell-'));
-      try {
-        const layout = join(tmp, 'src/app/layouts/a.ts');
-        const dev = join(tmp, 'src/dev/b.ts');
-        mkdirSync(dirname(layout), { recursive: true });
-        mkdirSync(dirname(dev), { recursive: true });
-        writeFileSync(layout, "import { b } from '../../dev/b';\nexport const a = b;\n");
-        writeFileSync(dev, 'export const b = 1;\n');
-        const found = reverseLayerFindings([layout], join(tmp, 'src'), layerOfWorkbench).filter(
-          (one) => one.from === 6 && one.to === 9,
-        );
-        return found.length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        {
+          'src/app/layouts/a.ts': "import { b } from '../../dev/b';\nexport const a = b;\n",
+          'src/dev/b.ts': 'export const b = 1;\n',
+        },
+        ({ tmp, at }) =>
+          reverseLayerFindings([at('src/app/layouts/a.ts')], join(tmp, 'src'), layerOfWorkbench).filter(
+            (one) => one.from === 6 && one.to === 9,
+          ).length === 1,
+      );
     },
   },
   {
@@ -206,15 +210,11 @@ const GATES = [
       return findings.length === 0 ? pass('kernel 只依赖端口') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-kernelui-'));
-      try {
-        const file = join(tmp, 'src/kernel/host/a.ts');
-        mkdirSync(dirname(file), { recursive: true });
-        writeFileSync(file, "import { createElement } from 'react';\nexport const a = createElement;\n");
-        return scanImports([file], tmp, (spec) => /^react(?:\/|$)/.test(spec), () => 'x', 'fix').length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        { 'src/kernel/host/a.ts': "import { createElement } from 'react';\nexport const a = createElement;\n" },
+        ({ tmp, at }) =>
+          scanImports([at('src/kernel/host/a.ts')], tmp, (spec) => /^react(?:\/|$)/.test(spec), () => 'x', 'fix').length === 1,
+      );
     },
   },
   {
@@ -262,18 +262,12 @@ const GATES = [
       return findings.length === 0 ? pass(`${graph.size} 个文件无宿主层`) : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-clienthost-'));
-      try {
-        const client = join(tmp, 'src/app/client.tsx');
-        const host = join(tmp, 'src/kernel/host/a.ts');
-        mkdirSync(dirname(client), { recursive: true });
-        mkdirSync(dirname(host), { recursive: true });
-        writeFileSync(client, "import '../kernel/host/a';\n");
-        writeFileSync(host, 'export const a = 1;\n');
-        return browserHostFindings(reachableFrom(client, join(tmp, 'src'), { valuesOnly: true }), join(tmp, 'src')).length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        { 'src/app/client.tsx': "import '../kernel/host/a';\n", 'src/kernel/host/a.ts': 'export const a = 1;\n' },
+        ({ tmp, at }) =>
+          browserHostFindings(reachableFrom(at('src/app/client.tsx'), join(tmp, 'src'), { valuesOnly: true }), join(tmp, 'src'))
+            .length === 1,
+      );
     },
   },
   {
@@ -291,19 +285,13 @@ const GATES = [
       return findings.length === 0 ? pass(`${graph.size} 个文件无浏览器层`) : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-hostgraph-'));
-      try {
-        const host = join(tmp, 'src/app/host.ts');
-        const layout = join(tmp, 'src/app/layouts/a.ts');
-        mkdirSync(dirname(host), { recursive: true });
-        mkdirSync(dirname(layout), { recursive: true });
-        writeFileSync(host, "import './layouts/a';\n");
-        writeFileSync(layout, 'export const a = 1;\n');
-        const graph = reachableFrom(host, join(tmp, 'src'), { valuesOnly: true });
-        return [...graph].some((file) => relative(join(tmp, 'src'), file).split('\\').join('/').startsWith('app/layouts/'));
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        { 'src/app/host.ts': "import './layouts/a';\n", 'src/app/layouts/a.ts': 'export const a = 1;\n' },
+        ({ tmp, at }) =>
+          [...reachableFrom(at('src/app/host.ts'), join(tmp, 'src'), { valuesOnly: true })].some((file) =>
+            relative(join(tmp, 'src'), file).split('\\').join('/').startsWith('app/layouts/'),
+          ),
+      );
     },
   },
   {
@@ -315,15 +303,12 @@ const GATES = [
       return findings.length === 0 ? pass('shared/host 不在浏览器图') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-sharedhost-'));
-      try {
-        const client = join(tmp, 'src/app/client.tsx');
-        mkdirSync(dirname(client), { recursive: true });
-        writeFileSync(client, "import { x } from '@dsh-workbench/shared/host';\nexport const a = x;\n");
-        return sharedHostFindings(reachableFrom(client, join(tmp, 'src'), { valuesOnly: true }), join(tmp, 'src')).length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        { 'src/app/client.tsx': "import { x } from '@dsh-workbench/shared/host';\nexport const a = x;\n" },
+        ({ tmp, at }) =>
+          sharedHostFindings(reachableFrom(at('src/app/client.tsx'), join(tmp, 'src'), { valuesOnly: true }), join(tmp, 'src'))
+            .length === 1,
+      );
     },
   },
   {
@@ -340,18 +325,11 @@ const GATES = [
       return findings.length === 0 ? pass('app/units 两侧分开') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-appunits-'));
-      try {
-        const client = join(tmp, 'src/app/client.tsx');
-        const manifest = join(tmp, 'src/app/units/manifests.ts');
-        mkdirSync(dirname(client), { recursive: true });
-        mkdirSync(dirname(manifest), { recursive: true });
-        writeFileSync(client, "import './units/manifests';\n");
-        writeFileSync(manifest, 'export const m = 1;\n');
-        return reachableFrom(client, join(tmp, 'src'), { valuesOnly: true }).has(manifest);
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        { 'src/app/client.tsx': "import './units/manifests';\n", 'src/app/units/manifests.ts': 'export const m = 1;\n' },
+        ({ tmp, at }) =>
+          reachableFrom(at('src/app/client.tsx'), join(tmp, 'src'), { valuesOnly: true }).has(at('src/app/units/manifests.ts')),
+      );
     },
   },
   {
@@ -366,18 +344,10 @@ const GATES = [
       return findings.length === 0 ? pass('shared 所有 import 向下') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-sharedlayer-'));
-      try {
-        const component = join(tmp, 'src/components/a.ts');
-        const api = join(tmp, 'src/api/x.ts');
-        mkdirSync(dirname(component), { recursive: true });
-        mkdirSync(dirname(api), { recursive: true });
-        writeFileSync(component, "import { x } from '../api/x';\nexport const a = x;\n");
-        writeFileSync(api, 'export const x = 1;\n');
-        return reverseLayerFindings([component], join(tmp, 'src'), layerOfShared).length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        { 'src/components/a.ts': "import { x } from '../api/x';\nexport const a = x;\n", 'src/api/x.ts': 'export const x = 1;\n' },
+        ({ tmp, at }) => reverseLayerFindings([at('src/components/a.ts')], join(tmp, 'src'), layerOfShared).length === 1,
+      );
     },
   },
   {
@@ -442,15 +412,10 @@ const GATES = [
       return findings.length === 0 ? pass('contract 是纯的') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-contract-'));
-      try {
-        const file = join(tmp, 'src/contract/a.ts');
-        mkdirSync(dirname(file), { recursive: true });
-        writeFileSync(file, "import { readFileSync } from 'node:fs';\nexport const a = readFileSync;\n");
-        return scanImports([file], tmp, (spec) => /^node:/.test(spec), () => 'x', 'fix').length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        { 'src/contract/a.ts': "import { readFileSync } from 'node:fs';\nexport const a = readFileSync;\n" },
+        ({ tmp, at }) => scanImports([at('src/contract/a.ts')], tmp, (spec) => /^node:/.test(spec), () => 'x', 'fix').length === 1,
+      );
     },
   },
   {
@@ -510,19 +475,13 @@ const GATES = [
       return findings.length === 0 ? pass('model 都有测试') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-model-'));
-      try {
-        const file = join(tmp, 'src/model/probe.ts');
-        mkdirSync(dirname(file), { recursive: true });
-        writeFileSync(file, 'export const probe = 1;\n');
-        const missing = missingModelTests([file], tmp).length;
-        const nested = join(tmp, 'src/model/__tests__/probe.test.ts');
+      return inProbe({ 'src/model/probe.ts': 'export const probe = 1;\n' }, ({ tmp, at }) => {
+        const missing = missingModelTests([at('src/model/probe.ts')], tmp).length;
+        const nested = at('src/model/__tests__/probe.test.ts');
         mkdirSync(dirname(nested), { recursive: true });
         writeFileSync(nested, '');
-        return missing === 1 && missingModelTests([file], tmp).length === 0;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+        return missing === 1 && missingModelTests([at('src/model/probe.ts')], tmp).length === 0;
+      });
     },
   },
   {
@@ -639,14 +598,7 @@ const GATES = [
       return findings.length === 0 ? pass('链接都通') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-links-'));
-      try {
-        const file = join(tmp, 'a.md');
-        writeFileSync(file, '[x](missing.md)\n');
-        return missingLinksOf([file], tmp).length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe({ 'a.md': '[x](missing.md)\n' }, ({ tmp, at }) => missingLinksOf([at('a.md')], tmp).length === 1);
     },
   },
   {
@@ -657,14 +609,7 @@ const GATES = [
       return findings.length === 0 ? pass('索引全覆盖') : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-index-'));
-      try {
-        const file = join(tmp, 'A.md');
-        writeFileSync(file, '# A\n');
-        return missingIndexEntries('# SKILL\n', [file], tmp).length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe({ 'A.md': '# A\n' }, ({ tmp, at }) => missingIndexEntries('# SKILL\n', [at('A.md')], tmp).length === 1);
     },
   },
   {
@@ -699,15 +644,13 @@ const GATES = [
       return findings.length === 0 ? pass(`${files.length} 份文档链接都通`) : fail(findings);
     },
     selfTest() {
-      const tmp = mkdtempSync(join(tmpdir(), 'dsh-gate-doclinks-'));
-      try {
-        writeFileSync(join(tmp, 'ARCHITECTURE.md'), '# A\n\n## 1. 包\n');
-        writeFileSync(join(tmp, 'a.md'), '[x](missing.md)\n[y](#nope)\n[z](ARCHITECTURE.md) §9\n');
-        const files = [join(tmp, 'a.md'), join(tmp, 'ARCHITECTURE.md')];
-        return missingDocLinksOf(files, tmp).length === 2 && referenceFindingsOf(files).length === 1;
-      } finally {
-        rmSync(tmp, { recursive: true, force: true });
-      }
+      return inProbe(
+        { 'ARCHITECTURE.md': '# A\n\n## 1. 包\n', 'a.md': '[x](missing.md)\n[y](#nope)\n[z](ARCHITECTURE.md) §9\n' },
+        ({ tmp, at }) => {
+          const files = [at('a.md'), at('ARCHITECTURE.md')];
+          return missingDocLinksOf(files, tmp).length === 2 && referenceFindingsOf(files).length === 1;
+        },
+      );
     },
   },
   {

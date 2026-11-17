@@ -1,6 +1,10 @@
 import { createRule } from '@arch-guard/core';
 
 const KERNEL_SIDE = /^src\/kernel\/(host|client)\//;
+function findingOf(rule, file, line, column, text, hint) {
+  return { rule, file, line, ...(column === undefined ? {} : { column }), text, hint };
+}
+
 
 const kernelSidesAreIsolated = createRule({
   id: 'S71',
@@ -21,14 +25,7 @@ const kernelSidesAreIsolated = createRule({
           /^@\/kernel\/(host|client)\//.exec(fact.spec)?.[1] ??
           /^\.\.\/(host|client)\//.exec(fact.spec)?.[1];
         if (target === undefined || target === side) continue;
-        findings.push({
-          rule: 'S71',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `内核 ${side} 侧 import 了 ${target} 侧：${fact.spec}`,
-          hint: '把共享的形状抬到 kernel/contract 或 shared 契约；两侧只依赖它，不互相依赖',
-        });
+        findings.push(findingOf('S71', record.rel, fact.line, fact.column, `内核 ${side} 侧 import 了 ${target} 侧：${fact.spec}`, '把共享的形状抬到 kernel/contract 或 shared 契约；两侧只依赖它，不互相依赖'));
       }
     }
     return findings;

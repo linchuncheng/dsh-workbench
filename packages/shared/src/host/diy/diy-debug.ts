@@ -1,4 +1,5 @@
 import { clockOf } from '../runtime/time.js';
+import { createHold } from './hold.js';
 /**
  * 调试约定的两个相位：`debugging` 正占着用户的屏，`paused` 已暂停但仍持着约定。
  */
@@ -81,35 +82,25 @@ export interface DebugStore {
   settle?(): Promise<void>;
 }
 
-function alive(state: DebugState | null, now: number): DebugState | null {
-  if (state === null) return null;
-  return now - state.at <= DEBUG_STALE_MS ? state : null;
-}
-
-function ownerOf(state: DebugState | null, sessionId: string, now: number): DebugRefusal | DebugState {
-  const held = alive(state, now);
-  if (held === null) return 'none';
-  return held.sessionId === sessionId ? held : 'not-owner';
-}
-
 /**
  * 造一份新的调试约定存储（进程内存，同一时刻只可能有一份有效约定）。
  * @returns 存取口；动作成不成都在返回的 `DebugMove` 里，不抛异常。
  */
 export function createDebugStore(): DebugStore {
-  let held: DebugState | null = null;
+  const hold = createHold<DebugState>(DEBUG_STALE_MS);
 
-  const live = (now: number): DebugState | null => alive(held, now);
+  const turn = (phase: DebugPhase) => (sessionId: string, now: number): DebugMove =>
+    hold.move(sessionId, now, (found) =>
+      found.phase === phase
+        ? { ok: false, code: phase === 'paused' ? 'already-paused' : 'already-debugging' }
+        : { ok: true, state: { ...found, phase, at: now } },
+    );
 
   return {
-    live,
+    live: (now) => hold.live(now),
 
     begin(pact) {
-      const current = alive(held, pact.now);
-      if (current !== null) {
-        return { ok: false, code: current.sessionId === pact.sessionId ? 'already-held' : 'held-by-other' };
-      }
-      const state: DebugState = {
+      return hold.begin(pact.sessionId, pact.now, (now) => ({
         phase: 'debugging',
         sessionId: pact.sessionId,
         workspacePath: pact.workspacePath,
@@ -117,36 +108,17 @@ export function createDebugStore(): DebugStore {
         board: pact.board,
         unit: pact.unit,
         name: pact.name,
-        startedAt: pact.now,
-        at: pact.now,
-      };
-      held = state;
-      return { ok: true, state };
+        startedAt: now,
+        at: now,
+      }));
     },
 
-    pause(sessionId, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      if (found.phase === 'paused') return { ok: false, code: 'already-paused' };
-      const state: DebugState = { ...found, phase: 'paused', at: now };
-      held = state;
-      return { ok: true, state };
-    },
+    pause: turn('paused'),
 
-    resume(sessionId, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      if (found.phase === 'debugging') return { ok: false, code: 'already-debugging' };
-      const state: DebugState = { ...found, phase: 'debugging', at: now };
-      held = state;
-      return { ok: true, state };
-    },
+    resume: turn('debugging'),
 
     stop(sessionId, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      held = null;
-      return { ok: true, state: found };
+      return hold.release(sessionId, now);
     },
   };
 }

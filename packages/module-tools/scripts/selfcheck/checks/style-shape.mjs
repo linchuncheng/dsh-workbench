@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { BIN, PACKAGES_DIR, FACES, declaration } from '../lib.mjs';
+import { declaration, manifestOf, runCheck, BIN, FACES, PACKAGES_DIR } from '../lib.mjs';
 
 function styleCheckOf(probe) {
   return String(
@@ -25,36 +25,9 @@ export const checks = [
       const problems = [];
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-formgap',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-formgap'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-formgap'));
         writeFileSync(join(probe, 'src', 'client.tsx'), 'export const box = () => null;\n');
-        const run = () => {
-          try {
-            const out = styleCheckOf(probe);
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(css, '.demoField {\n  display: flex;\n  gap: var(--wb-len-8);\n}\n');
         const bad = run();
@@ -87,35 +60,8 @@ export const checks = [
       const problems = [];
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-actionarea',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-actionarea'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
-        const run = () => {
-          try {
-            const out = styleCheckOf(probe);
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-actionarea'));
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(
           client,
@@ -166,27 +112,7 @@ export const checks = [
       const problems = [];
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-fontscale',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-fontscale'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-fontscale'));
         writeFileSync(css, '.hero {\n  font-size: 28px;\n}\n\n.note {\n  font-size: 18px;\n}\n');
         let out;
         try {
@@ -236,35 +162,8 @@ export const checks = [
       const problems = [];
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-form-face',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-form-face'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
-        const run = () => {
-          try {
-            const out = styleCheckOf(probe);
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-form-face'));
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(
           client,
@@ -320,35 +219,8 @@ export const checks = [
       const problems = [];
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-form-rows',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-form-rows'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
-        const run = () => {
-          try {
-            const out = styleCheckOf(probe);
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-form-rows'));
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(
           client,
@@ -406,27 +278,7 @@ export const checks = [
       const problems = [];
       try {
         mkdirSync(join(probe, 'src/__tests__'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-form-narrow',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-form-narrow'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-form-narrow'));
         writeFileSync(
           client,
           'export const slots = () => (\n' +
@@ -470,35 +322,8 @@ export const checks = [
       const problems = [];
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-boundary',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-boundary'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
-        const run = () => {
-          try {
-            const out = styleCheckOf(probe);
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-boundary'));
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(
           client,
@@ -562,35 +387,8 @@ export const checks = [
       const problems = [];
       try {
         mkdirSync(join(probe, 'src/__tests__'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-anchor',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-anchor'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
-        const run = () => {
-          try {
-            const out = styleCheckOf(probe);
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-anchor'));
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(
           client,
@@ -685,14 +483,7 @@ export const checks = [
             '  </a>\n' +
             ');\n',
         );
-        const run = () => {
-          try {
-            const out = styleCheckOf(probe);
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(join(probe, 'package.json'), manifest('@dsh-workbench/module-demo-anchor-exempt'));
         const exempt = run();

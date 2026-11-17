@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { BIN, FACES, PACKAGES_DIR, fillPendingDesign } from '../lib.mjs';
+import { fillPendingDesign, BIN, FACES, PACKAGES_DIR } from '../lib.mjs';
 
 const DESIGN_SHAPE =
   'design：填好的绿 / 挖空一格红（点名叫哪一格）/ README 落后也红 / accept 逐条打勾 / ' +

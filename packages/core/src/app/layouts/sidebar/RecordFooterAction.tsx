@@ -2,9 +2,9 @@ import { createElement as h } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
 import type { RecordIntent, RecordState } from '@dsh-workbench/shared/host';
 import { cx } from '@dsh-workbench/shared';
-import { HoverCard, StateDot } from '@deepseek-ai/dsh-client-ui-primitives';
-import { Tip } from '@/shared/components/Tip';
 import { useDiyRecordAct, useDiyRecordState } from '@/shared/hooks/use-diy-record';
+import { FooterAction } from './FooterAction';
+import footer from './FooterAction.module.css';
 import styles from './RecordFooterAction.module.css';
 
 export interface RecordFooterActionProps {
@@ -55,69 +55,31 @@ export function RecordFooterAction({ wide, t }: RecordFooterActionProps) {
 
   if (state === null) return null;
   const view = recordFooterView(state, t);
-  const dot = (
-    <StateDot
-      state={state.phase === 'finished' ? 'done' : 'warning'}
-      className={state.phase === 'armed' ? styles.pulse : undefined}
-    />
-  );
-  const tone = state.phase === 'finished' ? styles.done : styles.live;
-  const acts = (
-    <span className={styles.acts}>
-      {view.acts.map((one) => (
-        <button
-          key={one.intent}
-          type="button"
-          className={styles.act}
-          aria-label={one.label}
-          onClick={(event) => {
-            event.stopPropagation();
-            void act.send({ intent: one.intent });
-          }}
-        >
-          {one.label}
-        </button>
-      ))}
-    </span>
-  );
+  const acts = view.acts.map((one) => (
+    <button
+      key={one.intent}
+      type="button"
+      className={cx(footer.act, styles.actText)}
+      aria-label={one.label}
+      onClick={(event) => {
+        event.stopPropagation();
+        void act.send({ intent: one.intent });
+      }}
+    >
+      {one.label}
+    </button>
+  ));
 
-  const status = (
-    <span className={styles.entryInner}>
-      {dot}
-      {wide === true ? <span className={styles.entryLine}>{view.label}</span> : null}
-    </span>
-  );
-  const row = (
-    <div className={cx(styles.action, wide === true ? undefined : styles.actionRail, tone)}>
-      <span className={styles.entry} role="status" aria-label={`${view.label}，${view.note}`}>
-        {wide === true ? (
-          <Tip label={view.note} side="top">
-            {status}
-          </Tip>
-        ) : (
-          status
-        )}
-      </span>
-      {wide === true ? acts : null}
-    </div>
-  );
-
-  if (wide === true) {
-    return <span className={styles.slot}>{row}</span>;
-  }
   return (
-    <span className={styles.slot}>
-      <HoverCard
-        anchor={row}
-        content={
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>{view.label}</div>
-            <div className={styles.cardNote}>{view.note}</div>
-            {acts}
-          </div>
-        }
-        openDelayMs={200}
-      />
-    </span>
+    <FooterAction
+      wide={wide}
+      label={view.label}
+      title={view.label}
+      note={view.note}
+      dot={state.phase === 'finished' ? 'done' : 'warning'}
+      pulse={state.phase === 'armed'}
+      tone={state.phase === 'finished' ? 'good' : 'wait'}
+      acts={acts}
+    />
   );
 }

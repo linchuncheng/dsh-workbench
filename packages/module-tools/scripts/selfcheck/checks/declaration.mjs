@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } fr
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { BIN, FACES, PACKAGES_DIR, PKG_ROOT, declaration, read } from '../lib.mjs';
+import { declaration, manifestOf, read, runCheck, BIN, PACKAGES_DIR, PKG_ROOT } from '../lib.mjs';
 
 export const checks = [
   {
@@ -43,31 +43,7 @@ export const checks = [
 
         symlinkSync(join(PKG_ROOT, 'node_modules'), join(toolDir, 'node_modules'), 'junction');
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-style',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: {
-                  platform: 'web',
-                  inject: ['@dsh-workbench/core'],
-                  external: ['@dsh-workbench/core/client'],
-                },
-                workbench: declaration('demo-style'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-style'));
         writeFileSync(
           join(probe, 'src', 'client.tsx'),
           "export const box = () => h('div', { className: 'wb-iconButton wb-note' }, 'x');\n",
@@ -115,51 +91,12 @@ export const checks = [
       const probe = mkdtempSync(join(PACKAGES_DIR, '.pluginname-'));
       const clientFile = join(probe, 'src/client.tsx');
       const write = (pluginName, call) => {
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-pluginname',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: {
-                  platform: 'web',
-                  inject: ['@dsh-workbench/core'],
-                  external: ['@dsh-workbench/core/client'],
-                },
-                workbench: declaration('demo-pluginname', {
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-pluginname', declaration('demo-pluginname', {
                   needs: [{ kind: 'extension', runtime: 'opencli', name: pluginName, commands: ['x'], purpose: '测试' }],
-                }),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+                })));
         writeFileSync(clientFile, call);
       };
-      const run = () => {
-        try {
-          return {
-            failed: false,
-            out: String(
-              execFileSync(process.execPath, [BIN, 'check', '--only', 'contracts'], {
-                cwd: probe,
-                encoding: 'utf8',
-                stdio: 'pipe',
-              }),
-            ),
-          };
-        } catch (error) {
-          return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-        }
-      };
+      const run = () => runCheck(probe, 'contracts');
       const tail = (out) => out.trim().split('\n').slice(-4).join(' | ');
       try {
         mkdirSync(join(probe, 'dist'), { recursive: true });
@@ -222,31 +159,7 @@ export function apply(ctx) {
         ...(key === null ? {} : { key }),
       });
       const write = (tools, call) => {
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-declared',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: {
-                  platform: 'web',
-                  inject: ['@dsh-workbench/core'],
-                  external: ['@dsh-workbench/core/client'],
-                },
-                workbench: declaration('demo-declared', { tools }),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-declared', declaration('demo-declared', { tools })));
         writeFileSync(clientFile, call);
       };
       const run = (...args) => {

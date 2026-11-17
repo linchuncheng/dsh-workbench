@@ -37,6 +37,10 @@ function suiteTarget(spec, fromRel, ids) {
 }
 
 const isFace = (depth) => depth === '' || depth === 'index' || depth === 'client';
+function findingOf(rule, file, line, column, text, hint) {
+  return { rule, file, line, ...(column === undefined ? {} : { column }), text, hint };
+}
+
 
 const shellOnlyFaces = createRule({
   id: 'S60',
@@ -53,14 +57,7 @@ const shellOnlyFaces = createRule({
       for (const fact of ctx.facts.get(record.rel)?.imports ?? []) {
         const target = suiteTarget(fact.spec, record.rel, ids);
         if (target === null || isFace(target.depth)) continue;
-        findings.push({
-          rule: 'S60',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `外壳 import 了 ${fact.spec}（套件 ${target.id} 的内部）`,
-          hint: `改用 @/modules/${target.id} 或 @/modules/${target.id}/client`,
-        });
+        findings.push(findingOf('S60', record.rel, fact.line, fact.column, `外壳 import 了 ${fact.spec}（套件 ${target.id} 的内部）`, `改用 @/modules/${target.id} 或 @/modules/${target.id}/client`));
       }
     }
     return findings;
@@ -83,14 +80,7 @@ const suitesAreIsolated = createRule({
       for (const fact of ctx.facts.get(record.rel)?.imports ?? []) {
         const target = suiteTarget(fact.spec, record.rel, ids);
         if (target === null || target.id === owner) continue;
-        findings.push({
-          rule: 'S62',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `${owner} 套件 import 了 ${target.id} 套件（${fact.spec}）`,
-          hint: '两个套件之间不该有直接依赖',
-        });
+        findings.push(findingOf('S62', record.rel, fact.line, fact.column, `${owner} 套件 import 了 ${target.id} 套件（${fact.spec}）`, '两个套件之间不该有直接依赖'));
       }
     }
     return findings;
@@ -110,14 +100,7 @@ const manifestIsPure = createRule({
       if (MANIFEST.exec(record.rel) === null) continue;
       for (const fact of ctx.facts.get(record.rel)?.imports ?? []) {
         if (fact.spec === '@/shared/api/unit' || fact.spec === '@dsh-workbench/shared') continue;
-        findings.push({
-          rule: 'S63',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `清单 import 了 ${fact.spec}`,
-          hint: '清单只许依赖 @/shared/api/unit 与 @dsh-workbench/shared（纯类型契约），不许碰 @dsh-workbench/shared/host —— 那会把宿主实现拖进清单',
-        });
+        findings.push(findingOf('S63', record.rel, fact.line, fact.column, `清单 import 了 ${fact.spec}`, '清单只许依赖 @/shared/api/unit 与 @dsh-workbench/shared（纯类型契约），不许碰 @dsh-workbench/shared/host —— 那会把宿主实现拖进清单'));
       }
     }
     return findings;
@@ -145,22 +128,10 @@ const bothFacesRegistered = createRule({
 
       const isBoard = !/\bcard:\s*null\b/.test(ctx.sourceOf(record.rel) ?? '');
       if (!appImports.has(`@/modules/${id}`)) {
-        findings.push({
-          rule: 'S64',
-          file: record.rel,
-          line: 1,
-          text: `没有 src/app/** import @/modules/${id}（宿主面未登记）`,
-          hint: '在 app/host.ts 的套件表里加上它的面',
-        });
+        findings.push(findingOf('S64', record.rel, 1, undefined, `没有 src/app/** import @/modules/${id}（宿主面未登记）`, '在 app/host.ts 的套件表里加上它的面'));
       }
       if (isBoard && !appImports.has(`@/modules/${id}/client`)) {
-        findings.push({
-          rule: 'S64',
-          file: record.rel,
-          line: 1,
-          text: `没有 src/app/** import @/modules/${id}/client（浏览器面未登记）`,
-          hint: '在浏览器装配里 import 它的面（卡片与内层界面都从面里拿）',
-        });
+        findings.push(findingOf('S64', record.rel, 1, undefined, `没有 src/app/** import @/modules/${id}/client（浏览器面未登记）`, '在浏览器装配里 import 它的面（卡片与内层界面都从面里拿）'));
       }
     }
     return findings;
@@ -191,28 +162,14 @@ const shellHasNoPlatform = createRule({
 
         if (fact.value.startsWith('workbench_')) continue;
         if (!PLATFORM_MARKS.some((mark) => mark.test(fact.value))) continue;
-        findings.push({
-          rule: 'S65',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `外壳层出现平台字符串：${JSON.stringify(fact.value).slice(0, 60)}`,
-          hint: '把这条知识搬到 src/platforms/<平台>/**（或套件里），外壳只传机制',
-        });
+        findings.push(findingOf('S65', record.rel, fact.line, fact.column, `外壳层出现平台字符串：${JSON.stringify(fact.value).slice(0, 60)}`, '把这条知识搬到 src/platforms/<平台>/**（或套件里），外壳只传机制'));
       }
 
       for (const fact of facts?.imports ?? []) {
         const toPlatform = fact.spec.startsWith('@/platforms/');
         const toSuite = fact.spec.startsWith('@/modules/');
         if (!toPlatform && !(toSuite && isShared)) continue;
-        findings.push({
-          rule: 'S65',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `外壳层 import 了 ${fact.spec}${toPlatform ? '（外壳不该认识平台）' : '（机制不该依赖套件）'}`,
-          hint: '反向依赖：让套件来组合机制与平台，而不是外壳去认识它们',
-        });
+        findings.push(findingOf('S65', record.rel, fact.line, fact.column, `外壳层 import 了 ${fact.spec}${toPlatform ? '（外壳不该认识平台）' : '（机制不该依赖套件）'}`, '反向依赖：让套件来组合机制与平台，而不是外壳去认识它们'));
       }
     }
     return findings;
@@ -258,14 +215,7 @@ const shellHasNoSuiteId = createRule({
         if (specifiers.has(fact.value)) continue;
         const hit = [...ids].find((id) => SUITE_ID_PATTERN(id).test(fact.value));
         if (hit === undefined) continue;
-        findings.push({
-          rule: 'S66',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `外壳层出现套件 id ${JSON.stringify(hit)}：${JSON.stringify(fact.value).slice(0, 60)}`,
-          hint: '让套件把要显示的东西从面/契约交出来（例如 `UnitStep.titleKey`），外壳只转发、不写名字',
-        });
+        findings.push(findingOf('S66', record.rel, fact.line, fact.column, `外壳层出现套件 id ${JSON.stringify(hit)}：${JSON.stringify(fact.value).slice(0, 60)}`, '让套件把要显示的东西从面/契约交出来（例如 `UnitStep.titleKey`），外壳只转发、不写名字'));
       }
     }
     return findings;
@@ -287,14 +237,7 @@ const suitesOwnTheirFolder = createRule({
       if (/\.test\.(ts|tsx)$/.test(record.rel) || record.rel.includes('__tests__/')) continue;
       for (const fact of ctx.facts.get(record.rel)?.imports ?? []) {
         if (fact.spec !== 'node:fs' && fact.spec !== 'fs' && fact.spec !== 'node:fs/promises') continue;
-        findings.push({
-          rule: 'S67',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `${owner} 套件直接 import 了 ${fact.spec}`,
-          hint: '模块只能写自己的文件夹：用注入的 store，不要自己碰文件系统',
-        });
+        findings.push(findingOf('S67', record.rel, fact.line, fact.column, `${owner} 套件直接 import 了 ${fact.spec}`, '模块只能写自己的文件夹：用注入的 store，不要自己碰文件系统'));
       }
     }
     return findings;
@@ -323,13 +266,7 @@ const shellHasNoRuntimeImpl = createRule({
         const text = line.trim();
         if (text === '') return;
         if (!/opencli/i.test(text)) return;
-        findings.push({
-          rule: 'S68',
-          file: rel,
-          line: index + 1,
-          text: `外壳编排面出现运行时实现名：${text.slice(0, 80)}`,
-          hint: '把名字/路径/安装搬进 adapters-*，外壳从 RuntimePort 拿中立形状；要显示的文案交给 src/modules/**',
-        });
+        findings.push(findingOf('S68', rel, index + 1, undefined, `外壳编排面出现运行时实现名：${text.slice(0, 80)}`, '把名字/路径/安装搬进 adapters-*，外壳从 RuntimePort 拿中立形状；要显示的文案交给 src/modules/**'));
       });
     }
     return findings;
@@ -357,13 +294,7 @@ const shellNamesNoAdapter = createRule({
         if (text === '') return;
         const match = ADAPTER_PACKAGE.exec(text);
         if (match === null) return;
-        findings.push({
-          rule: 'S69',
-          file: rel,
-          line: index + 1,
-          text: `外壳点名了具体适配器包：${text.slice(0, 80)}`,
-          hint: '默认集合走 package.json 的 workbench.adapterSet；代码只认 AdapterSet 协议（测试夹具不算）。',
-        });
+        findings.push(findingOf('S69', rel, index + 1, undefined, `外壳点名了具体适配器包：${text.slice(0, 80)}`, '默认集合走 package.json 的 workbench.adapterSet；代码只认 AdapterSet 协议（测试夹具不算）。'));
       });
     }
     return findings;
@@ -389,13 +320,7 @@ const shellBranchesOnRuntimeId = createRule({
       const source = ctx.sourceOf(rel) ?? '';
       source.split('\n').forEach((line, index) => {
         if (!ADAPTER_ID_BRANCH.test(line)) return;
-        findings.push({
-          rule: 'S72',
-          file: rel,
-          line: index + 1,
-          text: `外壳按适配器 id 分支：${line.trim().slice(0, 80)}`,
-          hint: '改查 runtime.capabilities(ctx)；id 只许用于日志与 health 展示。',
-        });
+        findings.push(findingOf('S72', rel, index + 1, undefined, `外壳按适配器 id 分支：${line.trim().slice(0, 80)}`, '改查 runtime.capabilities(ctx)；id 只许用于日志与 health 展示。'));
       });
     }
     return findings;
@@ -420,13 +345,7 @@ const shellTestsUseFakeSet = createRule({
       const source = ctx.sourceOf(rel) ?? '';
       source.split('\n').forEach((line, index) => {
         if (!ADAPTER_IMPORT.test(line)) return;
-        findings.push({
-          rule: 'S70',
-          file: rel,
-          line: index + 1,
-          text: `测试直接用了真实现：${line.trim().slice(0, 80)}`,
-          hint: '换成 shared/testing 的假适配器集合；这一步做完，协议缺什么会立刻现形。',
-        });
+        findings.push(findingOf('S70', rel, index + 1, undefined, `测试直接用了真实现：${line.trim().slice(0, 80)}`, '换成 shared/testing 的假适配器集合；这一步做完，协议缺什么会立刻现形。'));
       });
     }
     return findings;
@@ -457,13 +376,7 @@ const sizeFamilyHasNoLiterals = createRule({
         if (!SIZE_PROPS.test(prop)) continue;
         for (const token of numericTokens(match[3], SIZE_UNITS)) {
           if (token === '0' || allow.includes(token)) continue;
-          findings.push({
-            rule: 'D31',
-            file: record.rel,
-            line: text.slice(0, match.index).split('\n').length,
-            text: `${prop}: ${token} 不在尺寸刻度里`,
-            hint: '先写进 src/shared/styles/tokens/scale.css，再 var() 引用；dsh 有对应令牌的用 dsh 的',
-          });
+          findings.push(findingOf('D31', record.rel, text.slice(0, match.index).split('\n').length, undefined, `${prop}: ${token} 不在尺寸刻度里`, '先写进 src/shared/styles/tokens/scale.css，再 var() 引用；dsh 有对应令牌的用 dsh 的'));
         }
       }
     }
@@ -487,13 +400,7 @@ const shellNamesNoRuntime = {
       const lines = source.split('\n');
       for (let index = 0; index < lines.length; index += 1) {
         if (!/['"`][^'"`]*opencli[^'"`]*['"`]/i.test(lines[index])) continue;
-        findings.push({
-          rule: 'S74',
-          file: record.rel,
-          line: index + 1,
-          text: `外壳的文案里点名了运行时：${lines[index].trim().slice(0, 80)}`,
-          hint: '文案走 RuntimeProfile.terms / diagnose / bridge，命令走 runtime.commandSurface；协议字段名另计。',
-        });
+        findings.push(findingOf('S74', record.rel, index + 1, undefined, `外壳的文案里点名了运行时：${lines[index].trim().slice(0, 80)}`, '文案走 RuntimeProfile.terms / diagnose / bridge，命令走 runtime.commandSurface；协议字段名另计。'));
       }
     }
     return findings;

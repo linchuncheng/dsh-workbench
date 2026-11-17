@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +20,30 @@ export function read(path) {
 
 export const FACES = { host: 'src/host.ts', client: 'src/client.tsx' };
 
+export function runCheck(probe, only) {
+  try {
+    const out = execFileSync(process.execPath, [BIN, 'check', '--only', only], {
+      cwd: probe,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    return { failed: false, out: String(out) };
+  } catch (error) {
+    return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
+  }
+}
+
+export async function withCleanup(title, report, dirs, body) {
+  try {
+    await body();
+    report(title, true);
+  } catch (error) {
+    report(title, false, error.message.slice(0, 200));
+  } finally {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 export const declaration = (unit, extra = {}) => ({
   apiVersion: 3,
   unit,
@@ -28,6 +53,27 @@ export const declaration = (unit, extra = {}) => ({
   host: { inject: [] },
   ...extra,
 });
+
+export function manifestOf(unit, workbench = declaration(unit)) {
+  return `${JSON.stringify(
+    {
+      name: `@dsh-workbench/module-${unit}`,
+      version: '0.0.1',
+      private: true,
+      type: 'module',
+      peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
+      scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
+      dsh: {
+        bundle: { patch: './cordis.patch.yml' },
+        client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
+        workbench,
+        workbenchFaces: FACES,
+      },
+    },
+    null,
+    2,
+  )}\n`;
+}
 
 export function linkToolchain(toolchain, modules) {
   mkdirSync(modules, { recursive: true });

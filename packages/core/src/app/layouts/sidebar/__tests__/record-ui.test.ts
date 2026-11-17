@@ -13,6 +13,8 @@ const read = (name: string): string => readFileSync(new URL(name, HERE), 'utf8')
 
 const FOOTER = read('RecordFooterAction.tsx');
 const FOOTER_CSS = read('RecordFooterAction.module.css');
+const SHELL = read('FooterAction.tsx');
+const SHELL_CSS = read('FooterAction.module.css');
 const REGISTER = read('record-footer.tsx');
 const HOOK = read('../../../shared/hooks/use-diy-record.ts');
 const CLIENT = read('../../../app/client.tsx');
@@ -132,39 +134,41 @@ describe('左栏底部那一格：四态各说各的话', () => {
   });
 
   it('★★ 展开态用 tooltip 说指引、那一行只说状态；折叠轨才用浮层', () => {
-    expect(FOOTER).toContain('<Tip');
-    expect(FOOTER).toContain('<HoverCard');
-    expect(FOOTER).toContain('styles.entryLine');
-    expect(FOOTER).toContain('{view.label}');
+    expect(SHELL).toContain('<Tip');
+    expect(SHELL).toContain('<HoverCard');
+    expect(SHELL).toContain('styles.entryLine');
+    expect(SHELL).toContain('{label}');
+    expect(FOOTER).toContain('label={view.label}');
   });
 
   it('★★ 两颗色：等出手 / 录制中黄（在等他），录完绿；只有黄的那两态呼吸', () => {
     expect(FOOTER).toContain("state.phase === 'finished' ? 'done' : 'warning'");
-    expect(FOOTER).toContain("state.phase === 'armed' ? styles.pulse : undefined");
-    expect(FOOTER_CSS).toContain('--dsw-alias-state-warn-primary');
-    expect(FOOTER_CSS).toContain('--dsw-alias-state-success-primary');
-    expect(FOOTER_CSS).toContain('@keyframes wb-record-breathe');
-    expect(FOOTER_CSS).toContain('prefers-reduced-motion');
+    expect(FOOTER).toContain("pulse={state.phase === 'armed'}");
+    expect(SHELL_CSS).toContain('--dsw-alias-state-warn-primary');
+    expect(SHELL_CSS).toContain('--dsw-alias-state-success-primary');
+    expect(SHELL_CSS).toContain('@keyframes wb-footer-breathe');
+    expect(SHELL_CSS).toContain('prefers-reduced-motion');
     expect(FOOTER).not.toContain('<svg');
   });
 
   it('★★ 形状跟侧栏自己的行同款（36 高、radius md、margin 0 var(--wb-len-2)、padding var(--wb-len-7) var(--wb-len-8)）', () => {
-    expect(FOOTER_CSS).toContain('min-height: var(--wb-len-36)');
-    expect(FOOTER_CSS).toContain('border-radius: var(--dsw-radius-md)');
-    expect(FOOTER_CSS).toContain('margin: 0 var(--wb-len-2)');
-    expect(FOOTER_CSS).toContain('padding: var(--wb-len-7) var(--wb-len-8)');
+    expect(SHELL_CSS).toContain('min-height: var(--wb-len-36)');
+    expect(SHELL_CSS).toContain('border-radius: var(--dsw-radius-md)');
+    expect(SHELL_CSS).toContain('margin: 0 var(--wb-len-2)');
+    expect(SHELL_CSS).toContain('padding: var(--wb-len-7) var(--wb-len-8)');
   });
 
   it('★ 那一行放不下就省略号，不换行；折叠轨里退成一颗 36×36 的圆点', () => {
-    expect(FOOTER_CSS).toContain('text-overflow: ellipsis');
-    expect(FOOTER_CSS).toContain('white-space: nowrap');
-    expect(FOOTER_CSS).toContain('border-radius: 50%');
-    expect(FOOTER).toContain('actionRail');
+    expect(SHELL_CSS).toContain('text-overflow: ellipsis');
+    expect(SHELL_CSS).toContain('white-space: nowrap');
+    expect(SHELL_CSS).toContain('border-radius: 50%');
+    expect(SHELL).toContain('actionRail');
+    expect(FOOTER_CSS).toContain('padding: 0 var(--wb-len-7)');
   });
 
   it('★★ 这一格只读状态 + 三个键是**用户自己按**的：不许出现工具名，也不许伪造用户消息', () => {
     expect(FOOTER).not.toContain('workbench_diy_record');
-    expect(FOOTER).toContain('role="status"');
+    expect(SHELL).toContain('role="status"');
     expect(FOOTER).toContain('act.send({ intent: one.intent })');
     expect(FOOTER).not.toContain("role: 'user'");
     expect(HOOK).not.toContain("role: 'user'");

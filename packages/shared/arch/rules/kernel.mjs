@@ -13,6 +13,10 @@ const KERNEL_FILES = new Set([
 
 const UI_OR_VENDOR = /^(react(?:\/|$)|react-dom(?:\/|$)|@deepseek-ai\/|node:)/;
 const ADAPTER = /^(?:@dsh-workbench\/(?:adapter-|adapters-default)|opencli(?:\/|$)|shell-quote$|shelljs$)/;
+function findingOf(rule, file, line, column, text, hint) {
+  return { rule, file, line, ...(column === undefined ? {} : { column }), text, hint };
+}
+
 
 const kernelKeepsAdaptersOut = createRule({
   id: 'S71',
@@ -29,14 +33,7 @@ const kernelKeepsAdaptersOut = createRule({
       if (!KERNEL_FILES.has(record.rel)) continue;
       for (const fact of ctx.facts.get(record.rel)?.imports ?? []) {
         if (!UI_OR_VENDOR.test(fact.spec) && !ADAPTER.test(fact.spec)) continue;
-        findings.push({
-          rule: 'S71',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `内核 import 了 ${fact.spec}`,
-          hint: '把它挪到 packages/adapter-* 或 shared/host 的纯工厂，内核只依赖端口类型',
-        });
+        findings.push(findingOf('S71', record.rel, fact.line, fact.column, `内核 import 了 ${fact.spec}`, '把它挪到 packages/adapter-* 或 shared/host 的纯工厂，内核只依赖端口类型'));
       }
     }
     return findings;
@@ -68,13 +65,9 @@ const kernelHasNoVendorFields = createRule({
       const name = field[1];
       if (!VENDOR_FIELD.test(name) || KNOWN_FIELDS.has(name)) continue;
       const line = text.slice(0, bodyStart + field.index).split('\n').length;
-      findings.push({
-        rule: 'S72',
-        file,
-        line,
-        text: `UnitMountDeps 新增供应商字段 ${name}`,
-        hint: '把它放进适配器端口（如 DataReader / SupplyProbe），不要放进每个模块都会收到的 deps',
-      });
+      findings.push(
+        findingOf('S72', file, line, undefined, `UnitMountDeps 新增供应商字段 ${name}`, '把它放进适配器端口（如 DataReader / SupplyProbe），不要放进每个模块都会收到的 deps'),
+      );
     }
     return findings;
   },
@@ -99,13 +92,7 @@ const copyNamesNoRuntime = createRule({
       const lines = source.split('\n');
       for (let index = 0; index < lines.length; index += 1) {
         if (!RUNTIME_IN_TEXT.test(lines[index])) continue;
-        findings.push({
-          rule: 'C75',
-          file: record.rel,
-          line: index + 1,
-          text: `字典里点名了运行时：${lines[index].trim().slice(0, 80)}`,
-          hint: '改成运行时中立的话，具体名称由适配器的 profile 提供',
-        });
+        findings.push(findingOf('C75', record.rel, index + 1, undefined, `字典里点名了运行时：${lines[index].trim().slice(0, 80)}`, '改成运行时中立的话，具体名称由适配器的 profile 提供'));
       }
     }
     return findings;
@@ -129,13 +116,7 @@ const hostStaysGeneric = createRule({
       const lines = source.split('\n');
       for (let index = 0; index < lines.length; index += 1) {
         if (!RUNTIME_WORD.test(lines[index])) continue;
-        findings.push({
-          rule: 'S76',
-          file: record.rel,
-          line: index + 1,
-          text: `点名了运行时：${lines[index].trim().slice(0, 80)}`,
-          hint: '把它交给适配器：路径走 RuntimeLayout、清单名走端口、文案走 RuntimeProfile',
-        });
+        findings.push(findingOf('S76', record.rel, index + 1, undefined, `点名了运行时：${lines[index].trim().slice(0, 80)}`, '把它交给适配器：路径走 RuntimeLayout、清单名走端口、文案走 RuntimeProfile'));
       }
     }
     return findings;

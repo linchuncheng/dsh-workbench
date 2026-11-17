@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { BIN, FACES, PACKAGES_DIR, declaration } from '../lib.mjs';
+import { declaration, manifestOf, BIN, PACKAGES_DIR } from '../lib.mjs';
 
 export const checks = [
   {
@@ -37,27 +37,7 @@ export function apply(ctx) {
 }
 `;
       const writePkg = (libs) =>
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-env',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-env', { needs: libs }),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-env', declaration('demo-env', { needs: libs })));
       const runContracts = () => {
         try {
           const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'contracts'], {
@@ -147,27 +127,7 @@ export function apply(ctx) {
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
         mkdirSync(join(probe, 'dist'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-longtask',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-longtask'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-longtask'));
         writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
         writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
         writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
@@ -257,27 +217,7 @@ export function apply(ctx) {
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
         mkdirSync(join(probe, 'dist'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-linkage',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-linkage'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-linkage'));
         writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
         writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
         writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
@@ -331,20 +271,7 @@ export function apply(ctx) {
 }
 `;
       const writePkg = (plugins) =>
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-plugincmd',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-plugincmd', {
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-plugincmd', declaration('demo-plugincmd', {
                   needs: plugins.map((plugin) => ({
                     kind: 'extension',
                     runtime: 'opencli',
@@ -352,14 +279,7 @@ export function apply(ctx) {
                     commands: plugin.commands,
                     purpose: '测试',
                   })),
-                }),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+                })));
       const runContracts = () => {
         try {
           const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'contracts'], {

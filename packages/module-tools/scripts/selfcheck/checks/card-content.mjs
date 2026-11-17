@@ -1,8 +1,7 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { BIN, FACES, PACKAGES_DIR, declaration } from '../lib.mjs';
+import { manifestOf, runCheck, PACKAGES_DIR } from '../lib.mjs';
 
 export const checks = [
   {
@@ -26,48 +25,13 @@ ${cardLine}
 });
 `,
         );
-      const run = () => {
-        try {
-          return {
-            failed: false,
-            out: String(
-              execFileSync(process.execPath, [BIN, 'check', '--only', 'cards'], {
-                cwd: probe,
-                encoding: 'utf8',
-                stdio: 'pipe',
-              }),
-            ),
-          };
-        } catch (error) {
-          return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-        }
-      };
+      const run = () => runCheck(probe, 'cards');
       const tail = (out) => out.trim().split('\n').slice(-4).join(' | ');
       let problem = null;
       try {
         mkdirSync(probe, { recursive: true });
         writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-nocard',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-nocard'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-nocard'));
 
         writeClient('');
         const none = run();

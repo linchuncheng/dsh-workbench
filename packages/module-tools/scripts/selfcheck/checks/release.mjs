@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { assembleMarketIndex, collectMarketEntryFiles } from '@dsh-workbench/shared/host';
 
 import { NeedsUser, ReleaseError, ResumableError, runRelease } from '../../../src/release/release.mjs';
+import { withCleanup } from '../lib.mjs';
 
 const FILES = [
   { path: 'client.js', size: 10 },
@@ -202,6 +203,25 @@ function hasCall(calls, command, first) {
   return calls.some((one) => one.command === command && (first === undefined || one.argv.includes(first)));
 }
 
+function releaseIn(dir, home, fake, args) {
+  return runRelease({ root: dir, home, args, exec: fake.exec, out: () => {}, err: () => {} });
+}
+
+function releaseCase(title, options, body) {
+  return {
+    title,
+    async run(_ctx, report) {
+      const dir = probeOf(options.probe ?? {});
+      const home = homeOf();
+      const dirs = [dir, home];
+      const repo = options.repo === undefined ? undefined : mkdtempSync(join(tmpdir(), options.repo));
+      if (repo !== undefined) dirs.push(repo);
+      const fake = fakeExec(dir, options.plan);
+      await withCleanup(title, report, dirs, () => body({ dir, home, repo, fake, dirs }));
+    },
+  };
+}
+
 function failureOf(promise) {
   return promise.then(
     () => undefined,
@@ -210,653 +230,377 @@ function failureOf(promise) {
 }
 
 export const checks = [
-  {
-    title: 'release：team 源发完写元数据、从源上核包、状态落 verified',
-    async run(_ctx, report) {
-      const title = 'release：team 源发完写元数据、从源上核包、状态落 verified';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const result = await runRelease({
+  releaseCase(
+    'release：team 源发完写元数据、从源上核包、状态落 verified',
+    {},
+    async ({ dir, home, fake }) => {
+      const result = await releaseIn(dir, home, fake, ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes', '--json']);
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (result.target !== 'team' || result.version !== '0.1.0') throw new Error(`结果不对：${JSON.stringify(result)}`);
+      if (manifest.private === true) throw new Error('private 还在');
+      if (manifest.license !== 'UNLICENSED') throw new Error(`license 不对：${manifest.license}`);
+      if (manifest.publishConfig?.registry !== 'https://npm.demo.test/') throw new Error('registry 没写');
+      if (!hasCall(fake.calls, 'npm', 'publish')) throw new Error('没有 publish');
+      const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
+      if (state.status !== 'verified') throw new Error(`状态不对：${state.status}`);
+    },
+  ),
+  releaseCase(
+    'release：验收没打完不发（用户说"没问题"是闸，不是提示）',
+    { probe: { checked: false } },
+    async ({ dir, home, fake }) => {
+      const error = await failureOf(
+        releaseIn(dir, home, fake, ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes']),
+      );
+      if (!(error instanceof NeedsUser) || error.step !== 'acceptance') {
+        throw new Error(`没有拦住：${error?.message ?? error}`);
+      }
+      if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('验收没过却跑了 publish');
+      if (hasCall(fake.calls, process.execPath, 'build')) throw new Error('验收没过就跑了 build');
+    },
+  ),
+  releaseCase(
+    'release：tarball 零凭据打包、保留 private、状态落 verified',
+    {},
+    async ({ dir, home, fake }) => {
+      const result = await releaseIn(dir, home, fake, ['--target', 'tarball', '--yes', '--json']);
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (result.target !== 'tarball' || result.file === undefined) throw new Error('没有安装包路径');
+      if (!existsSync(result.file)) throw new Error('安装包没落盘');
+      if (manifest.private !== true) throw new Error('tarball 不该摘 private');
+      if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('tarball 不该 publish');
+      if (!result.install.includes(result.file)) throw new Error('安装命令没带文件路径');
+      const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
+      if (state.status !== 'verified' || state.target !== 'tarball') throw new Error('状态不对');
+    },
+  ),
+  releaseCase(
+    'release：public 缺 license 先问人；给了 license 才发',
+    {},
+    async ({ dir, home, fake }) => {
+      const blocked = await failureOf(
+        releaseIn(dir, home, fake, ['--target', 'public', '--yes']),
+      );
+      if (!(blocked instanceof NeedsUser) || blocked.step !== 'license') {
+        throw new Error(`没问 license：${blocked?.message ?? blocked}`);
+      }
+      const result = await releaseIn(dir, home, fake, ['--target', 'public', '--license', 'MIT', '--yes', '--json']);
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (result.target !== 'public' || manifest.license !== 'MIT') throw new Error('public 没发成');
+      if (manifest.publishConfig?.access !== 'public') throw new Error('access 不是 public');
+    },
+  ),
+  releaseCase(
+    'release：public 要验证码时给确切命令，--verify 只核不发',
+    { plan: { publish: fail('npm error code EOTP\none-time password required') } },
+    async ({ dir, home, fake }) => {
+      const error = await failureOf(
+        releaseIn(dir, home, fake, ['--target', 'public', '--license', 'MIT', '--yes']),
+      );
+      if (!(error instanceof NeedsUser) || error.step !== 'otp') {
+        throw new Error(`没问 OTP：${error?.message ?? error}`);
+      }
+      if (!String(error.command).includes('npm publish')) throw new Error('没给确切 publish 命令');
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (manifest.private === true) throw new Error('OTP 交接前不该把 private 放回去');
+      fake.state.published.add('0.1.0');
+      const verified = await releaseIn(dir, home, fake, ['--verify', '--target', 'public', '--version', '0.1.0', '--json']);
+      if (verified.verified !== true) throw new Error('--verify 没核过');
+      if (hasCall(fake.calls, 'npm', 'publish') === false) throw new Error('之前那次 publish 没跑到');
+    },
+  ),
+  releaseCase(
+    'release：git 提交产物 + tag + push，发后核 tag 内容',
+    {},
+    async ({ dir, home, fake }) => {
+      const result = await releaseIn(dir, home, fake, ['--target', 'git', '--yes', '--json']);
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (result.target !== 'git' || result.git?.tag !== 'probe@0.1.0') throw new Error('git 结果不对');
+      if (manifest.private !== true) throw new Error('git 不该摘 private');
+      if (!hasCall(fake.calls, 'git', 'commit') || !hasCall(fake.calls, 'git', 'push')) throw new Error('没提交/推送');
+      if (!result.install.includes('git+https://github.com/demo/probe.git#probe@0.1.0')) {
+        throw new Error(`安装 spec 不对：${result.install}`);
+      }
+      const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
+      if (state.status !== 'verified' || state.commit !== COMMIT) throw new Error('状态不对');
+    },
+  ),
+  releaseCase(
+    'release：git 没远端 / 工作区脏都先问人，不提交',
+    {},
+    async ({ dir, home }) => {
+      const noRemote = fakeExec(dir, { gitTop: fail('not a git repository') });
+      const first = await failureOf(
+        runRelease({
           root: dir,
           home,
-          args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes', '--json'],
-          exec: fake.exec,
+          args: ['--target', 'git', '--yes'],
+          exec: noRemote.exec,
           out: () => {},
           err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (result.target !== 'team' || result.version !== '0.1.0') throw new Error(`结果不对：${JSON.stringify(result)}`);
-        if (manifest.private === true) throw new Error('private 还在');
-        if (manifest.license !== 'UNLICENSED') throw new Error(`license 不对：${manifest.license}`);
-        if (manifest.publishConfig?.registry !== 'https://npm.demo.test/') throw new Error('registry 没写');
-        if (!hasCall(fake.calls, 'npm', 'publish')) throw new Error('没有 publish');
-        const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
-        if (state.status !== 'verified') throw new Error(`状态不对：${state.status}`);
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：验收没打完不发（用户说"没问题"是闸，不是提示）',
-    async run(_ctx, report) {
-      const title = 'release：验收没打完不发（用户说"没问题"是闸，不是提示）';
-      const dir = probeOf({ checked: false });
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(error instanceof NeedsUser) || error.step !== 'acceptance') {
-          throw new Error(`没有拦住：${error?.message ?? error}`);
-        }
-        if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('验收没过却跑了 publish');
-        if (hasCall(fake.calls, process.execPath, 'build')) throw new Error('验收没过就跑了 build');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：tarball 零凭据打包、保留 private、状态落 verified',
-    async run(_ctx, report) {
-      const title = 'release：tarball 零凭据打包、保留 private、状态落 verified';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const result = await runRelease({
+        }),
+      );
+      if (!(first instanceof NeedsUser) || first.step !== 'git-remote') throw new Error('没拦住没远端');
+      const dirty = fakeExec(dir, { dirty: ' M src/host.ts\n' });
+      const second = await failureOf(
+        runRelease({
           root: dir,
           home,
-          args: ['--target', 'tarball', '--yes', '--json'],
-          exec: fake.exec,
+          args: ['--target', 'git', '--yes'],
+          exec: dirty.exec,
           out: () => {},
           err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (result.target !== 'tarball' || result.file === undefined) throw new Error('没有安装包路径');
-        if (!existsSync(result.file)) throw new Error('安装包没落盘');
-        if (manifest.private !== true) throw new Error('tarball 不该摘 private');
-        if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('tarball 不该 publish');
-        if (!result.install.includes(result.file)) throw new Error('安装命令没带文件路径');
-        const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
-        if (state.status !== 'verified' || state.target !== 'tarball') throw new Error('状态不对');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+        }),
+      );
+      if (!(second instanceof NeedsUser) || second.step !== 'git-dirty') throw new Error('没拦住脏工作区');
+      if (hasCall(dirty.calls, 'git', 'commit')) throw new Error('脏工作区还提交了');
     },
-  },
-  {
-    title: 'release：public 缺 license 先问人；给了 license 才发',
-    async run(_ctx, report) {
-      const title = 'release：public 缺 license 先问人；给了 license 才发';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const blocked = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'public', '--yes'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(blocked instanceof NeedsUser) || blocked.step !== 'license') {
-          throw new Error(`没问 license：${blocked?.message ?? blocked}`);
-        }
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--target', 'public', '--license', 'MIT', '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (result.target !== 'public' || manifest.license !== 'MIT') throw new Error('public 没发成');
-        if (manifest.publishConfig?.access !== 'public') throw new Error('access 不是 public');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：public 要验证码时给确切命令，--verify 只核不发',
-    async run(_ctx, report) {
-      const title = 'release：public 要验证码时给确切命令，--verify 只核不发';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir, { publish: fail('npm error code EOTP\none-time password required') });
-      try {
-        const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'public', '--license', 'MIT', '--yes'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(error instanceof NeedsUser) || error.step !== 'otp') {
-          throw new Error(`没问 OTP：${error?.message ?? error}`);
-        }
-        if (!String(error.command).includes('npm publish')) throw new Error('没给确切 publish 命令');
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (manifest.private === true) throw new Error('OTP 交接前不该把 private 放回去');
-        fake.state.published.add('0.1.0');
-        const verified = await runRelease({
-          root: dir,
-          home,
-          args: ['--verify', '--target', 'public', '--version', '0.1.0', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (verified.verified !== true) throw new Error('--verify 没核过');
-        if (hasCall(fake.calls, 'npm', 'publish') === false) throw new Error('之前那次 publish 没跑到');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：git 提交产物 + tag + push，发后核 tag 内容',
-    async run(_ctx, report) {
-      const title = 'release：git 提交产物 + tag + push，发后核 tag 内容';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--target', 'git', '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (result.target !== 'git' || result.git?.tag !== 'probe@0.1.0') throw new Error('git 结果不对');
-        if (manifest.private !== true) throw new Error('git 不该摘 private');
-        if (!hasCall(fake.calls, 'git', 'commit') || !hasCall(fake.calls, 'git', 'push')) throw new Error('没提交/推送');
-        if (!result.install.includes('git+https://github.com/demo/probe.git#probe@0.1.0')) {
-          throw new Error(`安装 spec 不对：${result.install}`);
-        }
-        const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
-        if (state.status !== 'verified' || state.commit !== COMMIT) throw new Error('状态不对');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：git 没远端 / 工作区脏都先问人，不提交',
-    async run(_ctx, report) {
-      const title = 'release：git 没远端 / 工作区脏都先问人，不提交';
-      const dir = probeOf();
-      const home = homeOf();
-      try {
-        const noRemote = fakeExec(dir, { gitTop: fail('not a git repository') });
-        const first = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'git', '--yes'],
-            exec: noRemote.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(first instanceof NeedsUser) || first.step !== 'git-remote') throw new Error('没拦住没远端');
-        const dirty = fakeExec(dir, { dirty: ' M src/host.ts\n' });
-        const second = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'git', '--yes'],
-            exec: dirty.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(second instanceof NeedsUser) || second.step !== 'git-dirty') throw new Error('没拦住脏工作区');
-        if (hasCall(dirty.calls, 'git', 'commit')) throw new Error('脏工作区还提交了');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：git push 失败后保留 commit，重跑只补推不重复提交',
-    async run(_ctx, report) {
-      const title = 'release：git push 失败后保留 commit，重跑只补推不重复提交';
-      const dir = probeOf();
-      const home = homeOf();
+  ),
+  releaseCase(
+    'release：git push 失败后保留 commit，重跑只补推不重复提交',
+    {},
+    async ({ dir, home }) => {
       const failing = fakeExec(dir, { push: fail('permission denied') });
-      try {
-        const first = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'git', '--yes'],
-            exec: failing.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(first instanceof NeedsUser) || first.step !== 'git-auth') throw new Error('没给 git 权限交接');
-        const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
-        if (state.status !== 'committed') throw new Error(`失败后状态不对：${state.status}`);
-        const retry = fakeExec(dir, { versions: ['0.1.0'] });
-        const second = await runRelease({
+      const first = await failureOf(
+        runRelease({
           root: dir,
           home,
-          args: ['--target', 'git', '--yes', '--json'],
-          exec: retry.exec,
+          args: ['--target', 'git', '--yes'],
+          exec: failing.exec,
           out: () => {},
           err: () => {},
-        });
-        if (second.verified !== true) throw new Error('重跑没核过');
-        if (retry.state.commits !== 0) throw new Error('重跑又提交了一次');
-        if (retry.state.pushes === 0) throw new Error('重跑没补推');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+        }),
+      );
+      if (!(first instanceof NeedsUser) || first.step !== 'git-auth') throw new Error('没给 git 权限交接');
+      const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
+      if (state.status !== 'committed') throw new Error(`失败后状态不对：${state.status}`);
+      const retry = fakeExec(dir, { versions: ['0.1.0'] });
+      const second = await runRelease({
+        root: dir,
+        home,
+        args: ['--target', 'git', '--yes', '--json'],
+        exec: retry.exec,
+        out: () => {},
+        err: () => {},
+      });
+      if (second.verified !== true) throw new Error('重跑没核过');
+      if (retry.state.commits !== 0) throw new Error('重跑又提交了一次');
+      if (retry.state.pushes === 0) throw new Error('重跑没补推');
     },
-  },
-  {
-    title: 'release：team 发布失败把 private 放回去；没登录先问人且不跑门禁',
-    async run(_ctx, report) {
-      const title = 'release：team 发布失败把 private 放回去；没登录先问人且不跑门禁';
-      const dir = probeOf();
-      const home = homeOf();
-      try {
-        const failing = fakeExec(dir, { publish: fail('E500 boom') });
-        const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes'],
-            exec: failing.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(error instanceof ReleaseError)) throw new Error('发布失败没报 ReleaseError');
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (manifest.private !== true) throw new Error('失败后 private 没放回去');
-        const anonymous = fakeExec(dir, { whoami: fail('npm error code ENEEDAUTH') });
-        const login = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes'],
-            exec: anonymous.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(login instanceof NeedsUser) || login.step !== 'login') throw new Error('没登录没先问人');
-        if (hasCall(anonymous.calls, process.execPath, 'build')) throw new Error('没登录就跑了 build');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+  ),
+  releaseCase(
+    'release：team 发布失败把 private 放回去；没登录先问人且不跑门禁',
+    {},
+    async ({ dir, home }) => {
+      const failing = fakeExec(dir, { publish: fail('E500 boom') });
+      const error = await failureOf(
+        runRelease({
+          root: dir,
+          home,
+          args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes'],
+          exec: failing.exec,
+          out: () => {},
+          err: () => {},
+        }),
+      );
+      if (!(error instanceof ReleaseError)) throw new Error('发布失败没报 ReleaseError');
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (manifest.private !== true) throw new Error('失败后 private 没放回去');
+      const anonymous = fakeExec(dir, { whoami: fail('npm error code ENEEDAUTH') });
+      const login = await failureOf(
+        runRelease({
+          root: dir,
+          home,
+          args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes'],
+          exec: anonymous.exec,
+          out: () => {},
+          err: () => {},
+        }),
+      );
+      if (!(login instanceof NeedsUser) || login.step !== 'login') throw new Error('没登录没先问人');
+      if (hasCall(anonymous.calls, process.execPath, 'build')) throw new Error('没登录就跑了 build');
     },
-  },
+  ),
 
-  {
-    title: 'release：dry-run 只预览，不写盘、不 publish、不留状态',
-    async run(_ctx, report) {
-      const title = 'release：dry-run 只预览，不写盘、不 publish、不留状态';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--target', 'tarball', '--dry-run', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (result.dryRun !== true) throw new Error('dryRun 不是 true');
-        if (manifest.private !== true) throw new Error('dry-run 改了 private');
-        if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('dry-run 跑了 publish');
-        if (hasCall(fake.calls, 'npm', '--pack-destination')) throw new Error('dry-run 真打了包');
-        if (existsSync(join(home, 'workbench', 'releases', 'probe.json'))) throw new Error('dry-run 写了状态');
-        if (existsSync(join(home, 'workbench', 'artifacts', 'probe'))) throw new Error('dry-run 建了产物目录');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+  releaseCase(
+    'release：dry-run 只预览，不写盘、不 publish、不留状态',
+    {},
+    async ({ dir, home, fake }) => {
+      const result = await releaseIn(dir, home, fake, ['--target', 'tarball', '--dry-run', '--json']);
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (result.dryRun !== true) throw new Error('dryRun 不是 true');
+      if (manifest.private !== true) throw new Error('dry-run 改了 private');
+      if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('dry-run 跑了 publish');
+      if (hasCall(fake.calls, 'npm', '--pack-destination')) throw new Error('dry-run 真打了包');
+      if (existsSync(join(home, 'workbench', 'releases', 'probe.json'))) throw new Error('dry-run 写了状态');
+      if (existsSync(join(home, 'workbench', 'artifacts', 'probe'))) throw new Error('dry-run 建了产物目录');
     },
-  },
-  {
-    title: 'release：没给 target 时，有私源走 team，没有就走 tarball',
-    async run(_ctx, report) {
-      const title = 'release：没给 target 时，有私源走 team，没有就走 tarball';
+  ),
+  releaseCase(
+    'release：没给 target 时，有私源走 team，没有就走 tarball',
+    {},
+    async ({ home }) => {
       const teamDir = probeOf({
         manifest: packageOf({ publishConfig: { registry: 'https://npm.demo.test/' } }),
       });
       const tarDir = probeOf();
-      const home = homeOf();
       const team = fakeExec(teamDir);
       const tar = fakeExec(tarDir);
-      try {
-        const a = await runRelease({
-          root: teamDir,
-          home,
-          args: ['--dry-run', '--json'],
-          exec: team.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const b = await runRelease({
-          root: tarDir,
-          home: homeOf(),
-          args: ['--dry-run', '--json'],
-          exec: tar.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (a.target !== 'team') throw new Error(`有私源没走 team：${a.target}`);
-        if (b.target !== 'tarball') throw new Error(`没私源没走 tarball：${b.target}`);
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(teamDir, { recursive: true, force: true });
-        rmSync(tarDir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+      const a = await runRelease({
+        root: teamDir,
+        home,
+        args: ['--dry-run', '--json'],
+        exec: team.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const b = await runRelease({
+        root: tarDir,
+        home: homeOf(),
+        args: ['--dry-run', '--json'],
+        exec: tar.exec,
+        out: () => {},
+        err: () => {},
+      });
+      if (a.target !== 'team') throw new Error(`有私源没走 team：${a.target}`);
+      if (b.target !== 'tarball') throw new Error(`没私源没走 tarball：${b.target}`);
     },
-  },
-  {
-    title: 'release：local 是空操作，不跑门禁、不发任何东西',
-    async run(_ctx, report) {
-      const title = 'release：local 是空操作，不跑门禁、不发任何东西';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--target', 'local', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (result.target !== 'local') throw new Error('target 不是 local');
-        if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('local 跑了 publish');
-        if (fake.calls.some((one) => one.command.endsWith('node'))) throw new Error('local 跑了门禁');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+  ),
+  releaseCase(
+    'release：local 是空操作，不跑门禁、不发任何东西',
+    {},
+    async ({ dir, home, fake }) => {
+      const result = await releaseIn(dir, home, fake, ['--target', 'local', '--json']);
+      if (result.target !== 'local') throw new Error('target 不是 local');
+      if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('local 跑了 publish');
+      if (fake.calls.some((one) => one.command.endsWith('node'))) throw new Error('local 跑了门禁');
     },
-  },
-  {
-    title: 'release：public 名字被占 → needsUser name，且把 private 放回去',
-    async run(_ctx, report) {
-      const title = 'release：public 名字被占 → needsUser name，且把 private 放回去';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir, { publish: fail('npm error E403 Forbidden name already exists') });
-      try {
-        const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'public', '--license', 'MIT', '--yes'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(error instanceof NeedsUser) || error.step !== 'name') throw new Error(`没给改名交接：${error?.message ?? error}`);
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (manifest.private !== true) throw new Error('失败后 private 没放回去');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+  ),
+  releaseCase(
+    'release：public 名字被占 → needsUser name，且把 private 放回去',
+    { plan: { publish: fail('npm error E403 Forbidden name already exists') } },
+    async ({ dir, home, fake }) => {
+      const error = await failureOf(
+        releaseIn(dir, home, fake, ['--target', 'public', '--license', 'MIT', '--yes']),
+      );
+      if (!(error instanceof NeedsUser) || error.step !== 'name') throw new Error(`没给改名交接：${error?.message ?? error}`);
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (manifest.private !== true) throw new Error('失败后 private 没放回去');
     },
-  },
-  {
-    title: 'release：状态是 published 时重跑只核验，不再发一版',
-    async run(_ctx, report) {
-      const title = 'release：状态是 published 时重跑只核验，不再发一版';
-      const dir = probeOf();
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const file = join(home, 'workbench', 'releases', 'probe.json');
-        const state = JSON.parse(readFileSync(file, 'utf8'));
-        writeFileSync(file, `${JSON.stringify({ ...state, status: 'published' }, null, 2)}\n`);
-        const before = fake.calls.filter((one) => one.command === 'npm' && one.argv[0] === 'publish').length;
-        const second = await runRelease({
-          root: dir,
-          home,
-          args: ['--target', 'team', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const after = fake.calls.filter((one) => one.command === 'npm' && one.argv[0] === 'publish').length;
-        if (second.verified !== true) throw new Error('重跑没核验');
-        if (after !== before) throw new Error('重跑又发了一版');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+  ),
+  releaseCase(
+    'release：状态是 published 时重跑只核验，不再发一版',
+    {},
+    async ({ dir, home, fake }) => {
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const file = join(home, 'workbench', 'releases', 'probe.json');
+      const state = JSON.parse(readFileSync(file, 'utf8'));
+      writeFileSync(file, `${JSON.stringify({ ...state, status: 'published' }, null, 2)}\n`);
+      const before = fake.calls.filter((one) => one.command === 'npm' && one.argv[0] === 'publish').length;
+      const second = await releaseIn(dir, home, fake, ['--target', 'team', '--json']);
+      const after = fake.calls.filter((one) => one.command === 'npm' && one.argv[0] === 'publish').length;
+      if (second.verified !== true) throw new Error('重跑没核验');
+      if (after !== before) throw new Error('重跑又发了一版');
     },
-  },
+  ),
 
-  {
-    title: 'release：配了可写索引就默认发市场，产物与索引都进仓库',
-    async run(_ctx, report) {
-      const title = 'release：配了可写索引就默认发市场，产物与索引都进仓库';
-      const dir = probeOf({ manifest: packageOf({ author: 'Probe <probe@example.com>' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-market-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const result = await runRelease({
+  releaseCase(
+    'release：配了可写索引就默认发市场，产物与索引都进仓库',
+    { probe: { manifest: packageOf({ author: 'Probe <probe@example.com>' }) }, repo: 'wb-rel-market-' },
+    async ({ dir, home, fake, repo }) => {
+      const result = await releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json']);
+      if (result.target !== 'market') throw new Error(`没默认走 market：${result.target}`);
+      if (!existsSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'))) throw new Error('产物没进仓库');
+      if (!indexExists(repo)) throw new Error('索引没写');
+      if (!result.install.includes('&path:/artifacts/@demo/probe')) throw new Error(`安装 spec 不对：${result.install}`);
+      if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('market 不该 publish');
+      if (fake.calls.filter((one) => one.command === 'git' && one.argv.includes('push')).length !== 2) {
+        throw new Error('应该推两次（产物 + 索引）');
+      }
+      const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
+      if (state.target !== 'market' || state.commit !== COMMIT) throw new Error('状态不对');
+    },
+  ),
+  releaseCase(
+    'release：市场发布中断落 journal，--resume 跳过门禁、接着补完',
+    { probe: { manifest: packageOf({ author: 'Probe <probe@example.com>' }) }, repo: 'wb-rel-resume-' },
+    async ({ dir, home, repo }) => {
+      const failing = fakeExec(dir, { pushes: [ok(), fail('permission denied'), fail('permission denied')] });
+      const first = await failureOf(
+        runRelease({
           root: dir,
           home,
           args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
+          exec: failing.exec,
           out: () => {},
           err: () => {},
-        });
-        if (result.target !== 'market') throw new Error(`没默认走 market：${result.target}`);
-        if (!existsSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'))) throw new Error('产物没进仓库');
-        if (!indexExists(repo)) throw new Error('索引没写');
-        if (!result.install.includes('&path:/artifacts/@demo/probe')) throw new Error(`安装 spec 不对：${result.install}`);
-        if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('market 不该 publish');
-        if (fake.calls.filter((one) => one.command === 'git' && one.argv.includes('push')).length !== 2) {
-          throw new Error('应该推两次（产物 + 索引）');
-        }
-        const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
-        if (state.target !== 'market' || state.commit !== COMMIT) throw new Error('状态不对');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+        }),
+      );
+      if (!(first instanceof ResumableError)) throw new Error(`中断没给可续跑错误：${first?.message ?? first}`);
+      if (first.resume?.phase !== 'index') throw new Error(`phase 不对：${String(first.resume?.phase)}`);
+      const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
+      if (state.run?.state !== 'interrupted') throw new Error(`journal 没落 interrupted：${String(state.run?.state)}`);
+      if (state.run?.phase !== 'index') throw new Error(`journal phase 不对：${String(state.run?.phase)}`);
+      if (state.run?.artifactPushed !== true) throw new Error('没记下产物已推上去');
+      if (state.run?.indexPlan === undefined) throw new Error('没记下索引计划');
+      const retry = fakeExec(dir);
+      const second = await runRelease({
+        root: dir,
+        home,
+        args: ['--resume', '--yes', '--json'],
+        exec: retry.exec,
+        out: () => {},
+        err: () => {},
+      });
+      if (second.target !== 'market') throw new Error(`续跑没走市场：${String(second.target)}`);
+      if (second.market?.updated !== true) throw new Error(`续跑没更新索引：${second.market?.reason}`);
+      if (hasCall(retry.calls, 'npm', 'run')) throw new Error('续跑又把门禁跑了一遍');
+      if (!second.install.includes('&path:/artifacts/@demo/probe')) throw new Error(`安装 spec 不对：${second.install}`);
+      const done = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
+      if (done.run?.state !== 'done' || done.status !== 'verified') throw new Error('续跑没落 done');
     },
-  },
-  {
-    title: 'release：市场发布中断落 journal，--resume 跳过门禁、接着补完',
-    async run(_ctx, report) {
-      const title = 'release：市场发布中断落 journal，--resume 跳过门禁、接着补完';
-      const dir = probeOf({ manifest: packageOf({ author: 'Probe <probe@example.com>' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-resume-'));
-      const home = homeOf();
-      const failing = fakeExec(dir, { pushes: [ok(), fail('permission denied'), fail('permission denied')] });
-      try {
-        const first = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--index', repo, '--yes', '--json'],
-            exec: failing.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(first instanceof ResumableError)) throw new Error(`中断没给可续跑错误：${first?.message ?? first}`);
-        if (first.resume?.phase !== 'index') throw new Error(`phase 不对：${String(first.resume?.phase)}`);
-        const state = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
-        if (state.run?.state !== 'interrupted') throw new Error(`journal 没落 interrupted：${String(state.run?.state)}`);
-        if (state.run?.phase !== 'index') throw new Error(`journal phase 不对：${String(state.run?.phase)}`);
-        if (state.run?.artifactPushed !== true) throw new Error('没记下产物已推上去');
-        if (state.run?.indexPlan === undefined) throw new Error('没记下索引计划');
-        const retry = fakeExec(dir);
-        const second = await runRelease({
+  ),
+  releaseCase(
+    'release：团队源没配 → needsUser registry；scope 不对 → needsUser scope',
+    {},
+    async ({ dir, home }) => {
+      const bare = fakeExec(dir);
+      const noRegistry = await failureOf(
+        runRelease({
           root: dir,
           home,
-          args: ['--resume', '--yes', '--json'],
-          exec: retry.exec,
+          args: ['--target', 'team', '--yes'],
+          exec: bare.exec,
           out: () => {},
           err: () => {},
-        });
-        if (second.target !== 'market') throw new Error(`续跑没走市场：${String(second.target)}`);
-        if (second.market?.updated !== true) throw new Error(`续跑没更新索引：${second.market?.reason}`);
-        if (hasCall(retry.calls, 'npm', 'run')) throw new Error('续跑又把门禁跑了一遍');
-        if (!second.install.includes('&path:/artifacts/@demo/probe')) throw new Error(`安装 spec 不对：${second.install}`);
-        const done = JSON.parse(readFileSync(join(home, 'workbench', 'releases', 'probe.json'), 'utf8'));
-        if (done.run?.state !== 'done' || done.status !== 'verified') throw new Error('续跑没落 done');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
+        }),
+      );
+      if (!(noRegistry instanceof NeedsUser) || noRegistry.step !== 'registry') {
+        throw new Error(`没给配源交接：${noRegistry?.message ?? noRegistry}`);
+      }
+      const scoped = fakeExec(dir, { publish: fail('npm error E402 Payment Required scope') });
+      const scope = await failureOf(
+        runRelease({
+          root: dir,
+          home,
+          args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes'],
+          exec: scoped.exec,
+          out: () => {},
+          err: () => {},
+        }),
+      );
+      if (!(scope instanceof NeedsUser) || scope.step !== 'scope') {
+        throw new Error(`没给 scope 交接：${scope?.message ?? scope}`);
       }
     },
-  },
-  {
-    title: 'release：团队源没配 → needsUser registry；scope 不对 → needsUser scope',
-    async run(_ctx, report) {
-      const title = 'release：团队源没配 → needsUser registry；scope 不对 → needsUser scope';
-      const dir = probeOf();
-      const home = homeOf();
-      const bare = fakeExec(dir);
-      try {
-        const noRegistry = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'team', '--yes'],
-            exec: bare.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(noRegistry instanceof NeedsUser) || noRegistry.step !== 'registry') {
-          throw new Error(`没给配源交接：${noRegistry?.message ?? noRegistry}`);
-        }
-        const scoped = fakeExec(dir, { publish: fail('npm error E402 Payment Required scope') });
-        const scope = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes'],
-            exec: scoped.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(scope instanceof NeedsUser) || scope.step !== 'scope') {
-          throw new Error(`没给 scope 交接：${scope?.message ?? scope}`);
-        }
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
+  ),
   {
     title: 'release：这一版没有更新日志 → needsUser changelog，门禁都不跑',
     async run(_ctx, report) {
@@ -866,16 +610,9 @@ export const checks = [
       });
       const home = homeOf();
       const fake = fakeExec(dir, { versions: ['0.1.0'] });
-      try {
+      await withCleanup(title, report, [dir, home], async () => {
         const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
+          releaseIn(dir, home, fake, ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes']),
         );
         if (!(error instanceof NeedsUser) || error.step !== 'changelog') {
           throw new Error(`没拦住缺更新日志：${error?.message ?? error}`);
@@ -885,13 +622,7 @@ export const checks = [
         }
         if (hasCall(fake.calls, process.execPath, 'build')) throw new Error('更新日志没过就跑了 build');
         if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('更新日志没过却跑了 publish');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -903,11 +634,8 @@ export const checks = [
       });
       const home = homeOf();
       const fake = fakeExec(dir, { versions: ['0.1.0'] });
-      try {
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: [
+      await withCleanup(title, report, [dir, home], async () => {
+        const result = await releaseIn(dir, home, fake, [
             '--target',
             'team',
             '--registry',
@@ -918,11 +646,7 @@ export const checks = [
             'fixed',
             '--yes',
             '--json',
-          ],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
+          ]);
         if (result.version !== '0.1.1') throw new Error(`版本不对：${String(result.version)}`);
         if (result.changelog?.action !== 'written') throw new Error(`没写更新日志：${JSON.stringify(result.changelog)}`);
         if (result.changelog?.version !== '0.1.1') throw new Error('更新的版本不对');
@@ -931,137 +655,70 @@ export const checks = [
         if (!text.includes('### 🐛 修复')) throw new Error('没按分类写');
         if (!text.includes('- 这一版修了一条')) throw new Error('条目没写进去');
         if (!hasCall(fake.calls, 'npm', 'publish')) throw new Error('没有 publish');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+      });
     },
   },
-  {
-    title: 'release：没写作者时从 git config 补上，索引与产物都带 author',
-    async run(_ctx, report) {
-      const title = 'release：没写作者时从 git config 补上，索引与产物都带 author';
-      const dir = probeOf();
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-author-'));
-      const home = homeOf();
-      const fake = fakeExec(dir, { authorName: 'Probe', authorEmail: 'probe@example.com' });
-      try {
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (!result.changes.includes('author ← git config')) {
-          throw new Error(`changes 里没记作者来源：${JSON.stringify(result.changes)}`);
+  releaseCase(
+    'release：没写作者时从 git config 补上，索引与产物都带 author',
+    { repo: 'wb-rel-author-', plan: { authorName: 'Probe', authorEmail: 'probe@example.com' } },
+    async ({ dir, home, fake, repo }) => {
+      const result = await releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json']);
+      if (!result.changes.includes('author ← git config')) {
+        throw new Error(`changes 里没记作者来源：${JSON.stringify(result.changes)}`);
+      }
+      const shipped = JSON.parse(readFileSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'), 'utf8'));
+      if (shipped.author !== 'Probe <probe@example.com>') throw new Error(`产物里的 author 不对：${shipped.author}`);
+      const index = readIndex(repo);
+      if (index.plugins[0]?.author !== 'Probe <probe@example.com>') throw new Error('索引里没写作者');
+      if (!existsSync(join(repo, 'artifacts', '@demo', 'probe', 'CHANGELOG.md'))) throw new Error('更新日志没随产物发布');
+    },
+  ),
+  releaseCase(
+    'release：索引与产物的提交用模块作者署名（不是本机 fallback 那个 ksen@host）',
+    { probe: { manifest: packageOf({ author: { name: '陈康', email: 'kang@example.com' } }) }, repo: 'wb-rel-sign-' },
+    async ({ dir, home, fake, repo }) => {
+      const result = await releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json']);
+      if (result.target !== 'market') throw new Error(`没走市场：${result.target}`);
+      const commits = fake.calls.filter((one) => one.command === 'git' && one.argv.includes('commit'));
+      if (commits.length < 2) throw new Error(`产物与索引该各提交一次，实际 ${String(commits.length)} 次`);
+      for (const one of commits) {
+        const line = one.argv.join(' ');
+        if (!line.includes('user.name=陈康') || !line.includes('user.email=kang@example.com')) {
+          throw new Error(`commit 没带作者署名：${line}`);
         }
-        const shipped = JSON.parse(readFileSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'), 'utf8'));
-        if (shipped.author !== 'Probe <probe@example.com>') throw new Error(`产物里的 author 不对：${shipped.author}`);
-        const index = readIndex(repo);
-        if (index.plugins[0]?.author !== 'Probe <probe@example.com>') throw new Error('索引里没写作者');
-        if (!existsSync(join(repo, 'artifacts', '@demo', 'probe', 'CHANGELOG.md'))) throw new Error('更新日志没随产物发布');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
+      }
+      const index = readIndex(repo);
+      if (index.plugins[0]?.author !== '陈康') throw new Error(`索引作者不对：${String(index.plugins[0]?.author)}`);
+    },
+  ),
+  releaseCase(
+    'release：--author 换署名：写回 package.json，产物、索引与提交都用它',
+    { probe: { manifest: packageOf({ author: '旧署名' }) }, repo: 'wb-rel-author-flag-', plan: { authorName: '本机', authorEmail: 'local@example.com' } },
+    async ({ dir, home, fake, repo }) => {
+      const result = await releaseIn(dir, home, fake, ['--index', repo, '--author', '陈康 <kang@example.com>', '--yes', '--json']);
+      if (!result.changes.includes('author ← --author')) {
+        throw new Error(`changes 里没记这次换署名：${JSON.stringify(result.changes)}`);
+      }
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (manifest.author !== '陈康 <kang@example.com>') throw new Error(`manifest 没换：${manifest.author}`);
+      const shipped = JSON.parse(readFileSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'), 'utf8'));
+      if (shipped.author !== '陈康 <kang@example.com>') throw new Error(`产物里没换：${shipped.author}`);
+      const index = readIndex(repo);
+      if (index.plugins[0]?.author !== '陈康 <kang@example.com>') throw new Error(`索引里没换：${String(index.plugins[0]?.author)}`);
+      const commits = fake.calls.filter((one) => one.command === 'git' && one.argv.includes('commit'));
+      if (commits.length < 2) throw new Error(`产物与索引该各提交一次，实际 ${String(commits.length)} 次`);
+      for (const one of commits) {
+        const line = one.argv.join(' ');
+        if (!line.includes('user.name=陈康') || !line.includes('user.email=kang@example.com')) {
+          throw new Error(`commit 没带新署名：${line}`);
+        }
       }
     },
-  },
-  {
-    title: 'release：索引与产物的提交用模块作者署名（不是本机 fallback 那个 ksen@host）',
-    async run(_ctx, report) {
-      const title = 'release：索引与产物的提交用模块作者署名（不是本机 fallback 那个 ksen@host）';
-      const dir = probeOf({ manifest: packageOf({ author: { name: '陈康', email: 'kang@example.com' } }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-sign-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (result.target !== 'market') throw new Error(`没走市场：${result.target}`);
-        const commits = fake.calls.filter((one) => one.command === 'git' && one.argv.includes('commit'));
-        if (commits.length < 2) throw new Error(`产物与索引该各提交一次，实际 ${String(commits.length)} 次`);
-        for (const one of commits) {
-          const line = one.argv.join(' ');
-          if (!line.includes('user.name=陈康') || !line.includes('user.email=kang@example.com')) {
-            throw new Error(`commit 没带作者署名：${line}`);
-          }
-        }
-        const index = readIndex(repo);
-        if (index.plugins[0]?.author !== '陈康') throw new Error(`索引作者不对：${String(index.plugins[0]?.author)}`);
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：--author 换署名：写回 package.json，产物、索引与提交都用它',
-    async run(_ctx, report) {
-      const title = 'release：--author 换署名：写回 package.json，产物、索引与提交都用它';
-      const dir = probeOf({ manifest: packageOf({ author: '旧署名' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-author-flag-'));
-      const home = homeOf();
-      const fake = fakeExec(dir, { authorName: '本机', authorEmail: 'local@example.com' });
-      try {
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--author', '陈康 <kang@example.com>', '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (!result.changes.includes('author ← --author')) {
-          throw new Error(`changes 里没记这次换署名：${JSON.stringify(result.changes)}`);
-        }
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (manifest.author !== '陈康 <kang@example.com>') throw new Error(`manifest 没换：${manifest.author}`);
-        const shipped = JSON.parse(readFileSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'), 'utf8'));
-        if (shipped.author !== '陈康 <kang@example.com>') throw new Error(`产物里没换：${shipped.author}`);
-        const index = readIndex(repo);
-        if (index.plugins[0]?.author !== '陈康 <kang@example.com>') throw new Error(`索引里没换：${String(index.plugins[0]?.author)}`);
-        const commits = fake.calls.filter((one) => one.command === 'git' && one.argv.includes('commit'));
-        if (commits.length < 2) throw new Error(`产物与索引该各提交一次，实际 ${String(commits.length)} 次`);
-        for (const one of commits) {
-          const line = one.argv.join(' ');
-          if (!line.includes('user.name=陈康') || !line.includes('user.email=kang@example.com')) {
-            throw new Error(`commit 没带新署名：${line}`);
-          }
-        }
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：市集标题取模块自己的 messages（<unit>.cardTitle），不用往 package.json 里补',
-    async run(_ctx, report) {
-      const title = 'release：市集标题取模块自己的 messages（<unit>.cardTitle），不用往 package.json 里补';
-      const dir = probeOf({ manifest: packageOf({ author: 'Probe <probe@example.com>' }) });
+  ),
+  releaseCase(
+    'release：市集标题取模块自己的 messages（<unit>.cardTitle），不用往 package.json 里补',
+    { probe: { manifest: packageOf({ author: 'Probe <probe@example.com>' }) }, repo: 'wb-rel-title-' },
+    async ({ dir, home, fake, repo }) => {
       mkdirSync(join(dir, 'src'), { recursive: true });
       writeFileSync(
         join(dir, 'src', 'messages.ts'),
@@ -1073,428 +730,249 @@ export const checks = [
           '',
         ].join('\n'),
       );
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-title-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const index = readIndex(repo);
-        if (index.plugins[0]?.title?.zh !== '探针' || index.plugins[0]?.title?.en !== 'Probe') {
-          throw new Error(`索引标题不对：${JSON.stringify(index.plugins[0]?.title)}`);
-        }
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const index = readIndex(repo);
+      if (index.plugins[0]?.title?.zh !== '探针' || index.plugins[0]?.title?.en !== 'Probe') {
+        throw new Error(`索引标题不对：${JSON.stringify(index.plugins[0]?.title)}`);
       }
     },
-  },
-  {
-    title: 'release：--refresh 只改索引里的元数据（标题），版本号与产物都不动',
-    async run(_ctx, report) {
-      const title = 'release：--refresh 只改索引里的元数据（标题），版本号与产物都不动';
-      const dir = probeOf({ manifest: packageOf({ author: 'Probe <probe@example.com>' }) });
+  ),
+  releaseCase(
+    'release：--refresh 只改索引里的元数据（标题），版本号与产物都不动',
+    { probe: { manifest: packageOf({ author: 'Probe <probe@example.com>' }) }, repo: 'wb-rel-refresh-' },
+    async ({ dir, home, fake, repo }) => {
       mkdirSync(join(dir, 'src'), { recursive: true });
       const messages = (name) =>
         ['export const messages = {', `  zh: { 'probe.cardTitle': '${name}' },`, '  en: {', "    'probe.cardTitle': 'Probe',", '  },', '};', ''].join('\n');
       writeFileSync(join(dir, 'src', 'messages.ts'), messages('旧名'));
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-refresh-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        writeFileSync(join(dir, 'src', 'messages.ts'), messages('新名'));
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--refresh', '--target', 'market', '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (result.refresh !== true || result.refreshed !== true) {
-          throw new Error(`没标记成刷新：${JSON.stringify({ refresh: result.refresh, refreshed: result.refreshed })}`);
-        }
-        const index = readIndex(repo);
-        const entry = index.plugins[0];
-        if (entry.title?.zh !== '新名') throw new Error(`标题没刷：${JSON.stringify(entry.title)}`);
-        if (entry.versions.length !== 1 || entry.versions[0].version !== '0.1.0') {
-          throw new Error(`版本被动了：${JSON.stringify(entry.versions.map((one) => one.version))}`);
-        }
-        if (fake.state.commits !== 3) throw new Error(`提交次数不对（应只多一次索引提交）：${String(fake.state.commits)}`);
-        const again = await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--refresh', '--target', 'market', '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (again.refreshed !== false) throw new Error('元数据没变却又刷了一次');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      writeFileSync(join(dir, 'src', 'messages.ts'), messages('新名'));
+      const result = await releaseIn(dir, home, fake, ['--index', repo, '--refresh', '--target', 'market', '--yes', '--json']);
+      if (result.refresh !== true || result.refreshed !== true) {
+        throw new Error(`没标记成刷新：${JSON.stringify({ refresh: result.refresh, refreshed: result.refreshed })}`);
+      }
+      const index = readIndex(repo);
+      const entry = index.plugins[0];
+      if (entry.title?.zh !== '新名') throw new Error(`标题没刷：${JSON.stringify(entry.title)}`);
+      if (entry.versions.length !== 1 || entry.versions[0].version !== '0.1.0') {
+        throw new Error(`版本被动了：${JSON.stringify(entry.versions.map((one) => one.version))}`);
+      }
+      if (fake.state.commits !== 3) throw new Error(`提交次数不对（应只多一次索引提交）：${String(fake.state.commits)}`);
+      const again = await releaseIn(dir, home, fake, ['--index', repo, '--refresh', '--target', 'market', '--yes', '--json']);
+      if (again.refreshed !== false) throw new Error('元数据没变却又刷了一次');
+    },
+  ),
+  releaseCase(
+    'release：市场里同名归原主，换署名发被拒且产物不动',
+    { probe: { manifest: packageOf({ author: '甲 <jia@example.com>' }) }, repo: 'wb-rel-owner-' },
+    async ({ dir, home, fake, repo }) => {
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      manifest.version = '0.1.1';
+      manifest.author = '乙 <yi@example.com>';
+      writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      const error = await failureOf(
+        releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json']),
+      );
+      if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
+      if (!error.message.includes('已经有主')) throw new Error(`拒的理由不对：${error.message}`);
+      const shipped = JSON.parse(readFileSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'), 'utf8'));
+      if (shipped.version !== '0.1.0') throw new Error(`别人的产物被动了：${shipped.version}`);
+      const index = readIndex(repo);
+      const entry = index.plugins[0];
+      if (entry.owner !== '甲 <jia@example.com>') throw new Error(`owner 被换了：${String(entry.owner)}`);
+      if (entry.versions.length !== 1 || entry.versions[0].version !== '0.1.0') {
+        throw new Error(`索引版本被动了：${JSON.stringify(entry.versions.map((one) => one.version))}`);
       }
     },
-  },
-  {
-    title: 'release：市场里同名归原主，换署名发被拒且产物不动',
-    async run(_ctx, report) {
-      const title = 'release：市场里同名归原主，换署名发被拒且产物不动';
-      const dir = probeOf({ manifest: packageOf({ author: '甲 <jia@example.com>' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-owner-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        manifest.version = '0.1.1';
-        manifest.author = '乙 <yi@example.com>';
-        writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-        const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--index', repo, '--yes', '--json'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
-        if (!error.message.includes('已经有主')) throw new Error(`拒的理由不对：${error.message}`);
-        const shipped = JSON.parse(readFileSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'), 'utf8'));
-        if (shipped.version !== '0.1.0') throw new Error(`别人的产物被动了：${shipped.version}`);
-        const index = readIndex(repo);
-        const entry = index.plugins[0];
-        if (entry.owner !== '甲 <jia@example.com>') throw new Error(`owner 被换了：${String(entry.owner)}`);
-        if (entry.versions.length !== 1 || entry.versions[0].version !== '0.1.0') {
-          throw new Error(`索引版本被动了：${JSON.stringify(entry.versions.map((one) => one.version))}`);
-        }
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
+  ),
+  releaseCase(
+    'release：原主只换了署名格式（姓名不变）还能发，owner 不动',
+    { probe: { manifest: packageOf({ author: '陈康' }) }, repo: 'wb-rel-owner-format-' },
+    async ({ dir, home, fake, repo }) => {
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      manifest.version = '0.1.1';
+      manifest.author = '陈康 <kang@example.com>';
+      writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      const result = await releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json']);
+      if (result.version !== '0.1.1') throw new Error(`版本不对：${String(result.version)}`);
+      const index = readIndex(repo);
+      const entry = index.plugins[0];
+      if (entry.owner !== '陈康') throw new Error(`owner 跟着署名漂了：${String(entry.owner)}`);
+      if (!entry.versions.some((one) => one.version === '0.1.1')) {
+        throw new Error(`新版本没进索引：${JSON.stringify(entry.versions.map((one) => one.version))}`);
+      }
+      const shipped = JSON.parse(readFileSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'), 'utf8'));
+      if (shipped.version !== '0.1.1') throw new Error(`产物没跟上：${shipped.version}`);
+    },
+  ),
+  releaseCase(
+    'release：没有署名不许往市场里发，仓库一个字节都不写',
+    { repo: 'wb-rel-anon-' },
+    async ({ dir, home, fake, repo }) => {
+      const error = await failureOf(
+        releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json']),
+      );
+      if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
+      if (!error.message.includes('名字要有主人')) throw new Error(`拒的理由不对：${error.message}`);
+      if (existsSync(join(repo, 'artifacts')) || indexExists(repo)) {
+        throw new Error('没署名却往仓库里写了东西');
       }
     },
-  },
-  {
-    title: 'release：原主只换了署名格式（姓名不变）还能发，owner 不动',
-    async run(_ctx, report) {
-      const title = 'release：原主只换了署名格式（姓名不变）还能发，owner 不动';
-      const dir = probeOf({ manifest: packageOf({ author: '陈康' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-owner-format-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        manifest.version = '0.1.1';
-        manifest.author = '陈康 <kang@example.com>';
-        writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        if (result.version !== '0.1.1') throw new Error(`版本不对：${String(result.version)}`);
-        const index = readIndex(repo);
-        const entry = index.plugins[0];
-        if (entry.owner !== '陈康') throw new Error(`owner 跟着署名漂了：${String(entry.owner)}`);
-        if (!entry.versions.some((one) => one.version === '0.1.1')) {
-          throw new Error(`新版本没进索引：${JSON.stringify(entry.versions.map((one) => one.version))}`);
-        }
-        const shipped = JSON.parse(readFileSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'), 'utf8'));
-        if (shipped.version !== '0.1.1') throw new Error(`产物没跟上：${shipped.version}`);
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
+  ),
+  releaseCase(
+    'release：refresh 之后别人用旧标题发新版，不会把标题改回去',
+    { probe: { manifest: packageOf({ author: '甲 <jia@example.com>', title: '标题 A' }) }, repo: 'wb-rel-refresh-stale-' },
+    async ({ dir, home, fake, repo }) => {
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const refreshed = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      refreshed.title = '标题 B';
+      writeFileSync(join(dir, 'package.json'), `${JSON.stringify(refreshed, null, 2)}\n`);
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--refresh', '--target', 'market', '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const stale = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      stale.title = '标题 A';
+      stale.version = '0.1.1';
+      writeFileSync(join(dir, 'package.json'), `${JSON.stringify(stale, null, 2)}\n`);
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--changelog-note', '新版本', '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const index = readIndex(repo);
+      const entry = index.plugins[0];
+      if (entry.title?.zh !== '标题 B') throw new Error(`标题被旧 checkout 改回去了：${JSON.stringify(entry.title)}`);
+      if (!entry.versions.some((one) => one.version === '0.1.1')) throw new Error('新版本没进索引');
+    },
+  ),
+  releaseCase(
+    'release：别人的条目不能靠 --refresh 改署名',
+    { probe: { manifest: packageOf({ author: '甲 <jia@example.com>' }) }, repo: 'wb-rel-refresh-owner-' },
+    async ({ dir, home, fake, repo }) => {
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      manifest.author = '乙 <yi@example.com>';
+      writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      const before = fake.state.commits;
+      const error = await failureOf(
+        releaseIn(dir, home, fake, ['--index', repo, '--refresh', '--target', 'market', '--yes', '--json']),
+      );
+      if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
+      if (!error.message.includes('已经有主')) throw new Error(`拒的理由不对：${error.message}`);
+      const index = readIndex(repo);
+      const entry = index.plugins[0];
+      if (entry.owner !== '甲 <jia@example.com>') throw new Error(`owner 被换了：${String(entry.owner)}`);
+      if (entry.author !== '甲 <jia@example.com>') throw new Error(`署名被换了：${String(entry.author)}`);
+      if (fake.state.commits !== before) throw new Error(`被拒的刷新还提交了一次：${String(fake.state.commits)}`);
+    },
+  ),
+  releaseCase(
+    'release：换一个包名但沿用同一个 unit 会被拒，旧产物不动',
+    { probe: { manifest: packageOf({ author: '甲 <jia@example.com>' }) }, repo: 'wb-rel-unit-' },
+    async ({ dir, home, fake, repo }) => {
+      await runRelease({
+        root: dir,
+        home,
+        args: ['--index', repo, '--yes', '--json'],
+        exec: fake.exec,
+        out: () => {},
+        err: () => {},
+      });
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      manifest.name = '@demo/other';
+      manifest.version = '0.1.1';
+      writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      const error = await failureOf(
+        releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json']),
+      );
+      if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
+      if (!error.message.includes('模块 id')) throw new Error(`拒的理由不对：${error.message}`);
+      if (!existsSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'))) {
+        throw new Error('旧产物被删了');
+      }
+      if (existsSync(join(repo, 'artifacts', '@demo', 'other'))) throw new Error('新包名也写了产物');
+      const index = readIndex(repo);
+      if (index.plugins.length !== 1 || index.plugins[0].name !== '@demo/probe') {
+        throw new Error(`索引被动了：${JSON.stringify(index.plugins.map((one) => one.name))}`);
       }
     },
-  },
-  {
-    title: 'release：没有署名不许往市场里发，仓库一个字节都不写',
-    async run(_ctx, report) {
-      const title = 'release：没有署名不许往市场里发，仓库一个字节都不写';
-      const dir = probeOf();
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-anon-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--index', repo, '--yes', '--json'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
-        if (!error.message.includes('名字要有主人')) throw new Error(`拒的理由不对：${error.message}`);
-        if (existsSync(join(repo, 'artifacts')) || indexExists(repo)) {
-          throw new Error('没署名却往仓库里写了东西');
-        }
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
+  ),
+  releaseCase(
+    'release：--label 只进索引条目，package.json 一个字节不动（最多两个）',
+    { probe: { manifest: packageOf({ author: 'Probe <probe@example.com>' }) }, repo: 'wb-rel-label-' },
+    async ({ dir, home, fake, repo }) => {
+      const result = await releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json', '--label', '发布编排', '--label', '构建状态']);
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      if (manifest.dsh?.workbench?.market !== undefined) {
+        throw new Error(`标签写进了 package.json（协议不认 market 这个键）：${JSON.stringify(manifest.dsh.workbench.market)}`);
+      }
+      if (manifest.dsh?.workbench?.unit !== 'probe') throw new Error('发布把 unit 改了');
+      const entry = readIndex(repo).plugins[0];
+      if (entry.metadata?.labels?.join(',') !== '发布编排,构建状态') {
+        throw new Error(`标签没进索引：${JSON.stringify(entry.metadata)}`);
+      }
+      if (entry.metadata?.unit !== 'probe') throw new Error('索引里的 unit 丢了');
+      if (!Array.isArray(result.labels) || result.labels.join(',') !== '发布编排,构建状态') {
+        throw new Error(`结果里没说标签：${JSON.stringify(result.labels)}`);
+      }
+      const tooMany = await failureOf(
+        releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json', '--label', '一', '--label', '二', '--label', '三']),
+      );
+      if (!(tooMany instanceof ReleaseError) || !tooMany.message.includes('最多两个')) {
+        throw new Error(`三个标签没拦住：${tooMany?.message ?? tooMany}`);
       }
     },
-  },
-  {
-    title: 'release：refresh 之后别人用旧标题发新版，不会把标题改回去',
-    async run(_ctx, report) {
-      const title = 'release：refresh 之后别人用旧标题发新版，不会把标题改回去';
-      const dir = probeOf({ manifest: packageOf({ author: '甲 <jia@example.com>', title: '标题 A' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-refresh-stale-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const refreshed = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        refreshed.title = '标题 B';
-        writeFileSync(join(dir, 'package.json'), `${JSON.stringify(refreshed, null, 2)}\n`);
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--refresh', '--target', 'market', '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const stale = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        stale.title = '标题 A';
-        stale.version = '0.1.1';
-        writeFileSync(join(dir, 'package.json'), `${JSON.stringify(stale, null, 2)}\n`);
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--changelog-note', '新版本', '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const index = readIndex(repo);
-        const entry = index.plugins[0];
-        if (entry.title?.zh !== '标题 B') throw new Error(`标题被旧 checkout 改回去了：${JSON.stringify(entry.title)}`);
-        if (!entry.versions.some((one) => one.version === '0.1.1')) throw new Error('新版本没进索引');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：别人的条目不能靠 --refresh 改署名',
-    async run(_ctx, report) {
-      const title = 'release：别人的条目不能靠 --refresh 改署名';
-      const dir = probeOf({ manifest: packageOf({ author: '甲 <jia@example.com>' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-refresh-owner-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        manifest.author = '乙 <yi@example.com>';
-        writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-        const before = fake.state.commits;
-        const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--index', repo, '--refresh', '--target', 'market', '--yes', '--json'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
-        if (!error.message.includes('已经有主')) throw new Error(`拒的理由不对：${error.message}`);
-        const index = readIndex(repo);
-        const entry = index.plugins[0];
-        if (entry.owner !== '甲 <jia@example.com>') throw new Error(`owner 被换了：${String(entry.owner)}`);
-        if (entry.author !== '甲 <jia@example.com>') throw new Error(`署名被换了：${String(entry.author)}`);
-        if (fake.state.commits !== before) throw new Error(`被拒的刷新还提交了一次：${String(fake.state.commits)}`);
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：换一个包名但沿用同一个 unit 会被拒，旧产物不动',
-    async run(_ctx, report) {
-      const title = 'release：换一个包名但沿用同一个 unit 会被拒，旧产物不动';
-      const dir = probeOf({ manifest: packageOf({ author: '甲 <jia@example.com>' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-unit-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        manifest.name = '@demo/other';
-        manifest.version = '0.1.1';
-        writeFileSync(join(dir, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-        const error = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--index', repo, '--yes', '--json'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
-        if (!error.message.includes('模块 id')) throw new Error(`拒的理由不对：${error.message}`);
-        if (!existsSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'))) {
-          throw new Error('旧产物被删了');
-        }
-        if (existsSync(join(repo, 'artifacts', '@demo', 'other'))) throw new Error('新包名也写了产物');
-        const index = readIndex(repo);
-        if (index.plugins.length !== 1 || index.plugins[0].name !== '@demo/probe') {
-          throw new Error(`索引被动了：${JSON.stringify(index.plugins.map((one) => one.name))}`);
-        }
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
-  {
-    title: 'release：--label 只进索引条目，package.json 一个字节不动（最多两个）',
-    async run(_ctx, report) {
-      const title = 'release：--label 只进索引条目，package.json 一个字节不动（最多两个）';
-      const dir = probeOf({ manifest: packageOf({ author: 'Probe <probe@example.com>' }) });
-      const repo = mkdtempSync(join(tmpdir(), 'wb-rel-label-'));
-      const home = homeOf();
-      const fake = fakeExec(dir);
-      try {
-        const result = await runRelease({
-          root: dir,
-          home,
-          args: ['--index', repo, '--yes', '--json', '--label', '发布编排', '--label', '构建状态'],
-          exec: fake.exec,
-          out: () => {},
-          err: () => {},
-        });
-        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-        if (manifest.dsh?.workbench?.market !== undefined) {
-          throw new Error(`标签写进了 package.json（协议不认 market 这个键）：${JSON.stringify(manifest.dsh.workbench.market)}`);
-        }
-        if (manifest.dsh?.workbench?.unit !== 'probe') throw new Error('发布把 unit 改了');
-        const entry = readIndex(repo).plugins[0];
-        if (entry.metadata?.labels?.join(',') !== '发布编排,构建状态') {
-          throw new Error(`标签没进索引：${JSON.stringify(entry.metadata)}`);
-        }
-        if (entry.metadata?.unit !== 'probe') throw new Error('索引里的 unit 丢了');
-        if (!Array.isArray(result.labels) || result.labels.join(',') !== '发布编排,构建状态') {
-          throw new Error(`结果里没说标签：${JSON.stringify(result.labels)}`);
-        }
-        const tooMany = await failureOf(
-          runRelease({
-            root: dir,
-            home,
-            args: ['--index', repo, '--yes', '--json', '--label', '一', '--label', '二', '--label', '三'],
-            exec: fake.exec,
-            out: () => {},
-            err: () => {},
-          }),
-        );
-        if (!(tooMany instanceof ReleaseError) || !tooMany.message.includes('最多两个')) {
-          throw new Error(`三个标签没拦住：${tooMany?.message ?? tooMany}`);
-        }
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  },
+  ),
 ];

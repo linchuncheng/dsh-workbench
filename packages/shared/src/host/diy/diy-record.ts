@@ -1,4 +1,5 @@
 import { clockOf } from '../runtime/time.js';
+import { createHold } from './hold.js';
 /**
  * 录制交接的三个相位：`armed` 等用户在外站页面上动手，`recording` 正在录，`finished` 录完待取。
  */
@@ -146,25 +147,12 @@ export function shotDueOf(state: RecordState, pageShots: number): number | null 
   return n;
 }
 
-function alive(state: RecordState | null, now: number): RecordState | null {
-  if (state === null) return null;
-  return now - state.at <= RECORD_STALE_MS ? state : null;
-}
-
-function ownerOf(state: RecordState | null, sessionId: string, now: number): RecordRefusal | RecordState {
-  const held = alive(state, now);
-  if (held === null) return 'none';
-  return held.sessionId === sessionId ? held : 'not-owner';
-}
-
 /**
  * 造一份新的录制约定存储（进程内存，同一时刻只可能有一份有效约定）。
  * @returns 存取口；动作成不成都在返回的 `RecordMove` 里，不抛异常。
  */
 export function createRecordStore(): RecordStore {
-  let held: RecordState | null = null;
-
-  const live = (now: number): RecordState | null => alive(held, now);
+  const hold = createHold<RecordState>(RECORD_STALE_MS);
 
   const withShot = (found: RecordState, shot: RecordShot, now: number, error: string | undefined): RecordState => {
     const row: RecordShot = error === undefined ? shot : { n: shot.n, at: shot.at, path: shot.path, error };
@@ -180,14 +168,10 @@ export function createRecordStore(): RecordStore {
   };
 
   return {
-    live,
+    live: (now) => hold.live(now),
 
     begin(pact) {
-      const current = alive(held, pact.now);
-      if (current !== null) {
-        return { ok: false, code: current.sessionId === pact.sessionId ? 'already-held' : 'held-by-other' };
-      }
-      const state: RecordState = {
+      return hold.begin(pact.sessionId, pact.now, (now) => ({
         phase: 'armed',
         sessionId: pact.sessionId,
         workspace: pact.workspace,
@@ -198,7 +182,7 @@ export function createRecordStore(): RecordStore {
         action: pact.action,
         expect: pact.expect,
         captureFile: pact.captureFile,
-        startedAt: pact.now,
+        startedAt: now,
         t0: null,
         t1: null,
         shots: [],
@@ -206,65 +190,46 @@ export function createRecordStore(): RecordStore {
         shotTries: null,
         beats: 0,
         beatMs: 0,
-        at: pact.now,
-      };
-      held = state;
-      return { ok: true, state };
+        at: now,
+      }));
     },
 
     started(sessionId, at, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      if (found.phase === 'recording') return { ok: false, code: 'already-recording' };
-      if (found.phase !== 'armed') return { ok: false, code: 'not-armed' };
-      const state: RecordState = { ...found, phase: 'recording', t0: at, at: now };
-      held = state;
-      return { ok: true, state };
+      return hold.move(sessionId, now, (found) => {
+        if (found.phase === 'recording') return { ok: false, code: 'already-recording' };
+        if (found.phase !== 'armed') return { ok: false, code: 'not-armed' };
+        return { ok: true, state: { ...found, phase: 'recording', t0: at, at: now } };
+      });
     },
 
     finished(sessionId, at, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      if (found.phase !== 'recording') return { ok: false, code: 'not-recording' };
-      const state: RecordState = { ...found, phase: 'finished', t1: at, at: now };
-      held = state;
-      return { ok: true, state };
+      return hold.move(sessionId, now, (found) =>
+        found.phase === 'recording'
+          ? { ok: true, state: { ...found, phase: 'finished', t1: at, at: now } }
+          : { ok: false, code: 'not-recording' },
+      );
     },
 
     shotTaken(sessionId, shot, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      const state = withShot(found, shot, now, undefined);
-      held = state;
-      return { ok: true, state };
+      return hold.move(sessionId, now, (found) => ({ ok: true, state: withShot(found, shot, now, undefined) }));
     },
 
     shotFailed(sessionId, shot, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      const state = withShot(found, shot, now, shot.error === undefined ? '落图失败' : shot.error);
-      held = state;
-      return { ok: true, state };
+      return hold.move(sessionId, now, (found) => ({
+        ok: true,
+        state: withShot(found, shot, now, shot.error === undefined ? '落图失败' : shot.error),
+      }));
     },
 
     beat(sessionId, ms, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      const state: RecordState = {
-        ...found,
-        beats: found.beats + 1,
-        beatMs: Math.max(0, Math.floor(ms)),
-        at: now,
-      };
-      held = state;
-      return { ok: true, state };
+      return hold.move(sessionId, now, (found) => ({
+        ok: true,
+        state: { ...found, beats: found.beats + 1, beatMs: Math.max(0, Math.floor(ms)), at: now },
+      }));
     },
 
     stop(sessionId, now) {
-      const found = ownerOf(held, sessionId, now);
-      if (typeof found === 'string') return { ok: false, code: found };
-      held = null;
-      return { ok: true, state: found };
+      return hold.release(sessionId, now);
     },
   };
 }

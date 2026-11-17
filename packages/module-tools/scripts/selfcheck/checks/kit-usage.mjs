@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { BIN, FACES, PACKAGES_DIR, declaration, read } from '../lib.mjs';
+import { declaration, manifestOf, read, runCheck, BIN, FACES, PACKAGES_DIR } from '../lib.mjs';
 
 import { inlinedShellRules } from '../../../src/build/css-shell.mjs';
 
@@ -17,39 +17,8 @@ export const checks = [
       const tail = (out) => out.trim().split('\n').slice(-4).join(' | ');
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-anchor',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: { unit: 'demo-anchor' },
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
-        const run = () => {
-          try {
-            const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'style'], {
-              cwd: probe,
-              encoding: 'utf8',
-              stdio: 'pipe',
-            });
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-anchor', { unit: 'demo-anchor' }));
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(client, "export const open = () => h('a', { href: 'https://x' }, '去看账单');\n");
         const bad = run();
@@ -79,39 +48,8 @@ export const checks = [
       const tail = (out) => out.trim().split('\n').slice(-4).join(' | ');
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-control',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: { unit: 'demo-control' },
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
-        const run = () => {
-          try {
-            const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'style'], {
-              cwd: probe,
-              encoding: 'utf8',
-              stdio: 'pipe',
-            });
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-control', { unit: 'demo-control' }));
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(
           client,
@@ -261,39 +199,8 @@ export const checks = [
       const tail = (out) => out.trim().split('\n').slice(-4).join(' | ');
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-formrow',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-                workbench: declaration('demo-formrow'),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
-        const run = () => {
-          try {
-            const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'style'], {
-              cwd: probe,
-              encoding: 'utf8',
-              stdio: 'pipe',
-            });
-            return { failed: false, out: String(out) };
-          } catch (error) {
-            return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-          }
-        };
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-formrow'));
+        const run = () => runCheck(probe, 'style');
 
         writeFileSync(
           client,

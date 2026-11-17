@@ -9,16 +9,15 @@ import type {
 import type { DebugIntent, DebugState } from '@dsh-workbench/shared/host';
 import { boardSituation, cx } from '@dsh-workbench/shared';
 import {
-  HoverCard,
   IconPauseOutlineRegular,
   IconPlayOutlineRegular,
   IconStopFillRegular,
-  StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives';
-import { Tip } from '@/shared/components/Tip';
 import { useDiyDebugAct, useDiyDebugState } from '@/shared/hooks/use-diy-debug';
 import { boardProbe, subscribeBoardProbe } from '@/app/layouts/rightbar/board-fact';
 import { useBoardWorkspace } from '@/app/layouts/rightbar/use-panels';
+import { FooterAction } from './FooterAction';
+import footer from './FooterAction.module.css';
 import styles from './DebugFooterAction.module.css';
 
 export interface DebugFooterActionProps {
@@ -97,13 +96,6 @@ export function DebugFooterAction({ wide, t, useWorkspaces, useSessions }: Debug
         ? 'panel'
         : 'none';
   const view = debugFooterView(state, t, trouble);
-  const dot = (
-    <StateDot
-      state={view.trouble !== 'none' ? 'error' : view.stalled ? 'warning' : 'done'}
-      className={view.trouble === 'none' && !view.stalled ? styles.pulse : undefined}
-    />
-  );
-  const tone = view.trouble !== 'none' ? styles.trouble : view.stalled ? styles.paused : styles.live;
 
   const press = (intent: DebugIntent) => (event: { stopPropagation(): void }) => {
     event.stopPropagation();
@@ -118,78 +110,52 @@ export function DebugFooterAction({ wide, t, useWorkspaces, useSessions }: Debug
     setArmed(false);
     void act.send({ intent: 'stop' });
   };
-  const acts = (
-    <span className={styles.acts}>
-      {view.stalled ? (
-        <button
-          type="button"
-          className={styles.act}
-          aria-label={t('debug.act.resume')}
-          onClick={press('resume')}
-        >
-          <IconPlayOutlineRegular size={12} />
-        </button>
-      ) : (
-        <button
-          type="button"
-          className={styles.act}
-          aria-label={t('debug.act.pause')}
-          onClick={press('pause')}
-        >
-          <IconPauseOutlineRegular size={12} />
-        </button>
-      )}
+  const acts = [
+    view.stalled ? (
       <button
+        key="resume"
         type="button"
-        className={cx(styles.act, styles.actStop, armed ? styles.actArmed : undefined)}
-        data-act-state={armed ? 'armed' : 'idle'}
-        aria-label={armed ? t('debug.act.stop.ask') : t('debug.act.stop')}
-        onClick={onStop}
-        onBlur={() => setArmed(false)}
+        className={cx(footer.act, styles.actIcon)}
+        aria-label={t('debug.act.resume')}
+        onClick={press('resume')}
       >
-        <IconStopFillRegular size={12} />
-        {armed ? <span className={styles.actLabel}>{t('debug.act.stop.ask')}</span> : null}
+        <IconPlayOutlineRegular size={12} />
       </button>
-    </span>
-  );
+    ) : (
+      <button
+        key="pause"
+        type="button"
+        className={cx(footer.act, styles.actIcon)}
+        aria-label={t('debug.act.pause')}
+        onClick={press('pause')}
+      >
+        <IconPauseOutlineRegular size={12} />
+      </button>
+    ),
+    <button
+      key="stop"
+      type="button"
+      className={cx(footer.act, styles.actIcon, styles.actStop, armed ? styles.actArmed : undefined)}
+      data-act-state={armed ? 'armed' : 'idle'}
+      aria-label={armed ? t('debug.act.stop.ask') : t('debug.act.stop')}
+      onClick={onStop}
+      onBlur={() => setArmed(false)}
+    >
+      <IconStopFillRegular size={12} />
+      {armed ? <span className={styles.actLabel}>{t('debug.act.stop.ask')}</span> : null}
+    </button>,
+  ];
 
-  const status = (
-    <span className={styles.entryInner}>
-      {dot}
-      {wide === true ? <span className={styles.entryLine}>{view.label}</span> : null}
-    </span>
-  );
-  const row = (
-    <div className={cx(styles.action, wide === true ? undefined : styles.actionRail, tone)}>
-      <span className={styles.entry} role="status" aria-label={`${view.label}，${view.note}`}>
-        {wide === true ? (
-          <Tip label={view.note} side="top">
-            {status}
-          </Tip>
-        ) : (
-          status
-        )}
-      </span>
-      {wide === true ? acts : null}
-    </div>
-  );
-
-  if (wide === true) {
-    return <span className={styles.slot}>{row}</span>;
-  }
   return (
-    <span className={styles.slot}>
-      <HoverCard
-        anchor={row}
-        content={
-          <div className={styles.card}>
-            <div className={styles.cardTitle}>{view.title}</div>
-            <div className={styles.cardNote}>{view.note}</div>
-            {acts}
-          </div>
-        }
-        openDelayMs={200}
-      />
-    </span>
+    <FooterAction
+      wide={wide}
+      label={view.label}
+      title={view.title}
+      note={view.note}
+      dot={view.trouble !== 'none' ? 'error' : view.stalled ? 'warning' : 'done'}
+      pulse={view.trouble === 'none' && !view.stalled}
+      tone={view.trouble !== 'none' ? 'blocked' : view.stalled ? 'wait' : 'good'}
+      acts={acts}
+    />
   );
 }

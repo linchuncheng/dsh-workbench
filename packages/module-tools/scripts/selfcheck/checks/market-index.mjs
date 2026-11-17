@@ -14,6 +14,7 @@ import {
   sanitizeManifest,
   updateMarketIndex,
 } from '../../../src/market/market-index.mjs';
+import { withCleanup } from '../lib.mjs';
 
 const COMMIT = 'a'.repeat(40);
 
@@ -249,7 +250,7 @@ export const checks = [
       const title = 'market-index：artifacts-in-repo 拷产物 + 两步 commit，source 用 git SHA';
       const root = moduleDir();
       const repo = marketDir('{"format":1,"plugins":[]}\n');
-      try {
+      await withCleanup(title, report, [root, repo], async () => {
         const fake = fakeExec();
         const plan = resolveIndexPlan({ args: ['--index', repo], home: tmpdir(), exec: fake.exec });
         const market = updateMarketIndex({
@@ -283,13 +284,7 @@ export const checks = [
         const commits = fake.calls.filter((one) => one.argv.includes('commit')).length;
         if (commits !== 2) throw new Error(`应该两个 commit，实际 ${commits}`);
         if (fake.calls.filter((one) => one.argv.includes('push')).length !== 2) throw new Error('应该推两次');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -298,7 +293,7 @@ export const checks = [
       const title = 'market-index：索引推不上去如实说"没更新"，不抛、不回滚已发的包';
       const root = moduleDir();
       const repo = marketDir();
-      try {
+      await withCleanup(title, report, [root, repo], async () => {
         const fake = fakeExec({ pushes: [fail('protected branch hook declined'), fail('protected branch hook declined')] });
         const plan = resolveIndexPlan({ args: ['--index', repo, '--index-policy', 'catalog-only'], home: tmpdir(), exec: fake.exec });
         const market = updateMarketIndex({
@@ -316,13 +311,7 @@ export const checks = [
         if (typeof market.reason !== 'string' || !market.reason.includes('索引没更新')) {
           throw new Error(`没说清索引没更新：${market.reason}`);
         }
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -331,7 +320,7 @@ export const checks = [
       const title = 'market-index：远端分支没对上 → 报没更新（两个 commit 必须都推上去）';
       const root = moduleDir();
       const repo = marketDir('{"format":1,"plugins":[]}\n');
-      try {
+      await withCleanup(title, report, [root, repo], async () => {
         const fake = fakeExec({ remoteHead: 'd'.repeat(40) });
         const plan = resolveIndexPlan({ args: ['--index', repo], home: tmpdir(), exec: fake.exec });
         const market = updateMarketIndex({
@@ -347,13 +336,7 @@ export const checks = [
         });
         if (market.updated !== false) throw new Error('远端没对上却报成功');
         if (!String(market.reason).includes('没都推上去')) throw new Error(`没说清两个 commit：${market.reason}`);
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -418,7 +401,7 @@ export const checks = [
       const read = { id: 'read', label: '只读', kind: 'git', url: 'https://github.com/demo/read.git', policy: 'catalog-only' };
       const team = { id: 'team', label: '团队', kind: 'git', url: 'https://github.com/demo/team.git', policy: 'artifacts-in-repo' };
       const pub = { id: 'pub', label: '公开', kind: 'git', url: 'https://github.com/demo/pub.git', policy: 'artifacts-in-repo' };
-      try {
+      await withCleanup(title, report, [home], async () => {
         mkdirSync(dir, { recursive: true });
         writeFileSync(join(dir, 'sources.json'), JSON.stringify({ selected: 'read', sources: [read, team] }));
         const auto = resolveIndexPlan({ args: [], home, exec: fakeExec().exec });
@@ -449,12 +432,7 @@ export const checks = [
           missing = error instanceof MarketIndexError ? error.message : String(error);
         }
         if (!missing.includes('没有这个索引源')) throw new Error(`不存在的源没拦住：${missing}`);
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(home, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -463,7 +441,7 @@ export const checks = [
       const title = 'market-init：空仓库建分支、写索引目录 + README、推首个 commit';
       const dir = mkdtempSync(join(tmpdir(), 'wb-market-init-'));
       mkdirSync(join(dir, '.git'));
-      try {
+      await withCleanup(title, report, [dir], async () => {
         const fake = fakeExec({ hasHead: false, url: 'https://github.com/demo/market.git' });
         const result = initializeMarketRepo({ exec: fake.exec, home: tmpdir(), dir });
         if (result.changed !== true) throw new Error('没建索引');
@@ -477,12 +455,7 @@ export const checks = [
           throw new Error('没建 main 分支');
         }
         if (fake.calls.filter((one) => one.argv.includes('push')).length !== 1) throw new Error('应该推一次');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -500,7 +473,7 @@ export const checks = [
           ],
         })}\n`,
       );
-      try {
+      await withCleanup(title, report, [dir], async () => {
         const fake = fakeExec({ hasHead: true, url: 'https://github.com/demo/market.git' });
         const result = initializeMarketRepo({ exec: fake.exec, home: tmpdir(), dir });
         if (result.changed !== true) throw new Error('迁移没算作改动');
@@ -508,12 +481,7 @@ export const checks = [
         if (!existsSync(join(dir, 'market', '@demo', 'old.json'))) throw new Error('条目没迁出来');
         const migrated = JSON.parse(readFileSync(join(dir, 'market', '@demo', 'old.json'), 'utf8'));
         if (migrated.owner !== 'demo') throw new Error('元数据没迁出来');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -525,7 +493,7 @@ export const checks = [
       mkdirSync(join(dir, 'market'));
       writeFileSync(join(dir, 'market', 'README.md'), 'custom index readme\n');
       writeFileSync(join(dir, 'README.md'), 'custom readme\n');
-      try {
+      await withCleanup(title, report, [dir], async () => {
         const fake = fakeExec({ hasHead: true, url: 'https://github.com/demo/market.git' });
         const result = initializeMarketRepo({ exec: fake.exec, home: tmpdir(), dir });
         if (result.changed !== false) throw new Error('已有内容还报写');
@@ -533,12 +501,7 @@ export const checks = [
         if (readFileSync(join(dir, 'README.md'), 'utf8') !== 'custom readme\n') throw new Error('README 被覆盖');
         if (fake.calls.some((one) => one.argv.includes('push'))) throw new Error('没改动还推');
         if (result.commit !== COMMIT) throw new Error('没回当前 HEAD');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -547,7 +510,7 @@ export const checks = [
       const title = 'market-init：空仓库 + 非 github 主机、没给 --ref → 明说要分支';
       const dir = mkdtempSync(join(tmpdir(), 'wb-market-init-'));
       mkdirSync(join(dir, '.git'));
-      try {
+      await withCleanup(title, report, [dir], async () => {
         const fake = fakeExec({ hasHead: false, url: 'https://git.example.com/team/market.git' });
         let error;
         try {
@@ -559,12 +522,7 @@ export const checks = [
           throw new Error('没要 --ref');
         }
         if (existsSync(join(dir, 'market'))) throw new Error('报错前就写了文件');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(dir, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -586,7 +544,7 @@ export const checks = [
         })}\n`,
       );
       const before = indexTextOf(repo);
-      try {
+      await withCleanup(title, report, [root, repo], async () => {
         const fake = fakeExec();
         const plan = resolveIndexPlan({ args: ['--index', repo], home: tmpdir(), exec: fake.exec });
         const market = updateMarketIndex({
@@ -605,13 +563,7 @@ export const checks = [
         if (!String(market.reason).includes('模块 id')) throw new Error(`理由不对：${String(market.reason)}`);
         if (existsSync(join(repo, 'packages', '@demo', 'market-probe'))) throw new Error('被拒了还写了产物');
         if (indexTextOf(repo) !== before) throw new Error('被拒了还改了索引');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -620,7 +572,7 @@ export const checks = [
       const title = 'market-index：远端先走一步（非快进）自动同步重放，不惊动用户';
       const root = moduleDir();
       const repo = marketDir();
-      try {
+      await withCleanup(title, report, [root, repo], async () => {
         const fake = fakeExec({
           pushes: [
             fail('! [rejected] main -> main (non-fast-forward)'),
@@ -646,13 +598,7 @@ export const checks = [
         if (market.updated !== true) throw new Error(`没更新：${String(market.reason)}`);
         if (!existsSync(join(repo, 'market', '@demo', 'market-probe.json'))) throw new Error('条目文件没写');
         if (existsSync(join(repo, 'market.json'))) throw new Error('还在写 market.json');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -661,7 +607,7 @@ export const checks = [
       const title = 'market-index：续跑前拉不到远端就说清楚，不拿落后镜像往下走';
       const root = moduleDir();
       const home = mkdtempSync(join(tmpdir(), 'wb-market-home-'));
-      try {
+      await withCleanup(title, report, [root, home], async () => {
         const fake = fakeExec({
           fetch: fail('ssh: connect to host e.example.com port 22: Connection refused'),
         });
@@ -684,13 +630,7 @@ export const checks = [
         if (market.updated !== false) throw new Error('拉不到远端还当成发出去了');
         if (market.code !== 'git-auth') throw new Error(`code 不对：${String(market.code)}`);
         if (!String(market.reason).includes('续跑前拉不到')) throw new Error(`理由不对：${String(market.reason)}`);
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-        rmSync(home, { recursive: true, force: true });
-      }
+      });
     },
   },
   {
@@ -713,7 +653,7 @@ export const checks = [
         ],
       })}\n`;
       const repo = marketDir(legacy);
-      try {
+      await withCleanup(title, report, [root, repo], async () => {
         const fake = fakeExec();
         const plan = resolveIndexPlan({ args: ['--index', repo], home: tmpdir(), exec: fake.exec });
         const market = updateMarketIndex({
@@ -739,13 +679,7 @@ export const checks = [
         if (entry.owner !== 'demo') throw new Error(`owner 漂了：${String(entry.owner)}`);
         const newDoc = JSON.parse(readFileSync(join(repo, 'market', '@demo', 'market-probe.json'), 'utf8'));
         if (newDoc.owner !== 'demo') throw new Error('迁移出来的 owner 没了');
-        report(title, true);
-      } catch (error) {
-        report(title, false, error.message.slice(0, 200));
-      } finally {
-        rmSync(root, { recursive: true, force: true });
-        rmSync(repo, { recursive: true, force: true });
-      }
+      });
     },
   },
   {

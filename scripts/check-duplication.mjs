@@ -76,14 +76,17 @@ function check() {
       return 2;
     }
     const total = report.statistics.total;
-    const clones = withoutBarrelClones(report.duplicates ?? []);
+    const all = report.duplicates ?? [];
+    const clones = withoutBarrelClones(all);
+    const dropped = all.length - clones.length;
+    const barrels = dropped === 0 ? '' : `；另有 ${dropped} 块纯 barrel 对按约定不计`;
     const fresh = clones.filter((one) => one.isNew === true);
     const percent = total.percentage.toFixed(2);
     if (fresh.length === 0) {
-      console.log(`✔ 重复代码：${total.clones} 块 / ${total.duplicatedLines} 行（${percent}%）；没有新增克隆`);
+      console.log(`✔ 重复代码：${total.clones} 块 / ${total.duplicatedLines} 行（${percent}%）；没有新增克隆${barrels}`);
       return 0;
     }
-    console.error(`✖ 重复代码：${fresh.length} 块不在基线里（共 ${total.clones} 块 / ${total.duplicatedLines} 行，${percent}%）`);
+    console.error(`✖ 重复代码：${fresh.length} 块不在基线里（共 ${total.clones} 块 / ${total.duplicatedLines} 行，${percent}%${barrels}）`);
     for (const clone of fresh.slice(0, LIST_LIMIT)) console.error(cloneLine(clone));
     if (fresh.length > LIST_LIMIT) console.error(`  · 还有 ${fresh.length - LIST_LIMIT} 块，跑 pnpm run duplication:report 看全量`);
     console.error('  → 消掉重复；确认可以接受就跑 pnpm run duplication:accept，并把 .jscpd-baseline.json 一起提交');

@@ -93,6 +93,10 @@ const COMPONENT_BANNED = [
   /^(?:\.\.?\/)+(?:host|client)$/,
   /^(?:@\/)(?:host|client)$/,
 ];
+function findingOf(rule, file, line, column, text, hint) {
+  return { rule, file, line, ...(column === undefined ? {} : { column }), text, hint };
+}
+
 
 const modelStaysPure = createRule({
   id: 'S71',
@@ -110,14 +114,7 @@ const modelStaysPure = createRule({
       for (const fact of ctx.facts.get(record.rel)?.imports ?? []) {
         if (fact.typeOnly) continue;
         if (!MODEL_BANNED.some((pattern) => pattern.test(fact.spec))) continue;
-        findings.push({
-          rule: 'S71',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `模块核心 import 了 ${fact.spec}`,
-          hint: '把宿主 / UI / 运行时的依赖推到 components 或两个面；核心只依赖纯类型与纯函数',
-        });
+        findings.push(findingOf('S71', record.rel, fact.line, fact.column, `模块核心 import 了 ${fact.spec}`, '把宿主 / UI / 运行时的依赖推到 components 或两个面；核心只依赖纯类型与纯函数'));
       }
     }
     return findings;
@@ -140,14 +137,7 @@ const componentsStayBrowser = createRule({
       for (const fact of ctx.facts.get(record.rel)?.imports ?? []) {
         if (fact.typeOnly) continue;
         if (!COMPONENT_BANNED.some((pattern) => pattern.test(fact.spec))) continue;
-        findings.push({
-          rule: 'S72',
-          file: record.rel,
-          line: fact.line,
-          ...(fact.column === undefined ? {} : { column: fact.column }),
-          text: `模块视图 import 了 ${fact.spec}`,
-          hint: '组件只接收数据与回调；宿主侧能力放 src/host.ts，浏览器侧取数放面的 hooks',
-        });
+        findings.push(findingOf('S72', record.rel, fact.line, fact.column, `模块视图 import 了 ${fact.spec}`, '组件只接收数据与回调；宿主侧能力放 src/host.ts，浏览器侧取数放面的 hooks'));
       }
     }
     return findings;
@@ -173,13 +163,7 @@ const protocolsStayCanonical = createRule({
     for (const record of ctx.records) {
       const text = readFileSync(record.abs, 'utf8');
       for (const match of text.matchAll(LOCAL_PROTOCOL)) {
-        findings.push({
-          rule: 'S73',
-          file: record.rel,
-          line: lineOf(text, match.index),
-          text: `本地声明 ${match[1]}`,
-          hint: '删掉，改 import type from @dsh-workbench/core/contract',
-        });
+        findings.push(findingOf('S73', record.rel, lineOf(text, match.index), undefined, `本地声明 ${match[1]}`, '删掉，改 import type from @dsh-workbench/core/contract'));
       }
     }
     return findings;
@@ -201,13 +185,7 @@ const testsLiveInFolders = createRule({
     for (const record of ctx.records) {
       if (!TEST_FILE.test(record.rel)) continue;
       if (TESTS_HOME.test(record.rel)) continue;
-      findings.push({
-        rule: 'S74',
-        file: record.rel,
-        line: 1,
-        text: `测试文件不在 __tests__ 目录里：${record.rel}`,
-        hint: '挪进同目录的 __tests__/，相对路径的 import 各退一级。',
-      });
+      findings.push(findingOf('S74', record.rel, 1, undefined, `测试文件不在 __tests__ 目录里：${record.rel}`, '挪进同目录的 __tests__/，相对路径的 import 各退一级。'));
     }
     return findings;
   },

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { BIN, FACES, PACKAGES_DIR, REPO_ROOT, declaration, fillPendingDesign, read } from '../lib.mjs';
+import { declaration, fillPendingDesign, manifestOf, read, BIN, FACES, PACKAGES_DIR, REPO_ROOT } from '../lib.mjs';
 
 const STATES_TITLE =
   '逐态卡片二十一刀各自判红并点名到态：loading 崩 / 冒 undefined / 冒 NaN / zh 缺键 / en 缺键 / loading 空屏 / 没套卡壳 + 刷新崩 / 刷新 NaN / 刷新缺键 / 能力闸缺插件 undefined / NaN / 缺键 + 刷新 at 崩 / at undefined / at NaN / at 缺键 + 缺命令崩 / 缺命令 undefined / 缺命令 NaN / 缺命令缺键（红都只红对应那条）';
@@ -19,31 +19,7 @@ export const checks = [
         en: { 'demo.cardTitle': 'Demo', 'demo.body': 'Body', 'demo.loading': 'Reading…', 'demo.error': 'Unreadable'${extraEn} },
       }`;
       const write = (cardSource, messagesSource) => {
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-cards',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: {
-                  platform: 'web',
-                  inject: ['@dsh-workbench/core'],
-                  external: ['@dsh-workbench/core/client'],
-                },
-                workbench: declaration('demo-cards', { card: { order: 7 } }),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-cards', declaration('demo-cards', { card: { order: 7 } })));
         writeFileSync(
           join(probe, 'client.js'),
           `window.__ModuleLoader__.load({

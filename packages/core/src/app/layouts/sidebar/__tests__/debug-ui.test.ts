@@ -13,6 +13,8 @@ const read = (name: string): string => readFileSync(new URL(name, HERE), 'utf8')
 
 const FOOTER = read('DebugFooterAction.tsx');
 const FOOTER_CSS = read('DebugFooterAction.module.css');
+const SHELL = read('FooterAction.tsx');
+const SHELL_CSS = read('FooterAction.module.css');
 const REGISTER = read('debug-footer.tsx');
 const RIGHTBAR = read('../rightbar/Rightbar.tsx');
 const BOARD_FACT = read('../rightbar/board-fact.ts');
@@ -94,41 +96,42 @@ describe('底部那一格：一行状态 + 一句指引', () => {
   });
 
   it('★★ 展开态用 tooltip 说指引、那一行只说状态；折叠轨才用浮层', () => {
-    expect(FOOTER).toContain('<Tip');
-    expect(FOOTER).toContain('<HoverCard');
-    expect(FOOTER).toContain('styles.entryLine');
-    expect(FOOTER).toContain('{view.label}');
+    expect(SHELL).toContain('<Tip');
+    expect(SHELL).toContain('<HoverCard');
+    expect(SHELL).toContain('styles.entryLine');
+    expect(SHELL).toContain('{label}');
+    expect(FOOTER).toContain('label={view.label}');
   });
 
   it('★★ 三色一颗呼吸点：跑着绿、暂停黄、挡路红；**只有跑着且在位才呼吸**', () => {
     expect(FOOTER).not.toContain('IconInspectOutlineRegular');
     expect(FOOTER).toContain("view.trouble !== 'none' ? 'error' : view.stalled ? 'warning' : 'done'");
-    expect(FOOTER).toContain("view.trouble === 'none' && !view.stalled ? styles.pulse : undefined");
+    expect(FOOTER).toContain("pulse={view.trouble === 'none' && !view.stalled}");
     expect(FOOTER).not.toContain('<svg');
-    expect(FOOTER_CSS).toContain('--dsw-alias-state-success-primary');
-    expect(FOOTER_CSS).toContain('--dsw-alias-state-warn-primary');
-    expect(FOOTER_CSS).toContain('--dsw-alias-state-error-primary');
-    expect(FOOTER_CSS).toContain('@keyframes wb-debug-breathe');
-    expect(FOOTER_CSS).toContain('prefers-reduced-motion');
+    expect(SHELL_CSS).toContain('--dsw-alias-state-success-primary');
+    expect(SHELL_CSS).toContain('--dsw-alias-state-warn-primary');
+    expect(SHELL_CSS).toContain('--dsw-alias-state-error-primary');
+    expect(SHELL_CSS).toContain('@keyframes wb-footer-breathe');
+    expect(SHELL_CSS).toContain('prefers-reduced-motion');
   });
 
   it('★★ 形状跟侧栏自己的行同款（.wb-panelRow：36 高、radius md、margin 0 var(--wb-len-2)、padding var(--wb-len-7) var(--wb-len-8)）', () => {
-    expect(FOOTER_CSS).toContain('min-height: var(--wb-len-36)');
-    expect(FOOTER_CSS).toContain('border-radius: var(--dsw-radius-md)');
-    expect(FOOTER_CSS).toContain('margin: 0 var(--wb-len-2)');
-    expect(FOOTER_CSS).toContain('padding: var(--wb-len-7) var(--wb-len-8)');
+    expect(SHELL_CSS).toContain('min-height: var(--wb-len-36)');
+    expect(SHELL_CSS).toContain('border-radius: var(--dsw-radius-md)');
+    expect(SHELL_CSS).toContain('margin: 0 var(--wb-len-2)');
+    expect(SHELL_CSS).toContain('padding: var(--wb-len-7) var(--wb-len-8)');
   });
 
   it('★ 点与字挨近点；那一行放不下就省略号，不换行', () => {
-    expect(FOOTER_CSS).toContain('gap: var(--wb-len-4)');
-    expect(FOOTER_CSS).toContain('text-overflow: ellipsis');
-    expect(FOOTER_CSS).toContain('white-space: nowrap');
+    expect(SHELL_CSS).toContain('gap: var(--wb-len-4)');
+    expect(SHELL_CSS).toContain('text-overflow: ellipsis');
+    expect(SHELL_CSS).toContain('white-space: nowrap');
   });
 
   it('★ 折叠轨里退成一颗 36×36 的圆点（居中、无字）', () => {
-    expect(FOOTER_CSS).toContain('border-radius: 50%');
-    expect(FOOTER_CSS).toContain('width: var(--wb-len-36)');
-    expect(FOOTER).toContain('actionRail');
+    expect(SHELL_CSS).toContain('border-radius: 50%');
+    expect(SHELL_CSS).toContain('width: var(--wb-len-36)');
+    expect(SHELL).toContain('actionRail');
   });
 
   it('★★ 刷新中不许回 null：那一格会先卸载再挂回来 ⇒ "整条闪一下"（呼吸也重来）', () => {
@@ -143,8 +146,8 @@ describe('底部那一格：一行状态 + 一句指引', () => {
     expect(FOOTER_CSS).not.toContain('actResume');
     expect(FOOTER).not.toContain('styles.actResume');
     expect(FOOTER).not.toContain('styles.actPause');
-    expect(FOOTER_CSS).toContain('background: var(--dsw-alias-interactive-bg-hover);');
-    expect(FOOTER_CSS).not.toContain('border: 0.5px solid');
+    expect(SHELL_CSS).toContain('background: var(--dsw-alias-interactive-bg-hover);');
+    expect(SHELL_CSS).not.toContain('border: 0.5px solid');
   });
 
   it('★★ hook 一律在早退之前（踩过：useState 写在 `if (state === null) return null` 后面 ⇒ 第一帧 4 个、第二帧 5 个 ⇒ 整格被摘掉，表现是"整条没了"）', () => {
@@ -159,7 +162,7 @@ describe('底部那一格：一行状态 + 一句指引', () => {
 
   it('★★ 这一格有两个身份：状态那块只读；三个键是**用户自己按**的（不是 agent 的工具）', () => {
     expect(FOOTER).not.toContain('workbench_diy_debug');
-    expect(FOOTER).toContain('role="status"');
+    expect(SHELL).toContain('role="status"');
     expect(FOOTER).toContain("press('pause')");
     expect(FOOTER).toContain("press('resume')");
     expect(FOOTER).toContain('onClick={onStop}');

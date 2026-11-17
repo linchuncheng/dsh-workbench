@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { BIN, FACES, PACKAGES_DIR, declaration } from '../lib.mjs';
+import { declaration, manifestOf, BIN, PACKAGES_DIR } from '../lib.mjs';
 
 export const checks = [
   {
@@ -99,30 +99,9 @@ export function apply(ctx) {
       try {
         mkdirSync(join(probe, 'src'), { recursive: true });
         mkdirSync(join(probe, 'dist'), { recursive: true });
-        writeFileSync(
-          join(probe, 'package.json'),
-          JSON.stringify(
-            {
-              name: '@dsh-workbench/module-demo-approval',
-              version: '0.0.1',
-              private: true,
-              type: 'module',
-              peerDependencies: { '@dsh-workbench/core': '^0.1.0' },
-              scripts: { build: 'x', typecheck: 'x', test: 'x', selfcheck: 'x' },
-              dsh: {
-                bundle: { patch: './cordis.patch.yml' },
-                client: { platform: 'web', inject: ['@dsh-workbench/core'], external: ['@dsh-workbench/core/client'] },
-
-                workbench: declaration('demo-approval', {
+        writeFileSync(join(probe, 'package.json'), manifestOf('demo-approval', declaration('demo-approval', {
                   tools: [{ name: 'demo_write', writes: true }],
-                }),
-                workbenchFaces: FACES,
-              },
-            },
-            null,
-            2,
-          ),
-        );
+                })));
         writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
         writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
         writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
