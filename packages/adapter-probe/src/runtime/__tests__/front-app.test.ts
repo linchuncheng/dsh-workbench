@@ -13,9 +13,9 @@ function seamOf(replies: { readonly stdout?: string; readonly exitCode?: number 
 
 describe('前台应用：问 OS 与带回', () => {
   it('★ 问出前台应用名（macOS 上就是 System Events 那一行）', async () => {
-    const { seam } = seamOf([{ stdout: 'Finder\nDeepSeek Harness\n' }]);
+    const { seam } = seamOf([{ stdout: 'bundleID="com.deepseek.harness"\n' }]);
 
-    expect(await frontAppNow(seam)).toBe('DeepSeek Harness');
+    expect(await frontAppNow(seam)).toBe('com.deepseek.harness');
   });
 
   it('★ 带回：命令跑通才算真带回', async () => {
@@ -44,7 +44,7 @@ describe('前台是浏览器时，记住的是那一页（不是整个浏览器�
     return { fake, seam: createSeam({ shell: fake.shell, runtimeRoot: '/tmp/wb-front-app-2' }) };
   }
 
-  const FRONT_CHROME = { stdout: 'Google Chrome\n' };
+  const FRONT_CHROME = { stdout: 'bundleID="com.google.Chrome"\n' };
   const WINDOWS = {
     stdout: JSON.stringify({
       ok: true,
@@ -59,14 +59,14 @@ describe('前台是浏览器时，记住的是那一页（不是整个浏览器�
   it('★ 记下前台浏览器里当前那一页', async () => {
     const { seam } = seamOfMany([FRONT_CHROME, WINDOWS, TAB]);
 
-    expect(await rememberFrontApp(seam, 'opencli')).toBe('Google Chrome');
+    expect(await rememberFrontApp(seam, 'opencli')).toBe('com.google.Chrome');
   });
 
   it('★ 还原时先激活那一页、再把那个窗口提到前面（不猜「浏览器整个」）', async () => {
     const { fake, seam } = seamOfMany([FRONT_CHROME, WINDOWS, TAB, {}, {}]);
 
     await rememberFrontApp(seam, 'opencli');
-    expect(await restoreFocus(seam, 'opencli', 'Google Chrome')).toBe(true);
+    expect(await restoreFocus(seam, 'opencli', 'com.google.Chrome')).toBe(true);
 
     const lines = fake.calls.map((call) => (call as { command?: string }).command ?? '');
     expect(lines.join('\n')).toContain('tabs.update');
@@ -76,20 +76,22 @@ describe('前台是浏览器时，记住的是那一页（不是整个浏览器�
   });
 
   it('★ 前台不是浏览器（桌面应用）→ 还是走应用级的带回', async () => {
-    const { fake, seam } = seamOfMany([{ stdout: 'DeepSeek Harness\n' }, {}]);
+    const { fake, seam } = seamOfMany([{ stdout: 'bundleID="com.deepseek.harness"\n' }, {}]);
 
     await rememberFrontApp(seam, 'opencli');
-    expect(await restoreFocus(seam, 'opencli', 'DeepSeek Harness')).toBe(true);
+    expect(await restoreFocus(seam, 'opencli', 'com.deepseek.harness')).toBe(true);
 
     const lines = fake.calls.map((call) => (call as { command?: string }).command ?? '');
     expect(lines.join('\n')).not.toContain('tabs.update');
-    expect(lines.join('\n')).toContain('open -a');
+    expect(lines.join('\n')).toContain('open -b');
   });
 
   it('★ 浏览器名字认得出来（Chrome / Edge / Brave / Vivaldi / Chromium）', () => {
     expect(isBrowserApp('Google Chrome')).toBe(true);
-    expect(isBrowserApp('Microsoft Edge')).toBe(true);
-    expect(isBrowserApp('Brave Browser')).toBe(true);
-    expect(isBrowserApp('DeepSeek Harness')).toBe(false);
+    expect(isBrowserApp('com.google.Chrome')).toBe(true);
+    expect(isBrowserApp('com.microsoft.edgemac')).toBe(true);
+    expect(isBrowserApp('com.brave.Browser')).toBe(true);
+    expect(isBrowserApp('Google Chrome')).toBe(true);
+    expect(isBrowserApp('com.deepseek.harness')).toBe(false);
   });
 });

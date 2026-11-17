@@ -108,6 +108,31 @@ jobs:
       - name: Renderer + seam tests
         shell: bash
         run: pnpm --filter @dsh-workbench/shared exec vitest run src/host/shell/__tests__/shell-render.test.ts src/host/seam/__tests__/seam.test.ts src/host/seam/__tests__/process.test.ts 2>&1 | tee renderer-seam.log
+      - name: Front app smoke（真开一个窗口：前台是谁、能不能带回、找不到不假装成功）
+        if: runner.os != 'Linux'
+        shell: bash
+        run: node scripts/smoke/front-app.mjs 2>&1 | tee front-app.log
+      - name: Front app deps（Xvfb + openbox + xterm + xdotool）
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb openbox xterm xdotool
+      - name: Front app smoke（Linux：无头 X 里真开一个 xterm）
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -o pipefail
+          Xvfb :99 -screen 0 1024x768x24 >/dev/null 2>&1 &
+          sleep 2
+          export DISPLAY=:99
+          openbox >/dev/null 2>&1 &
+          sleep 2
+          if ! node scripts/smoke/front-app.mjs 2>&1 | tee front-app.log; then
+            body=$(grep -aE '❌|没过' front-app.log | head -n 10 | sed -e 's/%/%25/g' | awk 'NF { printf "%s%%0A", $0 }')
+            echo "::error title=front app smoke failed::${body:0:1800}"
+            exit 1
+          fi
       - name: Capture controller tests
         shell: bash
         run: pnpm --filter @dsh-workbench/core exec vitest run src/modules/panels/model/__tests__/diy-record-live.test.ts 2>&1 | tee capture.log
