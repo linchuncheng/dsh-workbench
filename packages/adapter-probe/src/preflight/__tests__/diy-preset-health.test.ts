@@ -10,16 +10,16 @@ function seamFor(shell: Parameters<typeof createSeam>[0]['shell']) {
 
 
 const GOOD_BRIDGE_REPORT = [
-  'opencli v1.8.7 doctor (node v24.15.0)',
+  'opencli v2.0.2 doctor (node v24.15.0)',
   '',
-  '[OK] Daemon: running on port 19825 (v1.8.7)',
+  '[OK] Daemon: running on port 19825 (v2.0.2)',
   '[OK] Extension: connected (v1.0.24)',
   '[OK] Connectivity: connected in 0.0s',
   '',
   'Everything looks good!',
 ].join('\n');
 
-const ALL_OK = [{ stdout: '1.8.8\n' }, { stdout: GOOD_BRIDGE_REPORT }];
+const ALL_OK = [{ stdout: '2.0.3\n' }, { stdout: GOOD_BRIDGE_REPORT }];
 
 const HEALTHY = [
   { id: 'standard', name: '标准' },

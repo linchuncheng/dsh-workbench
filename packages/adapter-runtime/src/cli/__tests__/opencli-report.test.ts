@@ -33,22 +33,22 @@ describe('opencli 版本握手', () => {
     const root = join(home, 'workbench', 'opencli');
     writeJson(join(root, 'toolchain', 'node_modules', '@jackwener', 'opencli', 'package.json'), {
       name: '@jackwener/opencli',
-      version: '1.8.8',
+      version: '2.0.3',
     });
     writeJson(join(root, 'plugins-npm', 'node_modules', 'opencli-plugin-workbench', 'opencli-plugin.json'), {
       name: 'workbench',
-      version: '1.3.2',
+      version: '0.2.0',
     });
 
     const { opencliVersionReport, opencliHandshakeOk, opencliHandshakeText } = await load();
     const report = opencliVersionReport();
 
-    expect(report.pin).toBe('1.8.8');
-    expect(report.cli).toBe('1.8.8');
-    expect(report.channel).toBe('1.3.2');
+    expect(report.pin).toBe('2.0.3');
+    expect(report.cli).toBe('2.0.3');
+    expect(report.channel).toBe('0.2.0');
     expect(report.compatible).toBe(true);
     expect(opencliHandshakeOk(report)).toBe(true);
-    expect(opencliHandshakeText(report)).toContain('1.8.8');
+    expect(opencliHandshakeText(report)).toContain('2.0.3');
   });
 
   it('盘上是别的版本：握手不通过，话里点出两边', async () => {
@@ -56,30 +56,30 @@ describe('opencli 版本握手', () => {
     vi.stubEnv('DSH_HOME', home);
     const root = join(home, 'workbench', 'opencli');
     writeJson(join(root, 'toolchain', 'node_modules', '@jackwener', 'opencli', 'package.json'), {
-      version: '1.9.0',
+      version: '2.1.0',
     });
 
     const { opencliVersionReport, opencliHandshakeOk, opencliHandshakeText } = await load();
     const report = opencliVersionReport();
 
     expect(opencliHandshakeOk(report)).toBe(false);
-    expect(opencliHandshakeText(report)).toContain('1.9.0');
-    expect(opencliHandshakeText(report)).toContain('1.8.8');
+    expect(opencliHandshakeText(report)).toContain('2.1.0');
+    expect(opencliHandshakeText(report)).toContain('2.0.3');
   });
 
   it('灰度：DSH_WB_OPENCLI_PIN 一设，钉的版本跟着走', async () => {
     const home = tempHome();
     vi.stubEnv('DSH_HOME', home);
-    vi.stubEnv('DSH_WB_OPENCLI_PIN', '2.0.0');
+    vi.stubEnv('DSH_WB_OPENCLI_PIN', '3.0.0');
     const root = join(home, 'workbench', 'opencli');
     writeJson(join(root, 'toolchain', 'node_modules', '@jackwener', 'opencli', 'package.json'), {
-      version: '2.0.0',
+      version: '3.0.0',
     });
 
     const { opencliVersionReport, opencliHandshakeOk } = await load();
     const report = opencliVersionReport();
 
-    expect(report.pin).toBe('2.0.0');
+    expect(report.pin).toBe('3.0.0');
     expect(report.compatible).toBe(false);
     expect(opencliHandshakeOk(report)).toBe(false);
   });
@@ -102,7 +102,7 @@ describe('插件的 peer 范围也要进握手', () => {
     const root = join(home, 'workbench', 'opencli');
     writeJson(join(root, 'toolchain', 'node_modules', '@jackwener', 'opencli', 'package.json'), {
       name: '@jackwener/opencli',
-      version: '1.8.8',
+      version: '2.0.3',
     });
     writeJson(join(root, 'plugins-npm', 'node_modules', 'opencli-plugin-demo', 'package.json'), {
       name: 'opencli-plugin-demo',
@@ -114,7 +114,7 @@ describe('插件的 peer 范围也要进握手', () => {
   it('★ 插件的范围容得下当前版本 → 不算问题', async () => {
     const home = tempHome();
     vi.stubEnv('DSH_HOME', home);
-    seed(home, '>=1.8.0 <2.0.0');
+    seed(home, '>=2.0.0 <3.0.0');
 
     const { opencliVersionReport, opencliHandshakeOk } = await load();
     const report = opencliVersionReport();
@@ -126,29 +126,29 @@ describe('插件的 peer 范围也要进握手', () => {
   it('★ 插件的范围容不下当前版本 → 握手不通过，点名是哪个插件、要哪一段', async () => {
     const home = tempHome();
     vi.stubEnv('DSH_HOME', home);
-    seed(home, '>=2.0.0');
+    seed(home, '>=3.0.0');
 
     const { opencliVersionReport, opencliHandshakeOk, opencliHandshakeText, opencliHandshakeNote } =
       await load();
     const report = opencliVersionReport();
 
-    expect(report.peerProblems).toEqual([{ name: 'opencli-plugin-demo', range: '>=2.0.0' }]);
+    expect(report.peerProblems).toEqual([{ name: 'opencli-plugin-demo', range: '>=3.0.0' }]);
     expect(opencliHandshakeOk(report)).toBe(false);
     expect(opencliHandshakeText(report)).toContain('opencli-plugin-demo');
-    expect(opencliHandshakeText(report)).toContain('>=2.0.0');
+    expect(opencliHandshakeText(report)).toContain('>=3.0.0');
     expect(opencliHandshakeNote(report).zh).toContain('opencli-plugin-demo');
   });
 
-  it('★ 换 pin 到 2.x：原来合格的插件立刻算问题（换代时能被发现）', async () => {
+  it('★ 换 pin 到 3.x：原来合格的插件立刻算问题（换代时能被发现）', async () => {
     const home = tempHome();
     vi.stubEnv('DSH_HOME', home);
-    seed(home, '>=1.8.0 <2.0.0');
-    vi.stubEnv('DSH_WB_OPENCLI_PIN', '2.0.0');
+    seed(home, '>=1.8.0 <3.0.0');
+    vi.stubEnv('DSH_WB_OPENCLI_PIN', '3.0.0');
 
     const { opencliVersionReport } = await load();
 
     expect(opencliVersionReport().peerProblems).toEqual([
-      { name: 'opencli-plugin-demo', range: '>=1.8.0 <2.0.0' },
+      { name: 'opencli-plugin-demo', range: '>=1.8.0 <3.0.0' },
     ]);
   });
 });

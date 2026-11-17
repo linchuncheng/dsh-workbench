@@ -235,7 +235,7 @@ describe('GATE_MOCKS', () => {
     const t = (key: string): string => key;
     const snapshot = GATE_MOCKS.find((item) => item.id === 'ready')?.snapshot as never;
     const toolchain = { id: 'toolchain', status: 'ok', detail: 'node v24.21.0 · npm 11.12.1 · pnpm 11.21.0' };
-    const opencli = { id: 'cli', status: 'ok', detail: '1.8.8' };
+    const opencli = { id: 'cli', status: 'ok', detail: '2.0.3' };
 
     expect(stepDetailText(toolchain as never, snapshot, t)).toBe('env.toolchain.ok');
     expect(stepDetailText(opencli as never, snapshot, t)).toBe('env.runtime.ok');

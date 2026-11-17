@@ -39,6 +39,11 @@ const KNOWN_RUNTIMES: readonly string[] = ['opencli'];
 export function parsePluginList(stdout: string): unknown[] | undefined {
   const parsed = parseJsonLoose(stdout);
   if (Array.isArray(parsed)) return parsed;
+  if (typeof parsed === 'object' && parsed !== null) {
+    const data = (parsed as Record<string, unknown>)['data'];
+    if (Array.isArray(data)) return data;
+    if (data === undefined && (parsed as Record<string, unknown>)['ok'] === false) return [];
+  }
   return /no plugins? installed/i.test(stdout) ? [] : undefined;
 }
 

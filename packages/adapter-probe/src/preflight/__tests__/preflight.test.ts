@@ -20,7 +20,7 @@ describe('createPreflight', () => {
 
     expect(snapshot.phase).toBe('ready');
     expect(snapshot.steps.map((item) => `${item.id}=${item.status}`)).toEqual(['cli=ok', 'bridge=ok']);
-    expect(snapshot.steps[0]?.detail).toBe('1.8.8');
+    expect(snapshot.steps[0]?.detail).toBe('2.0.3');
     expect(fake.calls.map((call) => call.command)).toEqual(["'opencli' --version", "'opencli' doctor"]);
   });
 
@@ -28,7 +28,7 @@ describe('createPreflight', () => {
     const { fake, preflight } = build(
       [
         { exitCode: 127, stderr: 'command not found: opencli' },
-        { stdout: '1.8.8\n' },
+        { stdout: '2.0.3\n' },
         { stdout: 'ok\n' },
       ],
       async () => {
@@ -67,7 +67,7 @@ describe('createPreflight', () => {
   });
 
   it('某一拍自己抛了 → 收成 failed 那一屏，不把 run 的 promise 甩出去（否则宿主会当致命错误退出）', async () => {
-    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: GOOD_BRIDGE_REPORT }]);
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: GOOD_BRIDGE_REPORT }]);
     const preflight = createPreflight({
       seam: seamFor(fake.shell),
       probeDiy: () => {
@@ -100,7 +100,7 @@ describe('createPreflight', () => {
 
   it('bridge 不通 → 只警告，照样放行，并把 doctor 的输出带出来', async () => {
     const { preflight } = build([
-      { stdout: '1.8.8\n' },
+      { stdout: '2.0.3\n' },
       { exitCode: 1, stderr: 'bridge: not reachable' },
     ]);
 
@@ -114,7 +114,7 @@ describe('createPreflight', () => {
   });
 
   it('★ 浏览器通道坏：`doctor` 明明 exit 0（报告里写着 not connected），要按报告判，不能看退出码', async () => {
-    const { preflight } = build([{ stdout: '1.8.8\n' }, { stdout: BROKEN_BRIDGE }]);
+    const { preflight } = build([{ stdout: '2.0.3\n' }, { stdout: BROKEN_BRIDGE }]);
 
     const snapshot = await preflight.run();
 
@@ -127,8 +127,8 @@ describe('createPreflight', () => {
 
   it('★ 通道好时 detail 取"Everything looks good!"，不是输出的最后一行（那可能是升级提示）', async () => {
     const { preflight } = build([
-      { stdout: '1.8.8\n' },
-      { stdout: `${GOOD_BRIDGE_REPORT}\n\n  Update available: v1.8.7 → v1.8.8\n  Run: npm install -g @jackwener/opencli\n` },
+      { stdout: '2.0.3\n' },
+      { stdout: `${GOOD_BRIDGE_REPORT}\n\n  Update available: v2.0.2 → v2.0.3\n  Run: npm install -g @jackwener/opencli\n` },
     ]);
 
     const snapshot = await preflight.run();
@@ -140,9 +140,9 @@ describe('createPreflight', () => {
 
   it('★ 没选默认 profile：先说"选哪个"，命令也给 profile list（重启服务解决不了它）', async () => {
     const report = [
-      'opencli v1.8.7 doctor (node v24.15.0)',
+      'opencli v2.0.2 doctor (node v24.15.0)',
       '',
-      '[OK] Daemon: running on port 19825 (v1.8.7)',
+      '[OK] Daemon: running on port 19825 (v2.0.2)',
       '[MISSING] Extension: not connected',
       '[OK] Connectivity: connected in 0.0s',
       '',
@@ -150,7 +150,7 @@ describe('createPreflight', () => {
       '  • Multiple Chrome profiles are connected to the daemon, but no default profile was selected.',
       '  Run opencli profile list, then opencli profile use <name>, or pass --profile <name>.',
     ].join('\n');
-    const { preflight } = build([{ stdout: '1.8.8\n' }, { stdout: report }]);
+    const { preflight } = build([{ stdout: '2.0.3\n' }, { stdout: report }]);
 
     const snapshot = await preflight.run();
 
@@ -160,7 +160,7 @@ describe('createPreflight', () => {
   });
 
   it('★ 扩展有更新可用（通道仍通）不算坏：不谎报成 warn', async () => {
-    const { preflight } = build([{ stdout: '1.8.8\n' }, { stdout: `${GOOD_BRIDGE_REPORT}\nIssues:\n  • Extension update available: v1.0.24 → v1.0.25\n` }]);
+    const { preflight } = build([{ stdout: '2.0.3\n' }, { stdout: `${GOOD_BRIDGE_REPORT}\nIssues:\n  • Extension update available: v1.0.24 → v1.0.25\n` }]);
 
     const snapshot = await preflight.run();
 
@@ -215,7 +215,7 @@ describe('createPreflight', () => {
     const { fake, preflight } = build(
       [
         { exitCode: 127, stderr: 'command not found: opencli' },
-        { stdout: '1.8.8\n' },
+        { stdout: '2.0.3\n' },
         { stdout: GOOD_BRIDGE_REPORT },
       ],
       async () => ({ ok: false, detail: 'EACCES: permission denied' }),
@@ -252,7 +252,7 @@ describe('createPreflight', () => {
       pnpmProblem: false,
     }));
     const fake = createFakeShell([
-      { stdout: 'v1.8.8\n' },
+      { stdout: 'v2.0.3\n' },
       { stdout: `${GOOD_BRIDGE_REPORT}\n` },
     ]);
     const preflight = createPreflight({
@@ -289,7 +289,7 @@ describe('createPreflight', () => {
   it('★ 盘上跑的是旧版本 → 按未就绪重装，不把旧副本当通过', async () => {
     const install = vi.fn(async () => ({ ok: true, detail: 'installed' }));
     const { fake, preflight } = build(
-      [{ stdout: '1.8.7\n' }, { stdout: '1.8.8\n' }, { stdout: 'ok\n' }],
+      [{ stdout: '2.0.2\n' }, { stdout: '2.0.3\n' }, { stdout: 'ok\n' }],
       install,
     );
 
@@ -297,7 +297,7 @@ describe('createPreflight', () => {
 
     expect(install).toHaveBeenCalledTimes(1);
     expect(snapshot.phase).toBe('ready');
-    expect(snapshot.steps[0]?.detail).toBe('1.8.8');
+    expect(snapshot.steps[0]?.detail).toBe('2.0.3');
     expect(fake.calls.map((call) => call.command)).toEqual([
       "'opencli' --version",
       "'opencli' --version",
@@ -309,7 +309,7 @@ describe('createPreflight', () => {
     const install = vi.fn(async () => ({ ok: true, detail: '不该被调到' }));
     const fake = createFakeShell([
       { exitCode: 1, stderr: 'busy' },
-      { stdout: '1.8.8\n' },
+      { stdout: '2.0.3\n' },
       { stdout: 'ok\n' },
     ]);
     const preflight = createPreflight({ seam: seamFor(fake.shell), install, versionAttempts: 3 });
@@ -360,7 +360,7 @@ describe('createPreflight', () => {
       order.push('install-end');
     });
     await inside;
-    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: 'ok\n' }]);
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: 'ok\n' }]);
     const preflight = createPreflight({
       seam: seamFor(fake.shell),
       withToolchainLock: (run) =>
@@ -379,7 +379,7 @@ describe('createPreflight', () => {
 
   it('探测在工具链锁里跑：有另一处在装时会先等它', async () => {
     const order: string[] = [];
-    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: 'ok\n' }]);
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: 'ok\n' }]);
     const preflight = createPreflight({
       seam: seamFor(fake.shell),
       withToolchainLock: async (run) => {
@@ -436,7 +436,7 @@ describe('createPreflight', () => {
     let duringInstall: string | undefined | null = null;
     const { preflight } = build(
       [
-        { stdout: '1.8.8\n' },
+        { stdout: '2.0.3\n' },
         { stdout: 'ok\n' },
         { exitCode: 127, stderr: 'gone' },
         { stdout: '9.9.9\n' },
@@ -449,7 +449,7 @@ describe('createPreflight', () => {
     );
 
     await preflight.run();
-    expect(preflight.snapshot().steps[0]?.detail).toBe('1.8.8');
+    expect(preflight.snapshot().steps[0]?.detail).toBe('2.0.3');
 
     await preflight.run({ hard: true });
     expect(duringInstall).toBeUndefined();
@@ -498,7 +498,7 @@ describe('Desktop：浏览器没开时，等用户点「打开浏览器」再开
   it('★ 只有扩展没连上 → **不**自动开（开窗会抢前台），只把「可以点」交给界面', async () => {
     const observe = vi.fn(async () => undefined);
     const wake = vi.fn(async () => ({ status: 'connected' as const, browser: 'chrome' as const }));
-    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: EXTENSION_ONLY_BRIDGE }]);
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: EXTENSION_ONLY_BRIDGE }]);
     const preflight = createPreflight({ seam: seamFor(fake.shell), desktopBrowser: { observe, wake } });
 
     const snapshot = await preflight.run();
@@ -526,7 +526,7 @@ describe('Desktop：浏览器没开时，等用户点「打开浏览器」再开
   });
 
   it('★ 不是桌面版（没有 desktopBrowser）→ 快照不带 canWakeBrowser，界面不会画那颗按钮', async () => {
-    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: EXTENSION_ONLY_BRIDGE }]);
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: EXTENSION_ONLY_BRIDGE }]);
     const preflight = createPreflight({ seam: seamFor(fake.shell) });
 
     const snapshot = await preflight.run();
@@ -571,7 +571,7 @@ function scriptedShell(hangOn: (command: string, timesSeen: number) => boolean) 
           exitCode: 0,
           timedOut: false,
           aborted: false,
-          stdout: { text: command.endsWith('doctor') ? GOOD_BRIDGE_REPORT : '1.8.8\n', truncated: false },
+          stdout: { text: command.endsWith('doctor') ? GOOD_BRIDGE_REPORT : '2.0.3\n', truncated: false },
           stderr: { text: '', truncated: false },
         };
       },
@@ -652,7 +652,7 @@ describe('宿主不交回命令结果（沙箱 / 子进程起不来）', () => {
 describe('隔离 opencli 的绝对路径不许被 shell 拆词', () => {
   it('★ win32 上路径带空格（C:\\Users\\John Smith\\…）→ 命令里是整段带引号的 token', async () => {
     const command = 'C:\\Users\\John Smith\\.dsh\\workbench\\opencli\\bin\\opencli.cmd';
-    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: GOOD_BRIDGE_REPORT }]);
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: GOOD_BRIDGE_REPORT }]);
     const preflight = createPreflight({
       seam: seamFor(fake.shell),
       command,
@@ -672,7 +672,7 @@ describe('隔离 opencli 的绝对路径不许被 shell 拆词', () => {
 
   it('★ 路径带单引号时按 pwsh 的字面量逃逸（两个单引号），不留 POSIX 那套反斜杠', async () => {
     const command = "C:\\Users\\O'Brien\\opencli.cmd";
-    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: GOOD_BRIDGE_REPORT }]);
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: GOOD_BRIDGE_REPORT }]);
     const preflight = createPreflight({ seam: seamFor(fake.shell), command, platform: 'win32' });
 
     await preflight.run();

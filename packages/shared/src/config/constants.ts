@@ -34,7 +34,7 @@ export const PANEL_STATE_PREFIX = `${API_PREFIX}/${PANEL_STATE_PATH}`;
 /** 钉住的运行时版本：隔离运行时按它校验、取那一份。 */
 export const DEFAULT_NPM_REGISTRY = "https://registry.npmjs.org";
 
-export const OPENCLI_PIN = "1.8.8";
+export const OPENCLI_PIN = "2.0.3";
 
 export const OPENCLI_PIN_ENV = "DSH_WB_OPENCLI_PIN";
 

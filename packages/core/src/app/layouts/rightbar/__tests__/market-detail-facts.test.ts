@@ -227,7 +227,7 @@ describe('插件的运行环境那一格', () => {
       rowOf({
         plugin: true,
         pkg: 'opencli-plugin-demo',
-        runtimeProblem: { label: 'opencli', need: '>=2.0.0', have: '1.8.8' },
+        runtimeProblem: { label: 'opencli', need: '>=2.0.0', have: '2.0.3' },
       }),
     );
 
@@ -242,11 +242,11 @@ describe('工作台的运行环境那一格', () => {
         rowOf({ workbench: true, id: 'workbench' }),
         t,
         null,
-        { label: 'runtime', version: '1.8.8', ready: true },
+        { label: 'runtime', version: '2.0.3', ready: true },
       ).map((fact) => [fact.labelKey, fact.value]),
     );
 
-    expect(facts['panels.market.detailRuntime']).toBe('runtime 1.8.8 · panels.market.detailRuntimeReady');
+    expect(facts['panels.market.detailRuntime']).toBe('runtime 2.0.3 · panels.market.detailRuntimeReady');
   });
 
   it('★ 不就绪：说清哪一段没对上（那句人话由适配器给）', () => {
