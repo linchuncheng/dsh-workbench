@@ -197,6 +197,8 @@ export function createMarketService(options: {
     command,
     run,
     libUninstallCommand: (need) => supply.libUninstallCommand({ need: need as LibNeed }),
+    beforeLibCommand: () => supply.beforeLibInstall(),
+    afterLibCommand: () => supply.afterLibInstall(),
     ...(logger === undefined ? {} : { logger }),
   });
 
@@ -304,6 +306,7 @@ export function createMarketService(options: {
         if (state.command === undefined) {
           throw new Error(`没有可执行的安装命令（${state.detail}）`);
         }
+        if (state.kind === 'lib') supply.beforeLibInstall();
         await run(state.command);
         supply.afterLibInstall();
       }
@@ -320,9 +323,11 @@ export function createMarketService(options: {
           (state.status === 'outdated' || state.status === 'unsatisfied'),
       );
       for (const state of stale) {
+        if (state.kind === 'lib') supply.beforeLibInstall();
         await run(
           state.command ?? `${quoteShellArg(command)} plugin update ${quoteShellArg(state.name)}`,
         );
+        if (state.kind === 'lib') supply.afterLibInstall();
         logger?.info?.(`[dsh-workbench] 已更新 ${state.name}`);
       }
       if (stale.length === 0 && before.status === 'outdated') {

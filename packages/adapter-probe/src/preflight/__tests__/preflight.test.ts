@@ -24,6 +24,22 @@ describe('createPreflight', () => {
     expect(fake.calls.map((call) => call.command)).toEqual(["'opencli' --version", "'opencli' doctor"]);
   });
 
+  it('★ 自检那行在"不在"时带上原因（换根 / 换 pin / 被删，只有这行能分开）', async () => {
+    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: 'ok\n' }]);
+    const preflight = createPreflight({
+      seam: seamFor(fake.shell),
+      installed: () => false,
+      installedProblem: () => '隔离副本不在；上次装到 /a/toolchain，这次看的是 /b/toolchain',
+    });
+
+    const snapshot = await preflight.run();
+
+    expect(snapshot.steps[0]?.log).toContain(
+      '> 自检隔离运行时：不在（隔离副本不在；上次装到 /a/toolchain，这次看的是 /b/toolchain）（探测前）',
+    );
+    expect(snapshot.phase).toBe('ready');
+  });
+
   it('缺 opencli → 自动安装 → 重探 → 放行；安装期间界面能拿到"正在执行的动作"', async () => {
     const { fake, preflight } = build(
       [

@@ -75,6 +75,7 @@ export function createPreflight(options: {
   install?: (() => Promise<{ ok: boolean; detail: string }>) | undefined;
   installed?: (() => boolean) | undefined;
   installedNote?: (() => string | undefined) | undefined;
+  installedProblem?: (() => string | undefined) | undefined;
   versionAttempts?: number | undefined;
   withToolchainLock?: (<T>(run: () => Promise<T>) => Promise<T>) | undefined;
   warmReads?: (() => readonly (readonly string[])[]) | undefined;
@@ -365,7 +366,7 @@ export function createPreflight(options: {
     if (withConsole && !skip('cli')) {
       patchStep('cli', { status: 'running', action: '检查 opencli 版本' });
       const onDisk = options.installed?.() === true;
-      const note = onDisk ? options.installedNote?.() : undefined;
+      const note = onDisk ? options.installedNote?.() : options.installedProblem?.();
       appendLog('cli', `> 自检隔离运行时：${onDisk ? '在' : '不在'}${note === undefined ? '' : `（${note}）`}（探测前）`);
       if (diyStarted !== undefined) patchStep('diy', { status: 'running' });
 

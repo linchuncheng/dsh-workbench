@@ -1,5 +1,5 @@
 import type { Seam, SupplyPort } from '@dsh-workbench/shared/host';
-import { cliCatalogPath, ensureLibsBinOnPath, ensureLibsOpencliPeer, isolatedHome, libInstallCommand, libUninstallCommand, vendorPluginsDir } from '@dsh-workbench/adapter-runtime';
+import { cliCatalogPath, detachLibsOpencliPeer, ensureLibsBinOnPath, ensureLibsOpencliPeer, isolatedHome, libInstallCommand, libUninstallCommand, vendorPluginsDir } from '@dsh-workbench/adapter-runtime';
 import { isolatedRoot } from '@dsh-workbench/adapter-runtime';
 
 import { createRegistryNotebook, isNewerVersion } from '@dsh-workbench/adapter-profile';
@@ -41,6 +41,9 @@ export function createSupplyPort(options: ProbeSupplyOptions = {}): SupplyPort {
     cliCatalogPath,
     vendorPluginsDir,
     runtimeInstallCommand: opencliInstallCommand,
+    beforeLibInstall() {
+      detachLibsOpencliPeer();
+    },
     afterLibInstall() {
       ensureLibsOpencliPeer();
       ensureLibsBinOnPath();

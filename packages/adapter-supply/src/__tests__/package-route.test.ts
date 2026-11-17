@@ -214,10 +214,10 @@ describe('插件的安装命令（复用 plugin-source 那两条既有分支）'
 
     if (!plan.ok) throw new Error('这条该装得上');
     expect(plan.steps[0]).toEqual({ kind: 'mkdir', path: PREFIX });
-    expect(runLineOf(plan.steps[1])).toBe(
+    expect(runLineOf(plan.steps[2])).toBe(
       `pnpm add --dir '${PREFIX}' 'opencli-plugin-demo@1.2.3' --registry '${REGISTRY}' --store-dir '${path.join(DSH_HOME, 'workbench', 'opencli', 'pnpm-store')}' --config.cache-dir='${path.join(DSH_HOME, 'workbench', 'opencli', 'pnpm-cache')}' --config.state-dir='${path.join(DSH_HOME, 'workbench', 'opencli', 'pnpm-state')}' --allow-build='opencli-plugin-demo'`,
     );
-    expect(plan.steps.map((step) => step.kind)).toEqual(['mkdir', 'run', 'remove', 'mkdir', 'link', 'run', 'run']);
+    expect(plan.steps.map((step) => step.kind)).toEqual(['mkdir', 'remove', 'run', 'mkdir', 'link', 'run', 'run']);
     expect(runLines(plan.steps).some((line) => line.includes("'opencli' plugin uninstall 'demo'"))).toBe(true);
     expect(runLineOf(plan.steps.at(-1))).toContain(
       `'opencli' plugin install '${path.join(PREFIX, 'node_modules', 'opencli-plugin-demo')}'`,
@@ -233,7 +233,8 @@ describe('插件的安装命令（复用 plugin-source 那两条既有分支）'
 
     if (!plan.ok) throw new Error('这条该装得上');
     expect(plan.steps[0]).toEqual({ kind: 'mkdir', path: PREFIX });
-    expect(plan.line.startsWith(`mkdir -p '${PREFIX}' && pnpm add --dir '${PREFIX}'`)).toBe(true);
+    expect(plan.line.startsWith(`mkdir -p '${PREFIX}' && rm -rf `)).toBe(true);
+    expect(plan.line).toContain(`&& pnpm add --dir '${PREFIX}'`);
   });
 
   it('★ 用户挑的源说了算：进程环境里那个 npm_config_registry 不许把它顶掉', () => {
@@ -242,7 +243,7 @@ describe('插件的安装命令（复用 plugin-source 那两条既有分支）'
     const plan = pluginInstallPlan({ spec: 'opencli-plugin-demo', command: 'opencli', registry: REGISTRY });
 
     if (!plan.ok) throw new Error('这条该装得上');
-    expect(runLineOf(plan.steps[1])).toContain(`--registry '${REGISTRY}'`);
+    expect(runLineOf(plan.steps[2])).toContain(`--registry '${REGISTRY}'`);
   });
 
   it('★ 不带版本就是 latest（源决定），插件名只在"先卸旧的"那一步用', () => {
@@ -250,7 +251,7 @@ describe('插件的安装命令（复用 plugin-source 那两条既有分支）'
     const plan = pluginInstallPlan({ spec: 'opencli-plugin-demo', command: 'opencli', registry: REGISTRY });
 
     if (!plan.ok) throw new Error('这条该装得上');
-    expect(runLineOf(plan.steps[1])).toContain("'opencli-plugin-demo@latest'");
+    expect(runLineOf(plan.steps[2])).toContain("'opencli-plugin-demo@latest'");
     expect(runLines(plan.steps).some((line) => line.includes('plugin uninstall'))).toBe(false);
   });
 
@@ -274,7 +275,7 @@ describe('插件的安装命令（复用 plugin-source 那两条既有分支）'
 
     if (!plan.ok) throw new Error('这条该装得上');
     expect(plan.steps[0]).toEqual({ kind: 'mkdir', path: path.join(home, 'workbench', 'opencli', 'plugins-npm') });
-    expect(runLineOf(plan.steps[1])).toContain(`--store-dir '${store}'`);
+    expect(runLineOf(plan.steps[2])).toContain(`--store-dir '${store}'`);
   });
 
   it('★ toolchain / vendor / libs 三处的 `--store-dir` 同源（都读既有 node_modules）', () => {
@@ -296,7 +297,7 @@ describe('插件的安装命令（复用 plugin-source 那两条既有分支）'
     const lines = [
       isolatedInstallCommand(),
       libInstallCommand({ need, source: { kind: 'npm', package: 'demo-lib' } }),
-      runLineOf(plan.steps[1]),
+      runLineOf(plan.steps[2]),
     ];
 
     for (const line of lines) expect(line).toContain(`--store-dir '${store}'`);

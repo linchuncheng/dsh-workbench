@@ -1,4 +1,4 @@
-import { chmodSync, lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -6,6 +6,7 @@ import {
   ensureDir,
   linkDir,
   makeExecutable,
+  removePath,
   writeBytesFile,
   writeBytesFileAsync,
   writeJsonFile,
@@ -117,5 +118,34 @@ describe('宿主文件写入口', () => {
       expect(readFileSync(join(first, 'version.txt'), 'utf8')).toBe('old');
       expect(statSync(second).isDirectory()).toBe(true);
     }
+  });
+});
+
+describe('removePath', () => {
+  it('★ 链接只删链接本身：不顺着它把目标的内容清空（Windows 的 junction 就坑在这）', () => {
+    const target = join(ROOT, 'link-target');
+    ensureDir(join(target, 'dist'));
+    writeFileSync(join(target, 'package.json'), '{"name":"x"}');
+    writeFileSync(join(target, 'dist', 'main.js'), '1');
+    const link = join(ROOT, 'link');
+    symlinkSync(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+
+    removePath(link);
+
+    expect(() => lstatSync(link)).toThrow();
+    expect(readFileSync(join(target, 'package.json'), 'utf8')).toBe('{"name":"x"}');
+    expect(readdirSync(join(target, 'dist'))).toEqual(['main.js']);
+  });
+
+  it('不存在当成功；普通目录照样整棵删', () => {
+    expect(() => removePath(join(ROOT, 'nope'))).not.toThrow();
+
+    const dir = join(ROOT, 'plain');
+    ensureDir(join(dir, 'a'));
+    writeFileSync(join(dir, 'a', 'x.txt'), 'x');
+
+    removePath(dir);
+
+    expect(() => lstatSync(dir)).toThrow();
   });
 });

@@ -48,6 +48,7 @@ export function fsSupply(options: {
           vendorPluginsDir: () => options.plugins() ?? join(options.root(), 'workbench', 'opencli', 'plugins'),
           runtimeInstallCommand: () => 'npm i -g opencli',
         }),
+    beforeLibInstall: () => undefined,
     afterLibInstall: () => undefined,
     profileDirOf,
     profileModules: (dir: string | null): readonly ProfileModule[] => {

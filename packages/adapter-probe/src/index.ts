@@ -21,6 +21,8 @@ export * from './self-update/version/version-range.js';
 export * from './self-update/version/version-probe.js';
 export * from './install/install.js';
 export * from './install/isolated-install.js';
+export * from './install/install-record.js';
+export * from './install/install-smoke.js';
 export * from './self-update/self-update.js';
 export * from './self-update/self-update-cli.js';
 export * from './self-update/self-update-plan.js';

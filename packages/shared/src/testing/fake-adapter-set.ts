@@ -77,6 +77,7 @@ const modules: ModulePort = {
   cliCatalogPath: () => '/tmp/dsh-workbench-fake/catalog.json',
   vendorPluginsDir: () => '/tmp/dsh-workbench-fake/plugins',
   runtimeInstallCommand: () => 'npm i -g fake-runtime',
+  beforeLibInstall: () => undefined,
   afterLibInstall: () => undefined,
   profileDirOf: (ctx) => profileDirOf(ctx),
   profileModules,

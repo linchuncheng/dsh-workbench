@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { fakeSeamOf } from './seam-fake';
 import { createWorkspaceStore } from '@dsh-workbench/shared/host';
-import type { UnitCapability } from '@dsh-workbench/shared/host';
+import type { SupplyPort, UnitCapability } from '@dsh-workbench/shared/host';
 import type { NeedState, SupplySource, UnitManifest } from '@dsh-workbench/shared';
 import { extensionNeedOf, libNeedOf, needStateOf } from '@dsh-workbench/shared/testing';
 import { createEnvDropper } from '../model/market-env';
@@ -388,5 +388,108 @@ describe('自动清的另一个时机：模块更新（它的声明可能变了�
     expect(fake.commands()).toEqual(["'opencli' plugin uninstall 'deploy'"]);
     expect(ledger.all()).toEqual([]);
     fs.rmSync(root, { recursive: true, force: true });
+  });
+});
+
+describe('装 / 升 / 卸共用库：命令跑之前先拆 peer 链接，跑完再挂回去', () => {
+  const LIBS = path.join(os.tmpdir(), 'wb-market-libs');
+
+  function supplyWith(order: string[]): SupplyPort {
+    return {
+      beforeLibInstall: () => order.push('detach'),
+      afterLibInstall: () => order.push('attach'),
+      libInstallCommand: ({ need }: { need: { name: string } }) => `pnpm add --dir '${LIBS}' '${need.name}'`,
+      libUninstallCommand: ({ need }: { need: { name: string } }) => `pnpm remove --dir '${LIBS}' '${need.name}'`,
+      isolatedRoot: () => '/tmp/wb-market-root',
+      isolatedHome: () => '/tmp/wb-market-home',
+      pluginPackagePrefix: () => 'opencli-plugin-',
+      vendorPluginsDir: () => '/tmp/wb-market-vendor',
+      pluginManifestFile: () => 'opencli-plugin.json',
+      modules: {
+        isolatedRoot: () => '/tmp/wb-market-root',
+        isolatedHome: () => '/tmp/wb-market-home',
+        beforeLibInstall: () => undefined,
+        afterLibInstall: () => undefined,
+      },
+    } as unknown as SupplyPort;
+  }
+
+  function libUnit(): UnitManifest {
+    return {
+      id: 'issues',
+      titleKey: 'issues.mine', card: { order: 10 },
+      tools: [],
+      host: { inject: [] },
+      needs: [LODASH],
+    };
+  }
+
+  it('★ 装共用库：pnpm add 之前链接已经拆掉，装完再挂回去', async () => {
+    const order: string[] = [];
+    const fake = createFakeShell([{ stdout: '' }]);
+    const missing = needStateOf(LODASH, 'missing', { command: `pnpm add --dir '${LIBS}' 'lodash'` });
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [libUnit()],
+      probe: async () => ({ unit: 'issues', status: 'missing', needs: [missing] }),
+      seam: fakeSeamOf(fake.shell),
+      supply: supplyWith(order),
+    });
+
+    await market.install('issues');
+
+    expect(order).toEqual(['detach', 'attach']);
+    expect(fake.commands()).toEqual([missing.command]);
+  });
+
+  it('★ 升级共用库：同样先拆后挂', async () => {
+    const order: string[] = [];
+    const fake = createFakeShell([{ stdout: '' }]);
+    const stale = needStateOf(LODASH, 'outdated', {
+      command: `pnpm add --dir '${LIBS}' 'lodash@2'`,
+      installed: '1.0.0',
+    });
+    let calls = 0;
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [libUnit()],
+      probe: async () => {
+        calls += 1;
+        return calls === 1
+          ? { unit: 'issues', status: 'outdated', needs: [stale] }
+          : { unit: 'issues', status: 'ok', needs: [needStateOf(LODASH, 'ok', { installed: '2.0.0' })] };
+      },
+      seam: fakeSeamOf(fake.shell),
+      supply: supplyWith(order),
+    });
+
+    await market.update('issues');
+
+    expect(order).toEqual(['detach', 'attach']);
+    expect(fake.commands()).toEqual([stale.command]);
+  });
+
+  it('★ 卸共用库：钩子夹住 pnpm remove（失败也要挂回去）', async () => {
+    const order: string[] = [];
+    const capability: UnitCapability = {
+      unit: 'issues',
+      status: 'ok',
+      needs: [needStateOf(LODASH, 'ok', { installed: '1.0.0' })],
+    };
+    const dropper = createEnvDropper({
+      libUninstallCommand: (need) => `pnpm remove --dir '${LIBS}' '${need.name}'`,
+      beforeLibCommand: () => order.push('detach'),
+      afterLibCommand: () => order.push('attach'),
+      catalog: () => [libUnit()],
+      command: 'opencli',
+      run: async () => {
+        order.push('remove');
+        throw new Error('pnpm 中途挂了');
+      },
+    });
+
+    await expect(dropper.drop('issues', [LODASH], capability)).rejects.toThrow('pnpm 中途挂了');
+
+    expect(order).toEqual(['detach', 'remove', 'attach']);
   });
 });

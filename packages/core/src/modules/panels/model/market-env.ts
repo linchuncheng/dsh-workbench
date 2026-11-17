@@ -25,6 +25,8 @@ export function createEnvDropper(options: {
   readonly command: string;
   readonly run: (line: string, optional?: boolean) => Promise<void>;
   readonly libUninstallCommand: (need: Need) => string;
+  readonly beforeLibCommand?: (() => void) | undefined;
+  readonly afterLibCommand?: (() => void) | undefined;
   readonly pluginPackagePrefix?: string | undefined;
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
 }): EnvDropper {
@@ -113,7 +115,12 @@ export function createEnvDropper(options: {
         if (index.entryOf('lib', need.name)?.conflicted === true) {
           logger?.warn?.(`[dsh-workbench] ${need.name} 的来源声明有冲突，按库名卸`);
         }
-        await run(libUninstallCommand(need), true);
+        options.beforeLibCommand?.();
+        try {
+          await run(libUninstallCommand(need), true);
+        } finally {
+          options.afterLibCommand?.();
+        }
       }
 
       return [...kept];

@@ -20,6 +20,7 @@ function pluginSupply(): SupplyPort {
   const release = createReleaseProbe();
   const router = createPackageRouter({ manifestFile: 'opencli-plugin.json' });
   return {
+    beforeLibInstall: () => undefined,
     afterLibInstall: () => undefined,
     latestVersion: release.latestVersion,
     missingReleaseParts: release.missingReleaseParts,

@@ -34,6 +34,7 @@ export function supplyPortOf(ctx: DshHostContext): SupplyPort {
     ...(cliCatalogPath === undefined ? {} : { cliCatalogPath: () => cliCatalogPath() }),
     ...(vendorPluginsDir === undefined ? {} : { vendorPluginsDir: () => vendorPluginsDir() }),
     ...(runtimeInstallCommand === undefined ? {} : { runtimeInstallCommand: () => runtimeInstallCommand() }),
+    beforeLibInstall: () => modules.beforeLibInstall(),
     afterLibInstall: () => modules.afterLibInstall(),
     profileDirOf: (context) => modules.profileDirOf(context),
     profileModules: (dir) => modules.profileModules(dir),

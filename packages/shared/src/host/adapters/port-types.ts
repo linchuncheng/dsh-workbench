@@ -111,6 +111,7 @@ export interface ModulePort {
   cliCatalogPath?(): string;
   vendorPluginsDir?(): string;
   runtimeInstallCommand?(): string;
+  beforeLibInstall(): void;
   afterLibInstall(): void;
   profileDirOf(ctx: DshHostContext): string | null;
   profileModules(dir: string | null): readonly ProfileModule[];

@@ -1,4 +1,4 @@
-import { appendFileSync, chmodSync, cpSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, lstatSync, mkdirSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import writeFileAtomic from 'write-file-atomic';
 import type { ShellKind } from '../shell/shell-text.js';
@@ -168,11 +168,27 @@ export function makeExecutable(path: string): void {
 }
 
 /**
- * 删掉一个路径（目录整棵删），不存在当成功。
+ * 删掉一个路径（目录整棵删；链接只删链接本身，不碰它指向的东西），不存在当成功。
  * @param path 目标路径。
  */
 export function removePath(path: string): void {
-  rmSync(path, { recursive: true, force: true });
+  let stats: ReturnType<typeof lstatSync>;
+  try {
+    stats = lstatSync(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw error;
+  }
+  if (!stats.isSymbolicLink()) {
+    rmSync(path, { recursive: true, force: true });
+    return;
+  }
+  try {
+    unlinkSync(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    rmdirSync(path);
+  }
 }
 
 /**
