@@ -1,5 +1,14 @@
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { callOperatorOf, invocationOf, powershellFileOf, quotedArgvLine, quotedLineOf } from '../shell-render.js';
+import {
+  callOperatorOf,
+  invocationOf,
+  launcherInvocationOf,
+  launcherPathOf,
+  powershellFileOf,
+  quotedArgvLine,
+  quotedLineOf,
+} from '../shell-render.js';
 
 const existsNamed =
   (...names: readonly string[]) =>
@@ -154,5 +163,28 @@ describe('quotedArgvLine / quotedLineOf', () => {
 
   it('整条 invocation 按目标平台引号', () => {
     expect(quotedLineOf({ file: 'pwsh', args: ['-Command', 'dir'] }, 'win32')).toBe("'pwsh' '-Command' 'dir'");
+  });
+});
+
+describe('launcherPathOf / launcherInvocationOf', () => {
+  it('★ win32 走 .cmd 包装，经 cmd.exe /d /c 起（ComSpec 优先）', () => {
+    const binDir = join('/pkg', 'bin');
+    const file = launcherPathOf(binDir, 'win32');
+    expect(file).toBe(join(binDir, 'dsh-workbench.cmd'));
+    expect(launcherInvocationOf(binDir, ['setup'], 'win32', 'C:\\Windows\\System32\\cmd.exe')).toEqual({
+      file: 'C:\\Windows\\System32\\cmd.exe',
+      args: ['/d', '/c', file, 'setup'],
+    });
+    expect(launcherInvocationOf(binDir, ['setup'], 'win32', undefined).file).toBe('cmd.exe');
+  });
+
+  it('★ 其余平台直接跑启动脚本，参数原样', () => {
+    const binDir = join('/pkg', 'bin');
+    const file = launcherPathOf(binDir, 'darwin');
+    expect(file).toBe(join(binDir, 'dsh-workbench'));
+    expect(launcherInvocationOf(binDir, ['setup', '--profile', 'wb2'], 'linux')).toEqual({
+      file,
+      args: ['setup', '--profile', 'wb2'],
+    });
   });
 });

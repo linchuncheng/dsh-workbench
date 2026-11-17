@@ -8,9 +8,11 @@ import {
   acquireUpdateLease,
   activeHostLeases,
   clearReinstallRecord,
+  cmdNameOf,
   readReinstallRecord,
   recoverUpdateJournal,
   reinstallRecordFile,
+  shellKindOf,
   updateLeaseActive,
   writeReinstallRecord,
 } from '@dsh-workbench/shared/host';
@@ -21,6 +23,8 @@ const ROOT = process.env.DSH_WORKBENCH_HOME?.trim() || join(HOME, PROFILE);
 const FILE = join(ROOT, 'self-update-journal.json');
 const RECORD = reinstallRecordFile(ROOT);
 const MAX_REINSTALL_ATTEMPTS = 3;
+const SHELL = shellKindOf();
+const PNPM = cmdNameOf('pnpm');
 
 function say(message) {
   process.stderr.write(`dsh-workbench: ${message}\n`);
@@ -45,9 +49,9 @@ function recoverJournal() {
 }
 
 function pnpmCommand() {
-  const local = join(ROOT, 'pnpm-10', 'node_modules', '.bin', process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm');
+  const local = join(ROOT, 'pnpm-10', 'node_modules', '.bin', PNPM);
   if (existsSync(local)) return local;
-  return process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  return PNPM;
 }
 
 function reinstallPending() {
@@ -75,7 +79,7 @@ function reinstallPending() {
       {
         stdio: 'inherit',
         env: process.env,
-        shell: process.platform === 'win32',
+        shell: SHELL === 'pwsh',
         timeout: 10 * 60_000,
         killSignal: 'SIGTERM',
       },

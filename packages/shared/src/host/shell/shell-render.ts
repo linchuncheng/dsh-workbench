@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { win32 } from 'node:path';
+import { join, win32 } from 'node:path';
 import type { PluginPlanStep } from '../../contract/plugin-source.js';
 import type { ShellKind } from './shell-text.js';
 import { quoteShellArgFor, shellKindOf } from './shell-text.js';
@@ -67,6 +67,35 @@ export function invocationOf(kind: ShellKind, script: string, options: Powershel
 
 export function quotedArgvLine(argv: readonly string[], platform: NodeJS.Platform = process.platform): string {
   return argv.map((one) => quoteShellArgFor(one, platform)).join(' ');
+}
+
+/**
+ * 工作台启动器在目标平台上的文件：win32 是 `.cmd` 包装，其余是启动脚本。
+ * @param binDir - 启动器所在目录。
+ * @param platform - 目标平台，默认当前 `process.platform`。
+ * @returns 启动器文件的绝对路径。
+ */
+export function launcherPathOf(binDir: string, platform: NodeJS.Platform = process.platform): string {
+  return join(binDir, platform === 'win32' ? 'dsh-workbench.cmd' : 'dsh-workbench');
+}
+
+/**
+ * 工作台启动器的启动方式：Windows 上经 `cmd.exe /d /c` 跑 `.cmd` 包装，其余直接跑启动脚本。
+ * @param binDir - 启动器所在目录。
+ * @param args - 透传给启动器的参数。
+ * @param platform - 目标平台，默认当前 `process.platform`。
+ * @param comspec - Windows 上要用的命令解释器，默认取 `process.env.ComSpec`。
+ * @returns 可直接交给进程启动的文件名与参数。
+ */
+export function launcherInvocationOf(
+  binDir: string,
+  args: readonly string[],
+  platform: NodeJS.Platform = process.platform,
+  comspec: string | undefined = process.env.ComSpec,
+): ShellInvocation {
+  const file = launcherPathOf(binDir, platform);
+  if (platform !== 'win32') return { file, args: [...args] };
+  return { file: comspec ?? 'cmd.exe', args: ['/d', '/c', file, ...args] };
 }
 
 export function quotedLineOf(invocation: ShellInvocation, platform: NodeJS.Platform = process.platform): string {

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { quoteShellArg, quoteShellArgFor, shellKindOf, tailLines } from '../shell-text.js';
+import { cmdNameOf, quoteShellArg, quoteShellArgFor, shellKindOf, tailLines } from '../shell-text.js';
 
 function shellSees(value: string): string {
   return execFileSync('/bin/sh', ['-c', `printf '%s' ${quoteShellArg(value)}`], {
@@ -80,5 +80,14 @@ describe('shellKindOf', () => {
     expect(shellKindOf('win32')).toBe('pwsh');
     expect(shellKindOf('darwin')).toBe('posix');
     expect(shellKindOf('linux')).toBe('posix');
+  });
+});
+
+describe('cmdNameOf', () => {
+  it('★ win32 的包装器带 .cmd，其余平台原样', () => {
+    expect(cmdNameOf('pnpm', 'win32')).toBe('pnpm.cmd');
+    expect(cmdNameOf('opencli', 'win32')).toBe('opencli.cmd');
+    expect(cmdNameOf('pnpm', 'darwin')).toBe('pnpm');
+    expect(cmdNameOf('opencli', 'linux')).toBe('opencli');
   });
 });

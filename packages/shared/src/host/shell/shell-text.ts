@@ -13,6 +13,16 @@ export function shellKindOf(platform: NodeJS.Platform = process.platform): Shell
 }
 
 /**
+ * 按目标平台补齐包装器的文件名：win32 上是 `.cmd`，其余原样。
+ * @param name - 包装器名（不带扩展名）。
+ * @param platform - 目标平台，默认当前 `process.platform`。
+ * @returns 该平台上可直接执行的文件名。
+ */
+export function cmdNameOf(name: string, platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? `${name}.cmd` : name;
+}
+
+/**
  * 按目标平台把一个值裹成 shell 字面量：POSIX 用单引号并按 `'\''` 逃逸，pwsh 也用单引号但按 `''` 逃逸。
  * @param value - 任意值；不是字符串的先 `String()`。
  * @param platform - 目标平台，默认当前 `process.platform`。

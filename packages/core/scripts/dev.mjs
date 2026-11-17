@@ -5,15 +5,16 @@ import path from 'node:path';
 import { execa } from 'execa';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
+import { launcherInvocationOf, launcherPathOf, shellKindOf } from '@dsh-workbench/shared/host';
 
 const PKG = '@dsh-workbench/core';
 
 const pkgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const IS_WIN = process.platform === 'win32';
-const bin = path.join(pkgRoot, 'bin', IS_WIN ? 'dsh-workbench.cmd' : 'dsh-workbench');
+const bin = launcherPathOf(path.join(pkgRoot, 'bin'));
 
 function launcher(args) {
-  return IS_WIN ? [process.env.ComSpec ?? 'cmd.exe', ['/d', '/c', bin, ...args]] : [bin, args];
+  const invocation = launcherInvocationOf(path.join(pkgRoot, 'bin'), args);
+  return [invocation.file, invocation.args];
 }
 
 const desktop = process.argv.includes('--desktop');
@@ -77,7 +78,7 @@ async function ensureProfile() {
   const setup = execa(...launcher(['setup']), { cwd: pkgRoot, stdio: 'inherit', reject: false });
   const code = await exitCodeOf(setup);
   if (code !== 0) {
-    if (!IS_WIN) {
+    if (shellKindOf() !== 'pwsh') {
       console.error(`dev：setup 失败（退出码 ${code}）——先手动运行一次查看输出：${bin} setup`);
     }
     process.exit(code);

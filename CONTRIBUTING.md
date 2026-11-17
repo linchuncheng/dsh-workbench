@@ -152,13 +152,34 @@ GitHub Actions runs three workflows:
 - `.github/workflows/platform-smoke.yml` (pull requests and pushes to `main` touching `packages/**/src/**`
   or `scripts/smoke/**`, a weekly cron, and manual dispatch; ubuntu, macOS, Windows Server 2022/2025):
   runs `pnpm run smoke:platform` — argv quoting through the real shell, win32 quoting parsed by a real
-  `pwsh`, timeout kill, and append writes — plus the renderer/seam/capture/browser-read test files and the
-  core selfcheck. This is the cross-platform guard for the execution seam: keep it green when touching
-  `shell-render`, the seam, or the DIY capture layer.
+  `pwsh`, timeout kill, and append writes — plus the renderer/seam/capture/browser-read test files,
+  every cross-platform call site's unit tests, and the core selfcheck. This is the cross-platform
+  guard for the execution seam: keep it green when touching `shell-render`, the seam, or the DIY
+  capture layer.
 
-The full `pnpm run check` is still the release gate and is expected before pushing. Nothing in CI runs
-the **full** typecheck or test suite on Windows/macOS, so run the gate locally (or in a worktree)
-before pushing.
+### Cross-platform call sites
+
+A cross-platform call site is code that reads the host OS directly (`process.platform`, `hostOs`,
+an OS literal) or invokes an OS-native command. Every such file is listed in
+`packages/core/scripts/selfcheck/platform-ci.json` with the OSes it branches on and the test that
+covers it. The test has to run in a CI leg for each of those OSes: the full gate covers linux and
+macOS, and `platform-smoke` runs the platform-sensitive unit tests on all four legs.
+
+The `selfcheck` judge 「跨平台调用点」 checks the manifest against the source, the test files, and
+the workflow matrix and commands. It also checks that every `scripts/smoke/*.mjs` is run by
+`platform-smoke` (or imported by one that is). Adding a platform branch without a manifest entry,
+or a test that no CI leg runs, fails the judge. The scan covers every package's `src`, plus the
+`scripts` and `bin` entries that ship through `files`; development-only scripts are out of scope.
+Run it alone with:
+
+```bash
+node packages/core/scripts/selfcheck/index.mjs --only '跨平台调用点'
+```
+
+The full `pnpm run check` is still the release gate and is expected before pushing. CI runs the
+full gate on linux and macOS (`.github/workflows/gate.yml`); Windows has no full gate, so
+`platform-smoke` covers the platform-sensitive tests there. Run the gate locally (or in a
+worktree) before pushing.
 
 ## Docs site
 
