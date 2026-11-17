@@ -50,10 +50,10 @@ const specLabels = ['包名', 'Package'];
 const pluginPreviewRe = /这是一份[^\n]*插件|插件名：|This is [^\n]*plugin|Plugin name:/u;
 const pluginInstalledRe = /装上了：|Installed:/u;
 const workbenchTitles = ['工作台', 'Workbench'];
-const workbenchUpdateTexts = ['更新', 'Update'];
+const workbenchUpdateTexts = ['更新', 'Update', '升级', 'Upgrade'];
 const selfUpdateReadyRe = /新版本已就绪|new version is ready|restart to pick it up|restart required/iu;
 const selfUpdateFailedRe =
-  /工作台更新失败|工作台更新未成功|The workbench update failed|did not go through|rolled back|已回滚|已用本地备份还原/iu;
+  /工作台更新失败|工作台更新未成功|更新失败|The workbench update failed|Update failed|did not go through|rolled back|已回滚|已用本地备份还原/iu;
 
 const startedAt = Date.now();
 const elapsed = () => `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;

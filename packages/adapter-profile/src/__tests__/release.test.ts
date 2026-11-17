@@ -4,7 +4,10 @@ import { createFakeShell, type ShellCall, type ShellReply } from '@dsh-workbench
 import { createSeam } from '@dsh-workbench/shared/host';
 import { createReleasePort, isNewerVersion, parseLedgerVersion } from '../index.js';
 
-const release = createReleasePort({ prefix: '/tmp/wb-release-prefix' });
+const release = createReleasePort({
+  prefix: '/tmp/wb-release-prefix',
+  head: async (url) => url !== '',
+});
 const { latestVersion, missingReleaseParts, probeRelease } = release;
 const resetReleaseCache = release.reset;
 
@@ -19,10 +22,14 @@ function releaseShell(replies: {
   ledger?: ShellReply;
   view?: ShellReply;
   seen?: string[];
+  tarball?: ShellReply;
 }) {
   const fake = createFakeShell((call: ShellCall): ShellReply => {
     replies.seen?.push(call.command);
     if (call.command.includes('npm ls')) return replies.ledger ?? { exitCode: 1, stdout: '{}' };
+    if (call.command.includes('dist.tarball')) {
+      return replies.tarball ?? { stdout: 'https://npm.example.com/pkg.tgz\n' };
+    }
     if (call.command.includes('npm view')) return replies.view ?? { stdout: '' };
     return { stdout: '[]' };
   });
@@ -116,18 +123,18 @@ describe('latestVersion（问源）', () => {
   it('有 TTL 记忆：第二次不再问；force 会再问', async () => {
     const fake = releaseShell({ view: { stdout: '1.0.40' } });
     await latestVersion({ seam: fake.seam, name: PKG, registry: REGISTRY });
+    const asked = fake.calls.length;
     await latestVersion({ seam: fake.seam, name: PKG, registry: REGISTRY });
-    expect(fake.calls).toHaveLength(1);
+    expect(fake.calls).toHaveLength(asked);
 
     await latestVersion({ seam: fake.seam, name: PKG, registry: REGISTRY, force: true });
-    expect(fake.calls).toHaveLength(2);
+    expect(fake.calls.length).toBeGreaterThan(asked);
   });
 
   it('问失败也记住（不会每次进面板都重敲），force 才重试', async () => {
     const fake = releaseShell({ view: { exitCode: 1 } });
     await latestVersion({ seam: fake.seam, name: PKG, registry: REGISTRY });
     await latestVersion({ seam: fake.seam, name: PKG, registry: REGISTRY });
-    expect(fake.calls).toHaveLength(2);
     expect(fake.calls.map((call) => call.command)).toEqual([
       expect.stringContaining('npm view'),
       expect.stringContaining('view'),
@@ -197,7 +204,9 @@ describe('missingReleaseParts（这一份发布在源上铺齐了没）', () => 
       const asked = cut <= 0 ? '' : spec.slice(cut + 1);
       const known = published[name] ?? [];
       const hit = asked === '' ? known.at(-1) : known.includes(asked) ? asked : undefined;
-      return hit === undefined ? { exitCode: 1, stdout: '' } : { stdout: `${hit}\n` };
+      if (hit === undefined) return { exitCode: 1, stdout: '' };
+      if (call.command.includes('dist.tarball')) return { stdout: `https://npm.example.com/${name}-${hit}.tgz\n` };
+      return { stdout: `${hit}\n` };
     });
     return { ...fake, seam: createSeam({ shell: fake.shell, runtimeRoot: '/tmp/wb-seam-test' }) };
   }
@@ -208,13 +217,14 @@ describe('missingReleaseParts（这一份发布在源上铺齐了没）', () => 
     expect(await missingReleaseParts({ seam: fake.seam, name: ROOT, registry: REGISTRY, version: VERSION })).toEqual(
       [],
     );
-    expect(fake.calls).toHaveLength(PARTS.length);
+    const asked = fake.calls.length;
+    expect(asked).toBe(PARTS.length);
     expect(fake.commands().some((line) => line.includes(`${SHARED}@${VERSION}`))).toBe(true);
 
     expect(await missingReleaseParts({ seam: fake.seam, name: ROOT, registry: REGISTRY, version: VERSION })).toEqual(
       [],
     );
-    expect(fake.calls).toHaveLength(PARTS.length);
+    expect(fake.calls).toHaveLength(asked);
   });
 
   it('兄弟包这一版还没铺到 → 报出名字（调用方据此先不给「更新」）', async () => {
@@ -234,7 +244,7 @@ describe('missingReleaseParts（这一份发布在源上铺齐了没）', () => 
     expect(first).toBeGreaterThanOrEqual(PARTS.length);
 
     await missingReleaseParts({ seam: fake.seam, name: ROOT, registry: REGISTRY, version: VERSION, force: true });
-    expect(fake.calls).toHaveLength(first * 2);
+    expect(fake.calls.length).toBeGreaterThan(first);
   });
 
   it('问炸了 / 回的不是版本号 → 算"还没铺开"（宁可晚一次提示，也不给人装半份）', async () => {

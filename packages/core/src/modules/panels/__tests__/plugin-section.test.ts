@@ -32,6 +32,9 @@ function rig() {
   return ledger;
 }
 
+const versionViews = (fake: { commands(): readonly string[] }) =>
+  fake.commands().filter((line) => line.startsWith('npm view') && !line.includes('dist.tarball'));
+
 function planShellOf(installed: string, latest: string) {
   return createFakeShell((call) =>
     call.command.startsWith('npm ls')
@@ -120,7 +123,7 @@ describe('「已安装 opencli 插件」那一段的数据：台账说了算', (
     await installedPlugins({ ledger, seam: fakeSeamOf(fake.shell) });
     await installedPlugins({ ledger, seam: fakeSeamOf(fake.shell) });
 
-    const views = fake.commands().filter((line) => line.startsWith('npm view'));
+    const views = versionViews(fake);
     const lists = fake.commands().filter((line) => line.startsWith('npm ls'));
     expect(views).toHaveLength(1);
     expect(lists).toHaveLength(2);
@@ -134,7 +137,7 @@ describe('「已安装 opencli 插件」那一段的数据：台账说了算', (
     await installedPlugins({ ledger, seam: fakeSeamOf(fake.shell) });
     await installedPlugins({ ledger, seam: fakeSeamOf(fake.shell), force: true });
 
-    expect(fake.commands().filter((line) => line.startsWith('npm view'))).toHaveLength(2);
+    expect(versionViews(fake)).toHaveLength(2);
   });
 
   it('★ 本地目录装的那一笔不问版本（没有源），行上只说它是本地装的', async () => {

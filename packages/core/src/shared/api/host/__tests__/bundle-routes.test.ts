@@ -47,7 +47,10 @@ function fakeShell(
         command.includes('versions --json') && lists[name] !== undefined
           ? JSON.stringify(lists[name])
           : undefined;
-      const text = declared ?? listed ?? versions[name] ?? '';
+      const tarball = command.includes('dist.tarball')
+        ? `https://registry.example/${String(name).replace('/', '-')}.tgz\n`
+        : undefined;
+      const text = tarball ?? declared ?? listed ?? versions[name] ?? '';
       return {
         result: async () => ({
           exitCode: text === '' ? 1 : 0,

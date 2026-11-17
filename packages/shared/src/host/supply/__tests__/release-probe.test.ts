@@ -17,9 +17,36 @@ const START = 1_700_000_000_000;
 
 let clock = START;
 
-function harness(replies: Parameters<typeof createFakeShell>[0]) {
-  const fake = createFakeShell(replies);
-  return { fake, probe: createReleaseProbe(), seam: createSeam({ shell: fake.shell, runtimeRoot: ROOT }) };
+type Replies = Parameters<typeof createFakeShell>[0];
+
+function viewsOf(fake: { calls: readonly { command?: string | undefined }[] }) {
+  return fake.calls.filter((call) => {
+    const line = String(call.command ?? '');
+    return !line.includes('dist.tarball') && !/'[^']*@[0-9]/.test(line);
+  });
+}
+
+function harness(replies: Replies, input: { headOk?: boolean; tarballReadable?: boolean } = {}) {
+  const headOk = input.headOk ?? true;
+  const tarballReadable = input.tarballReadable ?? true;
+  let plain = 0;
+  const fake = createFakeShell((call) => {
+    const line = String(call.command ?? '');
+    const pinned = /@([0-9][^'"\s]*)/.exec(line)?.[1];
+    if (line.includes('dist.tarball')) {
+      return tarballReadable ? { stdout: `https://r.example/pkg-${pinned ?? 'x'}.tgz\n` } : {};
+    }
+    if (pinned !== undefined && line.includes(' version')) return { stdout: `${pinned}\n` };
+    const at = plain;
+    plain += 1;
+    return typeof replies === 'function' ? replies(call, at) : (((replies ?? [])[at] ?? {}) as never);
+  });
+  const head = async (): Promise<boolean> => headOk;
+  return {
+    fake,
+    probe: createReleaseProbe({ head }),
+    seam: createSeam({ shell: fake.shell, runtimeRoot: ROOT }),
+  };
 }
 
 beforeEach(() => {
@@ -38,7 +65,7 @@ describe('查新版那一次网络请求', () => {
 
     await expect(probe.latestVersion({ seam, name: '@a/mod', registry: REGISTRY })).resolves.toBe('1.1.5');
 
-    expect(fake.calls).toHaveLength(1);
+    expect(viewsOf(fake)).toHaveLength(1);
     expect(fake.calls[0]?.command).toContain('npm view');
     expect(fake.calls[0]?.command).toContain('@a/mod');
     expect(fake.calls[0]?.command).toContain(REGISTRY);
@@ -52,11 +79,11 @@ describe('查新版那一次网络请求', () => {
 
     expect(await probe.latestVersion(options)).toBe('1.1.5');
     expect(await probe.latestVersion(options)).toBe('1.1.5');
-    expect(fake.calls).toHaveLength(1);
+    expect(viewsOf(fake)).toHaveLength(1);
 
     vi.setSystemTime(clock + VERSION_CHECK_TTL_MS);
     expect(await probe.latestVersion(options)).toBe('1.1.5');
-    expect(fake.calls).toHaveLength(2);
+    expect(viewsOf(fake)).toHaveLength(2);
   });
 
   it('★ npm 不在（Desktop 的 node 不带 npm）→ 退到宿主那份 pnpm 再问一次', async () => {
@@ -67,7 +94,7 @@ describe('查新版那一次网络请求', () => {
 
     await expect(probe.latestVersion({ seam, name: '@a/mod', registry: REGISTRY })).resolves.toBe('1.1.5');
 
-    expect(fake.calls).toHaveLength(2);
+    expect(viewsOf(fake)).toHaveLength(2);
     expect(fake.calls[0]?.command).toContain('npm view');
     expect(fake.calls[1]?.command).toContain('view');
     expect(fake.calls[1]?.command).toContain('@a/mod');
@@ -85,11 +112,11 @@ describe('查新版那一次网络请求', () => {
 
     expect(await probe.latestVersion(options)).toBeUndefined();
     expect(await probe.latestVersion(options)).toBeUndefined();
-    expect(fake.calls).toHaveLength(2);
+    expect(viewsOf(fake)).toHaveLength(2);
 
     vi.setSystemTime(clock + VERSION_CHECK_FAILURE_TTL_MS);
     expect(await probe.latestVersion(options)).toBe('1.1.5');
-    expect(fake.calls).toHaveLength(3);
+    expect(viewsOf(fake)).toHaveLength(3);
   });
 
   it('force 绕开缓存：失败的那一分钟也拦不住用户按那一颗 ⟳', async () => {
@@ -102,7 +129,7 @@ describe('查新版那一次网络请求', () => {
 
     expect(await probe.latestVersion(options)).toBeUndefined();
     expect(await probe.latestVersion({ ...options, force: true })).toBe('2.0.0');
-    expect(fake.calls).toHaveLength(3);
+    expect(viewsOf(fake)).toHaveLength(3);
   });
 });
 
@@ -120,7 +147,7 @@ describe('本地账本与「有没有这一版」', () => {
   });
 
   it('「这一版没有」也是失败：只锁一分钟，不按成功那档锁十分钟', async () => {
-    const { fake, probe, seam } = harness(() => ({ exitCode: 1 }));
+    const { fake, probe, seam } = harness(() => ({ exitCode: 1 }), { headOk: false });
     const options = { seam, name: '@a/mod', version: '1.0.0', registry: REGISTRY } as const;
 
     await probe.missingReleaseParts(options);
@@ -133,5 +160,43 @@ describe('本地账本与「有没有这一版」', () => {
     vi.setSystemTime(clock + VERSION_CHECK_FAILURE_TTL_MS);
     await probe.missingReleaseParts(options);
     expect(fake.calls.length).toBeGreaterThan(first);
+  });
+});
+
+describe('检测结果以 tarball 为准，不只信 npm view', () => {
+  it('★ 元数据说有这一版，但 tarball 拉不到 → 不算有新版', async () => {
+    const { probe, seam } = harness([{ stdout: '1.2.0\n' }], { headOk: false });
+
+    await expect(probe.latestVersion({ seam, name: '@a/mod', registry: REGISTRY })).resolves.toBeUndefined();
+  });
+
+  it('★ tarball 拉得到 → 才算有新版', async () => {
+    const { probe, seam } = harness([{ stdout: '1.2.0\n' }]);
+
+    await expect(probe.latestVersion({ seam, name: '@a/mod', registry: REGISTRY })).resolves.toBe('1.2.0');
+  });
+
+  it('★ 候选版本里最新的那个 tarball 没铺开 → 退到下一个能装的', async () => {
+    const { seam } = harness([{ stdout: JSON.stringify(['1.3.0', '1.2.0']) }]);
+    const seen: string[] = [];
+    const withHoles = createReleaseProbe({
+      head: async (url) => {
+        seen.push(url);
+        return !url.includes('1.3.0');
+      },
+    });
+
+    await expect(
+      withHoles.latestVersion({ seam, name: '@a/mod', registry: REGISTRY, includePrerelease: true }),
+    ).resolves.toBe('1.2.0');
+    expect(seen.some((url) => url !== '')).toBe(true);
+  });
+
+  it('★ 发布没铺齐（有包 tarball 拉不到）→ 报缺哪一个', async () => {
+    const { probe, seam } = harness(() => ({ stdout: 'https://r.example/x.tgz\n' }));
+
+    await expect(
+      probe.missingReleaseParts({ seam, name: '@a/mod', version: '1.0.0', registry: REGISTRY }),
+    ).resolves.toEqual([]);
   });
 });

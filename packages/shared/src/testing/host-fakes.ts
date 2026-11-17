@@ -36,8 +36,15 @@ export function createFakeShell(replies: ShellReply[] | ((call: ShellCall, index
   let running = 0;
   let peak = 0;
 
-  const replyAt = (index: number): ShellReply =>
-    typeof replies === 'function' ? replies(calls[index] as ShellCall, index) : (replies[index] ?? {});
+  const replyAt = (index: number): ShellReply => {
+    const call = calls[index] as ShellCall;
+    const reply = typeof replies === 'function' ? replies(call, index) : (replies[index] ?? {});
+    if ((reply.exitCode ?? 0) !== 0 || (reply.stdout ?? '') !== '') return reply;
+    const line = call?.command ?? '';
+    const spec = (/npm view (\S+)/.exec(line)?.[1] ?? '').replace(/^'|'$/g, '');
+    if (spec === '' || !line.includes('dist.tarball')) return reply;
+    return { ...reply, stdout: `https://registry.invalid/${spec.replace('/','-')}.tgz\n` };
+  };
 
   const shell = {
     resolve(request: Parameters<DshShell['resolve']>[0]) {

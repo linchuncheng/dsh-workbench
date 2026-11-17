@@ -29,6 +29,9 @@ function fakeContext(
 
 type Source = Readonly<Record<string, readonly string[]>>;
 
+const versionViews = (lines: readonly string[]) =>
+  lines.filter((line) => line.includes('npm view') && !line.includes('dist.tarball'));
+
 function shellWith(source: Source): { seam: Seam; commands: () => string[] } {
   const fake = createFakeShell((call) => {
     const spec = (/npm view (\S+)/.exec(call.command)?.[1] ?? '').replace(/^'|'$/g, '');
@@ -104,9 +107,11 @@ describe('工作台自己那份的新版（与模块同一条探针里一起回�
       new URLSearchParams(),
     )) as { modules: unknown[]; workbench?: Record<string, unknown> };
 
-    const views = commands().filter((line) => line.includes('npm view'));
-    expect(views).toHaveLength(1 + SIBLINGS.length);
-    expect(views.every((line) => line.includes('https://self.example/'))).toBe(true);
+    const views = versionViews(commands());
+    const tarballs = commands().filter((line) => line.includes('dist.tarball'));
+    expect(views).toHaveLength(1);
+    expect(tarballs).toHaveLength(SIBLINGS.length + 1);
+    expect([...views, ...tarballs].every((line) => line.includes('https://self.example/'))).toBe(true);
     expect(result.modules).toEqual([]);
     expect(result.workbench).toEqual({
       pkg: CORE,
@@ -244,7 +249,7 @@ describe('工作台自己那份的新版（与模块同一条探针里一起回�
       new URLSearchParams(),
     )) as { workbench?: Record<string, unknown> };
 
-    expect(commands().filter((line) => line.includes('npm view'))).toHaveLength(1);
+    expect(versionViews(commands())).toHaveLength(1);
     expect(result.workbench).toEqual({
       pkg: CORE,
       installed: '0.1.19',
@@ -315,7 +320,7 @@ describe('工作台自己那份的新版（与模块同一条探针里一起回�
       local: true,
       spec: 'link:/Users/x/dsh-workbench/packages/core',
     });
-    expect(commands().filter((line) => line.includes('npm view'))).toEqual([]);
+    expect(versionViews(commands())).toEqual([]);
     cleanup();
   });
 
@@ -368,7 +373,7 @@ describe('工作台自己那份的新版（与模块同一条探针里一起回�
       rescue: `dsh plugin --profile ${path.basename(dir)} add ${CORE}@latest`,
       spec: '^0.1.18',
     });
-    expect(commands().filter((line) => line.includes('npm view'))).toEqual([]);
+    expect(versionViews(commands())).toEqual([]);
     cleanup();
   });
 

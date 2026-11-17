@@ -38,19 +38,42 @@ function parseVersion(stdout: string): string | undefined {
   return isValidVersion(value) ? value : undefined;
 }
 
-function parseNewestVersion(stdout: string, includePrerelease: boolean): string | undefined {
-  if (!includePrerelease) return parseVersion(stdout);
+export function candidatesOf(stdout: string, includePrerelease: boolean): readonly string[] {
+  if (!includePrerelease) {
+    const one = parseVersion(stdout);
+    return one === undefined ? [] : [one];
+  }
   const parsed = parseJsonLoose(stdout);
   const list = Array.isArray(parsed) ? parsed : typeof parsed === 'string' ? [parsed] : [];
   return list
     .filter((value): value is string => typeof value === 'string' && isValidVersion(value))
     .map((value) => value.trim())
-    .sort((left, right) => (compareVersions(right, left) ?? 0))[0];
+    .sort((left, right) => (compareVersions(right, left) ?? 0));
 }
 
 interface CacheEntry {
   readonly at: number;
   readonly value: string | undefined;
+}
+
+async function viewOnce(
+  seam: Seam,
+  commands: readonly string[],
+): Promise<{ readonly ok: boolean; readonly stdout: string }> {
+  for (const command of commands) {
+    const result = await seam
+      .run({
+        command,
+        intent: productWrite(),
+        retry: 'safe',
+        timeoutMs: VERSION_CHECK_TIMEOUT_MS,
+        bestEffort: true,
+      })
+      .catch(() => undefined);
+    const stdout = result?.exitCode === 0 ? result.stdout.trim() : '';
+    if (stdout !== '') return { ok: true, stdout };
+  }
+  return { ok: false, stdout: '' };
 }
 
 function versionCacheTtl(value: string | undefined): number {
@@ -65,14 +88,17 @@ export interface ReleaseProbe {
   reset(): void;
 }
 
-export function createReleaseProbe(): ReleaseProbe {
+export function createReleaseProbe(input: { readonly head?: TarballHead | undefined } = {}): ReleaseProbe {
   const latestCache = new Map<string, CacheEntry>();
   const existsCache = new Map<string, ExistsEntry>();
+  const head = input.head ?? defaultHead;
+  const ready = (call: { seam: Seam; name: string; version: string; registry: string; force: boolean; cacheDir?: string | undefined }) =>
+    versionExists(existsCache, { ...call, head });
 
   return {
-    latestVersion: async (options) => latestVersionOf(latestCache, options),
-    missingReleaseParts: async (options) => missingPartsOf(latestCache, existsCache, options),
-    probeRelease: async (options) => probeOf(latestCache, options),
+    latestVersion: async (options) => latestVersionOf(latestCache, ready, options),
+    missingReleaseParts: async (options) => missingPartsOf(ready, options),
+    probeRelease: async (options) => probeOf(latestCache, ready, options),
     reset: () => {
       latestCache.clear();
       existsCache.clear();
@@ -123,7 +149,16 @@ function viewCommandOf(input: {
   return [`npm view ${target} ${tail}`, `${pnpm === '' ? 'pnpm' : pnpm} view ${target} ${tail}`];
 }
 
-async function latestVersionOf(latestCache: Map<string, CacheEntry>, options: {
+type ReadyOf = (call: {
+  seam: Seam;
+  name: string;
+  version: string;
+  registry: string;
+  force: boolean;
+  cacheDir?: string | undefined;
+}) => Promise<ExistsEntry>;
+
+async function latestVersionOf(latestCache: Map<string, CacheEntry>, ready: ReadyOf, options: {
   seam: Seam;
   name: string;
   registry: string;
@@ -138,20 +173,16 @@ async function latestVersionOf(latestCache: Map<string, CacheEntry>, options: {
 
   let read: string | undefined;
   for (const command of viewCommandOf({ name, registry, includePrerelease, cacheDir })) {
-    const result = await seam
-      .run({
-        command,
-        intent: productWrite(),
-        retry: 'safe',
-        timeoutMs: VERSION_CHECK_TIMEOUT_MS,
-        bestEffort: true,
-      })
-      .catch(() => undefined);
-    const found = result?.exitCode === 0 ? parseNewestVersion(result.stdout, includePrerelease) : undefined;
-    if (found !== undefined) {
-      read = found;
-      break;
+    const result = await viewOnce(seam, [command]);
+    const found = result.ok ? candidatesOf(result.stdout, includePrerelease) : [];
+    for (const version of found.slice(0, MAX_TARBALL_PROBES)) {
+      const entry = await ready({ seam, name, version, registry, force, cacheDir });
+      if (entry.ready) {
+        read = version;
+        break;
+      }
     }
+    if (read !== undefined) break;
   }
   latestCache.set(key, { at: now(), value: read });
   return read;
@@ -160,70 +191,97 @@ async function latestVersionOf(latestCache: Map<string, CacheEntry>, options: {
 interface ExistsEntry {
   readonly at: number;
   readonly value: boolean;
+  readonly ready: boolean;
 }
 
+export type TarballHead = (url: string) => Promise<boolean>;
+
+const HEAD_TIMEOUT_MS = 8000;
+
+const MAX_TARBALL_PROBES = 3;
+
+function defaultHead(url: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEAD_TIMEOUT_MS);
+  return fetch(url, { method: 'HEAD', signal: controller.signal })
+    .then((response) => response.ok)
+    .catch(() => false)
+    .finally(() => {
+      clearTimeout(timer);
+    });
+}
+
+async function tarballOk(head: TarballHead, url: string): Promise<boolean> {
+  if (url === '') return false;
+  return head(url);
+}
+
+async function entryOf(input: {
+  seam: Seam;
+  name: string;
+  version: string;
+  registry: string;
+  head: TarballHead;
+  cacheDir?: string | undefined;
+}): Promise<ExistsEntry> {
+  const { seam, name, version, registry, head, cacheDir } = input;
+  const pnpm = process.env.DSH_WB_PNPM?.trim() ?? '';
+  const commandsOf = (args: string): readonly string[] => {
+    const spec = `${quoteShellArg(`${name}@${version}`)} ${args} --registry ${quoteShellArg(registry)}${cacheFlag(cacheDir)}`;
+    return [`npm view ${spec}`, `${pnpm === '' ? 'pnpm' : pnpm} view ${spec}`];
+  };
+  const tarball = await viewOnce(seam, commandsOf('dist.tarball'));
+  if (!tarball.ok) return { at: now(), value: false, ready: false };
+  return { at: now(), value: true, ready: await tarballOk(head, tarball.stdout) };
+}
 
 async function versionExists(
   existsCache: Map<string, ExistsEntry>,
   options: {
-  seam: Seam;
-  name: string;
-  version: string;
-  registry: string;
-  force?: boolean;
-  cacheDir?: string | undefined;
-}): Promise<boolean> {
-  const { seam, name, version, registry, force = false, cacheDir } = options;
-  const key = `${registry}|${name}@${version}`;
+    seam: Seam;
+    name: string;
+    version: string;
+    registry: string;
+    head: TarballHead;
+    force?: boolean;
+    cacheDir?: string | undefined;
+  },
+): Promise<ExistsEntry> {
+  const { force = false } = options;
+  const key = `${options.registry}|${options.name}@${options.version}`;
   const hit = existsCache.get(key);
-  if (!force && hit !== undefined && (hit.value || now() - hit.at < VERSION_CHECK_FAILURE_TTL_MS))
-    return hit.value;
+  if (!force && hit !== undefined && (hit.ready || now() - hit.at < VERSION_CHECK_FAILURE_TTL_MS)) return hit;
 
-  const pnpm = process.env.DSH_WB_PNPM?.trim() ?? '';
-  const spec = `${quoteShellArg(`${name}@${version}`)} version --registry ${quoteShellArg(registry)}${cacheFlag(cacheDir)}`;
-  let value = false;
-  for (const command of [`npm view ${spec}`, `${pnpm === '' ? 'pnpm' : pnpm} view ${spec}`]) {
-    const result = await seam
-      .run({
-        command,
-        intent: productWrite(),
-        retry: 'safe',
-        timeoutMs: VERSION_CHECK_TIMEOUT_MS,
-        bestEffort: true,
-      })
-      .catch(() => undefined);
-    if (result?.exitCode === 0 && parseVersion(result.stdout) !== undefined) {
-      value = true;
-      break;
-    }
-  }
-  existsCache.set(key, { at: now(), value });
-  return value;
+  const entry = await entryOf(options);
+  existsCache.set(key, entry);
+  return entry;
 }
 
 async function missingPartsOf(
-  latestCache: Map<string, CacheEntry>,
-  existsCache: Map<string, ExistsEntry>,
+  ready: ReadyOf,
   options: {
-  seam: Seam;
-  name: string;
-  registry: string;
-  version: string;
-  force?: boolean;
-  cacheDir?: string | undefined;
-}): Promise<readonly string[]> {
+    seam: Seam;
+    name: string;
+    registry: string;
+    version: string;
+    force?: boolean;
+    cacheDir?: string | undefined;
+  },
+): Promise<readonly string[]> {
   const { seam, name, registry, version, force = false, cacheDir } = options;
   const checked = await Promise.all(
     RELEASE_PACKAGES.filter((part) => part !== name).map(async (part) => ({
       part,
-      present: await versionExists(existsCache, { seam, name: part, version, registry, force, cacheDir }),
+      entry: await ready({ seam, name: part, version, registry, force, cacheDir }),
     })),
   );
-  return checked.filter((entry) => !entry.present).map((entry) => entry.part);
+  return checked.filter((one) => !one.entry.ready).map((one) => one.part);
 }
+
 
 async function probeOf(
   latestCache: Map<string, CacheEntry>,
+  ready: ReadyOf,
   options: {
   seam: Seam;
   package: string;
@@ -257,7 +315,7 @@ async function probeOf(
   const latest =
     source === undefined || !check
       ? undefined
-      : await latestVersionOf(latestCache, {
+      : await latestVersionOf(latestCache, ready, {
           seam,
           name: pkg,
           registry: source,

@@ -1,4 +1,4 @@
-import { beforeEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { fakeAdapterSet } from '@dsh-workbench/shared/testing';
 
 type Set = ReturnType<typeof fakeAdapterSet>;
@@ -7,6 +7,11 @@ let fallback = fakeAdapterSet() as unknown as Set;
 
 beforeEach(() => {
   fallback = fakeAdapterSet() as unknown as Set;
+  vi.stubGlobal('fetch', async () => ({ ok: true, status: 200 }));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 function withFallback(got: Set): Set {

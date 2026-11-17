@@ -1,5 +1,5 @@
 import type { PluginRelease } from '@dsh-workbench/shared';
-import type { Seam } from '@dsh-workbench/shared/host';
+import type { Seam, TarballHead } from '@dsh-workbench/shared/host';
 import { createReleaseProbe, parseLedgerVersion } from '@dsh-workbench/shared/host';
 
 export { parseLedgerVersion };
@@ -32,8 +32,9 @@ export interface ReleasePort {
 
 export function createReleasePort(options: {
   readonly prefix: string;
+  readonly head?: TarballHead | undefined;
 }): ReleasePort {
-  const probe = createReleaseProbe();
+  const probe = createReleaseProbe(options.head === undefined ? {} : { head: options.head });
   return {
     latestVersion: (call) => probe.latestVersion(call),
     missingReleaseParts: (call) => probe.missingReleaseParts(call),

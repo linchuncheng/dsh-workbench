@@ -48,7 +48,12 @@ const NEED = {
 const RANGE = { ...NEED, version: '^1.1.20' } as const;
 
 function fakeShell(latest: string | undefined) {
-  return createFakeShell(latest === undefined ? [] : [{ stdout: `${latest}\n` }]);
+  return createFakeShell((call) => {
+    if (String(call.command ?? '').includes('dist.tarball')) {
+      return latest === undefined ? {} : { stdout: `https://registry.invalid/${latest}.tgz\n` };
+    }
+    return latest === undefined ? {} : { stdout: `${latest}\n` };
+  });
 }
 
 describe('probeLibs：交叉依赖（env.libs）', () => {
