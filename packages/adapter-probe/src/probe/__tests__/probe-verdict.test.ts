@@ -144,3 +144,20 @@ describe('extensionStateOf：模块声明的版本下限也要被判', () => {
     expect(state.status).toBe('ok');
   });
 });
+
+describe('aggregate：运行时对不上时的结论', () => {
+  it('★ 带着运行时问题进来 → 直接 unsupported，理由原样带出', () => {
+    const need = extensionNeedOf('inventory', { commands: ['envs'] });
+    const capability = aggregate('issues', [need], [needStateOf(need, 'ok')], '插件 inventory 只适配 <2.0.0');
+
+    expect(capability.status).toBe('unsupported');
+    expect(capability.detail).toContain('inventory');
+  });
+
+  it('★ 没有问题进来 → 照旧按依赖算', () => {
+    const need = extensionNeedOf('inventory', { commands: ['envs'] });
+    const capability = aggregate('issues', [need], [needStateOf(need, 'ok')]);
+
+    expect(capability.status).toBe('ok');
+  });
+});

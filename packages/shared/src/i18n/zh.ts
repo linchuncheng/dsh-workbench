@@ -141,6 +141,7 @@ export const zh = {
   'panels.market.notActive': '未生效',
   'panels.market.notUsable': '不可用',
   'panels.market.broken': '安装已损坏',
+  'panels.market.needsNewerWorkbench': '需要更新工作台',
   'panels.market.hasNew': '有新版本',
   'panels.market.hasProblem': '模块异常',
   'panels.market.missing': '缺依赖',

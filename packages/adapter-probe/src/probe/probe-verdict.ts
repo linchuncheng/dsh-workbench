@@ -152,7 +152,15 @@ export function envStateOf(need: EnvNeed, value: string | undefined): NeedState 
   };
 }
 
-export function aggregate(unit: string, needs: readonly Need[], states: readonly NeedState[]): UnitCapability {
+export function aggregate(
+  unit: string,
+  needs: readonly Need[],
+  states: readonly NeedState[],
+  runtimeProblem?: string | undefined,
+): UnitCapability {
+  if (runtimeProblem !== undefined) {
+    return { unit, status: 'unsupported', needs: [...states], detail: runtimeProblem };
+  }
   const required = new Set(
     needs.filter((need) => need.required !== false).map((need) => needIdOf(need)),
   );

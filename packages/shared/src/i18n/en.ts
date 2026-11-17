@@ -141,6 +141,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.installed': 'installed',
   'panels.market.notActive': 'not active',
   'panels.market.notUsable': 'unusable',
+  'panels.market.needsNewerWorkbench': 'needs a newer workbench',
   'panels.market.broken': 'Installation damaged',
   'panels.market.hasNew': 'New version',
   'panels.market.hasProblem': 'Module problem',

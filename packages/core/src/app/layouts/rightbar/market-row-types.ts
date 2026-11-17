@@ -30,6 +30,7 @@ export type MarketState =
   | 'inactive'
   | 'unusable'
   | 'broken'
+  | 'unsupported'
   | 'outdated'
   | 'older-on-disk'
   | 'pending-restart'

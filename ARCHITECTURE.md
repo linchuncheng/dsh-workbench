@@ -862,7 +862,7 @@ mount() 抛错 / 工具注册到一半失败
   ├─ 执行 <运行时> plugin list -f json              → 实际命令面
   ├─ needs[].commands × 实际命令面                   → 缺命令 = outdated
   ├─ needs[].version × 已装版本                      → 低于下限 = unsatisfied
-  ├─ 插件 peer 范围 × 运行时版本                     → 对不上 = 握手不通过（模块那一侧待接）
+  ├─ 插件 peer 范围 × 运行时版本                     → 对不上 = unsupported（需要更新工作台）
   └─ needs[].kind = bin / env                       → command -v / 环境 = missing
       │
       ▼
@@ -872,9 +872,9 @@ NeedState / UnitCapability
 市场那一行 · 模块详情 · 运行环境那一行
 ```
 
-`runtimeCommands` 已经喂进探针；`runtimes` 这一格还没接（见「现状」那一节）。插件与运行时的对账不走探针，
-走握手：启动时扫一遍已装插件的 peer 范围，不合格就把运行环境那一行点亮。判定权在探针与握手，
-模块与界面都不自己算。
+`runtimeCommands` 已经喂进探针；`runtimes` 这一格还没接（见「现状」那一节）。插件与运行时的对账走握手：
+探针每一轮读一次已装插件的 peer 范围，不合格就把那个单元的结论压成 `unsupported`；同一份结论也照亮
+运行环境那一行。判定权在探针与握手，模块与界面都不自己算。
 
 `unsupported` 专门表示「依赖与它要的运行时对不上」，不拿它代替「不可用」。运行时版本本身不是模块的判断依据：
 模块只说「我要哪个运行时的哪几条命令」，版本由适配器报，名字由适配器的 profile 给。
@@ -888,7 +888,7 @@ NeedState / UnitCapability
 | lib 版本 | `needs[].version`（`lib`） | 探针 `checkVersionRange` | `unsatisfied` → 缺依赖 | 安装 / 升级依赖 | 有 |
 | 插件命令 | `needs[].commands`（`extension`） | `<运行时> plugin list -f json` | 缺命令 → `outdated` | 升级插件 | 有 |
 | 插件版本下限 | `needs[].version`（`extension`） | 与 lib 同一套比较 | 低于下限 → `unsatisfied` | 升级插件 | 有 |
-| 插件与运行时 | 插件 `peerDependencies` | 握手（启动时扫一遍） | 不满足 → 运行环境那行点名插件 | 升级插件 / 换回兼容运行时 | 一半 |
+| 插件与运行时 | 插件 `peerDependencies` | 握手（启动时扫一遍）+ 探针 | 不满足 → `unsupported`（需要更新工作台） | 升级插件 / 换回兼容运行时 | 有 |
 | 运行时与应用 | 适配器钉的版本 + `runtime.health()` | 握手 | 不一致 → 运行时那一行 | 重启 / 重装 | 一半 |
 | 命令 / 环境变量 | `needs[].kind = bin / env` | `command -v` / 环境 | `missing` | 给一条可复制的命令 | 有 |
 

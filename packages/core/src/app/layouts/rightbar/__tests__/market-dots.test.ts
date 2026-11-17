@@ -9,6 +9,7 @@ const ALL_STATES: Readonly<Record<MarketState, true>> = {
   inactive: true,
   unusable: true,
   broken: true,
+  unsupported: true,
   outdated: true,
   'older-on-disk': true,
   'pending-restart': true,

@@ -35,6 +35,7 @@ export const MARKET_STATE_KEY: Readonly<Record<MarketState, string>> = {
   inactive: 'panels.market.notActive',
   unusable: 'panels.market.notUsable',
   broken: 'panels.market.broken',
+  unsupported: 'panels.market.needsNewerWorkbench',
   outdated: 'panels.market.moduleOutdated',
   'older-on-disk': 'panels.market.olderOnDisk',
   'pending-restart': 'panels.market.pendingRestart',
@@ -52,6 +53,7 @@ export const MARKET_DOT: Readonly<
   inactive: 'warning',
   unusable: 'error',
   broken: 'error',
+  unsupported: 'warning',
   outdated: 'warning',
   'older-on-disk': 'warning',
   'pending-restart': 'warning',
@@ -261,7 +263,8 @@ function stateOf(
   if (capability.status === 'missing') return 'missing';
   if (capability.status === 'outdated') return 'outdated';
   if (capability.status === 'unchecked') return 'unchecked';
-  if (capability.status === 'failed' || capability.status === 'unsupported') return 'broken';
+  if (capability.status === 'unsupported') return 'unsupported';
+  if (capability.status === 'failed') return 'broken';
   return 'installed';
 }
 

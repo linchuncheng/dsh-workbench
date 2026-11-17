@@ -13,6 +13,7 @@ import {
   type Seam,
   type ExtensionNeed,
   type LibNeed,
+  type Need,
   type NeedProbeInput,
   type NeedState,
   type PluginRelease,
@@ -21,6 +22,7 @@ import {
 } from '@dsh-workbench/shared/host';
 import { npmRegistryOf } from '@dsh-workbench/adapter-supply';
 import { probeRelease } from './release-port.js';
+import { opencliVersionReport } from '@dsh-workbench/adapter-runtime';
 import { createTimedMemo } from './probe-cache.js';
 import { probeLibs } from './probe-libs.js';
 import { aggregate, binStateOf, envStateOf, extensionStateOf } from './probe-verdict.js';
@@ -121,6 +123,26 @@ async function releasesOf(
     for (const name of entry.names) found.set(`${entry.runtime ?? 'opencli'}:${name}`, signal);
   }
   return found;
+}
+
+function runtimeMismatchOf(): ReadonlyMap<string, string> {
+  const found = new Map<string, string>();
+  const report = opencliVersionReport();
+  for (const problem of report.peerProblems) found.set(problem.name, problem.range);
+  return found;
+}
+
+function runtimeMismatchIn(
+  needs: readonly Need[],
+  problems: ReadonlyMap<string, string>,
+): string | undefined {
+  for (const need of needs) {
+    if (need.kind !== 'extension' || need.required === false) continue;
+    const range = problems.get(need.name);
+    if (range === undefined) continue;
+    return `插件 ${need.name} 只适配 ${range}，这一版运行时和它对不上 —— 升级插件，或换回兼容的运行时`;
+  }
+  return undefined;
 }
 
 const pendingProbes = new Map<string, Promise<UnitCapability[]>>();
@@ -231,6 +253,7 @@ async function loadCapabilities(options: {
   const libStates = await probeLibs({ needs: libNeeds, seam, force, index });
   const releases = await releasesOf(index, { seam, force });
 
+  const runtimeProblems = runtimeMismatchOf();
   const statesOfUnit = (unit: NeedProbeInput): NeedState[] =>
     unit.needs.map((need): NeedState => {
       const conflict = need.kind === 'extension' || need.kind === 'lib' ? conflictOf(index, need) : undefined;
@@ -285,7 +308,12 @@ async function loadCapabilities(options: {
     });
 
   return units.map((unit) => {
-    const capability = aggregate(unit.unit, unit.needs, statesOfUnit(unit));
+    const capability = aggregate(
+      unit.unit,
+      unit.needs,
+      statesOfUnit(unit),
+      runtimeMismatchIn(unit.needs, runtimeProblems),
+    );
     unitCache.set(cacheKeyOf(commandKeyOf(runtimeCommands, platform), units, unit.unit), capability);
     return capability;
   });

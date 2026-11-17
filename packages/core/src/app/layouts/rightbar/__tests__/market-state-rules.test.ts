@@ -3,6 +3,7 @@ import type { UnitManifest } from '@dsh-workbench/shared';
 import type { CapabilityMap } from '@/shared/hooks/use-capabilities';
 import { extensionNeedOf, fakeNpmSource, manifestOf } from '@dsh-workbench/shared/testing';
 import {
+  MARKET_DOT,
   MARKET_STATE_KEY,
   installedRows,
   marketActions,
@@ -270,5 +271,18 @@ describe('段落：装了但市场还没认识它的，也在「已安装模块�
     expect(sections[0]?.rows.map((row) => row.id)).toEqual(['inventory', 'old']);
     expect(sections[0]?.rows.map((row) => row.state)).toEqual(['inactive', 'unusable']);
     expect(sections[1]?.rows.map((row) => row.id)).toEqual(['issues']);
+  });
+});
+
+describe('运行时与插件对不上：状态是「需要更新工作台」，不是「安装已损坏」', () => {
+  it('★ unsupported → 单独一档，带黄点，不冒充损坏', () => {
+    const row = marketRows(
+      [unit('issues', 'demo')],
+      capability('issues', 'unsupported'),
+    )[0];
+
+    expect(row?.state).toBe('unsupported');
+    expect(MARKET_STATE_KEY.unsupported).toBe('panels.market.needsNewerWorkbench');
+    expect(MARKET_DOT.unsupported).toBe('warning');
   });
 });

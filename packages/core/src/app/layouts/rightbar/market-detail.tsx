@@ -50,6 +50,7 @@ const STATE_TONE: Readonly<Record<MarketState, 'neutral' | 'success' | 'warning'
   inactive: 'warning',
   unusable: 'danger',
   broken: 'danger',
+  unsupported: 'warning',
   outdated: 'warning',
   'older-on-disk': 'warning',
   'pending-restart': 'warning',
