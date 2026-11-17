@@ -175,7 +175,13 @@ describe('launcherPathOf / launcherInvocationOf', () => {
       file: 'C:\\Windows\\System32\\cmd.exe',
       args: ['/d', '/c', file, 'setup'],
     });
-    expect(launcherInvocationOf(binDir, ['setup'], 'win32', undefined).file).toBe('cmd.exe');
+    const saved = process.env.ComSpec;
+    delete process.env.ComSpec;
+    try {
+      expect(launcherInvocationOf(binDir, ['setup'], 'win32', undefined).file).toBe('cmd.exe');
+    } finally {
+      if (saved !== undefined) process.env.ComSpec = saved;
+    }
   });
 
   it('★ 其余平台直接跑启动脚本，参数原样', () => {

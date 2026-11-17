@@ -31,8 +31,13 @@ export interface ShellReply {
 
 const tick = (): Promise<void> => delay(0);
 
+/**
+ * 记录 seam 交给 shell 的命令。`calls` / `commands()` 去掉了 pwsh 的调用符（`& `），
+ * `rawCalls` / `rawCommands()` 保留原文 —— 要断言包装本身时用后者。
+ */
 export function createFakeShell(replies: ShellReply[] | ((call: ShellCall, index: number) => ShellReply) = []) {
   const calls: ShellCall[] = [];
+  const rawCalls: ShellCall[] = [];
   let running = 0;
   let peak = 0;
 
@@ -48,7 +53,10 @@ export function createFakeShell(replies: ShellReply[] | ((call: ShellCall, index
 
   const shell = {
     resolve(request: Parameters<DshShell['resolve']>[0]) {
-      calls.push(request as ShellCall);
+      const raw = request as ShellCall;
+      rawCalls.push(raw);
+      const command = typeof raw.command === 'string' ? raw.command.replace(/^& /u, '') : raw.command;
+      calls.push({ ...raw, command });
       return request;
     },
     async execute() {
@@ -79,8 +87,10 @@ export function createFakeShell(replies: ShellReply[] | ((call: ShellCall, index
   return {
     shell,
     calls,
+    rawCalls,
     peak: () => peak,
     commands: () => calls.map((call) => call.command),
+    rawCommands: () => rawCalls.map((call) => call.command),
   };
 }
 

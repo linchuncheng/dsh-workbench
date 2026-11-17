@@ -49,6 +49,7 @@ if (dryRun) {
   for (const group of groups) console.log(`${group.name}: ${group.files.length} 个测试\n  ${group.files.join('\n  ')}`);
   process.exit(0);
 }
+const failed = [];
 for (const group of groups) {
   const label = `platform-tests-${group.dir.split('/')[1]}`;
   const ok = await runLogged({
@@ -58,7 +59,14 @@ for (const group of groups) {
     args: ['--filter', group.name, 'exec', 'vitest', 'run', '--testTimeout=20000', ...group.files],
     pattern: /FAIL |× |→ /,
   });
-  if (!ok) process.exit(1);
+  if (!ok) {
+    failed.push(group.name);
+    continue;
+  }
   console.log(`✔ ${group.name}：${group.files.length} 个平台敏感测试通过`);
+}
+if (failed.length > 0) {
+  console.error(`✖ ${failed.length} 个包的平台测试没过：${failed.join('、')}`);
+  process.exit(1);
 }
 console.log(`✔ 清单驱动的平台测试：${groups.length} 个包都通过`);

@@ -360,8 +360,10 @@ describe('宿主域：run / spawn / open', () => {
     const fake = createFakeShell([{}]);
     const seam = createSeam({ shell: fake.shell, runtimeRoot: ROOT });
     await seam.run({ argv: ['npm', 'view', 'left-pad', 'version'], intent: { kind: 'product' } });
-    const call = process.platform === 'win32' ? "& 'npm' 'view' 'left-pad' 'version'" : "'npm' 'view' 'left-pad' 'version'";
-    expect(fake.calls[0]?.command).toBe(call);
+    expect(fake.commands()[0]).toBe("'npm' 'view' 'left-pad' 'version'");
+    const raw =
+      process.platform === 'win32' ? "& 'npm' 'view' 'left-pad' 'version'" : "'npm' 'view' 'left-pad' 'version'";
+    expect(fake.rawCommands()[0]).toBe(raw);
   });
 });
 
