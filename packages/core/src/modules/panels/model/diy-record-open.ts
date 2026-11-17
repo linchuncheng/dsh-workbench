@@ -1,5 +1,5 @@
 import { actBrowser } from './diy-browser-act';
-import { runBrowserStep } from './diy-browser';
+import { runBrowserStep, runForegroundStep } from './diy-browser';
 import type { Seam } from '@dsh-workbench/shared/host';
 import { OPEN_TIMEOUT_MS, SETTLE_MS, releaseQuietly } from './diy-record';
 
@@ -37,7 +37,7 @@ export async function openRecordPage(input: {
   readonly captureFile: string;
 }): Promise<{ readonly ok: boolean; readonly at: string; readonly why: string }> {
   await releaseQuietly(input);
-  const opened = await runBrowserStep(
+  const opened = await runForegroundStep(
     input.seam,
     input.command,
     ['browser', input.session, 'tab', 'new', input.url, '--window', 'foreground'],
@@ -55,10 +55,10 @@ export async function openRecordPage(input: {
   await settleOf(input);
   let at = await whereAtOf(input);
   if (!samePageOf(at, input.url)) {
-    await runBrowserStep(
+    await runForegroundStep(
       input.seam,
       input.command,
-      ['browser', input.session, 'open', input.url],
+      ['browser', input.session, 'open', input.url, '--window', 'foreground'],
       OPEN_TIMEOUT_MS,
     );
     await settleOf(input);

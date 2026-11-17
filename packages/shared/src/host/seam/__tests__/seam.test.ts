@@ -457,7 +457,7 @@ describe.skipIf(process.platform === 'win32')('host 域整棵树终止（真 for
       command: `${process.execPath} -e ${JSON.stringify(js)} ; exit 0`,
       shellKind: 'posix',
       intent: { kind: 'host' },
-      timeoutMs: 700,
+      timeoutMs: 2_500,
     });
     expect(outcome.timedOut).toBe(true);
     const at = statSync(beat).size;

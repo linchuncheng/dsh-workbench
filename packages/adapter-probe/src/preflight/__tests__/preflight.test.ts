@@ -682,7 +682,7 @@ describe('隔离 opencli 的绝对路径不许被 shell 拆词', () => {
     expect(fake.calls.map((call) => call.command)).toEqual([
       `'${command}' --version`,
       `'${command}' doctor`,
-      `'${command}' 'issues' --site-session persistent -f json`,
+      `'${command}' 'issues' -f json`,
     ]);
   });
 

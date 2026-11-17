@@ -1,6 +1,6 @@
 import { chmodSync, lstatSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   ensureDir,
@@ -117,6 +117,24 @@ describe('宿主文件写入口', () => {
       expect(readdirSync(first)).toEqual(['version.txt']);
       expect(readFileSync(join(first, 'version.txt'), 'utf8')).toBe('old');
       expect(statSync(second).isDirectory()).toBe(true);
+    }
+  });
+
+  it('★ 悬空链接（旧安装留下的断链）→ 照样换成新链接，目标不受影响（两条 kind）', () => {
+    for (const kind of ['posix', 'pwsh'] as const) {
+      const base = join(ROOT, 'dangling', kind);
+      const real = join(base, 'real');
+      ensureDir(real);
+      writeTextFile(join(real, 'version.txt'), 'new');
+      const link = join(base, 'profile', 'node_modules', '@dsh-workbench', 'core');
+      ensureDir(dirname(link));
+      symlinkSync(join(base, 'gone'), link, kind === 'pwsh' ? 'junction' : 'dir');
+
+      linkDir(real, link, kind);
+
+      expect(lstatSync(link).isSymbolicLink()).toBe(true);
+      expect(readFileSync(join(link, 'version.txt'), 'utf8')).toBe('new');
+      expect(statSync(real).isDirectory()).toBe(true);
     }
   });
 });

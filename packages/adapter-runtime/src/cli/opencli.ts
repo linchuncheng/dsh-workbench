@@ -97,7 +97,7 @@ export function createOpencli(options: {
       throw new WorkbenchDataError(
         'cli-timeout',
         `opencli 超过 ${Math.round(timeoutMs / 1000)} 秒没有返回`,
-        { hint: '无头浏览器可能没起来，重试一次通常就好。' },
+        { hint: 'opencli 的本地 daemon 没回应（或浏览器扩展没连上），重试一次通常就好。' },
       );
     }
 

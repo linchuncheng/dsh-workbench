@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { plainLine } from '../diy-browser';
 import type { DshShell } from '@dsh-workbench/shared/host';
 import { quoteShellArg } from '@dsh-workbench/shared/host';
-import { bindCurrentTab, jsonOf, readyPageOf, runBrowserStep, writeShotsDir } from '../diy-browser';
+import { actBrowser } from '../diy-browser-act';
+import { bindCurrentTab, jsonOf, readyPageOf, runBrowserStep, runForegroundStep, writeShotsDir } from '../diy-browser';
 import { cardSelectorOf } from '../diy-scripts';
 import { fakeSeamOf } from '../../__tests__/seam-fake';
 
@@ -19,10 +20,12 @@ interface Step {
 
 function fakeShell(steps: readonly Step[]) {
   const lines: string[] = [];
+  const envs: Array<Readonly<Record<string, string>> | undefined> = [];
   let index = 0;
   const shell = {
-    resolve(request: { command: string }) {
+    resolve(request: { command: string; env?: Readonly<Record<string, string>> }) {
       lines.push(request.command);
+      envs.push(request.env);
       return request;
     },
     async execute() {
@@ -39,10 +42,10 @@ function fakeShell(steps: readonly Step[]) {
       };
     },
   };
-  return { shell: shell as unknown as DshShell, seam: fakeSeamOf(shell as unknown as DshShell), lines };
+  return { shell: shell as unknown as DshShell, seam: fakeSeamOf(shell as unknown as DshShell), lines, envs };
 }
 
-describe('跑一条 opencli：argv 原样挂上背景前缀，结果原样回来', () => {
+describe('跑一条 opencli：argv 原样交给执行缝，窗口模式钉在 env 上', () => {
   it('★★ 每个参数各自引号，会话与子命令一个不改', async () => {
     const rig = fakeShell([{ stdout: 'ok' }]);
     const step = await runBrowserStep(
@@ -81,6 +84,32 @@ describe('跑一条 opencli：argv 原样挂上背景前缀，结果原样回来
       ok: true,
       truncated: true,
     });
+  });
+});
+
+describe('窗口模式钉在执行缝里（ADR-0036）', () => {
+  it('★★ 默认那条口子一律 background —— 调用点忘了写 --window 也压不回来', async () => {
+    const rig = fakeShell([{ stdout: 'ok' }, { stdout: 'ok' }, { stdout: 'ok' }]);
+
+    await runBrowserStep(rig.seam, 'opencli', ['browser', 'workbench', 'eval', '1']);
+    await bindCurrentTab(rig.seam, 'opencli', 'workbench');
+    await actBrowser(rig.seam, 'opencli', 'workbench-rec', ['screenshot', '/tmp/a.png']);
+
+    expect(rig.envs.map((env) => env?.['OPENCLI_WINDOW'])).toEqual([
+      'background',
+      'background',
+      'background',
+    ]);
+  });
+
+  it('★★ 要前台必须显式换口子：只有 runForegroundStep 发 foreground', async () => {
+    const rig = fakeShell([{ stdout: 'ok' }, { stdout: 'ok' }]);
+
+    await runForegroundStep(rig.seam, 'opencli', ['browser', 'workbench-rec', 'tab', 'new', 'https://x', '--window', 'foreground']);
+    await runBrowserStep(rig.seam, 'opencli', ['browser', 'workbench-rec', 'wait', 'time', '2']);
+
+    expect(rig.envs[0]?.['OPENCLI_WINDOW']).toBe('foreground');
+    expect(rig.envs[1]?.['OPENCLI_WINDOW']).toBe('background');
   });
 });
 

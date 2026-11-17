@@ -41,10 +41,29 @@ describe('启动预热站点登录态（ADR-0024）', () => {
     ]);
     expect(snapshot.steps[2]?.detail).toBe('2');
     expect(fake.commands().slice(2)).toEqual([
-      "'opencli' 'inventory' 'enterprises' --site-session persistent -f json",
-      "'opencli' 'demo' 'issues' '--team' 'example-team' '--project' 'example-project' '--pageSize' '1' --site-session persistent -f json",
+      "'opencli' 'inventory' 'enterprises' -f json",
+      "'opencli' 'demo' 'issues' '--team' 'example-team' '--project' 'example-project' '--pageSize' '1' -f json",
+    ]);
+    expect(fake.calls.slice(2).map((call) => call.env?.['OPENCLI_WINDOW'])).toEqual([
+      'background',
+      'background',
+    ]);
+    expect(fake.calls.slice(2).map((call) => call.env?.['OPENCLI_SITE_SESSION'])).toEqual([
+      'persistent',
+      'persistent',
     ]);
     expect(fake.peak()).toBe(2);
+  });
+
+  it('★ 预热不带 --site-session：那个 flag 只有声明 browser 的命令才注册，HTTP 型适配器会当场 unknown option', async () => {
+    const { fake, preflight } = build([...ALL_OK, { stdout: '{}' }], undefined, () => [['hackernews', 'best']]);
+
+    const snapshot = await preflight.run();
+
+    expect(snapshot.steps[2]?.status).toBe('ok');
+    expect(fake.commands().slice(2)).toEqual(["'opencli' 'hackernews' 'best' -f json"]);
+    expect(fake.calls[2]?.command).not.toContain('--site-session');
+    expect(fake.calls[2]?.env?.['OPENCLI_SITE_SESSION']).toBe('persistent');
   });
 
   it('★ 有站点没预热上 → 只 warn，照样放行（面板第一次读取会自己补）', async () => {
@@ -112,7 +131,7 @@ describe('启动预热站点登录态（ADR-0024）', () => {
     expect(fake.commands()).toEqual([
       "'opencli' --version",
       "'opencli' doctor",
-      "'opencli' 'inventory' 'enterprises' --site-session persistent -f json",
+      "'opencli' 'inventory' 'enterprises' -f json",
       "'opencli' doctor",
     ]);
   });
@@ -139,7 +158,7 @@ describe('启动预热站点登录态（ADR-0024）', () => {
     expect(fake.commands()).toEqual([
       "'opencli' --version",
       "'opencli' doctor",
-      "'opencli' 'inventory' 'enterprises' --site-session persistent -f json",
+      "'opencli' 'inventory' 'enterprises' -f json",
       "'opencli' doctor",
     ]);
   });
