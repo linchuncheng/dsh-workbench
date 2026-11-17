@@ -144,6 +144,7 @@ module client
 | 读 / 推 / 写 | 6 | HTTP、SSE、审批写 |
 | 状态与配置 | 5.8 | 卡片显示、panel state、prefs/actions |
 | 失败与降级 | 5.9 | 清单缺失、依赖缺失、mount 回滚、审批拒绝 |
+| 依赖闭环 | 5.10 | 谁声明、谁判、判成什么、怎么修 |
 | 界面槽位与 kit | 7 | 左栏、右栏、卡片、kit |
 | 安装与 profile | 9 | core / default / adapter / module 在 profile 里的位置 |
 | 门禁链 | 10 | check 的顺序与两套入口 |
@@ -628,6 +629,7 @@ export function createAdapterSet(ctx): AdapterSet {
   外壳在 `libs.load` 之后把「跑这个运行时」的执行器注入库的 `setOpencliRunner` —— 执行器走模块读缝，
   与面板同一份 opencli。库版本旧、没有这个接缝时退回它自己按 PATH 找，只记一条 warn。
 - `sources` 按顺序试（本地 → 私有 → 公共），没写就只探不代装。
+- 这些依赖怎么被判、怎么修，见 §5.10。
 - `peerDependencies['@dsh-workbench/core']` 管服务面。
 - `host.writes` 声明模块会写哪一档：`unit`（运行时根下自己的数据目录，常开）或 `workspace`（当前会话工作区）；
   没声明就不给执行缝门面。模块起命令走 `deps.seam`，不直接拿 dsh 的 shell 服务（模块判据会拦）。
@@ -809,6 +811,121 @@ mount() 抛错 / 工具注册到一半失败
 适配器缺失 / 不可用
       └── 对应能力返回 unavailable；不拖垮整个外壳
 ```
+
+### 5.10 依赖与运行时：四段闭环
+
+一条依赖要有检测，四段都得在：**声明 → 判定 → 可见 → 可修**。少一段就是断线。
+
+#### 关系
+
+三方靠**命令名**对齐，不靠版本号：模块说要哪几条命令，插件提供命令，运行时报告「现在有哪些」。
+
+```text
+适配器集合（AdapterSet）
+  └─ runtime：拥有运行时，报三样东西
+       commands()   哪个命令        health()   版本 / 就绪        profile()   名字 / 词
+            │
+            │ 只装一份，版本钉死
+            ▼
+      运行时  toolchain/node_modules/@jackwener/opencli
+            │
+            ├── 软链 ① ──► plugins-npm/   插件 A · 插件 B · 通道插件（各自写 peer 范围）
+            │                  │ opencli plugin install <路径>
+            │                  ▼
+            │             home/.opencli/plugins（软链回 plugins-npm）
+            │                  │ plugin list -f json  →  { name, commands }
+            │                  ▼
+            │             命令面：插件真有的那几条命令名
+            │                  ▲
+            │                  │ 模块要的命令名
+            └── 软链 ② ──► libs/  ── lib X（runs: [运行时]）
+                               ▲
+                               │ 模块声明
+  模块 unit.json ──────────────┘
+    needs
+     extension { runtime, name, commands, version }   哪个运行时的哪个插件、要哪几条命令
+     lib       { name, version, runs }                共用依赖；runs 说它会起哪个运行时
+     bin       { name }                               机器上的可执行文件
+     env       { name }                               环境变量
+```
+
+`peer 范围` 今天写的是 `>=1.8.0 <2.0.0`：插件声明「我只适配这一段运行时」。它是三方里唯一由插件主动写的版本约束。
+
+#### 判定
+
+```text
+模块清单 needs
+      │
+      ▼
+外壳探针  probe.probeUnits({ units, runtimeCommands, runtimes })
+  ├─ needs[].runtime 决定问哪个运行时
+  ├─ 执行 <运行时> plugin list -f json              → 实际命令面
+  ├─ needs[].commands × 实际命令面                   → 缺命令 = outdated
+  ├─ needs[].version × 已装版本                      → 低于下限 = unsatisfied
+  ├─ 插件 peer 范围 × 运行时版本                     → 对不上 = unsupported
+  └─ needs[].kind = bin / env                       → command -v / 环境 = missing
+      │
+      ▼
+NeedState / UnitCapability
+      │
+      ▼
+市场那一行 · 模块详情 · 运行环境那一行
+```
+
+`runtimeCommands` 已经喂进探针；`runtimes` 这一格还没接（见「现状」那一节）。判定权在探针，
+模块与界面都不自己算。
+
+`unsupported` 专门表示「依赖与它要的运行时对不上」，不拿它代替「不可用」。运行时版本本身不是模块的判断依据：
+模块只说「我要哪个运行时的哪几条命令」，版本由适配器报，名字由适配器的 profile 给。
+
+#### 现状
+
+现状那一列的意思：**有** = 四段都在；**一半** = 判得出来，但没接进状态、或没有修复入口；**待补** = 声明在，还没有判定。
+
+| 依赖 | 声明在哪 | 谁判 | 判成 | 怎么修 | 现状 |
+|---|---|---|---|---|---|
+| lib 版本 | `needs[].version`（`lib`） | 探针 `checkVersionRange` | `unsatisfied` → 缺依赖 | 安装 / 升级依赖 | 有 |
+| 插件命令 | `needs[].commands`（`extension`） | `<运行时> plugin list -f json` | 缺命令 → `outdated` | 升级插件 | 有 |
+| 插件版本下限 | `needs[].version`（`extension`） | 与 lib 同一套比较 | 低于下限 → `unsatisfied` | 升级插件 | 待补 |
+| 插件与运行时 | 插件 `peerDependencies` | 换版本时重校验 | 不满足 → `unsupported` | 重装工作台 | 待补 |
+| 运行时与应用 | 适配器钉的版本 + `runtime.health()` | 握手 | 不一致 → 运行时那一行 | 重启 / 重装 | 一半 |
+| 命令 / 环境变量 | `needs[].kind = bin / env` | `command -v` / 环境 | `missing` | 给一条可复制的命令 | 有 |
+
+判成之后要能变成用户看得懂的话 —— 这是「可见」那一段：
+
+| 状态 | 用户看到 |
+|---|---|
+| `missing` | 缺依赖 / 未安装 |
+| `unsatisfied` | 缺依赖（版本不对） |
+| `outdated` | 有新版 + 升级 / 升级依赖 |
+| `unsupported` | 需要更新工作台 |
+| `unchecked` | 状态未知 |
+
+依赖的名字只出现在模块详情里；市场那一行只说「有没有新版本、能不能升级」，不列内部包名。
+
+#### 换运行时是一等事件
+
+版本一换，三件事要连着做；少一件就会静默失效：
+
+```text
+换代前   用新版本的隔离副本执行一次 plugin list
+         └── 列出升级后会缺命令的模块，写进升级确认
+
+换代时   重写 plugins-npm / libs 的运行时软链，并重校验每个插件的 peer 范围
+         └── 不满足的不启用，模块如实显示缺依赖
+
+换代后   存一份 capability 快照，与换代前比对
+         └── 指出「这次升级才失效的」，而不是只给一张新快照
+```
+
+软链是这套设计的支点：所有插件共用一份运行时，只装一份。代价是**包管理器的 peer 检查只在安装那一刻有效**——
+装完之后版本被软链带过去，之后换代不再有人校验。所以换代时必须由外壳重校验，这不是包管理器的责任。
+
+#### 边界
+
+- **命令还在、语义变了**（参数改名、返回形状变了）静态判不了，只能靠调用失败的错误码归纳。不承诺提前发现所有故障。
+- **共享依赖不进入这张表**（`execa`、`dayjs` 这类）：它们由包管理器负责，出问题属于工作台自身的构建问题，不进用户视野。
+- **模块不感知运行时版本**：它只声明要哪个运行时的哪几条命令。这条是端口的边界，也是文案的边界（`C75` / `S76`）。
 
 ## 6. 数据与写
 
