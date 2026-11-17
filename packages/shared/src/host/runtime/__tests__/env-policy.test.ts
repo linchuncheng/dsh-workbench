@@ -84,7 +84,7 @@ describe('受控 env 入口', () => {
     expect(env['HOME']).toBe('C:\\rt\\home');
     expect(env['HOMEDRIVE']).toBe('C:');
     expect(env['HOMEPATH']).toBe('\\rt\\home');
-    const posix = productEnvOf({ runtimeRoot: RUNTIME, realHome: REAL_HOME });
+    const posix = productEnvOf({ runtimeRoot: RUNTIME, home: '/rt/home', realHome: REAL_HOME });
     expect(posix['HOMEDRIVE']).toBeUndefined();
     expect(posix['HOMEPATH']).toBeUndefined();
   });

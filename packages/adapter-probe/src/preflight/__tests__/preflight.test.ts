@@ -575,7 +575,8 @@ function scriptedShell(hangOn: (command: string, timesSeen: number) => boolean) 
   const calls: string[] = [];
   const shell: DshShell = {
     resolve: (request) => {
-      calls.push((request as { command: string }).command);
+      const command = (request as { command: string }).command;
+      calls.push(command.startsWith('& ') ? command.slice(2) : command);
       return request;
     },
     execute: async () => ({
