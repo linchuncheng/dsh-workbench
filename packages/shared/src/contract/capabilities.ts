@@ -28,3 +28,12 @@ export interface RuntimeProfile {
   readonly diagnose: Readonly<Partial<Record<'exec' | 'login' | 'bridge', RuntimeText>>>;
   readonly bridge?: Readonly<Partial<Record<string, RuntimeBridgeFix>>>;
 }
+
+export interface RuntimeStatus {
+  readonly command: string;
+  readonly source: 'env' | 'isolated' | 'path';
+  readonly isolated: string | null;
+  readonly version?: string;
+  readonly ready?: boolean;
+  readonly note?: RuntimeText;
+}

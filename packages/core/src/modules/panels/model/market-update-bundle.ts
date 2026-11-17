@@ -61,13 +61,13 @@ async function restoreRemovedBundle(
     });
     const back = deps.installed?.(pkg) ?? { kind: 'unknown', pkg };
     if (change !== null && back.kind === 'module' && back.version === before) {
-      deps.logger?.warn?.(`[dsh-workbench] ${pkg} 更新后盘上读不到它了 —— 已把 ${before} 装回去`);
+      deps.logger?.warn?.(`[dsh-workbench] ${pkg} 更新后读不到它了 —— 已把 ${before} 装回去`);
       return before;
     }
-    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 更新后盘上读不到它了，装回 ${before} 也没成`);
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 更新后读不到它了，装回 ${before} 也没成`);
   } catch (error) {
     deps.logger?.warn?.(
-      `[dsh-workbench] ${pkg} 更新后盘上读不到它了，装回 ${before} 失败：${
+      `[dsh-workbench] ${pkg} 更新后读不到它了，装回 ${before} 失败：${
         error instanceof Error ? error.message : String(error)
       }`,
     );

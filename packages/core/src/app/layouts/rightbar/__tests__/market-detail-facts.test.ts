@@ -234,3 +234,55 @@ describe('插件的运行环境那一格', () => {
     expect(facts['panels.market.detailRuntime']).toBe('panels.market.detailRuntimeMismatch');
   });
 });
+
+describe('工作台的运行环境那一格', () => {
+  it('★ 就绪：一行灰字，运行时名 + 版本', () => {
+    const facts = Object.fromEntries(
+      marketDetailFacts(
+        rowOf({ workbench: true, id: 'workbench' }),
+        t,
+        null,
+        { label: 'runtime', version: '1.8.8', ready: true },
+      ).map((fact) => [fact.labelKey, fact.value]),
+    );
+
+    expect(facts['panels.market.detailRuntime']).toBe('runtime 1.8.8 · panels.market.detailRuntimeReady');
+  });
+
+  it('★ 不就绪：说清哪一段没对上（那句人话由适配器给）', () => {
+    const facts = Object.fromEntries(
+      marketDetailFacts(
+        rowOf({ workbench: true, id: 'workbench' }),
+        t,
+        null,
+        { label: 'runtime', ready: false, note: '适配器给的那句' },
+      ).map((fact) => [fact.labelKey, fact.value]),
+    );
+
+    expect(facts['panels.market.detailRuntime']).toBe('runtime · 适配器给的那句');
+  });
+
+  it('★ 适配器没给话：退回中立的一句，不摆空白', () => {
+    const facts = Object.fromEntries(
+      marketDetailFacts(
+        rowOf({ workbench: true, id: 'workbench' }),
+        t,
+        null,
+        { label: 'runtime', ready: false },
+      ).map((fact) => [fact.labelKey, fact.value]),
+    );
+
+    expect(facts['panels.market.detailRuntime']).toBe('runtime · panels.market.detailRuntimeUnknown');
+  });
+
+  it('★ 模块行不摆这一格（模块的运行环境是逐条依赖，不是一句话）', () => {
+    const facts = Object.fromEntries(
+      marketDetailFacts(rowOf(), t, null, { label: 'runtime', ready: true }).map((fact) => [
+        fact.labelKey,
+        fact.value,
+      ]),
+    );
+
+    expect(facts['panels.market.detailRuntime']).toBeUndefined();
+  });
+});

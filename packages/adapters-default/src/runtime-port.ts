@@ -9,6 +9,7 @@ import {
   ensureLibsOpencliPeer,
   opencliCommandOf,
   opencliHandshakeOk,
+  opencliHandshakeNote,
   opencliHandshakeText,
   opencliRunnerOf,
   opencliVersionReport,
@@ -142,11 +143,15 @@ export function createRuntimePort(): RuntimePort {
 
     health(ctx) {
       const versions = opencliVersionReport();
+      const ready = opencliHandshakeOk(versions);
       return {
         opencli: {
           ...opencliCommandOf(ctx),
           versions,
-          handshake: { ok: opencliHandshakeOk(versions), detail: opencliHandshakeText(versions) },
+          handshake: { ok: ready, detail: opencliHandshakeText(versions) },
+          ...(versions.cli === undefined && versions.pin === '' ? {} : { version: versions.cli ?? versions.pin }),
+          ready,
+          ...(ready ? {} : { note: opencliHandshakeNote(versions) }),
         },
       };
     },

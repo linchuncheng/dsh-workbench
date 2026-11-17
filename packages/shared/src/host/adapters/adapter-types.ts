@@ -86,11 +86,7 @@ export interface SelfUpdateStart {
   readonly forward: string;
 }
 
-export interface RuntimeStatus {
-  readonly command: string;
-  readonly source: 'env' | 'isolated' | 'path';
-  readonly isolated: string | null;
-}
+export type { RuntimeStatus } from '../../contract/capabilities.js';
 
 export function scopeOf(pkg: string): string | null {
   const slash = pkg.indexOf('/');

@@ -9,7 +9,7 @@ import type { SharedState } from './market-shared-rows';
 import type { PackageKind } from './market-row-icon';
 import { MarketRowControls, MarketRowFailure } from './market-section';
 import { SharedActions } from './SharedSection';
-import { marketDetailFacts } from './market-detail-facts';
+import { marketDetailFacts, type MarketRuntimeFact } from './market-detail-facts';
 import { dependencyRowActions, type DetailDependency } from './market-detail-deps';
 import { DependencyLine } from './dependency-line';
 import { detailFacts } from '../market/detail-facts';
@@ -70,6 +70,7 @@ export interface MarketDetailProps extends InstalledDetailTabProps, InstalledDet
   readonly onRequest: (action: MarketRowAction) => void;
   readonly onDefault?: ((next: boolean) => void) | undefined;
   readonly dependencies?: readonly DetailDependency[] | undefined;
+  readonly runtime?: MarketRuntimeFact | undefined;
 }
 
 export function MarketDetail({
@@ -88,10 +89,11 @@ export function MarketDetail({
   onTab,
   info,
   dependencies = [],
+  runtime,
 }: MarketDetailProps) {
   const activeTab = tab ?? 'overview';
   const title = marketRowTitle(row, t);
-  const facts = marketDetailFacts(row, t, info);
+  const facts = marketDetailFacts(row, t, info, runtime);
   const version = row.version?.installed;
   const noteText = row.note === undefined ? null : t(row.note.key, row.note.params);
   const idPrefix = `installed-detail-${row.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;

@@ -255,7 +255,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
         beatMs: state.beatMs,
       });
       const note = over
-        ? ['用户按「结束」后录制窗口已关闭。以下为磁盘上（捕获文件）该段的清单。']
+        ? ['用户按「结束」后录制窗口已关闭。以下为捕获文件里该段的清单。']
         : [];
       const said = stepOk
         ? [readText, timedOut ? `仍在录制。请等用户按「结束」（需要等待时传入 waitMs，上限 ${String(WAIT_CAP_MS / 60000)} 分钟）。` : '']

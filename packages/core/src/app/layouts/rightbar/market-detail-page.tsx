@@ -6,6 +6,9 @@ import type { DetailDependency } from './market-detail-deps';
 import { MarketDetail } from './market-detail';
 import { UninstallConfirm } from './market-uninstall';
 import { useInstalledInfo } from '../market/use-installed-info';
+import { runtimeProfileValue, useRuntimeStatuses } from '@/shared/hooks/use-runtime-capabilities';
+import { runtimeText } from '@/shared/hooks/locale-text';
+import { workbenchRuntimeFact } from './market-runtime-fact';
 import type { DetailTab } from '../market/detail-tabs';
 
 const CONFIRM_ACTIONS: readonly MarketRowAction[] = ['uninstall', 'remove-bundle', 'uninstall-plugin'];
@@ -47,6 +50,11 @@ export function MarketDetailPage({
 }) {
   const [tab, setTab] = useState<DetailTab>('overview');
   const info = useInstalledInfo(row.pkg);
+  const runtimes = useRuntimeStatuses();
+  const runtime =
+    row.workbench === true
+      ? workbenchRuntimeFact(runtimes, runtimeProfileValue()?.label ?? '', runtimeText)
+      : undefined;
   return (
     <>
       <MarketDetail
@@ -67,6 +75,7 @@ export function MarketDetailPage({
         onTab={setTab}
         info={info}
         dependencies={dependencies}
+        runtime={runtime}
       />
       <UninstallConfirm
         t={t}

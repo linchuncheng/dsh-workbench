@@ -386,7 +386,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'workbench-updated',
-      label: '工作台刚更新完（新版已经在盘上：行上就是新版，没有按钮、也不劝人重启）',
+      label: '工作台刚更新完（新版已经装好：行上就是新版，没有按钮、也不劝人重启）',
       manifests: [],
       capabilities: {},
       workbench: { pkg: '@dsh-workbench/core', installed: '0.1.19' },
@@ -398,7 +398,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'workbench-restart-pending',
-      label: '工作台更新完了但这份进程里还是旧的（盘上 0.1.19、跑着的 0.1.18：黄点「重启后生效」+ 那行话说「新版本已就绪」，没有按钮，退出重开就是新版）',
+      label: '工作台更新完了但这份进程里还是旧的（装的是 0.1.19、运行的是 0.1.18：黄点「重启后生效」+ 那行话说「新版本已就绪」，没有按钮，退出重开就是新版）',
       manifests: [],
       capabilities: {},
       workbench: { pkg: '@dsh-workbench/core', installed: '0.1.19', running: '0.1.18' },
@@ -459,7 +459,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'workbench-restart-pending-local',
-      label: '源码目录那份（link: 装的）永远等于盘上那份 → 不亮这句、也不劝重启',
+      label: '源码目录那份（link: 装的）永远等于装着的那份 → 不亮这句、也不劝重启',
       manifests: [],
       capabilities: {},
       workbench: {

@@ -64,11 +64,39 @@ export function opencliHandshakeOk(report: OpencliVersionReport): boolean {
   return report.compatible && report.cli === report.pin;
 }
 
+export function opencliHandshakeNote(report: OpencliVersionReport): {
+  readonly zh: string;
+  readonly en: string;
+} {
+  if (!report.compatible) {
+    return {
+      zh: `插件只认 ${report.peer}，这个版本用的是 ${report.pin} —— 换兼容的插件，或重装工作台`,
+      en: `the plugin only accepts ${report.peer} but this build uses ${report.pin} — switch to a compatible plugin, or reinstall the workbench`,
+    };
+  }
+  if (report.cli === undefined) {
+    return {
+      zh: `运行环境里还没有 ${report.pin} —— 重启一次 dsh；还不行就重装工作台`,
+      en: `the runtime does not have ${report.pin} yet — restart dsh; if it persists, reinstall the workbench`,
+    };
+  }
+  if (report.cli !== report.pin) {
+    return {
+      zh: `装的是 ${report.cli}，这个版本要 ${report.pin} —— 重启一次 dsh；还不行就重装工作台`,
+      en: `installed ${report.cli} but this build needs ${report.pin} — restart dsh; if it persists, reinstall the workbench`,
+    };
+  }
+  return {
+    zh: `扩展是 ${report.extension ?? '未装'}，通道插件是 ${report.channel ?? '未装'} —— 重装一次浏览器扩展，或重启 dsh`,
+    en: `extension ${report.extension ?? 'missing'}, channel plugin ${report.channel ?? 'missing'} — reinstall the browser extension, or restart dsh`,
+  };
+}
+
 export function opencliHandshakeText(report: OpencliVersionReport): string {
   if (!report.compatible) {
-    return `公共通道的插件只认 ${report.peer}，而钉的是 ${report.pin}：换兼容的插件或换回兼容的运行时`;
+    return `通道插件只接受 ${report.peer}，本版固定 ${report.pin}`;
   }
   if (report.cli === undefined) return `隔离运行时里还没有 ${report.pin}`;
-  if (report.cli !== report.pin) return `盘上是 ${report.cli}，钉的是 ${report.pin}`;
-  return `${report.pin} · 公共通道 ${report.channel ?? '未装'} · 扩展 ${report.extension ?? '未装'}`;
+  if (report.cli !== report.pin) return `已装 ${report.cli}，本版固定 ${report.pin}`;
+  return `${report.pin} · 通道插件 ${report.channel ?? '未装'} · 扩展 ${report.extension ?? '未装'}`;
 }

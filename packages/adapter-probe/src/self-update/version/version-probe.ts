@@ -40,7 +40,7 @@ export async function probeOpencliVersion(input: VersionProbeInput): Promise<Ope
     const detail = result.stdout.trim().split('\n')[0] ?? '';
     const version = versionOf(detail);
     if (version !== undefined && version !== runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)) {
-      return { ok: false, missing: true, detail: `盘上跑的是 ${version}，要 ${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)}`, stalled: false };
+      return { ok: false, missing: true, detail: `装的是 ${version}，这个版本要 ${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)}`, stalled: false };
     }
     return { ok: true, missing: false, detail, stalled: false };
   }

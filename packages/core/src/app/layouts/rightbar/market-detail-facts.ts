@@ -4,6 +4,13 @@ import type { InstalledPackageInfo } from '@/kernel/contract/market-index';
 import type { MarketRow } from './market-row-types';
 import type { SharedRow } from './market-shared-rows';
 
+export interface MarketRuntimeFact {
+  readonly label: string;
+  readonly version?: string;
+  readonly ready: boolean;
+  readonly note?: string;
+}
+
 export interface MarketDetailFact {
   readonly labelKey: string;
   readonly value: string;
@@ -87,6 +94,7 @@ export function marketDetailFacts(
   row: MarketRow,
   t: Translate,
   info?: InstalledPackageInfo | null,
+  runtime?: MarketRuntimeFact | undefined,
 ): readonly MarketDetailFact[] {
   const facts: MarketDetailFact[] = infoFactsOf(info);
   const source = installSourceOf(row, t);
@@ -128,6 +136,15 @@ export function marketDetailFacts(
       true,
     );
     addFact(facts, 'panels.market.detailUnit', row.workbench === true ? undefined : row.id, true);
+  }
+  if (row.workbench === true && runtime !== undefined) {
+    addFact(
+      facts,
+      'panels.market.detailRuntime',
+      runtime.ready
+        ? `${runtime.label}${runtime.version === undefined ? '' : ` ${runtime.version}`} · ${t('panels.market.detailRuntimeReady')}`
+        : `${runtime.label} · ${runtime.note ?? t('panels.market.detailRuntimeUnknown')}`,
+    );
   }
   addFact(facts, 'panels.market.detailVersion', row.version?.installed);
   addFact(facts,

@@ -68,6 +68,6 @@ export async function swapExternally(
   }
   const after = deps.installed?.(input.pkg) ?? { kind: 'unknown', pkg: input.pkg };
   const version = after.kind === 'module' ? after.version : '读不到';
-  deps.logger?.info?.(`[dsh-workbench] 外部换版 ${input.pkg}：${state}，盘上 ${version}`);
+  deps.logger?.info?.(`[dsh-workbench] 外部换版 ${input.pkg}：${state}，已安装 ${version}`);
   return landedIn(after, input) ? after : undefined;
 }

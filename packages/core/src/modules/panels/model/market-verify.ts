@@ -20,10 +20,10 @@ export function verifyBundleUpdate(input: {
   if (after.kind !== 'module') {
     const tail =
       before === undefined
-        ? '更新完成后磁盘上读不到这个模块'
+        ? '更新完成后读不到这个模块'
         : restored === undefined
-          ? `更新完成后磁盘上读不到这个模块（更新前是 ${before}）`
-          : `更新完成后磁盘上读不到这个模块（更新前是 ${before}，已把 ${restored} 装回去）`;
+          ? `更新完成后读不到这个模块（更新前是 ${before}）`
+          : `更新完成后读不到这个模块（更新前是 ${before}，已把 ${restored} 装回去）`;
     return { change: failedAs(change, 'module-gone', tail), ...restoredPart };
   }
   const version = after.version === '' ? undefined : after.version;
@@ -33,14 +33,14 @@ export function verifyBundleUpdate(input: {
       change: failedAs(
         withVersion,
         'module-gone',
-        `更新完成后磁盘上读不到这个模块（更新前是 ${before ?? '?'}），已把 ${restored} 装回去`,
+        `更新完成后读不到这个模块（更新前是 ${before ?? '?'}），已把 ${restored} 装回去`,
       ),
       restored,
     };
   }
   if (SHIPPED.has(change.application) && before !== undefined && version === before) {
     return {
-      change: failedAs(withVersion, 'no-change', `更新前是 ${before}，更新完成后磁盘上仍是 ${version}`),
+      change: failedAs(withVersion, 'no-change', `更新前是 ${before}，更新完成后仍是 ${version}`),
       ...restoredPart,
     };
   }

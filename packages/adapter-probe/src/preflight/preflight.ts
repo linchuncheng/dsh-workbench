@@ -364,7 +364,7 @@ export function createPreflight(options: {
       patchStep('cli', { status: 'running', action: '检查 opencli 版本' });
       const onDisk = options.installed?.() === true;
       const note = onDisk ? options.installedNote?.() : undefined;
-      appendLog('cli', `> 盘上自检：隔离运行时${onDisk ? '在' : '不在'}${note === undefined ? '' : `（${note}）`}（探测前）`);
+      appendLog('cli', `> 自检隔离运行时：${onDisk ? '在' : '不在'}${note === undefined ? '' : `（${note}）`}（探测前）`);
       if (diyStarted !== undefined) patchStep('diy', { status: 'running' });
 
       let version = await probeVersion();
