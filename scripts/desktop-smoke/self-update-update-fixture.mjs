@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { execa } from 'execa';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -58,6 +59,17 @@ async function main() {
     fail(String(error?.message ?? error));
   }
   const { versions, paths, versionDir } = planted;
+
+  const launcher = join(
+    process.env.DSH_WORKBENCH_HOME,
+    'opencli',
+    'bin',
+    process.platform === 'win32' ? 'opencli.cmd' : 'opencli',
+  );
+  if (existsSync(launcher)) {
+    const stopped = await execa(launcher, ['daemon', 'stop'], { reject: false, timeout: 60_000 });
+    out(`daemon stop：exit=${String(stopped.exitCode)}（铺旧版本之前先把新版本的守护停掉，否则下一程会判 stale）`);
+  }
 
   const links = versions.versionLinksOf({ profileDir, versionDir, packages });
   versions.flipProfileLinks(links);
