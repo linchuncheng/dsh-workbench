@@ -88,7 +88,7 @@ jobs:
           tail -n 3 selfcheck.log
 
       - name: Selfcheck (core, Windows 执行层判据)
-        if: runner.os == 'Windows'
+        if: always() && runner.os == 'Windows'
         shell: bash
         run: |
           set -o pipefail

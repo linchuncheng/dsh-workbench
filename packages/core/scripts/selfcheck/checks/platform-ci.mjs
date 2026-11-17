@@ -146,7 +146,7 @@ function runnerOsOf(image) {
 }
 
 function jobsOf(text) {
-  const lines = text.split('\n');
+  const lines = text.split(/\r?\n/u);
   const jobs = [];
   const indentOf = (line) => (line.match(/^\s*/u)?.[0].length ?? 0);
   let current;
