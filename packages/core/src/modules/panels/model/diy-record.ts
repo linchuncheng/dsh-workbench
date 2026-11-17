@@ -58,12 +58,12 @@ export async function armRecordPage(
   options: ArmOptions = {},
 ): Promise<ArmOutcome> {
   if (options.reset === true) {
-    await actBrowser(seam, command, session, ['eval', RECORD_RESET_SCRIPT], undefined, wire);
+    await actBrowser(seam, command, session, recordEval(RECORD_RESET_SCRIPT), undefined, wire);
   }
   const parts = RECORD_ARM_SCRIPTS.length;
   let out: ArmOutcome | undefined;
   for (const [index, script] of RECORD_ARM_SCRIPTS.entries()) {
-    const step = await actBrowser(seam, command, session, ['eval', script], undefined, wire);
+    const step = await actBrowser(seam, command, session, recordEval(script), undefined, wire);
     out = { step, part: index + 1, parts };
     if (!step.ok) break;
   }
@@ -72,6 +72,20 @@ export async function armRecordPage(
 }
 
 let workbenchApp: string | undefined;
+let recordTab: string | undefined;
+
+export function rememberRecordTab(page: string | undefined): void {
+  recordTab = page !== undefined && page.trim() !== '' ? page.trim() : undefined;
+}
+
+export function recordTabId(): string | undefined {
+  return recordTab;
+}
+
+export function recordEval(script: string): readonly string[] {
+  const tab = recordTab;
+  return tab === undefined ? ['eval', script] : ['eval', '--tab', tab, script];
+}
 
 export function rememberWorkbenchApp(app: string | undefined): void {
   workbenchApp = app !== undefined && app.trim() !== '' ? app.trim() : undefined;
@@ -181,6 +195,17 @@ async function stopCaptureQuiet(input: WatchFinishDeps): Promise<boolean> {
   }
 }
 
+async function recordTabCount(input: WatchFinishDeps): Promise<number> {
+  try {
+    const step = await actBrowser(input.seam, input.command, BROWSER_RECORD_SESSION, ['tab', 'list'], undefined, input.wire);
+    const box = step.payload;
+    const rows = Array.isArray(box) ? box : Array.isArray(box?.['data']) ? box['data'] : undefined;
+    return rows === undefined ? -1 : rows.length;
+  } catch {
+    return -1;
+  }
+}
+
 async function leftoversAndStop(input: WatchFinishDeps): Promise<{ readonly stop: true; readonly delivered: false }> {
   await releaseLeftoversOf(input);
   return { stop: true, delivered: false };
@@ -226,7 +251,7 @@ export async function watchFinishStepOf(
       input.seam,
       input.command,
       BROWSER_RECORD_SESSION,
-      ['eval', RECORD_READ_SCRIPT],
+      recordEval(RECORD_READ_SCRIPT),
       undefined,
       input.wire,
     );
@@ -239,7 +264,10 @@ export async function watchFinishStepOf(
   if (held === null) return leftoversAndStop(input);
   if (held.sessionId !== input.sessionId) return { stop: true, delivered: false };
   if (held.phase === 'finished') return finishWatcher(input, true);
-  if (!page.ok) return { stop: false, delivered: false };
+  if (!page.ok) {
+    const left = await recordTabCount(input);
+    return left === 0 ? finishWatcher(input, true) : { stop: false, delivered: false };
+  }
   const due = shotDueOf(held, page.shots);
   if (due !== null) await takeShotOf(input, held, due);
   if (page.phase === 'finished' && page.t1 !== null) {

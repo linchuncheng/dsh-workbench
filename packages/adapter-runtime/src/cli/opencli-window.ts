@@ -1,5 +1,5 @@
 import { quoteShellArgFor } from '@dsh-workbench/shared/host';
-import { sessionArgv, type SessionDialect } from './opencli-session.js';
+import { sessionArgv, tabArgv, type SessionDialect } from './opencli-session.js';
 
 export const OPENCLI_WINDOW_ENV: Readonly<Record<string, string>> = { OPENCLI_WINDOW: 'background' };
 
@@ -20,6 +20,8 @@ export function backgroundLine(
   const platform = options.platform ?? process.platform;
   return [
     quoteShellArgFor(command, platform),
-    ...sessionArgv(argv, options.dialect ?? 'flag').map((arg) => quoteShellArgFor(arg, platform)),
+    ...tabArgv(sessionArgv(argv, options.dialect ?? 'flag'), options.dialect ?? 'flag').map((arg) =>
+      quoteShellArgFor(arg, platform),
+    ),
   ].join(' ');
 }

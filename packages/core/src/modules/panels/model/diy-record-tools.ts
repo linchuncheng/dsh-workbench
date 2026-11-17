@@ -40,7 +40,9 @@ import {
   keepCaptureOf,
   lastCaptureFileOf,
   pauseFor,
+  recordEval,
   releaseQuietly,
+  rememberRecordTab,
   startRecordCapture,
   waitOf,
   watchRecordFinish,
@@ -48,7 +50,7 @@ import {
 
 async function stopPageOf(seam: Seam, command: string, wire: Wire): Promise<RecordPageRead> {
   await armRecordPage(seam, command, BROWSER_RECORD_SESSION, wire);
-  const step = await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_STOP_SCRIPT], undefined, wire);
+  const step = await actBrowser(seam, command, BROWSER_RECORD_SESSION, recordEval(RECORD_STOP_SCRIPT), undefined, wire);
   return recordPageOf(step.payload);
 }
 
@@ -173,6 +175,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
           wire,
         });
         if (!opened.ok) throw new Error(opened.why);
+        rememberRecordTab(opened.page);
         const armed = await armRecordPage(seam, command, BROWSER_RECORD_SESSION, wire, { reset: true });
         const page = recordPageOf(armed.step.payload);
         if (!armed.step.ok || !page.ok) {
@@ -263,7 +266,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
           seam,
           command,
           BROWSER_RECORD_SESSION,
-          ['eval', RECORD_READ_SCRIPT],
+          recordEval(RECORD_READ_SCRIPT),
           undefined,
           wire,
         );
@@ -276,7 +279,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
             seam,
             command,
             BROWSER_RECORD_SESSION,
-            ['eval', RECORD_READ_SCRIPT],
+            recordEval(RECORD_READ_SCRIPT),
             undefined,
             wire,
           );

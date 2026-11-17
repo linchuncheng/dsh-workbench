@@ -13,3 +13,10 @@ export function sessionDialectOf(version: string | undefined): SessionDialect {
   const major = Number.parseInt(version.trim().split('.')[0] ?? '', 10);
   return Number.isFinite(major) && major < 2 ? 'positional' : 'flag';
 }
+
+export function tabArgv(argv: readonly string[], dialect: SessionDialect = 'flag'): readonly string[] {
+  if (dialect !== 'positional') return argv;
+  const at = argv.indexOf('--tab');
+  if (at < 0) return argv;
+  return [...argv.slice(0, at), ...argv.slice(at + 2)];
+}

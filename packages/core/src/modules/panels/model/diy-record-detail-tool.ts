@@ -8,6 +8,7 @@ import { wireOf } from './diy-browser';
 import { browserRowsOf } from '@/shared/api/host/runtime-surface';
 import { RECORD_READ_SCRIPT } from './diy-record-read-scripts';
 import { captureEntriesOf, pickAllOf, pickOf } from './diy-record-capture';
+import { recordEval } from './diy-record';
 import { moveOrThrow, recordPageOf, renderRecordDetail } from './diy-record-text';
 import type { RecordPageRead } from './diy-record-text';
 import { DIY_RECORD_DETAIL_TOOL, DIY_RECORD_PREPARE_TOOL, DIY_RECORD_READ_TOOL } from '../unit';
@@ -81,7 +82,7 @@ return {
         throw new Error('结束之后只能使用 key：index 是"该场清单中"的序号，本场清单已清除。');
       }
       page = recordPageOf(
-        (await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_READ_SCRIPT], undefined, wire)).payload,
+        (await actBrowser(seam, command, BROWSER_RECORD_SESSION, recordEval(RECORD_READ_SCRIPT), undefined, wire)).payload,
       );
       const bundle = bundleOf(captureReadOf(file), page, held, browserRowsOf(ctx));
       const row = bundle.rows[index];
@@ -106,7 +107,7 @@ return {
     const livePage =
       page !== null || over
         ? page
-        : recordPageOf((await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_READ_SCRIPT], undefined, wire)).payload);
+        : recordPageOf((await actBrowser(seam, command, BROWSER_RECORD_SESSION, recordEval(RECORD_READ_SCRIPT), undefined, wire)).payload);
     const call = livePage === null ? null : hookCallOf(livePage, key);
     if (call !== null) return detailOfCall(call, maxBytes);
     return plainJson({

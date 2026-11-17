@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sessionArgv, sessionDialectOf } from '../opencli-session';
+import { sessionArgv, sessionDialectOf, tabArgv } from '../opencli-session';
 
 describe('会话方言：2.x 从位置参数挪到了 --session，1.x 还是位置参数', () => {
   it('★★ 2.x：browser <session> … → browser --session <session> …', () => {
@@ -40,5 +40,26 @@ describe('会话方言：2.x 从位置参数挪到了 --session，1.x 还是位�
     expect(sessionDialectOf('2.1.0')).toBe('flag');
     expect(sessionDialectOf(undefined)).toBe('flag');
     expect(sessionDialectOf('看不清')).toBe('flag');
+  });
+});
+
+describe('目标页方言：--tab 只在 2.x 有，1.x 拦掉', () => {
+  it('★★ 2.x：--tab 原样留着', () => {
+    const argv = ['browser', '--session', 'Record', 'eval', '--tab', 'P1', '1+1'];
+    expect(tabArgv(argv, 'flag')).toBe(argv);
+  });
+
+  it('★★ 1.x：把 --tab 那一对摘掉，脚本还留在原位', () => {
+    expect(tabArgv(['browser', 'Record', 'eval', '--tab', 'P1', '1+1'], 'positional')).toEqual([
+      'browser',
+      'Record',
+      'eval',
+      '1+1',
+    ]);
+  });
+
+  it('★ 没有 --tab 的原样返回', () => {
+    const argv = ['browser', 'Record', 'state'];
+    expect(tabArgv(argv, 'positional')).toBe(argv);
   });
 });

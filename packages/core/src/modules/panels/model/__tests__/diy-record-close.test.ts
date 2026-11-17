@@ -139,6 +139,32 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
     expect(order).toEqual(['cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval']);
   });
 
+  it('★★ 那一页已经没了（eval 报错 + tab list 是空的）⇒ 收工，不再每拍都去撞一次', async () => {
+    const record = held();
+    const order: string[] = [];
+    const seam = fakeSeamOf(recordingShell(
+      [
+        { stdout: '{"ok":false,"error":{"code":"UNKNOWN","message":"Target tab p1 is not part of the current browser session."}}', exitCode: 1 },
+        { stdout: '{"ok":true,"data":[]}' },
+        { stdout: '{"ok":true}' },
+      ],
+      order,
+    ));
+
+    const out = await watchFinishStepOf({
+      ctx: { get: () => undefined } as unknown as DshHostContext,
+      seam,
+      command: '',
+      sessionId: 's1',
+      store: record,
+      url: URL,
+      captureFile: '/w/shots/rec-demo.jsonl',
+    });
+
+    expect(out.stop).toBe(true);
+    expect(order).toContain('cmd:tab-list');
+  });
+
   it('★★ 会话捕获一条都没落时，先把钩子那几条写进捕获文件再关窗（关掉就再也读不到了）', async () => {
     const record = held();
     const order: string[] = [];

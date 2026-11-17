@@ -1,6 +1,6 @@
 import { actBrowser, actErrorOf } from './diy-browser-act';
 import type { Wire } from './diy-browser';
-import { runBrowserStep, runForegroundStep } from './diy-browser';
+import { payloadOf, runBrowserStep, runForegroundStep } from './diy-browser';
 import type { Seam } from '@dsh-workbench/shared/host';
 import { OPEN_TIMEOUT_MS, SETTLE_MS, releaseQuietly } from './diy-record';
 
@@ -52,7 +52,7 @@ export async function openRecordPage(input: {
   readonly url: string;
   readonly captureFile: string;
   readonly wire?: Wire | undefined;
-}): Promise<{ readonly ok: boolean; readonly at: string; readonly why: string }> {
+}): Promise<{ readonly ok: boolean; readonly at: string; readonly why: string; readonly page?: string }> {
   await releaseQuietly(input);
   const opened = await runForegroundStep(
     input.seam,
@@ -70,6 +70,9 @@ export async function openRecordPage(input: {
         '先让用户把工作台那一页切到前台（第一次要这样），或跑一次运行时自检（doctor）看扩展连没连上。',
     };
   }
+  const openedBox = payloadOf(opened.stdout, input.wire?.read);
+  const openedPage = openedBox === undefined ? undefined : openedBox['page'];
+  const page = typeof openedPage === 'string' ? openedPage : undefined;
   await settleOf(input);
   let seen = await whereAtOf(input);
   if (!samePageOf(seen.href, input.url)) {
@@ -94,5 +97,5 @@ export async function openRecordPage(input: {
         '或跑一次运行时自检（doctor）看扩展连没连上。',
     };
   }
-  return { ok: true, at: seen.href, why: '' };
+  return { ok: true, at: seen.href, why: '', ...(page === undefined ? {} : { page }) };
 }
