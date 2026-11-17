@@ -242,18 +242,20 @@ c11() {
 
 c12() {
   m="$work/m"; setup_shell "$m" 9.9.9 0.0.1
-  run_it "$m" entry
   lock="$m/workbench/diy/.sync.lock"
-  k=0; while [ "$k" -lt 40 ]; do [ -d "$lock" ] && break; sleep 0.1; k=$((k + 1)); done
+  gate="$m/pnpm.gate"
+  # 让后台停在假 install 里（放行文件还没出现）：快慢机器上它都必然还持着锁，
+  # 不会出现"改写之前它已经跑完并放手"的空档。
+  SYNC_PROBE_GATE="$gate" run_it "$m" entry
+  k=0; while [ "$k" -lt 100 ]; do [ -f "$m/pnpm.called.started" ] && break; sleep 0.1; k=$((k + 1)); done
+  [ -f "$m/pnpm.called.started" ] || fail "⑫ 后台没走到安装（探针无法继续）"
   [ -d "$lock" ] || fail "⑫ 后台没抢到锁（探针无法继续）"
-  # 就地改成"别人的锁"，不要把锁删掉重铺：删和建之间的空档里后台会真的抢到新锁，
-  # 于是这格变成"后台自己抢到了"而不是"锁被抢"，在慢机器上随机判成 trap 删了别人的锁。
+  # 就地改成"别人的锁"：锁目录一直在，没有删-建之间的空档给后台重抢。
   printf 'other-target\n' >"$lock/target"
   printf 'someone-else\n' >"$lock/owner"
   touch "$lock/heartbeat"
+  : >"$gate"
   wait_state "$m" failed || fail "⑫ 原持锁者没跑完"
-  # 原持锁者是后台子进程：状态落盘之后它还要走到 EXIT trap。给它一段时间观察，
-  # 期间锁一旦消失就是真错（原来只 sleep 1 秒，慢机器上会误判成"trap 删了别人的锁"）。
   k=0
   while [ "$k" -lt 50 ]; do
     [ -d "$lock" ] || break
