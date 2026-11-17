@@ -15,7 +15,7 @@ const WINDOWS_FRONT_APP = [
   '$p',
 ].join('; ');
 
-const BUNDLE_ID = /bundleID="([^"]+)"/;
+const BUNDLE_ID = /(?:bundleID|"CFBundleIdentifier")="([^"]+)"/;
 
 export function frontAppOf(stdout: string, platform: HostOs): string | undefined {
   const text = String(stdout ?? '');

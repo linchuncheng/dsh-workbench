@@ -16,14 +16,17 @@ async function runFrontApp(
   return { stdout: result.stdout, ok: result.exitCode === 0 };
 }
 
-export async function frontAppNow(seam: Seam): Promise<string | undefined> {
-  const platform = currentHostOs();
+export async function frontAppNow(seam: Seam, platform = currentHostOs()): Promise<string | undefined> {
   const run = await runFrontApp(seam, frontAppCommand(platform));
   return run === undefined ? undefined : frontAppOf(run.stdout, platform);
 }
 
-export async function bringBackWindow(seam: Seam, app: string): Promise<boolean> {
-  const run = await runFrontApp(seam, bringBackCommand(app, currentHostOs()));
+export async function bringBackWindow(
+  seam: Seam,
+  app: string,
+  platform = currentHostOs(),
+): Promise<boolean> {
+  const run = await runFrontApp(seam, bringBackCommand(app, platform));
   return run?.ok === true;
 }
 
@@ -82,13 +85,22 @@ async function captureFocusedTab(seam: Seam, command: string): Promise<void> {
   focusedTab = { windowId, tabId };
 }
 
-export async function rememberFrontApp(seam: Seam, command: string): Promise<string | undefined> {
-  const app = await frontAppNow(seam);
+export async function rememberFrontApp(
+  seam: Seam,
+  command: string,
+  platform = currentHostOs(),
+): Promise<string | undefined> {
+  const app = await frontAppNow(seam, platform);
   if (app !== undefined && isBrowserApp(app)) await captureFocusedTab(seam, command);
   return app;
 }
 
-export async function restoreFocus(seam: Seam, command: string, app: string): Promise<boolean> {
+export async function restoreFocus(
+  seam: Seam,
+  command: string,
+  app: string,
+  platform = currentHostOs(),
+): Promise<boolean> {
   const saved = focusedTab;
   focusedTab = undefined;
   if (saved !== undefined && isBrowserApp(app)) {
@@ -101,5 +113,5 @@ export async function restoreFocus(seam: Seam, command: string, app: string): Pr
     );
     if (activated !== undefined || raised !== undefined) return true;
   }
-  return bringBackWindow(seam, app);
+  return bringBackWindow(seam, app, platform);
 }

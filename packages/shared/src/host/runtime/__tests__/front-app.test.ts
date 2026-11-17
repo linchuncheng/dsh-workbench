@@ -12,7 +12,9 @@ describe('把工作台带回前台：命令与解析', () => {
   it('★ macOS：从 lsappinfo 的输出里取 bundleID', () => {
     const stdout = '[ NULL ]  ASN:0x0-0xcb0cb0: (in front) \n    bundleID="com.apple.TextEdit"\n';
     expect(frontAppOf(stdout, 'darwin')).toBe('com.apple.TextEdit');
+    expect(frontAppOf('"CFBundleIdentifier"="com.apple.TextEdit"', 'darwin')).toBe('com.apple.TextEdit');
     expect(frontAppOf('bundleID=[ NULL ]', 'darwin')).toBeUndefined();
+    expect(frontAppOf('"CFBundleIdentifier"=[ NULL ]', 'darwin')).toBeUndefined();
   });
 
   it('★ macOS：带回按 bundleID（open -b），名字带空格也只有一个参数', () => {

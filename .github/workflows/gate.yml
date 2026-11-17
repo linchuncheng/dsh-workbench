@@ -8,7 +8,7 @@ name: gate
     - cron: '37 3 * * 1'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: gate-${{ github.ref }}
@@ -63,3 +63,16 @@ jobs:
             exit 1
           fi
           tail -n 3 selfcheck.log
+      - name: Publish gate log (失败时推到分支，public 仓读不到 job 日志)
+        if: failure()
+        continue-on-error: true
+        shell: bash
+        run: |
+          git config user.name ci
+          git config user.email ci@example.com
+          shopt -s nullglob
+          files=(*.log)
+          if [ ${#files[@]} -eq 0 ]; then echo "没有日志可推"; exit 0; fi
+          git add -f "${files[@]}"
+          git commit -m "ci: gate log [skip ci]" || true
+          git push origin HEAD:gate-log-${{ matrix.label }}-${{ github.run_id }}
