@@ -13,6 +13,7 @@ import type {
   ProfileModule,
   ProfilePackage,
   RegistryNotebook,
+  RuntimePeerReport,
   RuntimeStatus,
   SelfUpdateRequest,
   SelfUpdateStart,
@@ -149,6 +150,7 @@ export interface ProbeUnitsOptions {
   readonly seam: Seam;
   readonly runtimeCommands: Readonly<Record<string, string>>;
   readonly units: readonly NeedProbeInput[];
+  readonly runtimeReport?: RuntimePeerReport | undefined;
   readonly force?: boolean;
 }
 
@@ -201,6 +203,7 @@ export interface RuntimePort {
   commands(ctx: DshHostContext): Readonly<Record<string, string>>;
   runners(ctx: DshHostContext, data: DataReader): Readonly<Record<string, LibRunner>>;
   health(ctx: DshHostContext): Readonly<Record<string, RuntimeStatus>>;
+  versionReport?(ctx: DshHostContext): RuntimePeerReport | undefined;
   seed(ctx: DshHostContext, options: RuntimeSeedOptions): void;
   frontApp?(ctx: DshHostContext): Promise<string | undefined>;
   bringToFront?(ctx: DshHostContext, app: string): Promise<boolean>;

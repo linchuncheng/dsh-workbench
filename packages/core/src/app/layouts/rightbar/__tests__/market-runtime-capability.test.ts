@@ -15,7 +15,7 @@ function render(runtimePluginMarket: boolean | undefined): string[] {
     pending: null,
     failed: null,
     notice: null,
-    act: async () => undefined,
+    act: Object.assign(async () => undefined, { many: async () => undefined }),
     onConfirming: () => undefined,
     setDefault: async () => undefined,
     boardBusy: false,

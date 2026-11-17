@@ -1,3 +1,4 @@
+import { sweepProbes } from '../../../../scripts/selfcheck-sweep.mjs';
 import * as host from './checks/host.mjs';
 import * as client from './checks/client.mjs';
 import * as kitFace from './checks/kit-face.mjs';
@@ -51,6 +52,8 @@ const report = (name, passed, detail = '') => {
 
 const onlyAt = process.argv.indexOf('--only');
 const only = onlyAt === -1 ? undefined : new RegExp(process.argv[onlyAt + 1] ?? '', 'u');
+
+sweepProbes();
 
 const ctx = {};
 for (const module of MODULES) {

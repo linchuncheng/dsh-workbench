@@ -1,3 +1,4 @@
+import { sweepProbes } from '../../../../scripts/selfcheck-sweep.mjs';
 import { readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -81,6 +82,8 @@ const report = (name, passed, detail = '') => {
   results.push({ name, passed, detail });
   console.log(`${passed ? '✅' : '❌'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
+
+sweepProbes();
 
 const ctx = { toolchain };
 for (const module of MODULES) {

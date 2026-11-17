@@ -161,6 +161,10 @@ export function createRuntimePort(): RuntimePort {
       };
     },
 
+    versionReport() {
+      return opencliVersionReport();
+    },
+
     async frontApp(ctx: DshHostContext) {
       const seam = seamOf(ctx);
       return seam === undefined ? undefined : rememberFrontApp(seam, opencliCommandOf(ctx).command);

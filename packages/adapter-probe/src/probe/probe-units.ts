@@ -17,12 +17,12 @@ import {
   type NeedProbeInput,
   type NeedState,
   type PluginRelease,
+  type RuntimePeerReport,
   type SupplyIndex,
   type UnitCapability,
 } from '@dsh-workbench/shared/host';
 import { npmRegistryOf } from '@dsh-workbench/adapter-supply';
 import { probeRelease } from './release-port.js';
-import { opencliVersionReport } from '@dsh-workbench/adapter-runtime';
 import { createTimedMemo } from './probe-cache.js';
 import { probeLibs } from './probe-libs.js';
 import { aggregate, binStateOf, envStateOf, extensionStateOf } from './probe-verdict.js';
@@ -130,10 +130,9 @@ async function releasesOf(
   return found;
 }
 
-function runtimeMismatchOf(): ReadonlyMap<string, string> {
+function runtimeMismatchOf(report: RuntimePeerReport | undefined): ReadonlyMap<string, string> {
   const found = new Map<string, string>();
-  const report = opencliVersionReport();
-  for (const problem of report.peerProblems) found.set(problem.name, problem.range);
+  for (const problem of report?.peerProblems ?? []) found.set(problem.name, problem.range);
   return found;
 }
 
@@ -177,6 +176,7 @@ export async function probeUnits(options: {
   seam: Seam;
   runtimeCommands: Readonly<Record<string, string>>;
   units: readonly NeedProbeInput[];
+  runtimeReport?: RuntimePeerReport | undefined;
   force?: boolean;
   platform?: NodeJS.Platform | undefined;
 }): Promise<UnitCapability[]> {
@@ -195,7 +195,7 @@ export async function probeUnits(options: {
     if (shared !== undefined) return shared;
   }
 
-  const task = loadCapabilities({ seam, runtimeCommands, units, force, platform });
+  const task = loadCapabilities({ seam, runtimeCommands, units, force, platform, runtimeReport: options.runtimeReport });
   pendingProbes.set(key, task);
   try {
     return await task;
@@ -208,6 +208,7 @@ async function loadCapabilities(options: {
   seam: Seam;
   runtimeCommands: Readonly<Record<string, string>>;
   units: readonly NeedProbeInput[];
+  runtimeReport?: RuntimePeerReport | undefined;
   force: boolean;
   platform: NodeJS.Platform;
 }): Promise<UnitCapability[]> {
@@ -258,7 +259,7 @@ async function loadCapabilities(options: {
   const libStates = await probeLibs({ needs: libNeeds, seam, force, index });
   const releases = await releasesOf(index, { seam, force });
 
-  const runtimeProblems = runtimeMismatchOf();
+  const runtimeProblems = runtimeMismatchOf(options.runtimeReport);
   const statesOfUnit = (unit: NeedProbeInput): NeedState[] =>
     unit.needs.map((need): NeedState => {
       const conflict = need.kind === 'extension' || need.kind === 'lib' ? conflictOf(index, need) : undefined;
@@ -327,6 +328,7 @@ async function loadCapabilities(options: {
 export async function probeUnitCommands(options: {
   seam: Seam;
   runtimeCommands?: Readonly<Record<string, string>> | undefined;
+  runtimeReport?: RuntimePeerReport | undefined;
   unit: NeedProbeInput;
   force?: boolean;
   catalog?: readonly NeedProbeInput[];
@@ -337,6 +339,7 @@ export async function probeUnitCommands(options: {
     seam: options.seam,
     runtimeCommands: options.runtimeCommands ?? {},
     units,
+    ...(options.runtimeReport === undefined ? {} : { runtimeReport: options.runtimeReport }),
     ...(options.force === undefined ? {} : { force: options.force }),
     ...(options.platform === undefined ? {} : { platform: options.platform }),
   });

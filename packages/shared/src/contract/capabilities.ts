@@ -36,6 +36,10 @@ export interface RuntimeBridgeStatus {
   readonly connected?: boolean;
 }
 
+export interface RuntimePeerReport {
+  readonly peerProblems: readonly { readonly name: string; readonly range: string }[];
+}
+
 export interface RuntimeStatus {
   readonly command: string;
   readonly source: 'env' | 'isolated' | 'path';
@@ -44,4 +48,5 @@ export interface RuntimeStatus {
   readonly ready?: boolean;
   readonly note?: RuntimeText;
   readonly bridge?: RuntimeBridgeStatus;
+  readonly versions?: RuntimePeerReport;
 }

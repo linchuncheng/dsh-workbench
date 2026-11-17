@@ -886,7 +886,8 @@ NeedState / UnitCapability
 市场那一行 · 模块详情 · 运行环境那一行
 ```
 
-`runtimeCommands` 已经喂进探针；`runtimes` 这一格还没接（见「现状」那一节）。插件与运行时的对账走握手：
+`runtimeCommands` 与 `runtimes.opencli.versions` 都已经喂进探针：插件适配哪一版运行时由外壳从运行时的
+体检结果里取，探针不自己去读运行时的文件（见「现状」那一节）。插件与运行时的对账走握手：
 探针每一轮读一次已装插件的 peer 范围，不合格就把那个单元的结论压成 `unsupported`；同一份结论也照亮
 运行环境那一行。判定权在探针与握手，模块与界面都不自己算。
 

@@ -66,9 +66,18 @@ export interface MarketActOptions {
   readonly onChanged: (options?: MarketReloadOptions) => void;
 }
 
-export function marketActOf(options: MarketActOptions): (id: string, action: MarketRowAction) => Promise<void> {
+export interface MarketAct {
+  (id: string, action: MarketRowAction): Promise<void>;
+  many(ids: readonly string[], action: MarketRowAction): Promise<void>;
+}
+
+export function marketActOf(options: MarketActOptions): MarketAct {
   const { t, mocked, rowOf, seats, send, onChanged } = options;
-  return async (id, action) => {
+  let quiet = false;
+  const changed = (reload?: MarketReloadOptions): void => {
+    if (!quiet) onChanged(reload);
+  };
+  const act = async (id: string, action: MarketRowAction): Promise<void> => {
     if (mocked) return;
     const row = rowOf(id);
     const label = row === undefined ? undefined : marketRowTitle(row, t);
@@ -121,7 +130,7 @@ export function marketActOf(options: MarketActOptions): (id: string, action: Mar
               : { action, spec: marketSpec, requestId: globalThis.crypto.randomUUID() },
     );
     if (!outcome.ok) {
-      onChanged({ force: true });
+      changed({ force: true });
       seats.setPending(null);
       seats.setHeld(undefined);
       seats.setFailed({
@@ -133,7 +142,7 @@ export function marketActOf(options: MarketActOptions): (id: string, action: Mar
     }
     const value = outcome.value;
     if (action === 'dismiss-followup') {
-      onChanged({ force: true });
+      changed({ force: true });
       seats.setPending(null);
       seats.setHeld(undefined);
       seats.setNotice(t('panels.market.dismissed'));
@@ -141,7 +150,7 @@ export function marketActOf(options: MarketActOptions): (id: string, action: Mar
     }
     if (action === 'migrate-workbench') {
       const added = recordOf(value)?.['added'];
-      onChanged({ force: true });
+      changed({ force: true });
       seats.setPending(null);
       seats.setHeld(undefined);
       seats.setNotice(
@@ -176,7 +185,7 @@ export function marketActOf(options: MarketActOptions): (id: string, action: Mar
               ...(next.latest === undefined ? {} : { latest: next.latest }),
             }),
           };
-    onChanged({ force: true });
+    changed({ force: true });
     if (failure !== undefined) {
       seats.setPending(null);
       seats.setHeld(undefined);
@@ -201,4 +210,16 @@ export function marketActOf(options: MarketActOptions): (id: string, action: Mar
       seats.setFailed({ id, message: t('panels.market.failed', { reason }), ...cardOf(reason) });
     }
   };
+
+  const many = async (ids: readonly string[], action: MarketRowAction): Promise<void> => {
+    quiet = true;
+    try {
+      for (const id of ids) await act(id, action);
+    } finally {
+      quiet = false;
+    }
+    onChanged({ force: true });
+  };
+
+  return Object.assign(act, { many });
 }

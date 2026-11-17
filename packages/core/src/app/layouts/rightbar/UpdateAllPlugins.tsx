@@ -1,7 +1,8 @@
 import { createElement as h, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives';
-import type { MarketRow, MarketRowAction } from './market-row-types';
+import type { MarketRow } from './market-row-types';
+import type { MarketAct } from './market-act';
 
 export function UpdateAllPlugins({
   t,
@@ -10,7 +11,7 @@ export function UpdateAllPlugins({
 }: {
   readonly t: Translate;
   readonly rows: readonly MarketRow[];
-  readonly act: (id: string, action: MarketRowAction) => Promise<void>;
+  readonly act: MarketAct;
 }) {
   const [busy, setBusy] = useState(false);
   if (rows.length === 0) return null;
@@ -18,7 +19,7 @@ export function UpdateAllPlugins({
     if (busy) return;
     setBusy(true);
     try {
-      for (const row of rows) await act(row.id, 'update-plugin');
+      await act.many(rows.map((row) => row.id), 'update-plugin');
     } finally {
       setBusy(false);
     }

@@ -1,10 +1,8 @@
 import { Fragment, createElement as h } from 'react';
-import type { ReactNode, Translate } from '@dsh-workbench/shared';
 import type { MarketFailure, MarketRow, MarketRowAction } from './market-row-types';
-import type { Pending } from './market-view-text';
+import type { MarketBodyExtras, MarketBodyProps } from './market-body-props';
 import { marketFootVisible } from './market-view-text';
 import { marketOrder, marketRowTitle, marketSections, updatablePlugins } from './market-rows';
-import type { VersionsPart } from '../market/use-module-versions';
 import { MarketSection } from './market-section';
 import { UpdateAllPlugins } from './UpdateAllPlugins';
 import { marketSectionIcon } from './market-section-icon';
@@ -32,25 +30,7 @@ export function MarketBody({
   rechecking,
   runtimePluginMarket,
   onOpenDetail,
-}: {
-  readonly t: Translate;
-  readonly runtimePluginMarket?: boolean | undefined;
-  readonly self: MarketRow | undefined;
-  readonly shown: readonly MarketRow[];
-  readonly pluginList: readonly MarketRow[];
-  readonly installedList: readonly MarketRow[];
-  readonly pending: Pending | null;
-  readonly failed: MarketFailure | null;
-  readonly notice: string | null;
-  readonly act: (id: string, action: MarketRowAction) => Promise<void>;
-  readonly onConfirming: (id: string | null) => void;
-  readonly setDefault: (id: string, next: boolean) => Promise<void>;
-  readonly boardBusy: boolean;
-  readonly checks: Readonly<Record<VersionsPart, ReactNode>>;
-  readonly onRecheck: () => void;
-  readonly rechecking: boolean;
-  readonly onOpenDetail?: ((id: string) => void) | undefined;
-}) {
+}: MarketBodyProps & MarketBodyExtras) {
   const failureOf = (id: string): MarketFailure | null => (failed?.id === id ? failed : null);
   const foot = marketFootVisible(shown, installedList);
   const sections = marketSections(

@@ -65,3 +65,29 @@ describe('probeUnits 的保鲜期', () => {
     expect(fake.calls).toHaveLength(2);
   });
 });
+
+describe('运行时对不上插件：判据由外壳喂进来，探针不自己读运行时文件', () => {
+  it('★ 外壳给了 peer 问题 → 那个插件判版本不一致（unsupported）', async () => {
+    const fake = createFakeShell([listOf(['issues'])]);
+    const [capability] = await probeUnits({
+      seam: seamFor(fake.shell),
+      runtimeCommands: { opencli: 'opencli' },
+      units: unitsOf('peer-mismatch'),
+      runtimeReport: { peerProblems: [{ name: 'demo', range: '>=1.0.0 <2.0.0' }] },
+    });
+
+    expect(capability?.status).toBe('unsupported');
+    expect(capability?.detail).toContain('>=1.0.0 <2.0.0');
+  });
+
+  it('★ 外壳没给（或给空的）→ 不判运行时问题，只看插件自己', async () => {
+    const fake = createFakeShell([listOf(['issues'])]);
+    const [capability] = await probeUnits({
+      seam: seamFor(fake.shell),
+      runtimeCommands: { opencli: 'opencli' },
+      units: unitsOf('peer-clean'),
+    });
+
+    expect(capability?.status).not.toBe('unsupported');
+  });
+});

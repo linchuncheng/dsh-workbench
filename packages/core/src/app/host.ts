@@ -81,6 +81,8 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   }
   ctx.provide(WORKBENCH_ADAPTERS, adapters);
   const runtimeCommands = adapters.runtime.commands(ctx);
+  const runtimeHealth = adapters.runtime.health(ctx);
+  const runtimeReport = adapters.runtime.versionReport?.(ctx);
   const libRunners =
     adapters.libs === undefined
       ? undefined
@@ -88,7 +90,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   const routes: RouteTable = createHostRoutes({
     ctx,
     facts,
-    runtimes: adapters.runtime.health(ctx),
+    runtimes: runtimeHealth,
     running: runningVersionOf(import.meta.url),
     profile: adapters.profile,
   });
@@ -171,7 +173,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     if (seam === undefined) return undefined;
     const manifest = manifestOf(unit);
     if (manifest === undefined || !hasEnvNeeds(manifest)) return undefined;
-    const common = { seam, runtimeCommands, force };
+    const common = { seam, runtimeCommands, runtimeReport, force };
     const found = (await adapters.probe.probeUnits({ ...common, units: declaredNow().map(probeInput) })).find(
       (row) => row.unit === unit,
     );
@@ -386,6 +388,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
         const common = {
           seam,
           runtimeCommands,
+          runtimeReport,
           force,
         };
         const found = await adapters.probe.probeUnits({ ...common, units: declaredNow().map(probeInput) });
