@@ -1,3 +1,4 @@
+import { copyOf, copyPattern } from './smoke-copy.mjs';
 import fs from 'node:fs';
 import { execa } from 'execa';
 import { delimiter, join } from 'node:path';
@@ -42,18 +43,21 @@ const BRIDGE_RETRY_MS = 15_000;
 const MODULE_WAIT_MS = 90_000;
 const POLL_MS = 2000;
 const DIALOG_SELECTOR = '[role="dialog"], [aria-modal="true"], dialog[open]';
-const SPEC_FIELD_SELECTOR = 'input[aria-label="包名"], input[aria-label="Package"]';
-const addOpenTexts = ['添加模块', 'Add module'];
-const addRunTexts = ['安装', 'Install'];
-const addCloseTexts = ['关闭', 'Close'];
-const specLabels = ['包名', 'Package'];
+const addOpenTexts = copyOf('panels.market.add.open');
+const addRunTexts = copyOf('panels.market.install');
+const addCloseTexts = copyOf('panels.market.add.close');
+const specLabels = copyOf('panels.market.add.specLabel');
+const SPEC_FIELD_SELECTOR = specLabels.map((one) => `input[aria-label="${one}"]`).join(', ');
 const pluginPreviewRe = /这是一份[^\n]*插件|插件名：|This is [^\n]*plugin|Plugin name:/u;
 const pluginInstalledRe = /装上了：|Installed:/u;
-const workbenchTitles = ['工作台', 'Workbench'];
-const workbenchUpdateTexts = ['更新', 'Update', '升级', 'Upgrade'];
-const selfUpdateReadyRe = /新版本已就绪|new version is ready|restart to pick it up|restart required/iu;
-const selfUpdateFailedRe =
-  /工作台更新失败|工作台更新未成功|更新失败|The workbench update failed|Update failed|did not go through|rolled back|已回滚|已用本地备份还原/iu;
+const workbenchTitles = copyOf('panels.market.workbenchName');
+const workbenchUpdateTexts = copyOf('panels.market.update');
+const selfUpdateReadyRe = copyPattern(['panels.market.selfUpdatePendingRestart']);
+const selfUpdateFailedRe = copyPattern([
+  'panels.market.selfUpdateRetry',
+  'panels.market.selfUpdateReinstallFailed',
+  'panels.market.selfUpdateReinstallStopped',
+]);
 
 const startedAt = Date.now();
 const elapsed = () => `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;
@@ -870,7 +874,7 @@ async function addPluginViaMarket(cdp, spec) {
 async function smokeMarket(cdp) {
   const result = { market: marketSource, module: moduleName, listed: false, installed: false, restartHint: false };
   await openMarket(cdp);
-  await click(cdp, ['Discover'], 2000);
+  await click(cdp, copyOf('panels.tab.discover'), 2000);
 
   let body = await bodyOf(cdp);
   if (!/dsh-workbench-market|github\.com/u.test(body)) {
@@ -899,7 +903,7 @@ async function smokeMarket(cdp) {
     }
     await cdp.send('Input.insertText', { text: marketSource });
     await sleep(300);
-    await click(cdp, ['Add'], 3000, 'dialog');
+    await click(cdp, copyOf('panels.discover.addSource'), 3000, 'dialog');
     mark('market-source-added');
     await pressEscape(cdp);
     await sleep(2000);
@@ -1240,7 +1244,7 @@ async function panelDialog(cdp) {
 async function showModuleOnPanel(cdp, unitId, titles) {
   let state = await panelDialog(cdp);
   if (state.dialogs === 0) {
-    const text = await click(cdp, ['选择模块', 'Choose modules'], 1500);
+    const text = await click(cdp, copyOf('panels.choose'), 1500);
     if (text === 'missing') {
       await cdp.send('Runtime.evaluate', {
         expression: `(() => {
