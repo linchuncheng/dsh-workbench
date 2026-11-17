@@ -1,4 +1,4 @@
-import { BROWSER_READ_SESSION, type Seam } from '@dsh-workbench/shared/host';
+import { BROWSER_READ_SESSION, BROWSER_WRITE_SESSION, type Seam } from '@dsh-workbench/shared/host';
 import type { QueueWaitEvent } from './queue.js';
 
 export interface SaveBytesInput {
@@ -17,6 +17,7 @@ export interface DataReaderOptions {
   readonly channelInstalled?: (() => boolean) | undefined;
   readonly queueWaitMs?: number | undefined;
   readonly readSessions?: number | undefined;
+  readonly sessionRegistryDir?: string | undefined;
   readonly onQueue?: ((event: QueueWaitEvent) => void) | undefined;
   readonly saveBytes?: SaveBytes | undefined;
 }
@@ -44,4 +45,10 @@ export function readSessionOf(value: string | undefined, url: string | undefined
   if (value !== undefined && value !== '') return value;
   const host = hostKeyOf(url);
   return host === undefined ? BROWSER_READ_SESSION : `${BROWSER_READ_SESSION}-${host}`;
+}
+
+export function writeSessionOf(value: string | undefined, url: string | undefined): string {
+  if (value !== undefined && value !== '') return `${value}-write`;
+  const host = hostKeyOf(url);
+  return host === undefined ? BROWSER_WRITE_SESSION : `${BROWSER_WRITE_SESSION}-${host}`;
 }

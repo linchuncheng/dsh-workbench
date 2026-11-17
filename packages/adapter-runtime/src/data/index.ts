@@ -34,8 +34,9 @@ import { createCommandRead } from './command-read.js';
 import { productWrite } from '@dsh-workbench/shared/host';
 import { createSessionQueue } from './queue.js';
 import { createSessionPool } from './session-pool.js';
+import { createSessionRegistry } from './session-registry.js';
 import { submitPlanOf, type SubmitRun } from './submit-plan.js';
-import { readSessionOf, sessionOf, type DataReaderOptions } from './types.js';
+import { readSessionOf, sessionOf, writeSessionOf, type DataReaderOptions } from './types.js';
 import {
   allFailure,
   asRecord,
@@ -75,6 +76,16 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
       void closeSession(session);
     },
   });
+
+  const registry =
+    options.sessionRegistryDir === undefined
+      ? undefined
+      : createSessionRegistry({ dir: options.sessionRegistryDir });
+
+  async function closeStale(): Promise<void> {
+    for (const session of registry?.stale() ?? []) await closeSession(session);
+  }
+  void closeStale();
 
   async function closeSession(session: string): Promise<void> {
     if (options.seam === undefined) return;
@@ -156,10 +167,14 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
     readonly timeoutMs?: number | undefined;
     readonly signal?: AbortSignal | undefined;
     readonly retry?: boolean | undefined;
+    readonly purpose?: 'read' | 'write' | undefined;
   }): Promise<Guarded<BrowserReadResult>> {
     const argv = scriptArgProblemOf(input.script);
     if (argv !== undefined) return { kind: 'failed', result: failure('invalid-request', argv) };
-    const session = readSessionOf(input.session, input.url);
+    const session =
+      input.purpose === 'write'
+        ? writeSessionOf(input.session, input.url)
+        : readSessionOf(input.session, input.url);
     return serialGuard(session, input.signal, () => browserRead(browserCall({ ...input, session })));
   }
 
@@ -169,6 +184,7 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
     work: () => Promise<T>,
   ): Promise<Guarded<T>> {
     const started = now();
+    registry?.claim(session);
     pool.hold(session);
     const outcome = await queue.acquire(session, signal, queueWaitMs);
     try {
@@ -295,7 +311,10 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
     } catch (error) {
       return failure('invalid-request', error instanceof Error ? error.message : String(error));
     }
-    const got = await guardedBrowser(recipeBrowserInput(recipe, script, seam, callOptions));
+    const got = await guardedBrowser({
+      ...recipeBrowserInput(recipe, script, seam, callOptions),
+      ...(mode === 'submit' ? { purpose: 'write' as const } : {}),
+    });
     const unwrapped = unwrapBrowser(got, recipe.loginUrl);
     if (!unwrapped.ok) return unwrapped;
     const result = unwrapped.result;
@@ -453,6 +472,7 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
           ...(plan.timeoutMs === undefined ? {} : { timeoutMs: plan.timeoutMs }),
           ...(submitOptions.signal === undefined ? {} : { signal: submitOptions.signal }),
           retry: false,
+          purpose: 'write',
         });
         if (got.kind === 'failed') return got.result;
         if (!got.value.ok) return browserFailure(got.value, plan.loginUrl);

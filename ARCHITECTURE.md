@@ -524,7 +524,13 @@ const out = await data.plan(
 
 读会话按**站点**分：配方没写 `session` 时，`origin` 的主机名决定会话（`workbench-read-<host>`），
 同一站点共用一个标签、排一次队；不同站点各用各的，并行读互不导航。池子上限 4 个（`readSessions`），
-超了按最久未用关掉，正在读的不动。写还是独占（`write` 那一层尚未拆），录制固定 `workbench-rec`。
+超了按最久未用关掉，正在读的不动。
+
+写会话再分一层（`workbench-write-<host>`）：同一站点的读与写各用一个标签，读的导航不会把写到一半的
+页面顶掉；同站点的两次写仍在同一个会话里排队，服务端不会被并发打。录制固定 `workbench-rec`。
+
+会话名登记在运行时根下的 `state/sessions/<pid>.json`；启动时清掉已经不在的进程留下的会话（它们
+在浏览器里不会自己消失）。
 
 - 仍然是**一次 eval、多次 fetch**：凭据只在页面里，宿主不碰 cookie/token。
 - 每步 `response.kind` 是 `json`（可带 `path`）/ `text` / `bytes`（`{ base64, size, contentType }`）/

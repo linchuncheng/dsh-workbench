@@ -7,6 +7,7 @@ import {
   createGitReader,
   createLibReader,
   opencliCommandOf,
+  sessionStateDir,
   type QueueWaitEvent,
   type SaveBytesInput,
 } from '@dsh-workbench/adapter-runtime';
@@ -66,6 +67,7 @@ export function createAdapterSet(ctx: DshHostContext, options: DefaultAdapterSet
     data: createDataReader({
       seam,
       command: opencli.command,
+      sessionRegistryDir: sessionStateDir(),
       ...(onQueue === undefined ? {} : { onQueue }),
       ...(saveBytes === undefined ? {} : { saveBytes }),
     }),
