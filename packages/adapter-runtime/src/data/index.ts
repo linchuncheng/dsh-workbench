@@ -31,9 +31,11 @@ import { browserRead, type BrowserReadResult } from '../browser/index.js';
 import { attachOf } from './attachment.js';
 import { readHttp } from './http.js';
 import { createCommandRead } from './command-read.js';
+import { productWrite } from '@dsh-workbench/shared/host';
 import { createSessionQueue } from './queue.js';
+import { createSessionPool } from './session-pool.js';
 import { submitPlanOf, type SubmitRun } from './submit-plan.js';
-import { sessionOf, type DataReaderOptions } from './types.js';
+import { readSessionOf, sessionOf, type DataReaderOptions } from './types.js';
 import {
   allFailure,
   asRecord,
@@ -67,6 +69,24 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
   const command = options.command ?? 'opencli';
   const queue = createSessionQueue();
   const queueWaitMs = options.queueWaitMs ?? 30_000;
+  const pool = createSessionPool({
+    max: options.readSessions ?? 4,
+    close: (session) => {
+      void closeSession(session);
+    },
+  });
+
+  async function closeSession(session: string): Promise<void> {
+    if (options.seam === undefined) return;
+    await options.seam
+      .run({
+        argv: ['browser', '--session', session, 'close'],
+        intent: productWrite(),
+        timeoutMs: 15_000,
+        bestEffort: true,
+      })
+      .catch(() => undefined);
+  }
   const readCommand = createCommandRead({ seam: options.seam, command });
 
   type BrowserReadInput = Parameters<typeof browserRead>[0];
@@ -139,7 +159,7 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
   }): Promise<Guarded<BrowserReadResult>> {
     const argv = scriptArgProblemOf(input.script);
     if (argv !== undefined) return { kind: 'failed', result: failure('invalid-request', argv) };
-    const session = sessionOf(input.session);
+    const session = readSessionOf(input.session, input.url);
     return serialGuard(session, input.signal, () => browserRead(browserCall({ ...input, session })));
   }
 
@@ -149,6 +169,7 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
     work: () => Promise<T>,
   ): Promise<Guarded<T>> {
     const started = now();
+    pool.hold(session);
     const outcome = await queue.acquire(session, signal, queueWaitMs);
     try {
       options.onQueue?.({ session, waitedMs: now() - started, outcome });
@@ -167,6 +188,7 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
       return { kind: 'done', value: await work() };
     } finally {
       queue.release(session);
+      pool.idle(session);
     }
   }
 

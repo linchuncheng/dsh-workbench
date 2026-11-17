@@ -506,7 +506,6 @@ const out = await data.plan(
   {
     origin: 'https://oa.example.com',
     loginUrl: 'https://oa.example.com/',
-    session: 'workbench-read',
     authLoss: { path: 'errorCode', equals: '002', messagePath: 'msg' },
     steps: [
       { name: 'key',
@@ -522,6 +521,10 @@ const out = await data.plan(
 );
 // out.key / out.rows：每步 { ok, data | error, elapsedMs }；失败后后面的步标 skipped
 ```
+
+读会话按**站点**分：配方没写 `session` 时，`origin` 的主机名决定会话（`workbench-read-<host>`），
+同一站点共用一个标签、排一次队；不同站点各用各的，并行读互不导航。池子上限 4 个（`readSessions`），
+超了按最久未用关掉，正在读的不动。写还是独占（`write` 那一层尚未拆），录制固定 `workbench-rec`。
 
 - 仍然是**一次 eval、多次 fetch**：凭据只在页面里，宿主不碰 cookie/token。
 - 每步 `response.kind` 是 `json`（可带 `path`）/ `text` / `bytes`（`{ base64, size, contentType }`）/

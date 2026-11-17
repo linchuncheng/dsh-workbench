@@ -54,7 +54,14 @@ function declarationOnly(file, start, end) {
     const meaningful = lines
       .map((line) => line.trim())
       .filter((line) => line !== '' && !line.startsWith('//') && !line.startsWith('*') && !line.startsWith('/*'));
-    verdict = meaningful.length > 0 && meaningful.every((line) => /^(export|import)\b/.test(line));
+    verdict =
+      meaningful.length > 0 &&
+      meaningful.every(
+        (line) =>
+          /^(export|import)\b/.test(line) ||
+          /^[\w$]+,?$/.test(line) ||
+          /^}\s*from\s+['"]/.test(line),
+      );
   } catch {
     verdict = false;
   }
