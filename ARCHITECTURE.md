@@ -862,7 +862,7 @@ mount() 抛错 / 工具注册到一半失败
   ├─ 执行 <运行时> plugin list -f json              → 实际命令面
   ├─ needs[].commands × 实际命令面                   → 缺命令 = outdated
   ├─ needs[].version × 已装版本                      → 低于下限 = unsatisfied
-  ├─ 插件 peer 范围 × 运行时版本                     → 对不上 = unsupported（需要更新工作台）
+  ├─ 插件 peer 范围 × 运行时版本                     → 不满足 = unsupported（版本不一致）
   └─ needs[].kind = bin / env                       → command -v / 环境 = missing
       │
       ▼
@@ -888,7 +888,7 @@ NeedState / UnitCapability
 | lib 版本 | `needs[].version`（`lib`） | 探针 `checkVersionRange` | `unsatisfied` → 缺依赖 | 安装 / 升级依赖 | 有 |
 | 插件命令 | `needs[].commands`（`extension`） | `<运行时> plugin list -f json` | 缺命令 → `outdated` | 升级插件 | 有 |
 | 插件版本下限 | `needs[].version`（`extension`） | 与 lib 同一套比较 | 低于下限 → `unsatisfied` | 升级插件 | 有 |
-| 插件与运行时 | 插件 `peerDependencies` | 握手（启动时扫一遍）+ 探针 | 不满足 → `unsupported`（需要更新工作台） | 升级插件 / 换回兼容运行时 | 有 |
+| 插件与运行时 | 插件 `peerDependencies` | 握手（启动时扫一遍）+ 探针 | 不满足 → `unsupported`（版本不一致） | 插件更新后再用 | 有 |
 | 运行时与应用 | 适配器钉的版本 + `runtime.health()` | 握手 | 不一致 → 运行时那一行 | 重启 / 重装 | 一半 |
 | 命令 / 环境变量 | `needs[].kind = bin / env` | `command -v` / 环境 | `missing` | 给一条可复制的命令 | 有 |
 
@@ -916,7 +916,7 @@ NeedState / UnitCapability
          └── 软链由自举重指；peer 不合规的由握手点名（模块那一侧待接）
 
 换代后   存一份 capability 快照，与换代前比对
-         └── 指出「这次升级才失效的」，而不是只给一张新快照
+         └── 指出「这次升级才失效的」，而不是只给一张新快照（这一步还没接，现在只有快照）
 ```
 
 软链是这套设计的支点：所有插件共用一份运行时，只装一份。代价是**包管理器的 peer 检查只在安装那一刻有效**——
@@ -927,6 +927,9 @@ NeedState / UnitCapability
 - **命令还在、语义变了**（参数改名、返回形状变了）静态判不了，只能靠调用失败的错误码归纳。不承诺提前发现所有故障。
 - **共享依赖不进入这张表**（`execa`、`dayjs` 这类）：它们由包管理器负责，出问题属于工作台自身的构建问题，不进用户视野。
 - **模块不感知运行时版本**：它只声明要哪个运行时的哪几条命令。这条是端口的边界，也是文案的边界（`C75` / `S76`）。
+- **每个状态都要给出下一步，且只给真能做的**：不匹配时，用户能做的是升级插件、等插件更新、
+  或先卸载这个模块（这几条都在界面上）。运行时不作为可管理的对象出现，所以不摆「修复运行时」这类按钮 ——
+  宁可说清「等插件更新」，也不给一颗点了没用的钮。文案里不写做不到的动作。
 
 ## 6. 数据与写
 
@@ -1104,7 +1107,8 @@ check:release-packages → check:release-artifacts
 重复代码是基线门禁：存量克隆记在 `.jscpd-baseline.json`，`check:duplication` 只红在基线之外的
 新克隆；`pnpm run duplication:accept` 重写基线（和代码一起提交），`pnpm run duplication:report`
 出 `coverage/duplication/` 下的 HTML / JSON 全量报告。扫描面（`packages/` 与 `scripts/` 的
-TS / JS，不含测试与构建产物）在 `.jscpd.json`。
+TS / JS，不含测试、构建产物与词典）在 `.jscpd.json` —— 词典是逐条平铺的键值表，同名同形的行
+在 Type-2 下会被当成克隆，那里没有可抽的逻辑。
 
 覆盖两档克隆：**完全相同**（Type-1）与**改了名**（Type-2，`ignoreIdentifiers` + `ignoreLiterals`）。
 Type-2 不是全能的：一段整体改名、结构又短的代码可能漏过，所以它比只查 Type-1 强，但不是保证。

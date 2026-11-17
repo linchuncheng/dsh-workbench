@@ -118,6 +118,11 @@ outside the baseline fails the gate with the new clones printed as `file:line ~ 
 It catches both identical clones and renamed ones (`ignoreIdentifiers` + `ignoreLiterals`),
 which is not exhaustive: a short block whose names all differ can slip through.
 
+Known noise: flat data tables (state maps, word lists) match themselves under the renamed
+mode, so editing such a table reports a same-file clone. When the new-clone list contains
+only same-file table self-matches, run `pnpm run duplication:accept`; anything else gets
+fixed or refactored first.
+
 - Remove the duplication, or
 - accept it explicitly with `pnpm run duplication:accept` and commit the updated
   `.jscpd-baseline.json`.

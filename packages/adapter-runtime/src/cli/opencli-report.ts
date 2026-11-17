@@ -4,13 +4,11 @@ import { OPENCLI_PIN, OPENCLI_PIN_ENV, checkVersionRange, runtimePinOf } from '@
 import { toolchainOpencliDir, vendorPluginsDir } from '../foundation/paths.js';
 import { pluginPeerProblems, type PluginPeerProblem } from './plugin-peers.js';
 import { jsonAt as jsonOf, textOf } from './json-file.js';
-import { toolchainDir } from './opencli-runtime.js';
 
 export interface OpencliVersionReport {
   readonly pin: string;
   readonly cli?: string;
   readonly channel?: string;
-  readonly extension?: string;
   readonly peer: string;
   readonly peerProblems: readonly PluginPeerProblem[];
   readonly compatible: boolean;
@@ -26,22 +24,16 @@ export function opencliPeerRange(): string {
   return textOf(jsonOf(fileURLToPath(CHANNEL_SOURCE))?.['opencli']) ?? '';
 }
 
-export function opencliExtensionDir(): string {
-  return join(toolchainDir(), '..', 'extension');
-}
-
 export function opencliVersionReport(): OpencliVersionReport {
   const pin = runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV);
   const cli = textOf(jsonOf(join(toolchainOpencliDir(), 'package.json'))?.['version']);
   const channel = textOf(jsonOf(join(opencliChannelDir(), 'opencli-plugin.json'))?.['version']);
-  const extension = textOf(jsonOf(join(opencliExtensionDir(), 'manifest.json'))?.['version']);
   const peer = opencliPeerRange();
   const peerProblems = pluginPeerProblems(pin);
   return {
     pin,
     ...(cli === undefined ? {} : { cli }),
     ...(channel === undefined ? {} : { channel }),
-    ...(extension === undefined ? {} : { extension }),
     peer,
     peerProblems,
     compatible: checkVersionRange(peer, pin) !== 'unsatisfied' && peerProblems.length === 0,
@@ -52,14 +44,13 @@ export function opencliHandshakeOk(report: OpencliVersionReport): boolean {
   return report.compatible && report.cli === report.pin;
 }
 
-export function opencliHandshakeNote(report: OpencliVersionReport): {
-  readonly zh: string;
-  readonly en: string;
-} {
+export function opencliHandshakeNote(report: OpencliVersionReport):
+  | { readonly zh: string; readonly en: string }
+  | undefined {
   if (report.peerProblems.length > 0) {
     return {
-      zh: `${pluginRangesOf(report)}只适配别的运行时版本，本版是 ${report.pin} —— 升级这些插件，或换回兼容的运行时`,
-      en: `${pluginRangesOf(report)} only accept another runtime version; this build is ${report.pin} — upgrade those plugins, or switch back to a compatible runtime`,
+      zh: `${pluginRangesOf(report)}只适配别的运行时版本，本版是 ${report.pin} —— 插件更新后再试`,
+      en: `${pluginRangesOf(report)} only accept another runtime version; this build is ${report.pin} — try again after those plugins update`,
     };
   }
   if (!report.compatible) {
@@ -80,10 +71,7 @@ export function opencliHandshakeNote(report: OpencliVersionReport): {
       en: `installed ${report.cli} but this build needs ${report.pin} — restart dsh; if it persists, reinstall the workbench`,
     };
   }
-  return {
-    zh: `扩展是 ${report.extension ?? '未装'}，通道插件是 ${report.channel ?? '未装'} —— 重装一次浏览器扩展，或重启 dsh`,
-    en: `extension ${report.extension ?? 'missing'}, channel plugin ${report.channel ?? 'missing'} — reinstall the browser extension, or restart dsh`,
-  };
+  return undefined;
 }
 
 function pluginRangesOf(report: OpencliVersionReport): string {
@@ -107,5 +95,5 @@ export function opencliHandshakeText(report: OpencliVersionReport): string {
   }
   if (report.cli === undefined) return `隔离运行时里还没有 ${report.pin}`;
   if (report.cli !== report.pin) return `已装 ${report.cli}，本版固定 ${report.pin}`;
-  return `${report.pin} · 通道插件 ${report.channel ?? '未装'} · 扩展 ${report.extension ?? '未装'}`;
+  return `${report.pin} · 通道插件 ${report.channel ?? '未装'}`;
 }

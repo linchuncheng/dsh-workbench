@@ -29,39 +29,37 @@ export type {
 } from './market-row-types';
 export type { SharedRow, SharedState } from './market-shared-rows';
 export { SHARED_DOT, SHARED_STATE_KEY, sharedActions, sharedRows } from './market-shared-rows';
-export const MARKET_STATE_KEY: Readonly<Record<MarketState, string>> = {
-  checking: 'panels.market.checking',
-  installed: 'panels.market.installed',
-  inactive: 'panels.market.notActive',
-  unusable: 'panels.market.notUsable',
-  broken: 'panels.market.broken',
-  unsupported: 'panels.market.needsNewerWorkbench',
-  outdated: 'panels.market.moduleOutdated',
-  'older-on-disk': 'panels.market.olderOnDisk',
-  'pending-restart': 'panels.market.pendingRestart',
-  'pending-followup': 'panels.market.pendingFollowUp',
-  missing: 'panels.market.missing',
-  unchecked: 'panels.market.unchecked',
-  unknown: 'panels.market.unchecked',
+type MarketDot = 'ongoing' | 'done' | 'warning' | 'idle' | 'error';
+
+const MARKET_STATE_TABLE: Readonly<
+  Record<MarketState, { readonly key: string; readonly dot: MarketDot }>
+> = {
+  checking: { key: 'panels.market.checking', dot: 'ongoing' },
+  installed: { key: 'panels.market.installed', dot: 'done' },
+  inactive: { key: 'panels.market.notActive', dot: 'warning' },
+  unusable: { key: 'panels.market.notUsable', dot: 'error' },
+  broken: { key: 'panels.market.broken', dot: 'error' },
+  unsupported: { key: 'panels.market.pluginVersionMismatch', dot: 'warning' },
+  outdated: { key: 'panels.market.moduleOutdated', dot: 'warning' },
+  'older-on-disk': { key: 'panels.market.olderOnDisk', dot: 'warning' },
+  'pending-restart': { key: 'panels.market.pendingRestart', dot: 'warning' },
+  'pending-followup': { key: 'panels.market.pendingFollowUp', dot: 'warning' },
+  missing: { key: 'panels.market.missing', dot: 'idle' },
+  unchecked: { key: 'panels.market.unchecked', dot: 'idle' },
+  unknown: { key: 'panels.market.unchecked', dot: 'idle' },
 };
 
-export const MARKET_DOT: Readonly<
-  Record<MarketState, 'ongoing' | 'done' | 'warning' | 'idle' | 'error'>
-> = {
-  checking: 'ongoing',
-  installed: 'done',
-  inactive: 'warning',
-  unusable: 'error',
-  broken: 'error',
-  unsupported: 'warning',
-  outdated: 'warning',
-  'older-on-disk': 'warning',
-  'pending-restart': 'warning',
-  'pending-followup': 'warning',
-  missing: 'idle',
-  unchecked: 'idle',
-  unknown: 'idle',
-};
+function columnOf<K extends string, T, R>(
+  table: Readonly<Record<K, T>>,
+  pick: (value: T) => R,
+): Readonly<Record<K, R>> {
+  const out: Partial<Record<K, R>> = {};
+  for (const key of Object.keys(table) as K[]) out[key] = pick(table[key] as T);
+  return out as Readonly<Record<K, R>>;
+}
+
+export const MARKET_STATE_KEY = columnOf(MARKET_STATE_TABLE, (value) => value.key);
+export const MARKET_DOT = columnOf(MARKET_STATE_TABLE, (value) => value.dot);
 
 export type ModuleUpdateMap = Readonly<Record<string, ModuleUpdate>>;
 
@@ -297,6 +295,7 @@ function noteOf(
   ) {
     return undefined;
   }
+  if (state === 'unsupported') return { key: 'panels.market.runtimeVersionMismatch', params: {} };
   const problem: NeedState | undefined = capability?.needs.find((need) => need.status !== 'ok');
   if (problem === undefined) return undefined;
   if (problem.kind === 'env') return { key: 'panels.market.needEnv', params: { env: problem.name } };

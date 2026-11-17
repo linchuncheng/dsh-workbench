@@ -143,7 +143,7 @@ function StateSection({ t }: { readonly t: BoardModuleProps['t'] }) {
           <StateBlock
             dot={<StateDot state="ongoing" size={10} />}
             title="正在读"
-            hint="读回来之前这一块先这么说"
+            hint="读回来之前先这么说"
             resolving="还剩 3 秒"
           >
             <SkeletonRows rows={3} />

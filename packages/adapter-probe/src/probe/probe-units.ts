@@ -140,7 +140,7 @@ function runtimeMismatchIn(
     if (need.kind !== 'extension' || need.required === false) continue;
     const range = problems.get(need.name);
     if (range === undefined) continue;
-    return `插件 ${need.name} 只适配 ${range}，这一版运行时和它对不上 —— 升级插件，或换回兼容的运行时`;
+    return `插件 ${need.name} 只适配 ${range}，这一版运行时和它对不上`;
   }
   return undefined;
 }

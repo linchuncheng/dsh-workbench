@@ -60,7 +60,7 @@ describe('版本目录：项目文件从 profile 搬过来', () => {
     expect(line?.split(VERSION).length).toBe(2);
   });
 
-  it('名单里没有的包补进 minimumReleaseAgeExclude 块，且不越出这一块', () => {
+  it('名单里没有的包补进 minimumReleaseAgeExclude 块，且不越出这一段', () => {
     const project = projectAt(profileWith(PROFILE_WORKSPACE), ['@dsh-workbench/core', '@dsh-workbench/adapter-supply']);
     const lines = project.workspace.split('\n');
     const added = lines.findIndex((line) => line.includes("'@dsh-workbench/adapter-supply@"));

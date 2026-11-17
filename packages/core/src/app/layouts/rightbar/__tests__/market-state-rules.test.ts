@@ -274,15 +274,15 @@ describe('段落：装了但市场还没认识它的，也在「已安装模块�
   });
 });
 
-describe('运行时与插件对不上：状态是「需要更新工作台」，不是「安装已损坏」', () => {
-  it('★ unsupported → 单独一档，带黄点，不冒充损坏', () => {
+describe('运行时与插件版本不一致：单独一档，不冒充损坏', () => {
+  it('★ unsupported → 单独一档，带黄点，词是「版本不一致」', () => {
     const row = marketRows(
       [unit('issues', 'demo')],
       capability('issues', 'unsupported'),
     )[0];
 
     expect(row?.state).toBe('unsupported');
-    expect(MARKET_STATE_KEY.unsupported).toBe('panels.market.needsNewerWorkbench');
+    expect(MARKET_STATE_KEY.unsupported).toBe('panels.market.pluginVersionMismatch');
     expect(MARKET_DOT.unsupported).toBe('warning');
   });
 });

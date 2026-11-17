@@ -52,6 +52,7 @@ export interface MarketNote {
     | 'panels.market.pluginBroken'
     | 'panels.market.latestNoRegistry'
     | 'panels.market.latestProbeFailed'
+    | 'panels.market.runtimeVersionMismatch'
     | 'panels.market.workbenchBroken'
     | 'panels.market.workbenchBrokenNoFix'
     | 'panels.market.selfUpdateQueued'

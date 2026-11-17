@@ -39,7 +39,6 @@ describe('opencli 版本握手', () => {
       name: 'workbench',
       version: '1.3.2',
     });
-    writeJson(join(root, 'extension', 'manifest.json'), { name: 'OpenCLI', version: '1.0.27' });
 
     const { opencliVersionReport, opencliHandshakeOk, opencliHandshakeText } = await load();
     const report = opencliVersionReport();
@@ -47,7 +46,6 @@ describe('opencli 版本握手', () => {
     expect(report.pin).toBe('1.8.8');
     expect(report.cli).toBe('1.8.8');
     expect(report.channel).toBe('1.3.2');
-    expect(report.extension).toBe('1.0.27');
     expect(report.compatible).toBe(true);
     expect(opencliHandshakeOk(report)).toBe(true);
     expect(opencliHandshakeText(report)).toContain('1.8.8');

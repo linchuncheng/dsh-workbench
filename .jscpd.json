@@ -19,7 +19,8 @@
     "**/*.spec.tsx",
     "**/*.d.ts",
     "**/client.js",
-    "**/client.body.js"
+    "**/client.body.js",
+    "**/i18n/**"
   ],
   "baseline": ".jscpd-baseline.json",
   "failOnNewClones": 0,

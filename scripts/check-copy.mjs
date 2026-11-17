@@ -9,6 +9,7 @@ const SCOPE = SCOPE_ARG === undefined ? 'all' : SCOPE_ARG.slice('--scope='.lengt
 
 const COLLOQUIAL = [
   ['这一下', '本次操作'],
+  ['这一块', '这里'],
   ['这一跳', '这一步'],
   ['这一轮', '本次'],
   ['点进去', '打开'],

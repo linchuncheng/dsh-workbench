@@ -29,7 +29,7 @@ export interface BlockerStateProps {
 /**
  * 卡片被挡住（或要给一句 notice）时渲染的那一块：按 `blocker.severity` 出块状或一行提示，动作接重试 / 跑修复 / 复制。
  * @param props.blocker - 要显示的那份 blocker：`title` / `hint` / `detail` / `actions` / `severity`。
- * @param props.t - 翻译函数，这一块出现的每句话都从它来。
+ * @param props.t - 翻译函数，这里出现的每句话都从它来。
  * @param props.onRetry - `retry` 动作与修复成功后的重试回调。
  * @param props.onOpenMarket - `open-market` 动作；没给就退回 `onRetry`。
  * @param props.busy - 外层是不是在忙（默认 `false`）；为真时动作一并禁用。

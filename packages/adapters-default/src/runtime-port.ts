@@ -145,6 +145,7 @@ export function createRuntimePort(): RuntimePort {
     health(ctx) {
       const versions = opencliVersionReport();
       const ready = opencliHandshakeOk(versions);
+      const note = ready ? undefined : opencliHandshakeNote(versions);
       return {
         opencli: {
           ...opencliCommandOf(ctx),
@@ -152,7 +153,7 @@ export function createRuntimePort(): RuntimePort {
           handshake: { ok: ready, detail: opencliHandshakeText(versions) },
           ...(versions.cli === undefined && versions.pin === '' ? {} : { version: versions.cli ?? versions.pin }),
           ready,
-          ...(ready ? {} : { note: opencliHandshakeNote(versions) }),
+          ...(note === undefined ? {} : { note }),
         },
       };
     },
