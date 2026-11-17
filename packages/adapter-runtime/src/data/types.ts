@@ -18,6 +18,7 @@ export interface DataReaderOptions {
   readonly queueWaitMs?: number | undefined;
   readonly readSessions?: number | undefined;
   readonly sessionRegistryDir?: string | undefined;
+  readonly sessionIdleMs?: number | undefined;
   readonly onQueue?: ((event: QueueWaitEvent) => void) | undefined;
   readonly saveBytes?: SaveBytes | undefined;
 }

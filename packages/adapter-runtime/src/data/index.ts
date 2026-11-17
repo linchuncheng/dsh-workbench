@@ -1,4 +1,6 @@
 import {
+  BROWSER_READ_SESSIONS,
+  BROWSER_SESSION_IDLE_MS,
   callsProblemOf,
   noWrite,
   now,
@@ -71,10 +73,11 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
   const sessions = createSessionKeeper({
     seam: options.seam,
     command,
-    max: options.readSessions ?? 4,
+    max: options.readSessions ?? BROWSER_READ_SESSIONS,
     ...(options.sessionRegistryDir === undefined
       ? {}
       : { registryDir: options.sessionRegistryDir }),
+    idleMs: options.sessionIdleMs ?? BROWSER_SESSION_IDLE_MS,
   });
 
   const readCommand = createCommandRead({ seam: options.seam, command });

@@ -523,8 +523,9 @@ const out = await data.plan(
 ```
 
 读会话按**站点**分：配方没写 `session` 时，`origin` 的主机名决定会话（`workbench-read-<host>`），
-同一站点共用一个标签、排一次队；不同站点各用各的，并行读互不导航。池子上限 4 个（`readSessions`），
-超了按最久未用关掉，正在读的不动。
+同一站点共用一个标签、排一次队；不同站点各用各的，并行读互不导航。池子上限 8 个
+（`BROWSER_READ_SESSIONS` / `readSessions`），超了按最久未用关掉，正在读的不动；另外闲置超过
+10 分钟（`BROWSER_SESSION_IDLE_MS`）的也收掉，常驻应用不会把标签越攒越多。
 
 写会话再分一层（`workbench-write-<host>`）：同一站点的读与写各用一个标签，读的导航不会把写到一半的
 页面顶掉；同站点的两次写仍在同一个会话里排队，服务端不会被并发打。录制固定 `workbench-rec`。

@@ -83,6 +83,12 @@ export const OPENCLI_TIMEOUT_MS = 120_000;
 /** 同时最多几条运行时调用在跑（条）：超出就排队。 */
 export const OPENCLI_MAX_CONCURRENT = 4;
 
+/** 同时留着的读会话上限（个）：每个会话是运行时容器窗口里的一个标签，等于「同时在读几个站点」。 */
+export const BROWSER_READ_SESSIONS = 8;
+
+/** 读会话闲置多久就关掉（毫秒）：常驻应用不该把标签越攒越多。 */
+export const BROWSER_SESSION_IDLE_MS = 10 * 60 * 1000;
+
 /** 启动预热站点那一跳的超时（毫秒）；超时按未热对待，不挡面板。 */
 export const WARM_TIMEOUT_MS = 20_000;
 

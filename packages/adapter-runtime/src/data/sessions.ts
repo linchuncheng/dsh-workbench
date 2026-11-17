@@ -13,6 +13,7 @@ export function createSessionKeeper(input: {
   readonly command: string;
   readonly max: number;
   readonly registryDir?: string | undefined;
+  readonly idleMs?: number | undefined;
 }): SessionKeeper {
   const inFlight = new Map<string, number>();
   const opened = new Set<string>();
@@ -49,6 +50,15 @@ export function createSessionKeeper(input: {
   void (async () => {
     for (const session of registry?.stale() ?? []) await close(session);
   })();
+
+  if (input.idleMs !== undefined && input.idleMs > 0) {
+    const timer = setInterval(() => {
+      void (async () => {
+        for (const session of pool.expire(input.idleMs ?? 0)) await close(session);
+      })();
+    }, Math.min(input.idleMs, 60_000));
+    timer.unref?.();
+  }
 
   return {
     begin(session) {
