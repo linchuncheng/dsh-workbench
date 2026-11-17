@@ -249,6 +249,11 @@ export function marketActions(row: MarketRow): MarketRowAction[] {
   ];
 }
 
+export function updatablePlugins(rows: readonly MarketRow[]): readonly MarketRow[] {
+  const updatable = rows.filter((row) => row.canUpdate === true);
+  return updatable.length > 1 ? updatable : [];
+}
+
 function stateOf(
   capability: CapabilityMap[string] | undefined,
   manifest: UnitManifest,

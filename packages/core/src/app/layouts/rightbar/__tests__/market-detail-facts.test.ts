@@ -286,3 +286,45 @@ describe('工作台的运行环境那一格', () => {
     expect(facts['panels.market.detailRuntime']).toBeUndefined();
   });
 });
+
+describe('运行环境旁边的事实：扩展版本 / 连通耗时 / 旧进程', () => {
+  it('★ 有扩展与连通数据就摆出来，数字照抄不改写', () => {
+    const facts = Object.fromEntries(
+      marketDetailFacts(rowOf({ workbench: true, id: 'workbench' }), t, null, {
+        label: 'runtime',
+        version: '2.0.3',
+        ready: true,
+        extension: '1.0.27',
+        connectivityMs: 13,
+      }).map((fact) => [fact.labelKey, fact.value]),
+    );
+
+    expect(facts['panels.market.detailExtension']).toBe('panels.market.detailExtensionValue');
+    expect(facts['panels.market.detailBridge']).toBe('panels.market.detailBridgeValue');
+  });
+
+  it('★ 后台服务是旧进程 → 点出「重启一次」，不写成故障', () => {
+    const facts = Object.fromEntries(
+      marketDetailFacts(rowOf({ workbench: true, id: 'workbench' }), t, null, {
+        label: 'runtime',
+        ready: true,
+        stale: true,
+      }).map((fact) => [fact.labelKey, fact.value]),
+    );
+
+    expect(facts['panels.market.detailBridge']).toBe('panels.market.detailBridgeStale');
+  });
+
+  it('★ 没有这些数据 → 一行都不摆（不写空值）', () => {
+    const facts = Object.fromEntries(
+      marketDetailFacts(rowOf({ workbench: true, id: 'workbench' }), t, null, {
+        label: 'runtime',
+        version: '2.0.3',
+        ready: true,
+      }).map((fact) => [fact.labelKey, fact.value]),
+    );
+
+    expect(facts['panels.market.detailExtension']).toBeUndefined();
+    expect(facts['panels.market.detailBridge']).toBeUndefined();
+  });
+});

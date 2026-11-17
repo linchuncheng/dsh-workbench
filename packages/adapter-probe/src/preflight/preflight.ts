@@ -35,6 +35,7 @@ import type {
   PreflightStep,
 } from '@dsh-workbench/shared/host';
 import { readBridgeReport, type PreflightBridgeIssue } from '../runtime/bridge-report.js';
+import { rememberBridgeFacts } from '../runtime/bridge-facts.js';
 export { BRIDGE_ISSUE_ORDER, readBridgeReport } from '../runtime/bridge-report.js';
 export type { PreflightBridgeIssue } from '../runtime/bridge-report.js';
 export type { PreflightDiyGap, PreflightSnapshot, PreflightStep } from '@dsh-workbench/shared/host';
@@ -212,6 +213,7 @@ export function createPreflight(options: {
     }
     if (result.kind !== 'ok') return { ok: false, detail: result.detail, issues: ['unknown'] };
     const report = readBridgeReport(result.stdout);
+    rememberBridgeFacts(report.facts);
     if (report.ok) return report;
     return { ...report, command: bridgeFixCommand(command, report.issues, platform) };
   }

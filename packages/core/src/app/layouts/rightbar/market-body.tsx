@@ -3,9 +3,10 @@ import type { ReactNode, Translate } from '@dsh-workbench/shared';
 import type { MarketFailure, MarketRow, MarketRowAction } from './market-row-types';
 import type { Pending } from './market-view-text';
 import { marketFootVisible } from './market-view-text';
-import { marketOrder, marketRowTitle, marketSections } from './market-rows';
+import { marketOrder, marketRowTitle, marketSections, updatablePlugins } from './market-rows';
 import type { VersionsPart } from '../market/use-module-versions';
 import { MarketSection } from './market-section';
+import { UpdateAllPlugins } from './UpdateAllPlugins';
 import { marketSectionIcon } from './market-section-icon';
 import { PanelFoot } from '@/shared/components/PanelFoot';
 import styles from '../market/MarketPage.module.css';
@@ -99,7 +100,12 @@ export function MarketBody({
           titleKey="panels.market.sectionPlugins"
           icon={marketSectionIcon('plugins')}
           rows={pluginList}
-          headAction={checks.plugins}
+          headAction={
+            <Fragment>
+              {checks.plugins}
+              {h(UpdateAllPlugins, { t, rows: updatablePlugins(pluginList), act })}
+            </Fragment>
+          }
         />
       )}
 

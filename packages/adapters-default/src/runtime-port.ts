@@ -5,6 +5,7 @@ import type { RuntimePort } from '@dsh-workbench/shared/host';
 import { packageRootOf, seamOf } from '@dsh-workbench/shared/host';
 import { backgroundLine, libsBinDir } from '@dsh-workbench/adapter-runtime';
 
+import { lastBridgeFacts } from '@dsh-workbench/adapter-probe';
 import {
   ensureLibsOpencliPeer,
   ensureVendorOpencliPeer,
@@ -144,6 +145,7 @@ export function createRuntimePort(): RuntimePort {
 
     health(ctx) {
       const versions = opencliVersionReport();
+      const bridge = lastBridgeFacts();
       const ready = opencliHandshakeOk(versions);
       const note = ready ? undefined : opencliHandshakeNote(versions);
       return {
@@ -154,6 +156,7 @@ export function createRuntimePort(): RuntimePort {
           ...(versions.cli === undefined && versions.pin === '' ? {} : { version: versions.cli ?? versions.pin }),
           ready,
           ...(note === undefined ? {} : { note }),
+          ...(bridge === undefined ? {} : { bridge }),
         },
       };
     },

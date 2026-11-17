@@ -15,5 +15,10 @@ export function workbenchRuntimeFact(
     ...(status.version === undefined ? {} : { version: status.version }),
     ready: status.ready === true,
     ...(status.note === undefined ? {} : { note: resolveNote(status.note) }),
+    ...(status.bridge?.extension === undefined ? {} : { extension: status.bridge.extension }),
+    ...(status.bridge?.connectivityMs === undefined
+      ? {}
+      : { connectivityMs: status.bridge.connectivityMs }),
+    ...(status.bridge?.stale === true ? { stale: true } : {}),
   };
 }

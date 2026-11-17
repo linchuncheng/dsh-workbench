@@ -1107,7 +1107,8 @@ check:release-packages → check:release-artifacts
 新克隆；`pnpm run duplication:accept` 重写基线（和代码一起提交），`pnpm run duplication:report`
 出 `coverage/duplication/` 下的 HTML / JSON 全量报告。扫描面（`packages/` 与 `scripts/` 的
 TS / JS，不含测试、构建产物与词典）在 `.jscpd.json` —— 词典是逐条平铺的键值表，同名同形的行
-在 Type-2 下会被当成克隆，那里没有可抽的逻辑。
+在 Type-2 下会被当成克隆，那里没有可抽的逻辑。纯 re-export 的 barrel（整份文件只有 `export` / `import`）
+由 `scripts/check-duplication.mjs` 在比对前滤掉，同理：那里没有可抽的东西。
 
 覆盖两档克隆：**完全相同**（Type-1）与**改了名**（Type-2，`ignoreIdentifiers` + `ignoreLiterals`）。
 Type-2 不是全能的：一段整体改名、结构又短的代码可能漏过，所以它比只查 Type-1 强，但不是保证。

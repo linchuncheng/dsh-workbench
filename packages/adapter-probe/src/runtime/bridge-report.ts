@@ -4,9 +4,7 @@ export type PreflightBridgeIssue = 'daemon' | 'extension' | 'profile' | 'stale' 
 
 export const BRIDGE_ISSUE_ORDER: readonly PreflightBridgeIssue[] = ['profile', 'stale', 'daemon', 'extension', 'unknown'];
 
-function jsonReportOf(text: string):
-  | { readonly ok: boolean; readonly issues: readonly PreflightBridgeIssue[]; readonly detail: string }
-  | undefined {
+function jsonReportOf(text: string): BridgeReport | undefined {
   const trimmed = text.trim();
   if (!trimmed.startsWith('{')) return undefined;
   let parsed: unknown;
@@ -38,6 +36,7 @@ function jsonReportOf(text: string):
       ok: true,
       issues: [],
       detail: [version, extension === '' ? '' : `扩展 ${extension}`].filter((one) => one !== '').join(' · '),
+      facts: factsOf(fields),
     };
   }
   const listed = Array.isArray(fields['issues'])
@@ -47,14 +46,42 @@ function jsonReportOf(text: string):
     ok: false,
     issues: BRIDGE_ISSUE_ORDER.filter((issue) => found.has(issue)),
     detail: listed.join('\n').trim(),
+    facts: factsOf(fields),
   };
 }
 
-export function readBridgeReport(stdout: string): {
+export interface BridgeReport {
   readonly ok: boolean;
   readonly issues: readonly PreflightBridgeIssue[];
   readonly detail: string;
-} {
+  readonly facts?: BridgeFacts;
+}
+
+export interface BridgeFacts {
+  readonly extension?: string;
+  readonly connectivityMs?: number;
+  readonly stale?: boolean;
+  readonly connected?: boolean;
+}
+
+function factsOf(fields: Readonly<Record<string, unknown>>): BridgeFacts {
+  const connectivity = fields['connectivity'];
+  const ms =
+    typeof connectivity === 'object' && connectivity !== null
+      ? (connectivity as Record<string, unknown>)['durationMs']
+      : undefined;
+  const extension = fields['extensionVersion'];
+  return {
+    ...(typeof extension === 'string' && extension.trim() !== '' ? { extension: extension.trim() } : {}),
+    ...(typeof ms === 'number' && Number.isFinite(ms) ? { connectivityMs: ms } : {}),
+    ...(fields['daemonStale'] === true ? { stale: true } : {}),
+    ...(typeof fields['extensionConnected'] === 'boolean'
+      ? { connected: fields['extensionConnected'] }
+      : {}),
+  };
+}
+
+export function readBridgeReport(stdout: string): BridgeReport {
   const text = String(stdout ?? '');
   const fromJson = jsonReportOf(text);
   if (fromJson !== undefined) return fromJson;

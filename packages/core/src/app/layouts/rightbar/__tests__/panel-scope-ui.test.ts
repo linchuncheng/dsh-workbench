@@ -221,7 +221,8 @@ describe('市场页头：动作在飞，页头与列表里的钮一起禁用', (
     expect(page).toContain('pluginsCheck={pluginsCheck}');
     expect(page).toContain('onPending={setActing}');
     expect(body).toContain('headAction={checks.modules}');
-    expect(body).toContain('headAction={checks.plugins}');
+    expect(body).toContain('checks.plugins');
+    expect(body).toContain('h(UpdateAllPlugins');
     expect(view).toContain('disabled: pending !== null');
     expect(check).toContain('variant="ghost"');
     expect(check).not.toContain('updatesCount');

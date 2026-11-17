@@ -29,6 +29,13 @@ export interface RuntimeProfile {
   readonly bridge?: Readonly<Partial<Record<string, RuntimeBridgeFix>>>;
 }
 
+export interface RuntimeBridgeStatus {
+  readonly extension?: string;
+  readonly connectivityMs?: number;
+  readonly stale?: boolean;
+  readonly connected?: boolean;
+}
+
 export interface RuntimeStatus {
   readonly command: string;
   readonly source: 'env' | 'isolated' | 'path';
@@ -36,4 +43,5 @@ export interface RuntimeStatus {
   readonly version?: string;
   readonly ready?: boolean;
   readonly note?: RuntimeText;
+  readonly bridge?: RuntimeBridgeStatus;
 }

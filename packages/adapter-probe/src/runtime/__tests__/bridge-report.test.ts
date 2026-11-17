@@ -94,3 +94,17 @@ describe('readBridgeReport：手上的 doctor 是 JSON 还是文本', () => {
     expect(report.issues).toEqual(['unknown']);
   });
 });
+
+describe('readBridgeReport：把 JSON 里的可用事实带出来', () => {
+  it('★ 正常时的 facts：扩展版本、连通耗时、连上了、不是旧进程', () => {
+    const report = readBridgeReport(jsonReport(GOOD));
+
+    expect(report.facts).toEqual({ extension: '1.0.27', connectivityMs: 13, connected: true });
+  });
+
+  it('★ daemon 旧进程时 facts.stale 为真（界面据此提示重启一次）', () => {
+    const report = readBridgeReport(jsonReport({ ...GOOD, daemonStale: true, issues: ['stale'] }));
+
+    expect(report.facts?.stale).toBe(true);
+  });
+});

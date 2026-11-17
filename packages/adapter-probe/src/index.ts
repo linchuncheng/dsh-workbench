@@ -1,5 +1,7 @@
 export * from './runtime/bootstrap-run.js';
 export * from './runtime/browser-wake.js';
+export * from './runtime/bridge-facts.js';
+export * from './runtime/bridge-report.js';
 export * from './preflight/diy-preset-health.js';
 export * from './runtime/platform.js';
 export * from './preflight/preflight-route.js';

@@ -9,6 +9,9 @@ export interface MarketRuntimeFact {
   readonly version?: string;
   readonly ready: boolean;
   readonly note?: string;
+  readonly extension?: string;
+  readonly connectivityMs?: number;
+  readonly stale?: boolean;
 }
 
 export interface MarketDetailFact {
@@ -145,6 +148,15 @@ export function marketDetailFacts(
         ? `${runtime.label}${runtime.version === undefined ? '' : ` ${runtime.version}`} · ${t('panels.market.detailRuntimeReady')}`
         : `${runtime.label} · ${runtime.note ?? t('panels.market.detailRuntimeUnknown')}`,
     );
+    if (runtime.extension !== undefined) {
+      addFact(facts, 'panels.market.detailExtension', t('panels.market.detailExtensionValue', { version: runtime.extension }));
+    }
+    if (runtime.connectivityMs !== undefined) {
+      addFact(facts, 'panels.market.detailBridge', t('panels.market.detailBridgeValue', { ms: String(runtime.connectivityMs) }));
+    }
+    if (runtime.stale === true) {
+      addFact(facts, 'panels.market.detailBridge', t('panels.market.detailBridgeStale'));
+    }
   }
   addFact(facts, 'panels.market.detailVersion', row.version?.installed);
   addFact(facts,

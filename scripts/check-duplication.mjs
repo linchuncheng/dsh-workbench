@@ -41,6 +41,29 @@ function readReport(file) {
   }
 }
 
+const barrelCache = new Map();
+
+function isBarrel(file) {
+  const cached = barrelCache.get(file);
+  if (cached !== undefined) return cached;
+  let verdict;
+  try {
+    const lines = readFileSync(file, 'utf8').split('\n');
+    const meaningful = lines
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith('//') && !line.startsWith('*') && !line.startsWith('/*'));
+    verdict = meaningful.length > 0 && meaningful.every((line) => /^(export|import)\b/.test(line));
+  } catch {
+    verdict = false;
+  }
+  barrelCache.set(file, verdict);
+  return verdict;
+}
+
+function withoutBarrelClones(clones) {
+  return clones.filter((clone) => !(isBarrel(clone.firstFile.name) && isBarrel(clone.secondFile.name)));
+}
+
 function check() {
   const output = mkdtempSync(join(tmpdir(), 'dsh-jscpd-'));
   let result;
@@ -53,7 +76,8 @@ function check() {
       return 2;
     }
     const total = report.statistics.total;
-    const fresh = (report.duplicates ?? []).filter((one) => one.isNew === true);
+    const clones = withoutBarrelClones(report.duplicates ?? []);
+    const fresh = clones.filter((one) => one.isNew === true);
     const percent = total.percentage.toFixed(2);
     if (fresh.length === 0) {
       console.log(`✔ 重复代码：${total.clones} 块 / ${total.duplicatedLines} 行（${percent}%）；没有新增克隆`);
