@@ -14,7 +14,8 @@ import {
   renderRecordRead,
   type RecordReadFacts,
 } from '../diy-record-text';
-import { RECORD_ARM_SCRIPT, RECORD_READ_SCRIPT, RECORD_STOP_SCRIPT } from '../diy-record-scripts';
+import { RECORD_ARM_SCRIPT } from '../diy-record-scripts';
+import { RECORD_READ_SCRIPT, RECORD_STOP_SCRIPT } from '../diy-record-read-scripts';
 import { GET, POST, URL, call } from '../../__tests__/record-fixtures';
 
 const facts = (over: Partial<RecordReadFacts> = {}): RecordReadFacts => ({

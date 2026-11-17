@@ -1,6 +1,7 @@
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
-import type { RecordExpect, RecordStore } from '@dsh-workbench/shared/host';
+import type { RecordExpect, RecordState, RecordStore } from '@dsh-workbench/shared/host';
 import { sessionIdOf, seamOf } from '@dsh-workbench/shared/host';
+import type { Seam } from '@dsh-workbench/shared/host';
 import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
 
 import { cliCommandOf } from '@dsh-workbench/shared/host';
@@ -8,37 +9,34 @@ import { artifactsDirOf } from '@/shared/api/host/diy-artifacts';
 import { asRecord, asText, OUTPUT, plainJson, unitsOf, workspaceOf } from './diy-context';
 import { holdNotice, noticeMessage } from '@/shared/api/host/diy-debug-act';
 import { readDesignOfModule } from '@/shared/api/host/diy-modules';
+import { plainLine, wireOf, type Wire } from './diy-browser';
 import { actBrowser } from './diy-browser-act';
+import { recordDetailToolOf } from './diy-record-detail-tool';
 import { stopLiveCapture } from '@/shared/api/host/diy-capture-live';
 import { openRecordPage } from './diy-record-open';
-import { bringBackWorkbench, frontAppNow, rememberWorkbenchApp } from './diy-record';
-import { RECORD_ARM_SCRIPT, RECORD_READ_SCRIPT, RECORD_STOP_SCRIPT } from './diy-record-scripts';
-import { captureEntriesOf, pickAllOf, pickOf } from './diy-record-capture';
+import { armRecordPage, bringBackWorkbench, frontAppNow, rememberWorkbenchApp } from './diy-record';
+import { browserRowsOf, surfaceOf } from '@/shared/api/host/runtime-surface';
+import { RECORD_READ_SCRIPT, RECORD_STOP_SCRIPT } from './diy-record-read-scripts';
 import {
+  armFailureText,
   bodyMissingOf,
   filterTextOf,
   moveOrThrow,
   probeCommandOf,
   recordMissingText,
   recordPageOf,
+  type RecordPageRead,
   recordTalkOf,
-  renderRecordDetail,
   renderRecordRead,
 } from './diy-record-text';
-import type { RecordPageRead } from './diy-record-text';
 import { DIY_RECORD_DETAIL_TOOL, DIY_RECORD_PREPARE_TOOL, DIY_RECORD_READ_TOOL, DIY_RECORD_STOP_TOOL } from '../unit';
 import {
-  DETAIL_MAX_BYTES,
   POLL_MS,
   WAIT_CAP_MS,
   bundleOf,
   captureFileOf,
-  captureLinesWithKeyOf,
   captureReadOf,
-  detailOfCall,
-  detailOfEntry,
   foreignDomainText,
-  hookCallOf,
   keepCaptureOf,
   lastCaptureFileOf,
   pauseFor,
@@ -47,6 +45,40 @@ import {
   waitOf,
   watchRecordFinish,
 } from './diy-record';
+
+async function stopPageOf(seam: Seam, command: string, wire: Wire): Promise<RecordPageRead> {
+  await armRecordPage(seam, command, BROWSER_RECORD_SESSION, wire);
+  const step = await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_STOP_SCRIPT], undefined, wire);
+  return recordPageOf(step.payload);
+}
+
+interface RecordDoor {
+  readonly seam: Seam;
+  readonly wire: Wire;
+  readonly sessionId: string;
+  readonly held: RecordState;
+  readonly command: string;
+}
+
+function doorOf(ctx: DshHostContext, store: RecordStore, exec: DshToolRunContext, missing: string): RecordDoor {
+  const seam = seamOf(ctx);
+  if (seam === undefined) throw new Error(missing);
+  const sessionId = sessionIdOf(exec) ?? '';
+  return {
+    seam,
+    wire: wireOf(ctx),
+    sessionId,
+    held: heldOf(store, sessionId),
+    command: cliCommandOf(ctx),
+  };
+}
+
+function heldOf(store: RecordStore, sessionId: string): RecordState {
+  const held = store.live(Date.now());
+  if (held === null) throw new Error(recordMissingText());
+  if (held.sessionId !== sessionId) moveOrThrow({ ok: false, code: 'not-owner' }, held);
+  return held;
+}
 
 export function registerRecordTools(ctx: DshHostContext, store: RecordStore): readonly (() => void)[] {
   const tools = ctx.get('tools') as DshToolRegistry | undefined;
@@ -109,6 +141,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
       const expect: RecordExpect | null = method === '' && urlContains === '' ? null : { method, urlContains };
       const seam = seamOf(ctx);
       if (seam === undefined) throw new Error('这台机器上没有 shell 服务，无法打开录制窗口');
+      const wire = wireOf(ctx);
       const command = cliCommandOf(ctx);
       const sessionId = sessionIdOf(exec) ?? '';
       const held = store.live(Date.now());
@@ -131,16 +164,37 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
 
       rememberWorkbenchApp(await frontAppNow(ctx));
       try {
-        const opened = await openRecordPage({ seam, command, session: BROWSER_RECORD_SESSION, url, captureFile });
+        const opened = await openRecordPage({
+          seam,
+          command,
+          session: BROWSER_RECORD_SESSION,
+          url,
+          captureFile,
+          wire,
+        });
         if (!opened.ok) throw new Error(opened.why);
-        const armed = await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_ARM_SCRIPT]);
-        const page = recordPageOf(armed.payload);
-        if (!armed.ok || !page.ok) {
-          throw new Error(`浮条安装失败：${armed.stderr || armed.stdout || '页面仍在加载'}。请等用户页面加载完成后再试。`);
+        const armed = await armRecordPage(seam, command, BROWSER_RECORD_SESSION, wire, { reset: true });
+        const page = recordPageOf(armed.step.payload);
+        if (!armed.step.ok || !page.ok) {
+          throw new Error(
+            armFailureText({
+              raw: armed.step.stderr || armed.step.stdout,
+              code: page.code,
+              part: armed.part,
+              parts: armed.parts,
+            }),
+          );
         }
         stopLiveCapture(captureFile);
-        const capture = await startRecordCapture(seam, command, BROWSER_RECORD_SESSION, captureFile);
-        watchRecordFinish({ ctx, seam, command, sessionId, store, url, captureFile });
+        const capture = await startRecordCapture(
+          seam,
+          command,
+          BROWSER_RECORD_SESSION,
+          captureFile,
+          browserRowsOf(ctx),
+          surfaceOf(ctx)?.background ?? plainLine,
+        );
+        watchRecordFinish({ ctx, seam, command, sessionId, store, url, captureFile, wire });
         const talk = recordTalkOf();
         return plainJson({
           workspace: root,
@@ -180,13 +234,12 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
     },
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
-      const seam = seamOf(ctx);
-      if (seam === undefined) throw new Error('这台机器上没有 shell 服务，无法读取录制');
-      const sessionId = sessionIdOf(exec) ?? '';
-      const held = store.live(Date.now());
-      if (held === null) throw new Error(recordMissingText());
-      if (held.sessionId !== sessionId) moveOrThrow({ ok: false, code: 'not-owner' }, held);
-      const command = cliCommandOf(ctx);
+      const { seam, wire, sessionId, held, command } = doorOf(
+        ctx,
+        store,
+        exec,
+        '这台机器上没有 shell 服务，无法读取录制',
+      );
       const budget = waitOf(asRecord(raw)['waitMs']);
       const opened = budget === 0 ? 0 : Date.now();
       const deadline = opened + budget;
@@ -205,14 +258,28 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
       let stepOk = true;
       let page = recordPageOf(undefined);
       if (!over) {
-        await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_ARM_SCRIPT]);
-        let step = await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_READ_SCRIPT]);
+        await armRecordPage(seam, command, BROWSER_RECORD_SESSION, wire);
+        let step = await actBrowser(
+          seam,
+          command,
+          BROWSER_RECORD_SESSION,
+          ['eval', RECORD_READ_SCRIPT],
+          undefined,
+          wire,
+        );
         page = recordPageOf(step.payload);
         stepOk = step.ok;
         sync(page);
         while (budget > 0 && page.phase !== 'finished' && Date.now() < deadline) {
           await pauseFor(Math.min(POLL_MS, Math.max(0, deadline - Date.now())));
-          step = await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_READ_SCRIPT]);
+          step = await actBrowser(
+            seam,
+            command,
+            BROWSER_RECORD_SESSION,
+            ['eval', RECORD_READ_SCRIPT],
+            undefined,
+            wire,
+          );
           const next = recordPageOf(step.payload);
           if (next.ok) page = next;
           sync(page);
@@ -233,7 +300,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
       const state = store.live(Date.now()) ?? held;
       const ledger = state.shots;
       const capture = captureReadOf(state.captureFile);
-      const bundle = bundleOf(capture, page, state);
+      const bundle = bundleOf(capture, page, state, browserRowsOf(ctx));
       const hookCaught = page.calls.length;
       const nav = page.href !== '' && page.here !== '' && page.href !== page.here;
       const noBody = bodyMissingOf(bundle.merged);
@@ -289,119 +356,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
     },
   };
 
-  const detailTool: DshToolDefinition = {
-    name: DIY_RECORD_DETAIL_TOOL,
-    description:
-      '读取本次录制中某条请求的原文（request / response body）。先用 record_read 取清单（每条带 key），再挑一条；清单不删条。',
-    parameters: {
-      type: 'object',
-      properties: {
-        key: { type: 'string', description: '清单中该条的 key（原样传入，含 #2 后缀）。' },
-        index: { type: 'integer', description: '清单序号（从 0 开始）；仅在录制进行时可用。' },
-        at: {
-          type: 'integer',
-          description: '清单中该行的 at（毫秒时间戳）；同一 key 跨轮重名，带上即可定位。',
-        },
-        unit: { type: 'string', description: '录制已结束、只能读 rec-<unit>.jsonl.last 时提供。' },
-        maxBody: {
-          type: 'integer',
-          description: `入参 / 出参各自最多回多少字符（默认 ${String(DETAIL_MAX_BYTES)}，0 = 不限）。`,
-        },
-      },
-      additionalProperties: false,
-    },
-    output: OUTPUT,
-    async execute(raw: unknown, exec: DshToolRunContext) {
-      const { root } = await workspaceOf(ctx, exec);
-      const artifactsDir = artifactsDirOf(root);
-      const seam = seamOf(ctx);
-      if (seam === undefined) throw new Error('这台机器上没有 shell 服务，无法读取详情');
-      const args = asRecord(raw);
-      const unit = asText(args['unit']);
-      const askedKey = asText(args['key']).trim();
-      const rawIndex = args['index'];
-      const index = typeof rawIndex === 'number' && Number.isFinite(rawIndex) ? Math.floor(rawIndex) : null;
-      const rawAt = args['at'];
-      let at = typeof rawAt === 'number' && Number.isFinite(rawAt) ? Math.floor(rawAt) : null;
-      const rawMax = args['maxBody'];
-      const maxBytes =
-        typeof rawMax === 'number' && Number.isFinite(rawMax) && rawMax >= 0 ? Math.floor(rawMax) : DETAIL_MAX_BYTES;
-      const sessionId = sessionIdOf(exec) ?? '';
-      const held = store.live(Date.now());
-      if (held !== null && held.sessionId !== sessionId) moveOrThrow({ ok: false, code: 'not-owner' }, held);
-      const file =
-        held !== null ? held.captureFile : unit === '' ? '' : lastCaptureFileOf(captureFileOf(artifactsDir, unit));
-      if (file === '') {
-        throw new Error(
-          `本次录制已不存在（已结束、已过期，或不属于当前会话）。请提供 unit（我会从取证目录读取 rec-<unit>.jsonl.last），或重新 ${DIY_RECORD_PREPARE_TOOL} 一场。`,
-        );
-      }
-      const command = cliCommandOf(ctx);
-      let key = askedKey;
-      let page: RecordPageRead | null = null;
-      if (key === '') {
-        if (index === null) throw new Error('请提供 key（清单中该条的 key）或 index（清单中的序号）。');
-        if (held === null) {
-          throw new Error('结束之后只能使用 key：index 是"该场清单中"的序号，本场清单已清除。');
-        }
-        page = recordPageOf(
-          (await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_READ_SCRIPT])).payload,
-        );
-        const bundle = bundleOf(captureReadOf(file), page, held);
-        const row = bundle.rows[index];
-        if (row === undefined) {
-          throw new Error(
-            `该段清单中没有第 ${String(index)} 条（共 ${String(bundle.rows.length)} 条）。请先调用 ${DIY_RECORD_READ_TOOL} 获取最新清单。`,
-          );
-        }
-        key = row.key;
-        at = at ?? row.at;
-        if (key === '') {
-          const only = hookCallOf(page, `${row.method} ${row.url}`);
-          if (only !== null) return detailOfCall(only, maxBytes);
-        }
-      }
-      const candidates = pickAllOf(captureEntriesOf(captureLinesWithKeyOf(file, key)), key);
-      const fromCapture = pickOf(candidates, key, at);
-      if (fromCapture !== null) {
-        return detailOfEntry(fromCapture, maxBytes, candidates.length);
-      }
-      const over = held === null || held.phase === 'finished';
-      const livePage =
-        page !== null || over
-          ? page
-          : recordPageOf((await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_READ_SCRIPT])).payload);
-      const call = livePage === null ? null : hookCallOf(livePage, key);
-      if (call !== null) return detailOfCall(call, maxBytes);
-      return plainJson({
-        ok: true,
-        found: false,
-        key,
-        text: renderRecordDetail({
-          found: false,
-          where: '',
-          method: '',
-          url: '',
-          status: 0,
-          ct: '',
-          at: 0,
-          request: '',
-          response: '',
-          headers: '',
-          requestFullSize: 0,
-          responseFullSize: 0,
-          requestSizeExact: false,
-          responseSizeExact: false,
-          ambiguous: 0,
-          source: '',
-          maxBytes,
-          note: over
-            ? `「${key}」不在该场录制的快照原文（${file}）中。该场录制已结束，页面也已关闭，无法从页面钩子读取。`
-            : `「${key}」既不在该场录制的快照原文（${file}）中，也不在该页面的钩子记录中。`,
-        }),
-      });
-    },
-  };
+  const detailTool = recordDetailToolOf(ctx, store);
 
   const stopTool: DshToolDefinition = {
     name: DIY_RECORD_STOP_TOOL,
@@ -409,19 +364,17 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     output: OUTPUT,
     async execute(_raw: unknown, exec: DshToolRunContext) {
-      const seam = seamOf(ctx);
-      if (seam === undefined) throw new Error('这台机器上没有 shell 服务，无法结束录制');
-      const sessionId = sessionIdOf(exec) ?? '';
-      const held = store.live(Date.now());
-      if (held === null) throw new Error(recordMissingText());
-      if (held.sessionId !== sessionId) moveOrThrow({ ok: false, code: 'not-owner' }, held);
-      const command = cliCommandOf(ctx);
-      await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_ARM_SCRIPT]);
-      const finalStep = await actBrowser(seam, command, BROWSER_RECORD_SESSION, ['eval', RECORD_STOP_SCRIPT]);
-      const page = recordPageOf(finalStep.payload);
+      const { seam, wire, sessionId, held, command } = doorOf(
+        ctx,
+        store,
+        exec,
+        '这台机器上没有 shell 服务，无法结束录制',
+      );
+      const page = held.phase === 'finished' ? recordPageOf(undefined) : await stopPageOf(seam, command, wire);
       const capture = captureReadOf(held.captureFile);
-      const bundle = bundleOf(capture, page, held);
+      const bundle = bundleOf(capture, page, held, browserRowsOf(ctx));
       const hookCaught = page.calls.length;
+      const hookText = page.ok ? `页面钩子 ${String(hookCaught)} 条` : '页面钩子已随窗口关闭，条数读不到了';
       const noBody = bodyMissingOf(bundle.merged);
       const kept = keepCaptureOf(held.captureFile);
       const cleaned = await releaseQuietly({
@@ -430,8 +383,9 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
         session: BROWSER_RECORD_SESSION,
         url: held.url,
         captureFile: held.captureFile,
+        wire,
       });
-      await bringBackWorkbench(ctx);
+      const back = await bringBackWorkbench(ctx);
       store.stop(sessionId, Date.now());
       const probeCommand = probeCommandOf(bundle.merged);
       const lastFile = lastCaptureFileOf(held.captureFile);
@@ -449,7 +403,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
         probeCommand,
         cleaned: { ...cleaned, hook: page.ok && page.unhooked },
         text: [
-          `录制已结束：${held.unit} 的「${held.action}」该段共 ${String(bundle.merged.length)} 条请求（页面钩子 ${String(hookCaught)} 条；会话捕获该段 ${String(bundle.inside.length)} 条）。`,
+          `录制已结束：${held.unit} 的「${held.action}」该段共 ${String(bundle.merged.length)} 条请求（${hookText}；会话捕获该段 ${String(bundle.inside.length)} 条）。`,
           kept
             ? `原文保留在 ${lastFile}（下一场 prepare 会清除）。如需查看某一条，请使用 ${DIY_RECORD_DETAIL_TOOL}：提供 unit + key；同一个 key 跨轮会重名，再带上清单中该行的 at 即可准确定位。`
             : '未保留原文（本场捕获文件为空或捕获未启动）。如需某一条，请让用户从 DevTools 复制 curl。',
@@ -457,6 +411,7 @@ export function registerRecordTools(ctx: DshHostContext, store: RecordStore): re
             ? '（会话捕获最近一轮未成功，本场可能只有页面钩子。）'
             : '',
           cleaned.tab ? '录制窗口的标签已关闭。' : '该标签未关闭，请用户手动关闭。',
+          back ? '已把工作台那一页调回前台。' : '没能自动切回工作台，请用户自己切一下。',
           cleaned.capture ? '' : '捕获进程未完全停止（最多 15 分钟自动结束）。',
           probeCommand !== ''
             ? '这段原文可以直接写入 design.json 的 writes[].probeCommand。'

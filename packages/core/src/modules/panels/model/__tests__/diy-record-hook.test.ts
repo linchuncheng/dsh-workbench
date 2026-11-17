@@ -110,7 +110,8 @@ describe('门铃（页面内计数 + 唤醒）：零网络请求，宿主那条 
     const second = await readPage(harness);
     expect(second['beatKind']).toBe('shot');
 
-    buttonOf(harness, '结束录制').onclick?.();
+    (buttonOf(harness, '结束录制').onclick as (event: { detail: number }) => void)({ detail: 1 });
+    (buttonOf(harness, '结束录制').onclick as (event: { detail: number }) => void)({ detail: 1 });
     expect(harness.storage.raw(RECORD_KEEP_KEY)?.['beatN']).toBe(3);
     const third = await readPage(harness);
     expect(third['beatKind']).toBe('stop');

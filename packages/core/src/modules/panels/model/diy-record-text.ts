@@ -91,6 +91,24 @@ export function filterTextOf(expect: RecordExpect | null): string {
   return parts.join(' · ');
 }
 
+export function armFailureText(input: {
+  readonly raw: string;
+  readonly code: string;
+  readonly part: number;
+  readonly parts: number;
+}): string {
+  const raw = input.raw.trim();
+  const where = `第 ${String(input.part)}/${String(input.parts)} 段`;
+  if (/too long|E2BIG|argument list too long/i.test(raw)) {
+    return `浮条注入失败：${where}命令超过 Windows 的命令行上限（8191 字符）。重试无效；把这条原文与 Windows 版本报给维护者。`;
+  }
+  if (raw === '') {
+    const code = input.code === '' ? '页面没有回话' : input.code;
+    return `浮条注入失败：${where}没有生效（${code}）。等页面加载完再试一次；仍是这个结果就报给维护者。`;
+  }
+  return `浮条注入失败：${where}报错 ${raw}。等页面加载完再试一次；仍是这条原文就跑一次运行时自检（doctor），看扩展连没连上。`;
+}
+
 export function probeCommandOf(calls: readonly RecordCall[]): string {
   const pick = calls.find((one) => one.body !== '');
   if (pick === undefined) return '';

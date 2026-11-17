@@ -1,5 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { OPENCLI_PIN, OPENCLI_PIN_ENV, runtimePinOf } from '@dsh-workbench/shared/host';
+import { OPENCLI_SUPPORTED_RANGE, checkVersionRange } from '@dsh-workbench/shared/host';
 
 export type OpencliVersionRun =
   | { kind: 'ok'; stdout: string }
@@ -39,8 +39,8 @@ export async function probeOpencliVersion(input: VersionProbeInput): Promise<Ope
   if (result.kind === 'ok') {
     const detail = result.stdout.trim().split('\n')[0] ?? '';
     const version = versionOf(detail);
-    if (version !== undefined && version !== runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)) {
-      return { ok: false, missing: true, detail: `装的是 ${version}，这个版本要 ${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)}`, stalled: false };
+    if (version !== undefined && checkVersionRange(OPENCLI_SUPPORTED_RANGE, version) === 'unsatisfied') {
+      return { ok: false, missing: true, detail: `装的是 ${version}，这段只认 ${OPENCLI_SUPPORTED_RANGE}`, stalled: false };
     }
     return { ok: true, missing: false, detail, stalled: false };
   }

@@ -1,11 +1,6 @@
 import { existsSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs';
-import {
-  appendTextFile,
-  productWrite,
-  sessionArgv,
-  writeTextFile,
-  type Seam,
-} from '@dsh-workbench/shared/host';
+import type { BrowserCaptureRow } from '@dsh-workbench/shared/host';
+import { appendTextFile, asRecord, productWrite, writeTextFile, type Seam } from '@dsh-workbench/shared/host';
 
 export const LIVE_POLL_MS = 3000;
 export const LIVE_ARM_MS = 2000;
@@ -17,25 +12,32 @@ export const STATIC_URL_PATTERN = `^(data:)|(\\.(js|css|png|jpe?g|gif|svg|woff2?
 
 const STATIC_URL = new RegExp(STATIC_URL_PATTERN, 'i');
 
+export type CaptureRowReader = (text: string) => readonly BrowserCaptureRow[];
+
 interface LiveCapture {
   readonly file: string;
   readonly seam: Seam;
   readonly command: string;
   readonly session: string;
+  readonly line: LiveLine | undefined;
+  readonly rows: CaptureRowReader | undefined;
   timer: ReturnType<typeof setTimeout> | undefined;
   stopped: boolean;
 }
 
 const LIVE = new Map<string, LiveCapture>();
 
-function plainOf(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
-}
+export type LiveLine = (command: string, argv: readonly string[]) => string;
 
-function argvOf(command: string, session: string, args: readonly string[]): string[] {
-  return [command === '' ? 'runtime' : command, ...sessionArgv(['browser', session, ...args]), '--window', 'background'];
+function requestOf(
+  line: LiveLine | undefined,
+  command: string,
+  session: string,
+  args: readonly string[],
+): { readonly argv: string[] } | { readonly command: string } {
+  const bin = command === '' ? 'runtime' : command;
+  const argv = ['browser', session, ...args, '--window', 'background'];
+  return line === undefined ? { argv: [bin, ...argv] } : { command: line(bin, argv) };
 }
 
 function parsedRecord(text: string): Record<string, unknown> | undefined {
@@ -45,12 +47,12 @@ function parsedRecord(text: string): Record<string, unknown> | undefined {
   } catch {
     return undefined;
   }
-  return plainOf(parsed);
+  return asRecord(parsed);
 }
 
 function withoutStatic(record: Record<string, unknown>): string {
   const entries = Array.isArray(record['entries']) ? (record['entries'] as unknown[]) : [];
-  const inside = entries.filter((one) => !STATIC_URL.test(String(plainOf(one)?.['url'] ?? '')));
+  const inside = entries.filter((one) => !STATIC_URL.test(String(asRecord(one)?.['url'] ?? '')));
   return inside.length === 0 ? '' : JSON.stringify({ ...record, entries: inside });
 }
 
@@ -78,15 +80,17 @@ export async function captureTickOnce(
   session: string,
   file: string,
   timeoutMs = LIVE_SNAP_TIMEOUT_MS,
+  rows?: CaptureRowReader,
+  line?: LiveLine,
 ): Promise<string> {
   const step = await seam.run({
-    argv: argvOf(command, session, ['network', '--all', '--raw']),
+    ...requestOf(line, command, session, ['network', '--all', '--raw']),
     intent: productWrite(),
     timeoutMs,
   });
   const round = step.exitCode === 0 ? 'ok' : 'fail';
   writeTextFile(`${file}.first`, round);
-  const text = filterStaticLines(step.stdout);
+  const text = rows === undefined ? filterStaticLines(step.stdout) : normalizedOf(rows, step.stdout);
   if (text !== '') appendTextFile(file, `${text}\n`);
   return round;
 }
@@ -96,24 +100,26 @@ export async function startLiveCapture(input: {
   readonly command: string;
   readonly session: string;
   readonly file: string;
+  readonly rows?: CaptureRowReader | undefined;
+  readonly line?: LiveLine | undefined;
 }): Promise<boolean> {
-  const { seam, command, session, file } = input;
+  const { seam, command, session, file, line } = input;
   stopLiveCapture(file);
   writeTextFile(file, '');
   for (const suffix of ['.first', '.last', '.round', '.pid', '.reaper']) rmSync(`${file}${suffix}`, { force: true });
   try {
     const arm = await seam.run({
-      argv: argvOf(command, session, ['network', '--follow', '--all']),
+      ...requestOf(line, command, session, ['network', '--follow', '--all']),
       intent: productWrite(),
       timeoutMs: LIVE_ARM_MS,
     });
     if (!arm.timedOut && arm.exitCode !== 0) return false;
-    const text = arm.stdout.trim();
+    const text = input.rows === undefined ? arm.stdout.trim() : normalizedOf(input.rows, arm.stdout).trim();
     if (text !== '') appendTextFile(file, `${text}\n`);
   } catch {
     return false;
   }
-  const entry: LiveCapture = { file, seam, command, session, timer: undefined, stopped: false };
+  const entry: LiveCapture = { file, seam, command, session, line, rows: input.rows, timer: undefined, stopped: false };
   LIVE.set(file, entry);
   scheduleTick(entry);
   return true;
@@ -129,12 +135,30 @@ function scheduleTick(entry: LiveCapture): void {
 async function runTick(entry: LiveCapture): Promise<void> {
   if (entry.stopped) return;
   try {
-    await captureTickOnce(entry.seam, entry.command, entry.session, entry.file);
+    await captureTickOnce(
+      entry.seam,
+      entry.command,
+      entry.session,
+      entry.file,
+      LIVE_SNAP_TIMEOUT_MS,
+      entry.rows,
+      entry.line,
+    );
   } catch {
     entry.timer = undefined;
   }
   if (entry.stopped) return;
   scheduleTick(entry);
+}
+
+function normalizedOf(rows: CaptureRowReader, raw: string): string {
+  try {
+    return rows(raw)
+      .map((one) => JSON.stringify(one))
+      .join('\n');
+  } catch {
+    return filterStaticLines(raw);
+  }
 }
 
 export function stopLiveCapture(file: string): boolean {
@@ -157,6 +181,16 @@ function readText(file: string): string {
     return readFileSync(file, 'utf8');
   } catch {
     return '';
+  }
+}
+
+export function appendCaptureLine(file: string, line: string): boolean {
+  if (line === '') return false;
+  try {
+    appendTextFile(file, `${line}\n`);
+    return true;
+  } catch {
+    return false;
   }
 }
 

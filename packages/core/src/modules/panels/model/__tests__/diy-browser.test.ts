@@ -3,7 +3,7 @@ import { plainLine } from '../diy-browser';
 import type { DshShell } from '@dsh-workbench/shared/host';
 import { quoteShellArg } from '@dsh-workbench/shared/host';
 import { actBrowser } from '../diy-browser-act';
-import { bindCurrentTab, jsonOf, readyPageOf, runBrowserStep, runForegroundStep, writeShotsDir } from '../diy-browser';
+import { bindCurrentTab, jsonOf, payloadOf, readyPageOf, runBrowserStep, runForegroundStep, writeShotsDir } from '../diy-browser';
 import { cardSelectorOf } from '../diy-scripts';
 import { fakeSeamOf } from '../../__tests__/seam-fake';
 
@@ -53,7 +53,7 @@ describe('跑一条 opencli：argv 原样交给执行缝，窗口模式钉在 en
       'opencli',
       ['browser', 'workbench', 'state', '--source', 'ax', '--window', 'background'],
       undefined,
-      backgroundLine,
+      { line: backgroundLine },
     );
 
     expect(rig.lines[0]).toBe(
@@ -68,7 +68,7 @@ describe('跑一条 opencli：argv 原样交给执行缝，窗口模式钉在 en
     const slow = fakeShell([{ timedOut: true, exitCode: null }]);
     const cut = fakeShell([{ stdout: 'x', truncated: true }]);
 
-    expect(await runBrowserStep(failed.seam, 'opencli', ['browser', 'workbench', 'state'], undefined, backgroundLine)).toMatchObject({
+    expect(await runBrowserStep(failed.seam, 'opencli', ['browser', 'workbench', 'state'], undefined, { line: backgroundLine })).toMatchObject({
       ok: false,
       exitCode: 3,
       timedOut: false,
@@ -76,11 +76,11 @@ describe('跑一条 opencli：argv 原样交给执行缝，窗口模式钉在 en
       stdout: 'out',
       stderr: 'boom',
     });
-    expect(await runBrowserStep(slow.seam, 'opencli', ['browser', 'workbench', 'state'], undefined, backgroundLine)).toMatchObject({
+    expect(await runBrowserStep(slow.seam, 'opencli', ['browser', 'workbench', 'state'], undefined, { line: backgroundLine })).toMatchObject({
       ok: false,
       timedOut: true,
     });
-    expect(await runBrowserStep(cut.seam, 'opencli', ['browser', 'workbench', 'state'], undefined, backgroundLine)).toMatchObject({
+    expect(await runBrowserStep(cut.seam, 'opencli', ['browser', 'workbench', 'state'], undefined, { line: backgroundLine })).toMatchObject({
       ok: true,
       truncated: true,
     });
@@ -124,7 +124,7 @@ describe('抠 JSON 与那一页的握手', () => {
 
   it('★ 连不上/不是工作台都有话说（不给用户看一句空错）', async () => {
     const bad = fakeShell([{ stdout: JSON.stringify({ error: { code: 'no-extension', message: '扩展没连上' } }) }]);
-    const bound = await bindCurrentTab(bad.seam, 'opencli', 'workbench', undefined, backgroundLine);
+    const bound = await bindCurrentTab(bad.seam, 'opencli', 'workbench', undefined, { line: backgroundLine });
 
     expect(bound.ok).toBe(false);
     expect(bound.reason).toContain('扩展没连上');
@@ -177,10 +177,39 @@ describe('抠 JSON 与那一页的握手', () => {
   });
 });
 
-describe('会话参数：2.x 只认 --session', () => {
-  it('★ plainLine 把 browser <session> 改写成 browser --session <session>', () => {
+describe('运行时输出怎么读：由命令面决定，外壳只负责托着', () => {
+  const read = (raw: string): unknown => {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return parsed;
+    const box = parsed as Record<string, unknown>;
+    if (typeof box['ok'] !== 'boolean') return parsed;
+    return typeof box['data'] === 'string' ? JSON.parse(box['data']) : box['data'];
+  };
+
+  it('★★ 没有读法就按裸 JSON 读（1.x 的集合）；给了读法就用它拆', () => {
+    expect(payloadOf(JSON.stringify({ href: 'u' }))).toMatchObject({ href: 'u' });
+    expect(payloadOf(JSON.stringify({ ok: true, data: { href: 'u' } }))).toMatchObject({ ok: true });
+    expect(payloadOf(JSON.stringify({ ok: true, data: { href: 'u' } }), read)).toMatchObject({ href: 'u' });
+  });
+
+  it('★★ 那一页的握手把同一个读法传下去（2.x 的 data 里才有 url / title）', async () => {
+    const rig = fakeShell([
+      {
+        stdout: JSON.stringify({
+          ok: true,
+          data: { plugin: '@dsh-workbench/core', pid: 1, url: 'http://127.0.0.1:3081/', title: '工作台' },
+        }),
+      },
+    ]);
+    expect(await readyPageOf(rig.seam, 'opencli', 'workbench', { read })).toMatchObject({ ok: true, bound: false });
+  });
+});
+
+describe('会话方言归命令面，外壳只给原始 argv', () => {
+  it('★★ plainLine 不自己加 --session：方言由适配器的命令面决定', () => {
     const line = plainLine('opencli', ['browser', 'Record', 'eval', '1+1', '--window', 'background']);
 
-    expect(line).toBe("'opencli' 'browser' '--session' 'Record' 'eval' '1+1' '--window' 'background'");
+    expect(line).toBe("'opencli' 'browser' 'Record' 'eval' '1+1' '--window' 'background'");
+    expect(line).not.toContain('--session');
   });
 });

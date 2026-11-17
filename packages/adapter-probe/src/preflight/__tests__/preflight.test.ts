@@ -302,10 +302,10 @@ describe('createPreflight', () => {
     expect(snapshot.error).toContain('TypeError');
   });
 
-  it('★ 盘上跑的是旧版本 → 按未就绪重装，不把旧副本当通过', async () => {
+  it('★★ 盘上出了支持范围（3.0.0）→ 按未就绪重装，不把不该用的副本当通过', async () => {
     const install = vi.fn(async () => ({ ok: true, detail: 'installed' }));
     const { fake, preflight } = build(
-      [{ stdout: '2.0.2\n' }, { stdout: '2.0.3\n' }, { stdout: 'ok\n' }],
+      [{ stdout: '3.0.0\n' }, { stdout: '2.0.3\n' }, { stdout: 'ok\n' }],
       install,
     );
 

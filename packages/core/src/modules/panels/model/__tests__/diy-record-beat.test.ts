@@ -4,7 +4,7 @@ import type { DshHostContext, DshShell } from '@dsh-workbench/shared/host';
 import type { Seam } from '@dsh-workbench/shared/host';
 import { takeHeldNotices } from '@/shared/api/host/diy-debug-act';
 import { createDiyRig } from '../../__tests__/diy-harness';
-import { ARM_OK, POST, URL, heldStore, line } from '../../__tests__/record-fixtures';
+import { armProbe, POST, URL, heldStore, line } from '../../__tests__/record-fixtures';
 import { STATIC_URL_PATTERN, watchRecordFinish, watchRoundOf } from '../diy-record';
 import { fakeSeamOf } from '../../__tests__/seam-fake';
 import { DIY_RECORD_READ_TOOL } from '../../unit';
@@ -140,7 +140,7 @@ describe('录制交接的门铃：页面内长轮询（每一轮一条 eval，�
       pact: false,
       record,
       probe: [
-        { stdout: ARM_OK({ phase: 'finished' }) },
+        ...armProbe({ phase: 'finished' }),
         {
           stdout: JSON.stringify({
             ok: true,

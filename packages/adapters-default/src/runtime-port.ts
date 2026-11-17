@@ -9,6 +9,10 @@ import { lastBridgeFacts, rememberFrontApp, restoreFocus } from '@dsh-workbench/
 import {
   ensureLibsOpencliPeer,
   ensureVendorOpencliPeer,
+  opencliBrowserCaptureOf,
+  installedOpencliVersion,
+  opencliResultOf,
+  sessionDialectOf,
   opencliCommandOf,
   opencliHandshakeOk,
   opencliHandshakeNote,
@@ -126,7 +130,10 @@ export function createRuntimePort(): RuntimePort {
           command === undefined || command === '' ? `opencli ${site}` : `opencli ${site} ${command}`,
         help: (site: string) => `opencli ${site} --help`,
         browser: (verb: readonly string[]) => `opencli browser ${verb.join(' ')}`,
-        background: (command: string, argv: readonly string[]) => backgroundLine(command, argv),
+        commandResult: (stdout: string) => opencliResultOf(stdout),
+        browserCapture: (text: string) => opencliBrowserCaptureOf(text),
+        background: (command: string, argv: readonly string[]) =>
+          backgroundLine(command, argv, { dialect: sessionDialectOf(installedOpencliVersion()) }),
         authorHint: 'opencli skills read opencli-adapter-author',
       };
     },

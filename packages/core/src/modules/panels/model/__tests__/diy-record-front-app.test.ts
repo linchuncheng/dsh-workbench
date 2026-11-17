@@ -32,7 +32,7 @@ describe('结束录制后把工作台带回前台', () => {
     expect(asked).toEqual(['DeepSeek Harness']);
   });
 
-  it('★ 只带一次：第二回没东西可带，也不再问适配器', async () => {
+  it('★ 记到就一直带：两处收工（看守与 stop）都问得着，下一场 prepare 才覆盖', async () => {
     const asked: string[] = [];
     const ctx = ctxWith({
       bringToFront: async (_ctx, app) => {
@@ -43,8 +43,8 @@ describe('结束录制后把工作台带回前台', () => {
     rememberWorkbenchApp('DeepSeek Harness');
 
     expect(await bringBackWorkbench(ctx)).toBe(true);
-    expect(await bringBackWorkbench(ctx)).toBe(false);
-    expect(asked).toHaveLength(1);
+    expect(await bringBackWorkbench(ctx)).toBe(true);
+    expect(asked).toHaveLength(2);
   });
 
   it('★ 没记到 / 适配器没有这个能力 → 什么都不做，不猜应用名', async () => {

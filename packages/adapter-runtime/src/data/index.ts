@@ -29,6 +29,7 @@ import type {
   RequestRecipe,
   SubmitPlanOptions,
 } from '@dsh-workbench/shared/host';
+import { opencliResultOf } from '../cli/opencli-wire.js';
 import { browserRead, type BrowserReadResult } from '../browser/index.js';
 import { attachOf } from './attachment.js';
 import { readHttp } from './http.js';
@@ -242,12 +243,8 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
     if (result.aborted) return failure('aborted', '已停止', { pageCode: 'aborted' });
     if (result.timedOut) return failure('timeout', `通道读超时（${call.timeoutMs}ms）`);
     if (result.exitCode !== 0) return undefined;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(result.stdout);
-    } catch {
-      return undefined;
-    }
+    const parsed = opencliResultOf(result.stdout);
+    if (parsed === undefined) return undefined;
     const box = asRecord(parsed);
     if (box === undefined) return undefined;
     if (box['ok'] !== true) {

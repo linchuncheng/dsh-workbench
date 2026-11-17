@@ -1,12 +1,19 @@
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { OPENCLI_PIN, OPENCLI_PIN_ENV, checkVersionRange, runtimePinOf } from '@dsh-workbench/shared/host';
+import {
+  OPENCLI_PIN,
+  OPENCLI_PIN_ENV,
+  OPENCLI_SUPPORTED_RANGE,
+  checkVersionRange,
+  runtimePinOf,
+} from '@dsh-workbench/shared/host';
 import { toolchainOpencliDir, vendorPluginsDir } from '../foundation/paths.js';
 import { pluginPeerProblems, type PluginPeerProblem } from './plugin-peers.js';
 import { jsonAt as jsonOf, textOf } from './json-file.js';
 
 export interface OpencliVersionReport {
   readonly pin: string;
+  readonly range: string;
   readonly cli?: string;
   readonly channel?: string;
   readonly peer: string;
@@ -29,19 +36,23 @@ export function opencliVersionReport(): OpencliVersionReport {
   const cli = textOf(jsonOf(join(toolchainOpencliDir(), 'package.json'))?.['version']);
   const channel = textOf(jsonOf(join(opencliChannelDir(), 'opencli-plugin.json'))?.['version']);
   const peer = opencliPeerRange();
-  const peerProblems = pluginPeerProblems(pin);
+  const peerProblems = pluginPeerProblems(cli ?? pin);
   return {
     pin,
+    range: OPENCLI_SUPPORTED_RANGE,
     ...(cli === undefined ? {} : { cli }),
     ...(channel === undefined ? {} : { channel }),
     peer,
     peerProblems,
-    compatible: checkVersionRange(peer, pin) !== 'unsatisfied' && peerProblems.length === 0,
+    compatible:
+      checkVersionRange(OPENCLI_SUPPORTED_RANGE, cli ?? pin) !== 'unsatisfied' &&
+      checkVersionRange(peer, cli ?? pin) !== 'unsatisfied' &&
+      peerProblems.length === 0,
   };
 }
 
 export function opencliHandshakeOk(report: OpencliVersionReport): boolean {
-  return report.compatible && report.cli === report.pin;
+  return report.compatible && report.cli !== undefined;
 }
 
 export function opencliHandshakeNote(report: OpencliVersionReport):
@@ -65,10 +76,10 @@ export function opencliHandshakeNote(report: OpencliVersionReport):
       en: `the runtime does not have ${report.pin} yet — restart dsh; if it persists, reinstall the workbench`,
     };
   }
-  if (report.cli !== report.pin) {
+  if (checkVersionRange(report.range, report.cli) === 'unsatisfied') {
     return {
-      zh: `装的是 ${report.cli}，这个版本要 ${report.pin} —— 重启一次 dsh；还不行就重装工作台`,
-      en: `installed ${report.cli} but this build needs ${report.pin} — restart dsh; if it persists, reinstall the workbench`,
+      zh: `装的是 ${report.cli}，这段只认 ${report.range} —— 重启一次 dsh；还不行就重装工作台`,
+      en: `installed ${report.cli} but this build accepts ${report.range} — restart dsh; if it persists, reinstall the workbench`,
     };
   }
   return undefined;
@@ -94,6 +105,6 @@ export function opencliHandshakeText(report: OpencliVersionReport): string {
     return `通道插件只接受 ${report.peer}，本版固定 ${report.pin}`;
   }
   if (report.cli === undefined) return `隔离运行时里还没有 ${report.pin}`;
-  if (report.cli !== report.pin) return `已装 ${report.cli}，本版固定 ${report.pin}`;
-  return `${report.pin} · 通道插件 ${report.channel ?? '未装'}`;
+  if (checkVersionRange(report.range, report.cli) === 'unsatisfied') return `已装 ${report.cli}，这段认 ${report.range}`;
+  return `${report.cli} · 通道插件 ${report.channel ?? '未装'}`;
 }

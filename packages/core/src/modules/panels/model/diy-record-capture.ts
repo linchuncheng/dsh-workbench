@@ -1,92 +1,11 @@
-import dayjs from 'dayjs';
+import type { BrowserCaptureRow } from '@dsh-workbench/shared/host';
 import type { RecordCall } from './diy-record-text';
 
 export const SEGMENT_SLACK_MS = 1500;
 
-export interface CaptureEntry {
-  readonly key: string;
-  readonly at: number;
-  readonly method: string;
-  readonly url: string;
-  readonly status: number;
-  readonly ct: string;
-  readonly size: number;
-  readonly request: string;
-  readonly response: string;
-  readonly requestFullSize: number;
-  readonly responseFullSize: number;
-  readonly requestSizeExact: boolean;
-  readonly responseSizeExact: boolean;
-  readonly headers: string;
-}
+export type CaptureEntry = BrowserCaptureRow;
 
-function parsedOf(line: string): Record<string, unknown> | null {
-  const trimmed = line.trim();
-  if (trimmed === '') return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch {
-    return null;
-  }
-  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-    ? (parsed as Record<string, unknown>)
-    : null;
-}
-
-function plain(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function bodyTextOf(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (typeof value === 'object' && value !== null) {
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return '';
-    }
-  }
-  return '';
-}
-
-function sizeOf(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-}
-
-function entryOf(row: Record<string, unknown>): CaptureEntry | null {
-  const url = row['url'];
-  const method = row['method'];
-  if (typeof url !== 'string' || url === '') return null;
-  if (typeof method !== 'string' || method === '') return null;
-  const stamp = typeof row['timestamp'] === 'string' ? dayjs(row['timestamp']).valueOf() : Number.NaN;
-  const request = plain(row['request']);
-  const requestBody = bodyTextOf(request['body']);
-  const responseBody = bodyTextOf(row['body']);
-  const requestFull = sizeOf(request['body_full_size']);
-  const responseFull = sizeOf(row['body_full_size']);
-  return {
-    key: typeof row['key'] === 'string' ? row['key'] : '',
-    at: Number.isFinite(stamp) ? stamp : 0,
-    method: method.toUpperCase(),
-    url,
-    status: sizeOf(row['status']),
-    ct: typeof row['ct'] === 'string' ? row['ct'] : '',
-    size: sizeOf(row['size']),
-    request: requestBody,
-    response: responseBody,
-    requestFullSize: requestFull || requestBody.length,
-    responseFullSize: responseFull || responseBody.length,
-    requestSizeExact: requestFull > 0,
-    responseSizeExact: responseFull > 0,
-    headers: Object.keys(request['headers'] === undefined ? {} : plain(request['headers'])).length === 0
-      ? ''
-      : bodyTextOf(request['headers']),
-  };
-}
+export type CaptureRows = (text: string) => readonly BrowserCaptureRow[];
 
 function richerOf(left: CaptureEntry, right: CaptureEntry): CaptureEntry {
   const leftScore = (left.status === 0 ? 0 : 1) + (left.response === '' ? 0 : 1) + (left.ct === '' ? 0 : 1);
@@ -105,7 +24,7 @@ function richerOf(left: CaptureEntry, right: CaptureEntry): CaptureEntry {
   };
 }
 
-export function captureEntriesOf(text: string): readonly CaptureEntry[] {
+export function captureEntriesOf(text: string, rows?: CaptureRows): readonly CaptureEntry[] {
   const out: CaptureEntry[] = [];
   const at = new Map<string, number>();
   const push = (one: CaptureEntry | null): void => {
@@ -120,17 +39,24 @@ export function captureEntriesOf(text: string): readonly CaptureEntry[] {
     const kept = out[found];
     if (kept !== undefined) out[found] = richerOf(kept, one);
   };
-  for (const line of text.split('\n')) {
-    const row = parsedOf(line);
-    if (row === null) continue;
-    const inside = row['entries'];
-    if (Array.isArray(inside)) {
-      for (const one of inside) push(entryOf(plain(one)));
-      continue;
-    }
-    push(entryOf(row));
-  }
+  for (const one of rows === undefined ? [] : rows(text)) push(one);
   return out;
+}
+
+export function captureLineOf(calls: readonly RecordCall[]): string {
+  if (calls.length === 0) return '';
+  const entries = calls.map((one) => ({
+    url: one.url,
+    method: one.method,
+    timestamp: new Date(one.at === 0 ? Date.now() : one.at).toISOString(),
+    status: one.status,
+    ct: one.ct,
+    size: one.response.length,
+    key: one.key,
+    request: one.body === '' ? {} : { body: one.body },
+    body: one.response,
+  }));
+  return JSON.stringify({ ok: true, data: { entries } });
 }
 
 export function segmentOf(

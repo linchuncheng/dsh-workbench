@@ -1,6 +1,9 @@
 import { runInNewContext } from 'node:vm';
-import { describe, expect, it } from 'vitest';
-import { RECORD_ARM_SCRIPT, RECORD_KEEP_KEY, RECORD_STOP_SCRIPT } from '../diy-record-scripts';
+import { describe, expect, it, vi } from 'vitest';
+import { RECORD_ARM_BAR_ITEMS_SCRIPT, RECORD_ARM_BAR_SCRIPT } from '../diy-record-bar-scripts';
+import { RECORD_KEEP_KEY } from '../diy-record-keys';
+import { RECORD_ARM_SCRIPT } from '../diy-record-scripts';
+import { RECORD_STOP_SCRIPT } from '../diy-record-read-scripts';
 
 const PAGE_URL = 'https://inventory.example.com/env';
 const BAR_SIZE = { width: 220, height: 40 };
@@ -12,6 +15,7 @@ type FakeEvent = {
   pointerId?: number;
   key?: string;
   shiftKey?: boolean;
+  detail?: number;
   preventDefault?: () => void;
 };
 
@@ -26,7 +30,7 @@ class FakeEl {
   disabled = false;
   innerHTML = '';
   removed = false;
-  onclick: (() => void) | null = null;
+  onclick: ((event?: FakeEvent) => void) | null = null;
   onpointerdown: ((event: FakeEvent) => void) | null = null;
   onpointermove: ((event: FakeEvent) => void) | null = null;
   onpointerup: (() => void) | null = null;
@@ -209,6 +213,8 @@ const runScript = (script: string, harness: Harness): unknown =>
     sessionStorage: harness.storage,
     location: { href: PAGE_URL },
     XMLHttpRequest: harness.win.XMLHttpRequest,
+    setTimeout: (run: () => void, ms?: number) => setTimeout(run, ms),
+    clearTimeout: (handle: unknown) => clearTimeout(handle as never),
     navigator: harness.navigator,
     FormData: FakeFormData,
     Blob: FakeBlob,
@@ -279,7 +285,7 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     expect(start.innerHTML).toContain('<svg');
     expect(start.innerHTML).toContain('开始');
     expect(end.innerHTML).toContain('<rect');
-    expect(end.innerHTML).toContain('结束');
+    expect(end.children[0]?.textContent).toBe('结束');
     expect(start.attrs['style']).toContain('padding:0 8px');
     expect(start.attrs['style']).not.toContain('width:24px');
     expect(start.attrs['style']).toContain('font-size:12px');
@@ -310,8 +316,92 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
     expect(harness.storage.raw(RECORD_KEEP_KEY)?.calls).toHaveLength(2);
 
-    endOf(harness).onclick?.();
+    endOf(harness).onclick?.({ detail: 1 });
+    endOf(harness).onclick?.({ detail: 1 });
     expect(label.textContent).toBe('录制完成 · 2 条');
+  });
+
+  it('★★ 键盘敲出来的点击不算数：截图工具回车确认不会把录制结束掉', () => {
+    const harness = makeHarness();
+    runScript(RECORD_ARM_SCRIPT, harness);
+    const start = startOf(harness);
+    const end = endOf(harness);
+
+    start.onclick?.({ detail: 1 });
+    expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
+
+    end.onclick?.({ detail: 0 });
+    expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
+
+    end.onclick?.({ detail: 1 });
+    expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
+
+    end.onclick?.({ detail: 1 });
+    expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('finished');
+  });
+
+  it('★★ 装钮那一刻就带上样式：不用等接线那一拍，也不会露出浏览器默认钮', () => {
+    const harness = makeHarness();
+    runScript(RECORD_ARM_BAR_SCRIPT, harness);
+    runScript(RECORD_ARM_BAR_ITEMS_SCRIPT, harness);
+
+    for (const button of [startOf(harness), shotOf(harness), endOf(harness)]) {
+      expect(button.attrs['style']).toContain('border:0');
+      expect(button.attrs['style']).toContain('padding:0 8px');
+      expect(button.attrs['style']).toContain('background:#2b3444');
+    }
+    expect(endOf(harness).children[0]?.textContent).toBe('结束');
+  });
+
+  it('★★ 「结束」是红的：常态 #ef4444，按下变「确认结束」时更深；截图/开始仍走蓝', () => {
+    const harness = makeHarness();
+    runScript(RECORD_ARM_SCRIPT, harness);
+    const start = startOf(harness);
+    const shot = shotOf(harness);
+    const end = endOf(harness);
+
+    expect(start.attrs['style']).toContain('background:#3b82f6');
+    start.onclick?.({ detail: 1 });
+    expect(shot.attrs['style']).toContain('background:#3b82f6');
+    expect(end.attrs['style']).toContain('background:#ef4444');
+
+    end.onclick?.({ detail: 1 });
+    expect(end.attrs['style']).toContain('background:#dc2626');
+    expect(end.children[0]?.textContent).toBe('确认结束');
+  });
+
+  it('★★ 结束要两下：一下只亮「确认结束」，四秒不点自己退回', () => {
+    vi.useFakeTimers();
+    try {
+      const harness = makeHarness();
+      runScript(RECORD_ARM_SCRIPT, harness);
+      startOf(harness).onclick?.({ detail: 1 });
+      const end = endOf(harness);
+      const word = end.children[0];
+
+      end.onclick?.({ detail: 1 });
+      expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
+      expect(word?.textContent).toBe('确认结束');
+
+      vi.advanceTimersByTime(4100);
+      expect(word?.textContent).toBe('结束');
+      expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
+
+      end.onclick?.({ detail: 1 });
+      end.onclick?.({ detail: 1 });
+      expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('finished');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('★ 三个按钮都不进 Tab 顺序：焦点永远落不到「结束」上', () => {
+    const harness = makeHarness();
+    runScript(RECORD_ARM_SCRIPT, harness);
+
+    expect(startOf(harness).attrs['tabindex']).toBe('-1');
+    expect(shotOf(harness).attrs['tabindex']).toBe('-1');
+    expect(endOf(harness).attrs['tabindex']).toBe('-1');
   });
 
   it('★ 红色呼吸点只在录制中亮；关键帧住在注入的样式里；收工连样式一起摘', () => {
@@ -327,7 +417,8 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     startOf(harness).onclick?.();
     expect(dot.style.display).toBe('inline-block');
 
-    endOf(harness).onclick?.();
+    endOf(harness).onclick?.({ detail: 1 });
+    endOf(harness).onclick?.({ detail: 1 });
     expect(dot.style.display).toBe('none');
 
     const start = startOf(harness);

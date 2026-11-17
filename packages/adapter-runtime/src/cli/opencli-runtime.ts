@@ -5,7 +5,9 @@ import {
   OPENCLI_CATALOG_ENV,
   OPENCLI_PIN,
   OPENCLI_PIN_ENV,
+  OPENCLI_SUPPORTED_RANGE,
   OPENCLI_REGISTRY_ENV,
+  checkVersionRange,
   runtimePinOf,
 } from '@dsh-workbench/shared/host';
 import { quoteShellArg } from '@dsh-workbench/shared/host';
@@ -61,10 +63,10 @@ export function opencliReadinessAt(projectDir: string): { readonly ready: boolea
     return { ready: false, detail: '隔离副本缺 dist/src/main.js' };
   }
   const version = packageVersionOf(join(dir, 'package.json'));
-  if (version !== runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)) {
-    return { ready: false, detail: `隔离副本是 ${version ?? '读不到的版本'}，要 ${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)}` };
+  if (version === undefined || checkVersionRange(OPENCLI_SUPPORTED_RANGE, version) === 'unsatisfied') {
+    return { ready: false, detail: `隔离副本是 ${version ?? '读不到的版本'}，这段认 ${OPENCLI_SUPPORTED_RANGE}` };
   }
-  return { ready: true, detail: runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV) };
+  return { ready: true, detail: version };
 }
 
 export function opencliReadiness(): { readonly ready: boolean; readonly detail: string } {
@@ -73,6 +75,10 @@ export function opencliReadiness(): { readonly ready: boolean; readonly detail: 
 
 export function isOpencliReadyAt(projectDir: string): boolean {
   return opencliReadinessAt(projectDir).ready;
+}
+
+export function installedOpencliVersion(): string | undefined {
+  return packageVersionOf(join(opencliPackageDir(toolchainDir()), 'package.json'));
 }
 
 export function isOpencliReady(): boolean {

@@ -4,6 +4,7 @@ import { adaptersOf, shotDueOf, type Seam } from '@dsh-workbench/shared/host';
 import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
 import {
   LIVE_TAIL_LINES,
+  appendCaptureLine,
   keepCaptureFile,
   readCaptureLines,
   readCaptureLinesWithKey,
@@ -11,13 +12,17 @@ import {
   readCaptureText,
   startLiveCapture,
   stopLiveCapture,
+  type LiveLine,
 } from '@/shared/api/host/diy-capture-live';
 
 import { dirname, join } from 'node:path';
 import { deliverDebugNotice, noticeMessage, type AgentsLookup } from '@/shared/api/host/diy-debug-act';
-import { actBrowser, actErrorOf } from './diy-browser-act';
-import { RECORD_READ_SCRIPT } from './diy-record-scripts';
-import { captureCallsOf, captureEntriesOf, mergeCalls, segmentOf } from './diy-record-capture';
+import { actBrowser, actErrorOf, type ActStep } from './diy-browser-act';
+import type { Wire } from './diy-browser';
+import { RECORD_ARM_SCRIPTS, RECORD_RESET_SCRIPT } from './diy-record-scripts';
+import { RECORD_READ_SCRIPT } from './diy-record-read-scripts';
+import { captureCallsOf, captureEntriesOf, captureLineOf, mergeCalls, segmentOf } from './diy-record-capture';
+import type { CaptureRows } from './diy-record-capture';
 import type { CaptureEntry } from './diy-record-capture';
 import { domainOf, listRowsOf, readDomainsOf, recordPageOf, renderRecordDetail } from './diy-record-text';
 import type { RecordCall, RecordDetailFacts, RecordListRow, RecordPageRead } from './diy-record-text';
@@ -35,6 +40,37 @@ const RECORD_WATCH_MS = 3000;
 const RECORD_WATCH_TRIES = 5;
 export const DETAIL_MAX_BYTES = 60000;
 
+export interface ArmOutcome {
+  readonly step: ActStep;
+  readonly part: number;
+  readonly parts: number;
+}
+
+export interface ArmOptions {
+  readonly reset?: boolean;
+}
+
+export async function armRecordPage(
+  seam: Seam,
+  command: string,
+  session: string,
+  wire?: Wire,
+  options: ArmOptions = {},
+): Promise<ArmOutcome> {
+  if (options.reset === true) {
+    await actBrowser(seam, command, session, ['eval', RECORD_RESET_SCRIPT], undefined, wire);
+  }
+  const parts = RECORD_ARM_SCRIPTS.length;
+  let out: ArmOutcome | undefined;
+  for (const [index, script] of RECORD_ARM_SCRIPTS.entries()) {
+    const step = await actBrowser(seam, command, session, ['eval', script], undefined, wire);
+    out = { step, part: index + 1, parts };
+    if (!step.ok) break;
+  }
+  if (out === undefined) throw new Error('没有可注入的浮条脚本');
+  return out;
+}
+
 let workbenchApp: string | undefined;
 
 export function rememberWorkbenchApp(app: string | undefined): void {
@@ -51,7 +87,6 @@ export async function frontAppNow(ctx: DshHostContext): Promise<string | undefin
 
 export async function bringBackWorkbench(ctx: DshHostContext): Promise<boolean> {
   const app = workbenchApp;
-  workbenchApp = undefined;
   if (app === undefined) return false;
   try {
     return (await adaptersOf(ctx).runtime.bringToFront?.(ctx, app)) === true;
@@ -96,7 +131,7 @@ export async function takeShotOf(input: WatchFinishDeps, held: RecordState, n: n
   const path = shotFileOf(input.captureFile, held.unit, n);
   const at = Date.now();
   try {
-    const step = await actBrowser(input.seam, input.command, BROWSER_RECORD_SESSION, ['screenshot', path]);
+    const step = await actBrowser(input.seam, input.command, BROWSER_RECORD_SESSION, ['screenshot', path], undefined, input.wire);
     if (step.ok) input.store.shotTaken(input.sessionId, { n, at, path }, Date.now());
     else input.store.shotFailed(input.sessionId, { n, at, path, error: actErrorOf(step) }, Date.now());
   } catch (error) {
@@ -110,8 +145,10 @@ export async function startRecordCapture(
   command: string,
   session: string,
   file: string,
+  rows?: CaptureRows,
+  line?: LiveLine,
 ): Promise<boolean> {
-  return startLiveCapture({ seam, command, session, file });
+  return startLiveCapture({ seam, command, session, file, rows, line });
 }
 
 export interface WatchFinishDeps {
@@ -122,6 +159,7 @@ export interface WatchFinishDeps {
   readonly store: RecordStore;
   readonly url: string;
   readonly captureFile: string;
+  readonly wire?: Wire;
 }
 
 async function releaseLeftoversOf(input: WatchFinishDeps): Promise<void> {
@@ -131,6 +169,7 @@ async function releaseLeftoversOf(input: WatchFinishDeps): Promise<void> {
     session: BROWSER_RECORD_SESSION,
     url: input.url,
     captureFile: input.captureFile,
+    wire: input.wire,
   });
 }
 
@@ -157,9 +196,17 @@ async function finishWatcher(
   return { stop: true, delivered: false };
 }
 
+async function keepHookCalls(input: WatchFinishDeps, calls: readonly RecordCall[]): Promise<boolean> {
+  if (calls.length === 0) return false;
+  const captured = readCaptureText(input.captureFile).text;
+  const failed = readCaptureRound(input.captureFile) === 'fail';
+  if (captured.trim() !== '' && !failed) return false;
+  return appendCaptureLine(input.captureFile, captureLineOf(calls));
+}
+
 async function closeRecordTabQuiet(input: WatchFinishDeps): Promise<boolean> {
   try {
-    return await closeRecordTab(input.seam, input.command, BROWSER_RECORD_SESSION, input.url);
+    return await closeRecordTab(input.seam, input.command, BROWSER_RECORD_SESSION, input.url, input.wire);
   } catch {
     return false;
   }
@@ -175,7 +222,14 @@ export async function watchFinishStepOf(
   let page: ReturnType<typeof recordPageOf>;
   const started = Date.now();
   try {
-    const step = await actBrowser(input.seam, input.command, BROWSER_RECORD_SESSION, ['eval', RECORD_READ_SCRIPT]);
+    const step = await actBrowser(
+      input.seam,
+      input.command,
+      BROWSER_RECORD_SESSION,
+      ['eval', RECORD_READ_SCRIPT],
+      undefined,
+      input.wire,
+    );
     page = recordPageOf(step.payload);
   } catch {
     return { stop: false, delivered: false };
@@ -189,6 +243,10 @@ export async function watchFinishStepOf(
   const due = shotDueOf(held, page.shots);
   if (due !== null) await takeShotOf(input, held, due);
   if (page.phase === 'finished' && page.t1 !== null) {
+    if (page.t1 < held.startedAt) {
+      await armRecordPage(input.seam, input.command, BROWSER_RECORD_SESSION, input.wire, { reset: true });
+      return { stop: false, delivered: false };
+    }
     const now = Date.now();
     if (held.phase === 'armed') input.store.started(input.sessionId, page.t0 ?? 0, now);
     if (input.store.live(Date.now())?.phase === 'recording') {
@@ -206,7 +264,9 @@ export async function watchFinishStepOf(
       'wake',
     );
     await stopCaptureQuiet(input);
+    await keepHookCalls(input, page.calls);
     await closeRecordTabQuiet(input);
+    await bringBackWorkbench(input.ctx);
     return { stop: true, delivered: true };
   }
   if (page.phase === 'recording' && page.t0 !== null && held.phase === 'armed') {
@@ -289,8 +349,13 @@ export interface SegmentBundle {
   readonly rows: readonly RecordListRow[];
 }
 
-export function bundleOf(capture: CaptureRead, page: RecordPageRead, state: RecordState): SegmentBundle {
-  const entries = captureEntriesOf(capture.text);
+export function bundleOf(
+  capture: CaptureRead,
+  page: RecordPageRead,
+  state: RecordState,
+  rows?: CaptureRows,
+): SegmentBundle {
+  const entries = captureEntriesOf(capture.text, rows);
   const segment = segmentOf(entries, page.t0 ?? state.t0, page.t1 ?? state.t1);
   const merged = mergeCalls(page.calls, captureCallsOf(segment.inside));
   return {
@@ -408,46 +473,49 @@ function tabsOf(raw: string): readonly Record<string, unknown>[] | null {
   }
 }
 
-async function closeRecordTab(seam: Seam, command: string, session: string, url: string): Promise<boolean> {
-  const listed = await actBrowser(seam, command, session, ['tab', 'list']);
+async function closeRecordTab(
+  seam: Seam,
+  command: string,
+  session: string,
+  url: string,
+  wire?: Wire,
+): Promise<boolean> {
+  const listed = await actBrowser(seam, command, session, ['tab', 'list'], undefined, wire);
   const pages = tabsOf(listed.stdout);
   if (pages !== null && pages.length === 0) return true;
   const exact = pages?.find((one) => typeof one['url'] === 'string' && one['url'] === url);
   const pick = exact ?? pages?.[0];
   const page = pick === undefined ? '' : typeof pick['page'] === 'string' ? pick['page'] : '';
   if (page !== '') {
-    const done = await actBrowser(seam, command, session, ['tab', 'close', page]);
+    const done = await actBrowser(seam, command, session, ['tab', 'close', page], undefined, wire);
     if (done.ok) {
       for (const one of blanksOf(pages, page)) {
-        await actBrowser(seam, command, session, ['tab', 'close', one]);
+        await actBrowser(seam, command, session, ['tab', 'close', one], undefined, wire);
       }
-      await actBrowser(seam, command, session, ['close']);
+      await actBrowser(seam, command, session, ['close'], undefined, wire);
       return true;
     }
   }
-  const released = await actBrowser(seam, command, session, ['close']);
+  const released = await actBrowser(seam, command, session, ['close'], undefined, wire);
   return released.ok;
 }
 
-export async function releaseRecord(input: {
+export interface RecordRelease {
   readonly seam: Seam;
   readonly command: string;
   readonly session: string;
   readonly url: string;
   readonly captureFile: string;
-}): Promise<{ readonly tab: boolean; readonly capture: boolean }> {
+  readonly wire?: Wire;
+}
+
+export async function releaseRecord(input: RecordRelease): Promise<{ readonly tab: boolean; readonly capture: boolean }> {
   const capture = stopLiveCapture(input.captureFile);
-  const tab = await closeRecordTab(input.seam, input.command, input.session, input.url);
+  const tab = await closeRecordTab(input.seam, input.command, input.session, input.url, input.wire);
   return { tab, capture };
 }
 
-export async function releaseQuietly(input: {
-  readonly seam: Seam;
-  readonly command: string;
-  readonly session: string;
-  readonly url: string;
-  readonly captureFile: string;
-}): Promise<{ readonly tab: boolean; readonly capture: boolean }> {
+export async function releaseQuietly(input: RecordRelease): Promise<{ readonly tab: boolean; readonly capture: boolean }> {
   try {
     return await releaseRecord(input);
   } catch {

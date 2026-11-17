@@ -1,4 +1,5 @@
-import { OPENCLI_TIMEOUT_MS, now, parseJsonLoose, productWrite, type Seam } from '@dsh-workbench/shared/host';
+import { OPENCLI_TIMEOUT_MS, now, productWrite, type Seam } from '@dsh-workbench/shared/host';
+import { opencliResultOf } from '@dsh-workbench/adapter-runtime';
 
 export interface PluginCommandArg {
   readonly name: string;
@@ -98,31 +99,51 @@ function argsOf(raw: unknown): PluginCommandArg[] {
   });
 }
 
-export function parsePluginRows(stdout: string): PluginRow[] | undefined {
-  const parsed = parseJsonLoose(stdout);
-  if (!Array.isArray(parsed)) return undefined;
-  const rows: PluginRow[] = [];
-  for (const item of parsed) {
+function rowsOf(parsed: unknown): readonly unknown[] | undefined {
+  if (Array.isArray(parsed)) return parsed;
+  if (typeof parsed !== 'object' || parsed === null) return undefined;
+  const commands = (parsed as Record<string, unknown>)['commands'];
+  return Array.isArray(commands) ? commands : undefined;
+}
+
+function recordsOf(stdout: string): readonly Record<string, unknown>[] | undefined {
+  const list = rowsOf(opencliResultOf(stdout));
+  if (list === undefined) return undefined;
+  const records: Record<string, unknown>[] = [];
+  for (const item of list) {
     const record = recordOf(item);
     if (record === undefined) return undefined;
-    const name = textOf(record['name']).trim();
-    if (name === '') return undefined;
-    rows.push({ name, version: textOf(record['version']), commands: stringsOf(record['commands']) });
+    records.push(record);
+  }
+  return records;
+}
+
+function pickRows<T>(stdout: string, pick: (record: Record<string, unknown>) => T | undefined): T[] | undefined {
+  const records = recordsOf(stdout);
+  if (records === undefined) return undefined;
+  const rows: T[] = [];
+  for (const record of records) {
+    const row = pick(record);
+    if (row === undefined) return undefined;
+    rows.push(row);
   }
   return rows;
 }
 
+export function parsePluginRows(stdout: string): PluginRow[] | undefined {
+  return pickRows(stdout, (record) => {
+    const name = textOf(record['name']).trim();
+    if (name === '') return undefined;
+    return { name, version: textOf(record['version']), commands: stringsOf(record['commands']) };
+  });
+}
+
 export function parseCommandRows(stdout: string): CommandRow[] | undefined {
-  const parsed = parseJsonLoose(stdout);
-  if (!Array.isArray(parsed)) return undefined;
-  const rows: CommandRow[] = [];
-  for (const item of parsed) {
-    const record = recordOf(item);
-    if (record === undefined) return undefined;
+  return pickRows(stdout, (record) => {
     const site = textOf(record['site']).trim();
     const name = textOf(record['name']).trim();
     if (site === '' || name === '') return undefined;
-    rows.push({
+    return {
       site,
       name,
       description: textOf(record['description']),
@@ -131,9 +152,8 @@ export function parseCommandRows(stdout: string): CommandRow[] | undefined {
       siteSession: textOf(record['siteSession']),
       ...(textOf(record['domain']) === '' ? {} : { domain: textOf(record['domain']) }),
       args: argsOf(record['args']),
-    });
-  }
-  return rows;
+    };
+  });
 }
 
 function commandOf(plugin: string, row: CommandRow): PluginCommand {

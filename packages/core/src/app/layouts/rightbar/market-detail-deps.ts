@@ -1,3 +1,4 @@
+import { NEED_KIND_SPECS } from '@dsh-workbench/shared';
 import type { Need, NeedState, UnitCapability, UnitManifest } from '@dsh-workbench/shared';
 import { needIdOf } from '@dsh-workbench/shared';
 import type { CapabilityMap } from '@/shared/hooks/use-capabilities';
@@ -41,6 +42,7 @@ export function detailDependenciesFor(
 export function dependencyRowActions(
   need: DetailDependency,
 ): readonly ('install' | 'update-dependency')[] {
+  if (NEED_KIND_SPECS[need.kind].sources.length === 0) return [];
   if (need.status === 'missing') return ['install'];
   if (need.status === 'outdated' || need.status === 'unsatisfied') return ['update-dependency'];
   return [];

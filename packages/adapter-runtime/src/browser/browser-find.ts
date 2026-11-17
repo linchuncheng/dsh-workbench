@@ -1,8 +1,9 @@
-import { now, parseJsonLoose } from '@dsh-workbench/shared/host';
+import { now } from '@dsh-workbench/shared/host';
 import { BROWSER_READ_SESSION } from './browser-read.js';
 import { backgroundLine, OPENCLI_WINDOW_ENV } from '../cli/index.js';
 import { noWrite, type Seam } from '@dsh-workbench/shared/host';
 import { asRecord, textOf } from './page-value.js';
+import { opencliResultOf } from '../cli/opencli-wire.js';
 
 const DEFAULT_TIMEOUT_MS = 25000;
 const DEFAULT_SETTLE_MS = 2500;
@@ -79,7 +80,7 @@ export function entriesOf(value: unknown): BrowserFindEntry[] {
 }
 
 export function reasonOf(stdout: string, stderr: string): string {
-  const parsed = asRecord(parseJsonLoose(stdout));
+  const parsed = asRecord(opencliResultOf(stdout));
   const error = parsed === undefined ? undefined : asRecord(parsed['error']);
   const message = error === undefined ? '' : textOf(error['message']);
   if (message !== '') return message;
@@ -92,7 +93,7 @@ export function reasonOf(stdout: string, stderr: string): string {
 }
 
 function hintOf(stdout: string): string | undefined {
-  const parsed = asRecord(parseJsonLoose(stdout));
+  const parsed = asRecord(opencliResultOf(stdout));
   const error = parsed === undefined ? undefined : asRecord(parsed['error']);
   const hint = error === undefined ? '' : textOf(error['hint']);
   return hint === '' ? undefined : hint;
@@ -114,7 +115,7 @@ export function urlOf(stdout: string): string {
   const first = (lines[0] ?? '').replace(/^url:\s*/i, '').trim();
   const bare = first.replace(/^["']+|["']+$/g, '');
   if (bare.startsWith('{')) {
-    const parsed = asRecord(parseJsonLoose(bare));
+    const parsed = asRecord(opencliResultOf(bare));
     const url = parsed === undefined ? '' : textOf(parsed['url']);
     if (url !== '') return url;
   }
@@ -190,7 +191,7 @@ async function findOnce(
       ...(hintOf(result.stdout) === undefined ? {} : { hint: hintOf(result.stdout) }),
     };
   }
-  const entries = entriesOf(parseJsonLoose(result.stdout));
+  const entries = entriesOf(opencliResultOf(result.stdout));
   return { kind: 'ok', entries, stdout: result.stdout };
 }
 

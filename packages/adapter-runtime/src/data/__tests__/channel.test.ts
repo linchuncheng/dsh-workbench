@@ -116,7 +116,7 @@ describe('channel · 端口怎么用', () => {
     const { reader, fake } = readerOf([
       installed(),
       installed(),
-      { stdout: JSON.stringify({ ok: true, data: { data: { balance: 3 } } }) },
+      { stdout: JSON.stringify({ ok: true, data: { ok: true, data: { data: { balance: 3 } } } }) },
     ], true, false);
     const result = await reader.request(COOKIE);
 
@@ -135,8 +135,8 @@ describe('channel · 端口怎么用', () => {
       [
         installed(),
         installed(),
-        { stdout: JSON.stringify({ ok: true, data: { data: 1 } }) },
-        { stdout: JSON.stringify({ ok: true, data: { data: 2 } }) },
+        { stdout: JSON.stringify({ ok: true, data: { ok: true, data: { data: 1 } } }) },
+        { stdout: JSON.stringify({ ok: true, data: { ok: true, data: { data: 2 } } }) },
       ],
       true,
       false,
@@ -149,7 +149,7 @@ describe('channel · 端口怎么用', () => {
 
   it('submit 走 send，带 --method 与表单体', async () => {
     const { reader, fake } = readerOf(
-      [installed(), installed(), { stdout: JSON.stringify({ ok: true, data: { id: 9 } }) }],
+      [installed(), installed(), { stdout: JSON.stringify({ ok: true, data: { ok: true, data: { id: 9 } } }) }],
       true,
       false,
     );
@@ -165,7 +165,7 @@ describe('channel · 端口怎么用', () => {
     const { reader, fake } = readerOf([
       installed(),
       { exitCode: 1, stderr: 'command not found' },
-      { stdout: JSON.stringify({ ok: true, data: { viaEval: true } }) },
+      { stdout: JSON.stringify({ ok: true, data: { ok: true, data: { viaEval: true } } }) },
     ], true, false);
     const result = await reader.request(COOKIE);
 
@@ -232,7 +232,7 @@ describe('channel · 端口怎么用', () => {
     const { reader, fake } = readerOf([
       installed(),
       { exitCode: 1 },
-      { stdout: JSON.stringify({ ok: true, data: { viaEval: true } }) },
+      { stdout: JSON.stringify({ ok: true, data: { ok: true, data: { viaEval: true } } }) },
     ], true, false);
     const result = await reader.request(COOKIE);
 

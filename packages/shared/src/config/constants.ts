@@ -36,6 +36,8 @@ export const DEFAULT_NPM_REGISTRY = "https://registry.npmjs.org";
 
 export const OPENCLI_PIN = "2.0.3";
 
+export const OPENCLI_SUPPORTED_RANGE = ">=1.8.0 <3.0.0";
+
 export const OPENCLI_PIN_ENV = "DSH_WB_OPENCLI_PIN";
 
 export const CHANNEL_API_VERSION = 1;

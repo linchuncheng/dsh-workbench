@@ -1,4 +1,5 @@
-import { productWrite, quoteShellArg, sessionArgv, type Seam, type WriteIntent } from '@dsh-workbench/shared/host';
+import { productWrite, quoteShellArg, type DshHostContext, type Seam, type WriteIntent } from '@dsh-workbench/shared/host';
+import { browserReadOf, surfaceOf } from '@/shared/api/host/runtime-surface';
 import { PAGE_PROBE } from './diy-scripts';
 
 const BACKGROUND_ENV: Readonly<Record<string, string>> = { OPENCLI_WINDOW: 'background' };
@@ -18,7 +19,7 @@ export interface BrowserStep {
 export type LineMaker = (command: string, argv: readonly string[]) => string;
 
 export function plainLine(command: string, argv: readonly string[]): string {
-  return [command, ...sessionArgv(argv)].map(quoteShellArg).join(' ');
+  return [command, ...argv].map(quoteShellArg).join(' ');
 }
 
 async function runStep(
@@ -27,10 +28,15 @@ async function runStep(
   command: string,
   argv: readonly string[],
   timeoutMs: number,
-  line: LineMaker,
+  wire: Wire,
   intent: WriteIntent,
 ): Promise<BrowserStep> {
-  const result = await seam.run({ command: line(command, argv), intent, timeoutMs, env });
+  const result = await seam.run({
+    command: (wire.line ?? plainLine)(command, argv),
+    intent,
+    timeoutMs,
+    env,
+  });
   return {
     ok: result.exitCode === 0 && !result.timedOut,
     stdout: result.stdout.trim(),
@@ -47,10 +53,10 @@ function stepper(env: Readonly<Record<string, string>>) {
     command: string,
     argv: readonly string[],
     timeoutMs = LOOK_TIMEOUT_MS,
-    line: LineMaker = plainLine,
+    wire: Wire = {},
     intent: WriteIntent = productWrite(),
   ): Promise<BrowserStep> {
-    return runStep(env, seam, command, argv, timeoutMs, line, intent);
+    return runStep(env, seam, command, argv, timeoutMs, wire, intent);
   };
 }
 
@@ -70,6 +76,35 @@ export function jsonOf(raw: string): Record<string, unknown> | undefined {
   }
 }
 
+export type WireRead = (stdout: string) => unknown;
+
+export interface Wire {
+  readonly read?: WireRead;
+  readonly line?: LineMaker;
+}
+
+export function wireOf(ctx: DshHostContext): Wire {
+  const surface = surfaceOf(ctx);
+  const read = browserReadOf(ctx);
+  return {
+    ...(read === undefined ? {} : { read }),
+    ...(surface?.background === undefined ? {} : { line: surface.background }),
+  };
+}
+
+export function payloadOf(raw: string, read?: WireRead): Record<string, unknown> | undefined {
+  const text = raw.trim();
+  if (text === '') return undefined;
+  let value: unknown;
+  try {
+    value = read?.(text);
+  } catch {
+    value = undefined;
+  }
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) return value as Record<string, unknown>;
+  return jsonOf(text);
+}
+
 export function textOf(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -86,10 +121,10 @@ export async function bindCurrentTab(
   command: string,
   session: string,
   timeoutMs?: number,
-  line?: LineMaker,
+  wire: Wire = {},
 ): Promise<BoundTab> {
-  const step = await runBrowserStep(seam, command, ['browser', session, 'bind', '--window', 'background'], timeoutMs, line);
-  const parsed = jsonOf(step.stdout);
+  const step = await runBrowserStep(seam, command, ['browser', session, 'bind', '--window', 'background'], timeoutMs, wire);
+  const parsed = payloadOf(step.stdout, wire.read);
   if (parsed === undefined) {
     return { ok: false, url: '', title: '', reason: step.timedOut ? '没在 30 秒内返回' : step.stderr || step.stdout };
   }
@@ -111,9 +146,20 @@ export interface WorkbenchPage {
   readonly shown: boolean;
 }
 
-export async function workbenchPageOf(seam: Seam, command: string, session: string): Promise<WorkbenchPage> {
-  const step = await runBrowserStep(seam, command, ['browser', session, 'eval', PAGE_PROBE, '--window', 'background']);
-  const parsed = jsonOf(step.stdout);
+export async function workbenchPageOf(
+  seam: Seam,
+  command: string,
+  session: string,
+  wire: Wire = {},
+): Promise<WorkbenchPage> {
+  const step = await runBrowserStep(
+    seam,
+    command,
+    ['browser', session, 'eval', PAGE_PROBE, '--window', 'background'],
+    undefined,
+    wire,
+  );
+  const parsed = payloadOf(step.stdout, wire.read);
   if (parsed === undefined) return { ok: false, url: '', title: '', where: '', board: '', open: null, shown: false };
   const raw = parsed['open'];
   return {
@@ -144,13 +190,14 @@ export async function readyPageOf(
   seam: Seam,
   command: string,
   session: string,
+  wire: Wire = {},
 ): Promise<PageHandshake> {
-  const already = await workbenchPageOf(seam, command, session);
+  const already = await workbenchPageOf(seam, command, session, wire);
   if (already.ok) return { ok: true, bound: false, page: already, reason: '' };
-  const bound = await bindCurrentTab(seam, command, session);
+  const bound = await bindCurrentTab(seam, command, session, undefined, wire);
   if (!bound.ok) {
     return { ok: false, bound: false, page: already, reason: bound.reason };
   }
-  const after = await workbenchPageOf(seam, command, session);
+  const after = await workbenchPageOf(seam, command, session, wire);
   return { ok: after.ok, bound: true, page: after, reason: '' };
 }

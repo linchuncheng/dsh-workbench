@@ -1,10 +1,11 @@
-import { now, parseJsonLoose } from '@dsh-workbench/shared/host';
+import { now } from '@dsh-workbench/shared/host';
 import { tailLines } from '@dsh-workbench/shared/host';
 import { backgroundLine, OPENCLI_WINDOW_ENV } from '../cli/index.js';
 import { noWrite, type Seam } from '@dsh-workbench/shared/host';
 import { asRecord, textOf } from './page-value.js';
 
 import { BROWSER_READ_SESSION, BROWSER_RECORD_SESSION, BROWSER_SCREEN_SESSION } from '@dsh-workbench/shared/host';
+import { opencliResultOf } from '../cli/opencli-wire.js';
 export { BROWSER_READ_SESSION, BROWSER_RECORD_SESSION, BROWSER_SCREEN_SESSION };
 
 const DEFAULT_TIMEOUT_MS = 25000;
@@ -132,7 +133,7 @@ async function shellRun(
 ): Promise<ShellOutcome> {
   if (signal?.aborted === true) return { kind: 'aborted', detail: '已停止', stderr: '' };
   const result = await seam.run({
-    command: backgroundLine(command, argv, platform),
+    command: backgroundLine(command, argv, { platform }),
     intent: noWrite(),
     retry: 'safe',
     timeoutMs,
@@ -210,7 +211,7 @@ async function evalOnce(
         },
       };
     }
-    const value = parseJsonLoose(attempt.stdout);
+    const value = opencliResultOf(attempt.stdout);
     if (value === undefined) {
       return {
         kind: 'failure',

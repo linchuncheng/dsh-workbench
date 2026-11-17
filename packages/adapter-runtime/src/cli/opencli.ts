@@ -1,5 +1,6 @@
 import { OPENCLI_MAX_CONCURRENT, OPENCLI_TIMEOUT_MS, now } from '@dsh-workbench/shared/host';
 import { parseJsonLoose } from '@dsh-workbench/shared/host';
+import { opencliErrorOf, opencliResultOf } from './opencli-wire.js';
 import { productWrite, quoteShellArgFor, tailLines } from '@dsh-workbench/shared/host';
 import { helpUrlOf, parseCliErrorEnvelope } from '@dsh-workbench/shared/host';
 import { OPENCLI_WINDOW_ENV } from './opencli-window.js';
@@ -102,19 +103,27 @@ export function createOpencli(options: {
     }
 
     if (result.exitCode !== 0) {
-      const detail = tailLines(result.stderr || result.stdout, 6);
-      const envelope = parseCliErrorEnvelope(result.stderr) ?? parseCliErrorEnvelope(result.stdout);
+      const envelope =
+        opencliErrorOf(result.stderr) ??
+        opencliErrorOf(result.stdout) ??
+        parseCliErrorEnvelope(result.stderr) ??
+        parseCliErrorEnvelope(result.stdout);
+      const detail =
+        envelope !== undefined && 'detail' in envelope && typeof envelope.detail === 'string' && envelope.detail !== ''
+          ? envelope.detail
+          : tailLines(result.stderr || result.stdout, 6);
 
       const url = envelope === undefined ? undefined : helpUrlOf(envelope);
-      if (envelope?.code === 'AUTH_REQUIRED') {
-        throw new WorkbenchDataError('auth-required', envelope.message, {
+      const blocked =
+        envelope?.code === 'AUTH_REQUIRED'
+          ? 'auth-required'
+          : envelope !== undefined && FORBIDDEN_CODES.has(envelope.code)
+            ? 'permission-denied'
+            : undefined;
+      if (envelope !== undefined && blocked !== undefined) {
+        throw new WorkbenchDataError(blocked, envelope.message, {
           detail,
-          ...(url === undefined ? {} : { helpUrl: url }),
-        });
-      }
-      if (envelope !== undefined && FORBIDDEN_CODES.has(envelope.code)) {
-        throw new WorkbenchDataError('permission-denied', envelope.message, {
-          detail,
+          ...(envelope.help === undefined ? {} : { hint: envelope.help }),
           ...(url === undefined ? {} : { helpUrl: url }),
         });
       }
@@ -134,7 +143,7 @@ export function createOpencli(options: {
       );
     }
 
-    const parsed = parseJsonLoose(result.stdout);
+    const parsed = opencliResultOf(result.stdout) ?? parseJsonLoose(result.stdout);
     if (parsed === undefined) {
       throw new WorkbenchDataError('cli-bad-output', 'opencli 输出不是 JSON', {
         detail: tailLines(result.stdout, 4),

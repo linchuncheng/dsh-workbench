@@ -8,7 +8,7 @@ import type { Seam } from '@dsh-workbench/shared/host';
 import { fakeSeamOf } from '../../__tests__/seam-fake';
 import { takeHeldNotices } from '@/shared/api/host/diy-debug-act';
 import { createDiyRig } from '../../__tests__/diy-harness';
-import { ARM_OK, GET, POST, heldStore, line } from '../../__tests__/record-fixtures';
+import { armProbe, GET, POST, heldStore, line } from '../../__tests__/record-fixtures';
 import { foreignDomainText, releaseQuietly, watchFinishStepOf } from '../diy-record';
 import { RECORD_ARM_SCRIPT } from '../diy-record-scripts';
 import { domainOf, readDomainsOf, type RecordListRow } from '../diy-record-text';
@@ -57,7 +57,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
 
     await expect(
       built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL2, doing: '发布' }, rig.diyExec()),
-    ).rejects.toThrow('浮条安装失败');
+    ).rejects.toThrow('浮条注入失败');
     expect(built.record.live(Date.now())).toBeNull();
   });
 
@@ -71,7 +71,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
         { stdout: JSON.stringify({ page: 'p1', url: URL2 }) },
         { stdout: '{}' },
         { stdout: JSON.stringify({ href: URL2 }) },
-        { stdout: ARM_OK() },
+        ...armProbe({}, true),
         { stdout: '', exitCode: 1 },
       ],
     });
@@ -92,7 +92,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       withTools: true,
       pact: false,
       record: armed,
-      probe: [{ stdout: ARM_OK() }, { stdout: JSON.stringify({ ok: true, phase: 'armed', t0: null, t1: null, calls: [] }) }, { stdout: '0\n' }],
+      probe: [...armProbe(), { stdout: JSON.stringify({ ok: true, phase: 'armed', t0: null, t1: null, calls: [] }) }, { stdout: '0\n' }],
     });
 
     const early = (await first.tool(DIY_RECORD_READ_TOOL).execute({}, rig.diyExec())) as { text: string; phase: string };
@@ -105,7 +105,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       pact: false,
       record: recording,
       probe: [
-        { stdout: ARM_OK({ phase: 'recording' }) },
+        ...armProbe({ phase: 'recording' }),
         { stdout: JSON.stringify({ ok: true, phase: 'recording', t0: 7, t1: null, calls: [POST()] }) },
         { stdout: 'oops not a number\n' },
       ],
@@ -134,7 +134,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       pact: false,
       record,
       probe: [
-        { stdout: ARM_OK({ phase: 'finished' }) },
+        ...armProbe({ phase: 'finished' }),
         {
           stdout: JSON.stringify({
             ok: true,
@@ -178,7 +178,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       pact: false,
       record,
       probe: [
-        { stdout: ARM_OK({ phase: 'finished' }) },
+        ...armProbe({ phase: 'finished' }),
         { stdout: JSON.stringify({ ok: true, unhooked: 1, phase: 'finished', t0: 1, t1: 2, calls: [POST()] }) },
         { stdout: 'not a json array' },
         { stdout: '', exitCode: 1 },
@@ -250,7 +250,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       pact: false,
       record,
       probe: [
-        { stdout: ARM_OK({ phase: 'recording' }) },
+        ...armProbe({ phase: 'recording' }),
         { stdout: JSON.stringify({ ok: true, phase: 'recording', t0: 3, t1: null, calls: [POST()] }) },
         { stdout: JSON.stringify({ ok: true, phase: 'finished', t0: 3, t1: 9, calls: [POST()] }) },
         { stdout: '4\n' },
@@ -277,7 +277,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       pact: false,
       record,
       probe: [
-        { stdout: ARM_OK({ phase: 'recording' }) },
+        ...armProbe({ phase: 'recording' }),
         { stdout: JSON.stringify({ ok: true, phase: 'recording', t0: 3, t1: null, calls: [] }) },
         { stdout: '0\n' },
       ],
@@ -310,7 +310,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       pact: false,
       record,
       probe: [
-        { stdout: ARM_OK({ phase: 'recording' }) },
+        ...armProbe({ phase: 'recording' }),
         { stdout: JSON.stringify({ ok: true, phase: 'recording', t0: 4242, t1: null, calls: [POST()] }) },
         { stdout: '0\n' },
       ],

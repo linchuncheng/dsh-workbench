@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSessionPool } from '../session-pool.js';
 
 function poolOf(max: number) {
@@ -45,10 +45,15 @@ describe('读会话池：上限与 LRU', () => {
 });
 
 describe('闲置回收：不是只有超额才关', () => {
-  it('★ 闲置超过阈值 → 列出来（由上层关掉）', async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('★ 闲置超过阈值 → 列出来（由上层关掉）', () => {
+    vi.useFakeTimers();
     const { pool, closed } = poolOf(8);
     pool.touch('old');
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    vi.advanceTimersByTime(5);
     pool.touch('fresh');
 
     expect(pool.expire(3)).toEqual(['old']);

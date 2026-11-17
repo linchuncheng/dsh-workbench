@@ -32,8 +32,23 @@ function planShellOf(plan: readonly Plan[], seen: string[]) {
 
 const href = (url: string): string => `{"href":${JSON.stringify(url)}}`;
 
+const wireRead = (raw: string): unknown => {
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed !== 'object' || parsed === null) return parsed;
+  const box = parsed as Record<string, unknown>;
+  if (typeof box['ok'] !== 'boolean') return parsed;
+  return typeof box['data'] === 'string' ? JSON.parse(box['data']) : box['data'];
+};
+
 const call = (shell: DshShell) =>
-  openRecordPage({ seam: fakeSeamOf(shell), command: '', session: 'workbench-rec', url: WANT, captureFile: '/w/shots/rec-demo.jsonl' });
+  openRecordPage({
+    seam: fakeSeamOf(shell),
+    command: '',
+    session: 'workbench-rec',
+    url: WANT,
+    captureFile: '/w/shots/rec-demo.jsonl',
+    wire: { read: wireRead },
+  });
 
 describe('开录制那一页：开完必须核地址，核不过就回落到 open', () => {
   it('★★ 开出来就是我们那一页 ⇒ ok，且不去发 open', async () => {
@@ -41,6 +56,14 @@ describe('开录制那一页：开完必须核地址，核不过就回落到 ope
     const out = await call(planShellOf([{}, { stdout: '[]' }, {}, {}, { stdout: href(WANT) }], seen));
     expect(out).toEqual({ ok: true, at: WANT, why: '' });
     expect(seen.some((one) => one.includes("'open'"))).toBe(false);
+  });
+
+  it('★★ 2.x 把答案装在 data 里：拆一层之后照样认得出是我们那一页', async () => {
+    const seen: string[] = [];
+    const wrapped = JSON.stringify({ ok: true, data: JSON.stringify({ href: WANT }) });
+    const out = await call(planShellOf([{}, { stdout: '[]' }, {}, {}, { stdout: wrapped }], seen));
+    expect(out.ok).toBe(true);
+    expect(out.at).toBe(WANT);
   });
 
   it('★★ 开出来是空白页 ⇒ 回落 open；open 之后对了 ⇒ ok', async () => {

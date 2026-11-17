@@ -3,15 +3,15 @@ import type { Need, UnitCapability } from '@dsh-workbench/shared/host';
 import { dependencyRowActions, detailDependenciesOf } from '../market-detail-deps';
 
 function capabilityOf(
-  needs: readonly { name: string; status: string; installed?: string; latest?: string }[],
+  needs: readonly { kind?: string; name: string; status: string; installed?: string; latest?: string }[],
 ): UnitCapability {
   return {
     unit: 'demo',
     status: 'ok',
     detail: '夹具',
     needs: needs.map((need) => ({
-      id: `extension:${need.name}`,
-      kind: 'extension' as const,
+      id: `${need.kind ?? 'extension'}:${need.name}`,
+      kind: (need.kind ?? 'extension') as UnitCapability['needs'][number]['kind'],
       name: need.name,
       status: need.status as UnitCapability['needs'][number]['status'],
       detail: '夹具',
@@ -53,6 +53,16 @@ describe('详情页的依赖一栏', () => {
     expect(dependencyRowActions(missing as never)).toEqual(['install']);
     expect(dependencyRowActions(stale as never)).toEqual(['update-dependency']);
     expect(dependencyRowActions(fine as never)).toEqual([]);
+  });
+
+  it('★★ 环境变量与可执行文件不归我们装：缺了也不给「安装」', () => {
+    const [env] = detailDependenciesOf(capabilityOf([{ kind: 'env', name: 'CMDB_ID', status: 'missing' }]));
+    const [bin] = detailDependenciesOf(capabilityOf([{ kind: 'bin', name: 'gh', status: 'missing' }]));
+    const [lib] = detailDependenciesOf(capabilityOf([{ kind: 'lib', name: 'date-fns', status: 'missing' }]));
+
+    expect(dependencyRowActions(env as never)).toEqual([]);
+    expect(dependencyRowActions(bin as never)).toEqual([]);
+    expect(dependencyRowActions(lib as never)).toEqual(['install']);
   });
 });
 

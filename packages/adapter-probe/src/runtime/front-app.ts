@@ -1,4 +1,5 @@
 import type { Seam } from '@dsh-workbench/shared/host';
+import { opencliResultOf } from '@dsh-workbench/adapter-runtime';
 import { bringBackCommand, frontAppCommand, frontAppOf, noWrite } from '@dsh-workbench/shared/host';
 import { currentHostOs } from './platform.js';
 
@@ -54,10 +55,8 @@ async function chromeCall(seam: Seam, command: string, method: string, args: str
     .catch(() => undefined);
   if (result === undefined || result.timedOut || result.exitCode !== 0) return undefined;
   try {
-    const parsed: unknown = JSON.parse(result.stdout.trim());
-    if (typeof parsed !== 'object' || parsed === null) return undefined;
-    const data = (parsed as Record<string, unknown>)['data'];
-    return data;
+    const data = opencliResultOf(result.stdout);
+    return typeof data === 'object' && data !== null ? data : undefined;
   } catch {
     return undefined;
   }
@@ -102,7 +101,6 @@ export async function restoreFocus(
   platform = currentHostOs(),
 ): Promise<boolean> {
   const saved = focusedTab;
-  focusedTab = undefined;
   if (saved !== undefined && isBrowserApp(app)) {
     const activated = await chromeCall(seam, command, 'tabs.update', JSON.stringify([saved.tabId, { active: true }]));
     const raised = await chromeCall(

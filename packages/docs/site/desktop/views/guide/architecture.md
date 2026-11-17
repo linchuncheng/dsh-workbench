@@ -40,7 +40,7 @@ dsh（本体：会话、工具、审批、插件表）
 
 <!-- doc-facts:begin gate-chain-labels -->
 提交信息 → 构建 → check:deps → 类型 → lint → 重复代码 → 覆盖率 → 目标门禁 → 架构红线 → 文档 → check:copy:strict → 运行时隔离 →
-接线自检 → 模块判据 → 适配器默认集 → 适配器契约 → check:release-packages → 发布产物
+接线自检 → 模块判据 → 适配器默认集 → 适配器契约 → scripts/check-opencli-wire.mjs → check:release-packages → 发布产物
 <!-- doc-facts:end gate-chain-labels -->
 一条链，两个入口（仓库根与包内）跑的是同一份，`pnpm release` 的闸也是它。
 

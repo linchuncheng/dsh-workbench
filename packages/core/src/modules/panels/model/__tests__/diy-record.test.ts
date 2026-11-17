@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDiyRig } from '../../__tests__/diy-harness';
-import { ARM_OK, GET, POST, URL, entry, envelope, heldStore, line } from '../../__tests__/record-fixtures';
+import { armProbe, GET, POST, URL, entry, envelope, heldStore, line } from '../../__tests__/record-fixtures';
 import { captureFileOf, lastCaptureFileOf } from '../diy-record';
 import { artifactsDirOf } from '@/shared/api/host/diy-artifacts';
 import type { RecordListRow } from '../diy-record-text';
@@ -35,7 +35,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
         { stdout: JSON.stringify({ page: 'p1', url: URL }) },
         { stdout: '{}' },
         { stdout: JSON.stringify({ href: URL }) },
-        { stdout: ARM_OK() },
+        ...armProbe({}, true),
         { stdout: '' },
       ],
     });
@@ -60,6 +60,32 @@ describe('录制交接：prepare / read / stop 三把', () => {
     expect(built.commands.some((one) => one.includes("'network' '--follow'"))).toBe(true);
     expect(built.commands.some((one) => one.includes('kill -0') || one.includes('pkill'))).toBe(false);
     expect(out.capture).toBe(true);
+  });
+
+  it('★★ 开录前先擦掉上一场留在 sessionStorage 里的账：不然新窗口一开就是「录制完成」', async () => {
+    rig.scaffold('demo');
+    const capture = captureAt(rig);
+    const built = rig.harness({
+      withTools: true,
+      pact: false,
+      probe: [
+        { stdout: '' },
+        { stdout: '[]' },
+        { stdout: JSON.stringify({ page: 'p1', url: URL }) },
+        { stdout: '{}' },
+        { stdout: JSON.stringify({ href: URL }) },
+        ...armProbe({}, true),
+        { stdout: '' },
+      ],
+    });
+
+    await built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL, doing: '发布' }, rig.diyExec());
+
+    const wipe = built.commands.findIndex((one) => one.includes('sessionStorage.removeItem'));
+    const bar = built.commands.findIndex((one) => one.includes('XMLHttpRequest'));
+    expect(wipe).toBeGreaterThanOrEqual(0);
+    expect(bar).toBeGreaterThan(wipe);
+    expect(capture.endsWith('.jsonl')).toBe(true);
   });
 
   it('★★ 另一场占着就不许开（拒的话里有是谁占着）', async () => {
@@ -96,7 +122,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
       pact: false,
       record,
       probe: [
-        { stdout: ARM_OK({ phase: 'finished' }) },
+        ...armProbe({ phase: 'finished' }),
         {
           stdout: JSON.stringify({
             ok: true,
@@ -145,7 +171,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
       withTools: true,
       pact: false,
       record,
-      probe: [{ stdout: ARM_OK({ phase: 'finished' }) }, { stdout: JSON.stringify({ ok: false, code: 'not-armed', phase: 'none', calls: [] }) }, { stdout: '0\n' }],
+      probe: [...armProbe({ phase: 'finished' }), { stdout: JSON.stringify({ ok: false, code: 'not-armed', phase: 'none', calls: [] }) }, { stdout: '0\n' }],
     });
 
     const out = (await built.tool(DIY_RECORD_READ_TOOL).execute({}, rig.diyExec())) as { text: string; ok: boolean };
@@ -168,7 +194,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
       pact: false,
       record,
       probe: [
-        { stdout: ARM_OK({ phase: 'finished' }) },
+        ...armProbe({ phase: 'finished' }),
         {
           stdout: JSON.stringify({
             ok: true,
@@ -206,6 +232,31 @@ describe('录制交接：prepare / read / stop 三把', () => {
     expect(out.text).toContain('这段原文可以直接写入');
     expect(record.live(Date.now())).toBeNull();
     expect(built.commands.some((one) => one.includes('tab') && one.includes('close'))).toBe(true);
+  });
+
+  it('★★ stop 时窗口已被看守关掉 ⇒ 不再补注入、不再 eval，也不谎报「钩子 0 条」', async () => {
+    const capture = captureAt(rig);
+    writeCapture(capture, [line('POST', `${URL}/api/publish`, 15)].join('\n') + '\n');
+    writeCapture(`${capture}.first`, 'ok');
+    const record = heldStore({ method: 'POST', urlContains: '/api/publish' }, capture);
+    const at = Date.now();
+    record.started('s1', at, at);
+    record.finished('s1', at, at);
+    const built = rig.harness({
+      withTools: true,
+      pact: false,
+      record,
+      probe: [
+        { stdout: JSON.stringify([{ page: 'p1', url: URL, title: '环境' }]) },
+        { stdout: '{"closed":"p1"}' },
+      ],
+    });
+
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec())) as { text: string };
+
+    expect(out.text).toContain('页面钩子已随窗口关闭，条数读不到了');
+    expect(out.text).toContain('录制窗口的标签已关闭');
+    expect(built.commands.some((one) => one.includes("'eval'"))).toBe(false);
   });
 });
 describe('录制交接：detail 那一拍（清单 → 挑一条 → 原文）', () => {

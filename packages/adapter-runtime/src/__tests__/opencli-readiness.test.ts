@@ -46,13 +46,21 @@ describe('opencliReadiness', () => {
     expect(verdict.detail).toContain('dist/src/main.js');
   });
 
-  it('版本不是 pin → 未就绪，并说清差在哪', () => {
+  it('★★ 版本在支持的范围内（1.8.8）→ 就绪：认整段，不只认 pin', () => {
+    const root = homeOf();
+    seedCopy(root, '1.8.8', true);
+    const verdict = opencliReadiness();
+    expect(verdict.ready).toBe(true);
+    expect(verdict.detail).toBe('1.8.8');
+  });
+
+  it('版本出了范围（0.0.1）→ 未就绪，并说清范围与实装', () => {
     const root = homeOf();
     seedCopy(root, '0.0.1', true);
     const verdict = opencliReadiness();
     expect(verdict.ready).toBe(false);
     expect(verdict.detail).toContain('0.0.1');
-    expect(verdict.detail).toContain(OPENCLI_PIN);
+    expect(verdict.detail).toContain('>=1.8.0 <3.0.0');
   });
 
   it('★ 按项目目录判：暂存目录不用换环境就能自检', () => {

@@ -22,7 +22,7 @@ function readerOf(plan: Parameters<typeof createFakeShell>[0]) {
 
 describe('DataReader.request · 配方读', () => {
   it('GET 配方 → 走读会话 eval，页面信封解包成 data', async () => {
-    const { reader, fake } = readerOf([{ stdout: JSON.stringify({ ok: true, data: { balance: 3 } }) }]);
+    const { reader, fake } = readerOf([{ stdout: JSON.stringify({ ok: true, data: { ok: true, data: { balance: 3 } } }) }]);
     const result = await reader.request(RECIPE);
 
     expect(result).toEqual({ ok: true, data: { balance: 3 } });
@@ -45,7 +45,7 @@ describe('DataReader.request · 配方读', () => {
   });
 
   it('submit 允许 POST', async () => {
-    const { reader, fake } = readerOf([{ stdout: JSON.stringify({ ok: true, data: { id: 9 } }) }]);
+    const { reader, fake } = readerOf([{ stdout: JSON.stringify({ ok: true, data: { ok: true, data: { id: 9 } } }) }]);
     const result = await reader.submit(
       { ...RECIPE, request: { method: 'POST', path: '/api/do', body: { a: 1 } } },
       { body: { a: 2 } },
@@ -111,7 +111,7 @@ describe('DataReader.request · 配方读', () => {
     const { reader, fake } = readerOf([
       { stdout: JSON.stringify({ ok: false, code: 'not-on-site' }) },
       {},
-      { stdout: JSON.stringify({ ok: true, data: { n: 1 } }) },
+      { stdout: JSON.stringify({ ok: true, data: { ok: true, data: { n: 1 } } }) },
     ]);
     const result = await reader.request(RECIPE);
 
@@ -208,7 +208,7 @@ describe('DataReader.requestMany · 批量读', () => {
   });
 
   it('页面没回 results → 每格 parse', async () => {
-    const { reader } = readerOf([{ stdout: JSON.stringify({ ok: true, data: 1 }) }]);
+    const { reader } = readerOf([{ stdout: JSON.stringify({ ok: true, data: { ok: true, data: 1 } }) }]);
     const results = await reader.requestMany(BATCH, { a: {} });
     const one = results['a'];
     expect(one.ok).toBe(false);

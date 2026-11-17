@@ -1,14 +1,15 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
+import { BROWSER_RECORD_SESSION, WORKBENCH_ADAPTERS } from '@dsh-workbench/shared/host';
 import type { DshHostContext, DshShell } from '@dsh-workbench/shared/host';
 import { fakeSeamOf } from '../../__tests__/seam-fake';
 import { takeHeldNotices } from '@/shared/api/host/diy-debug-act';
 import { createDiyRig } from '../../__tests__/diy-harness';
 import type { ProbeStep } from '../../__tests__/diy-harness';
 import { ARM_OK, POST, URL, heldStore, line } from '../../__tests__/record-fixtures';
-import { releaseRecord, watchFinishStepOf } from '../diy-record';
+import { releaseRecord, rememberWorkbenchApp, watchFinishStepOf } from '../diy-record';
 import { DIY_RECORD_READ_TOOL, DIY_RECORD_STOP_TOOL } from '../../unit';
 
 const writeCapture = (path: string, text: string): void => {
@@ -21,8 +22,8 @@ const finishedPayload = (): string =>
     ok: true,
     unhooked: 1,
     phase: 'finished',
-    t0: 10,
-    t1: 20,
+    t0: Date.now() - 5000,
+    t1: Date.now(),
     href: URL,
     here: URL,
     dropped: 0,
@@ -69,7 +70,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
 
   const held = () => {
     const record = heldStore(null);
-    const at = Date.now();
+    const at = Date.now() - 60_000;
     record.started('s1', at, at);
     return record;
   };
@@ -106,6 +107,108 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
     expect(out).toEqual({ stop: true, delivered: true });
     expect(order).toEqual(['cmd:eval', 'notice', 'cmd:tab-list', 'cmd:tab-close', 'cmd:other']);
     expect(takeHeldNotices('s1')).toHaveLength(1);
+  });
+
+  it('★★ 读到的 finished 比这一场还早（上一场留在 sessionStorage 里）⇒ 不算结束，先擦掉重注入', async () => {
+    const record = held();
+    const order: string[] = [];
+    const stale = JSON.stringify({
+      ok: true,
+      phase: 'finished',
+      t0: 10,
+      t1: 20,
+      href: URL,
+      here: URL,
+      dropped: 0,
+      calls: [POST()],
+    });
+    const seam = fakeSeamOf(recordingShell([{ stdout: stale }, { stdout: '{"ok":true}' }], order));
+
+    const out = await watchFinishStepOf({
+      ctx: { get: () => undefined } as unknown as DshHostContext,
+      seam,
+      command: '',
+      sessionId: 's1',
+      store: record,
+      url: URL,
+      captureFile: '/w/shots/rec-demo.jsonl',
+    });
+
+    expect(out).toEqual({ stop: false, delivered: false });
+    expect(record.live(Date.now())?.phase).toBe('recording');
+    expect(order).toEqual(['cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval']);
+  });
+
+  it('★★ 会话捕获一条都没落时，先把钩子那几条写进捕获文件再关窗（关掉就再也读不到了）', async () => {
+    const record = held();
+    const order: string[] = [];
+    const dir = mkdtempSync(join(tmpdir(), 'wb-rec-close-'));
+    const captureFile = join(dir, 'rec-demo.jsonl');
+
+    await watchFinishStepOf({
+      ctx: { get: () => undefined } as unknown as DshHostContext,
+      seam: fakeSeamOf(
+        recordingShell(
+          [
+            { stdout: finishedPayload() },
+            { stdout: JSON.stringify([{ page: 'p1', url: URL, title: '环境' }]) },
+            { stdout: '{"closed":"p1"}' },
+          ],
+          order,
+        ),
+      ),
+      command: '',
+      sessionId: 's1',
+      store: record,
+      url: URL,
+      captureFile,
+    });
+
+    expect(existsSync(captureFile)).toBe(true);
+    expect(readFileSync(captureFile, 'utf8')).toContain('publish');
+  });
+
+  it('★★ 用户按「结束」⇒ 关完那一扇还要把工作台带回前台（不然他找不到窗口）', async () => {
+    const record = held();
+    const order: string[] = [];
+    const brought: string[] = [];
+    const ctx = {
+      get: (key: string) =>
+        key === WORKBENCH_ADAPTERS
+          ? {
+              runtime: {
+                bringToFront: async (_ctx: unknown, app: string) => {
+                  brought.push(app);
+                  return true;
+                },
+              },
+            }
+          : undefined,
+    } as unknown as DshHostContext;
+    rememberWorkbenchApp('DeepSeek Harness');
+
+    const out = await watchFinishStepOf({
+      ctx,
+      seam: fakeSeamOf(
+        recordingShell(
+          [
+            { stdout: finishedPayload() },
+            { stdout: JSON.stringify([{ page: 'p1', url: URL, title: '环境' }]) },
+            { stdout: '{"closed":"p1"}' },
+          ],
+          order,
+        ),
+      ),
+      command: '',
+      sessionId: 's1',
+      store: record,
+      url: URL,
+      captureFile: '/w/shots/rec-demo.jsonl',
+    });
+
+    expect(out).toEqual({ stop: true, delivered: true });
+    expect(brought).toEqual(['DeepSeek Harness']);
+    expect(order).toEqual(['cmd:eval', 'cmd:tab-list', 'cmd:tab-close', 'cmd:other']);
   });
 
   it('★★ 那扇窗里还留着 opencli 会话自己那个 about:blank ⇒ 顺手也关掉，别攒着（然后把租约还掉，下一场才开新窗）', async () => {
@@ -226,12 +329,13 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
     const record = heldStore(null);
     const order: string[] = [];
     const ctx = { get: () => undefined } as unknown as DshHostContext;
+    const closed = finishedPayload();
 
     const out = await watchFinishStepOf({
       ctx,
       seam: fakeSeamOf(recordingShell(
         [
-          { stdout: finishedPayload() },
+          { stdout: closed },
           { stdout: '[]' },
         ],
         order,
@@ -245,7 +349,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
 
     expect(out).toEqual({ stop: true, delivered: true });
     expect(record.live(Date.now())?.phase).toBe('finished');
-    expect(record.live(Date.now())?.t0).toBe(10);
+    expect(record.live(Date.now())?.t0).toBe((JSON.parse(closed) as { t0: number }).t0);
   });
 
   it('★★ 页面从来没开始过（`t0` 是 null）也封口：区间从 0 起 —— 那一段的请求一条都不许被筛掉', async () => {
@@ -262,7 +366,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
               unhooked: 1,
               phase: 'finished',
               t0: null,
-              t1: 20,
+              t1: Date.now(),
               href: URL,
               here: URL,
               dropped: 0,

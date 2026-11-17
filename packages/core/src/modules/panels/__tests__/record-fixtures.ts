@@ -69,6 +69,18 @@ export const ARM_OK = (extra: Record<string, unknown> = {}): string =>
     ...extra,
   });
 
+export const armProbe = (
+  extra: Record<string, unknown> = {},
+  reset = false,
+): ReadonlyArray<{ readonly stdout: string }> => [
+  ...(reset ? [{ stdout: '{"ok":true}' }] : []),
+  { stdout: '{"ok":true}' },
+  { stdout: '{"ok":true,"fresh":true}' },
+  { stdout: '{"ok":true}' },
+  { stdout: '{"ok":true}' },
+  { stdout: ARM_OK(extra) },
+];
+
 export const heldStore = (expect: RecordExpect | null, captureFile = '/w/shots/rec-demo.jsonl') => {
   const store = createRecordStore();
   const move = store.begin({

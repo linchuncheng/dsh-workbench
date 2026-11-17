@@ -6,20 +6,41 @@ import {
   SEGMENT_SLACK_MS,
   captureCallsOf,
   captureEntriesOf,
+  captureLineOf,
   mergeCalls,
   pickAllOf,
   pickOf,
   segmentOf,
 } from '../diy-record-capture';
 import { createDiyRig } from '../../__tests__/diy-harness';
+import { captureRowsOf } from '../../__tests__/test-adapters';
 import { ARM_OK, GET, POST, URL, call, entry, envelope, heldStore, line } from '../../__tests__/record-fixtures';
 import { DIY_RECORD_READ_TOOL, DIY_RECORD_STOP_TOOL } from '../../unit';
 import type { RecordCall, RecordListRow } from '../diy-record-text';
+
+const capture = (text: string) => captureEntriesOf(text, captureRowsOf);
 
 const T0 = dayjs('2026-10-20T03:00:00.000Z').valueOf();
 const T1 = T0 + 10_000;
 
 describe('会话捕获那份 JSONL：只认解析得出 url + method 的行', () => {
+  it('★★ 2.x 的捕获行外面裹了一层 { ok, data }：拆开照样按 entries 逐条读，时间取那一行的 captured_at', () => {
+    const stamped = JSON.parse(line('POST', `${URL}/api/publish`, T0 + 5000));
+    const bare: Record<string, unknown> = { ...stamped };
+    delete bare['timestamp'];
+    const inner = JSON.parse(envelope([stamped, bare]));
+    const text = JSON.stringify({
+      ok: true,
+      data: { ...inner, captured_at: '2026-10-20T03:00:06.000Z' },
+    });
+
+    const entries = capture(text);
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({ method: 'POST', url: `${URL}/api/publish`, at: T0 + 5000 });
+    expect(entries[1]?.at).toBe(T0 + 6000);
+    expect(segmentOf(entries, T0 + 5000, T0 + 7000).inside).toHaveLength(2);
+  });
+
   it('★ 坏行 / error 行 / 空行 / 非对象行全部跳过，合法行逐格取', () => {
     const text = [
       '',
@@ -33,7 +54,7 @@ describe('会话捕获那份 JSONL：只认解析得出 url + method 的行', ()
       line('POST', `${URL}/api/publish`, T0 + 5000, { status: 201, ct: 'application/json', size: 42, key: 'k1' }),
     ].join('\n');
 
-    const entries = captureEntriesOf(text);
+    const entries = capture(text);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       key: 'k1',
@@ -47,7 +68,7 @@ describe('会话捕获那份 JSONL：只认解析得出 url + method 的行', ()
   });
 
   it('★ 时间戳解析不出就给 0；缺格给缺省；方法统一大写（好跟钩子那份对键）', () => {
-    const entries = captureEntriesOf(
+    const entries = capture(
       [
         '{"url":"https://x.example.com/a","method":"post","timestamp":"不是时间"}',
         '{"url":"https://x.example.com/b","method":"get"}',
@@ -66,22 +87,54 @@ describe('会话捕获那份 JSONL：只认解析得出 url + method 的行', ()
   });
 
   it('★ 空文本 / 整份都是坏行 ⇒ 一条都没有（不抛）', () => {
-    expect(captureEntriesOf('')).toEqual([]);
-    expect(captureEntriesOf('\n\n不是什么 json\n')).toEqual([]);
+    expect(capture('')).toEqual([]);
+    expect(capture('\n\n不是什么 json\n')).toEqual([]);
+  });
+});
+
+describe('钩子那份也能落成一行捕获：写下去、读回来还是同一批', () => {
+  it('★★ 方法 / URL / 入参 / 回包 / 时间都不丢（tab 关掉之后还能从捕获文件里翻出来）', () => {
+    const at = T0 + 4321;
+    const calls: RecordCall[] = [
+      {
+        key: '',
+        method: 'POST',
+        url: `${URL}/api/publish`,
+        body: '{"title":"v1"}',
+        status: 201,
+        ct: 'application/json',
+        response: '{"ok":true}',
+        at,
+        source: 'hook',
+      },
+    ];
+
+    const entries = capture(captureLineOf(calls));
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      method: 'POST',
+      url: `${URL}/api/publish`,
+      status: 201,
+      ct: 'application/json',
+      request: '{"title":"v1"}',
+      response: '{"ok":true}',
+      at,
+    });
+    expect(captureLineOf([])).toBe('');
   });
 });
 
 describe('段窗口：t0/t1 都在时按 [t0 - slack, t1 + slack] 筛', () => {
-  const at = (offset: number) => captureEntriesOf(line('POST', `${URL}/api/x`, T0 + offset));
+  const at = (offset: number) => capture(line('POST', `${URL}/api/x`, T0 + offset));
 
   it('★ 窗口两端各留 slack：结束之后十几毫秒才落行的回包也算在里面', () => {
     const entries = [
-      ...captureEntriesOf(line('GET', `${URL}/before`, T0 - SEGMENT_SLACK_MS - 1)),
-      ...captureEntriesOf(line('GET', `${URL}/edge-before`, T0 - SEGMENT_SLACK_MS)),
+      ...capture(line('GET', `${URL}/before`, T0 - SEGMENT_SLACK_MS - 1)),
+      ...capture(line('GET', `${URL}/edge-before`, T0 - SEGMENT_SLACK_MS)),
       ...at(0),
       ...at(5000),
-      ...captureEntriesOf(line('POST', `${URL}/edge-after`, T1 + SEGMENT_SLACK_MS)),
-      ...captureEntriesOf(line('GET', `${URL}/after`, T1 + SEGMENT_SLACK_MS + 1)),
+      ...capture(line('POST', `${URL}/edge-after`, T1 + SEGMENT_SLACK_MS)),
+      ...capture(line('GET', `${URL}/after`, T1 + SEGMENT_SLACK_MS + 1)),
     ];
 
     const segment = segmentOf(entries, T0, T1);
@@ -97,8 +150,8 @@ describe('段窗口：t0/t1 都在时按 [t0 - slack, t1 + slack] 筛', () => {
 
   it('★ t0/t1 缺一个就不筛：全部算 inside、outside 是 0', () => {
     const entries = [
-      ...captureEntriesOf(line('GET', `${URL}/a`, T0 - 60_000)),
-      ...captureEntriesOf(line('POST', `${URL}/b`, T1 + 60_000)),
+      ...capture(line('GET', `${URL}/a`, T0 - 60_000)),
+      ...capture(line('POST', `${URL}/b`, T1 + 60_000)),
     ];
 
     expect(segmentOf(entries, null, T1).inside).toHaveLength(2);
@@ -109,7 +162,7 @@ describe('段窗口：t0/t1 都在时按 [t0 - slack, t1 + slack] 筛', () => {
   });
 
   it('★ 时间戳读不出的行（at = 0）不算"段外"：宁可留着当证据，也不静默丢', () => {
-    const entries = captureEntriesOf('{"url":"https://x.example.com/a","method":"POST","timestamp":"坏的"}');
+    const entries = capture('{"url":"https://x.example.com/a","method":"POST","timestamp":"坏的"}');
 
     const segment = segmentOf(entries, T0, T1);
 
@@ -129,7 +182,7 @@ describe('段窗口：t0/t1 都在时按 [t0 - slack, t1 + slack] 筛', () => {
 
 describe('捕获行 → RecordCall：没有 body 就如实空着', () => {
   it('★ source 是 capture、body/response 是空串、at 是行时间', () => {
-    const entries = captureEntriesOf(line('POST', `${URL}/api/publish`, T0 + 7, { status: 500, ct: 'text/plain' }));
+    const entries = capture(line('POST', `${URL}/api/publish`, T0 + 7, { status: 500, ct: 'text/plain' }));
 
     expect(captureCallsOf(entries)).toEqual([
       {
@@ -159,7 +212,7 @@ describe('一轮一次调用的「信封行」：形状 + 体（入参 / 出参�
       entry('GET', `${URL}/api/list`, T0 + 6),
     ]);
 
-    const entries = captureEntriesOf(text);
+    const entries = capture(text);
 
     expect(entries).toHaveLength(2);
     expect(entries[0]?.key).toBe(`POST ${URL}/api/publish`);
@@ -175,7 +228,7 @@ describe('一轮一次调用的「信封行」：形状 + 体（入参 / 出参�
   it('★★ 两种行混在一份文件里也认（老的逐条行 + 新的信封行）', () => {
     const text = [line('GET', `${URL}/api/old`, T0 + 1), envelope([entry('POST', `${URL}/api/new`, T0 + 2)])].join('\n');
 
-    const entries = captureEntriesOf(text);
+    const entries = capture(text);
     expect(entries.map((one) => one.url)).toEqual([`${URL}/api/old`, `${URL}/api/new`]);
   });
 
@@ -183,11 +236,11 @@ describe('一轮一次调用的「信封行」：形状 + 体（入参 / 出参�
     const one = entry('POST', `${URL}/api/publish`, T0 + 5);
     const text = [envelope([one]), envelope([one])].join('\n');
 
-    expect(captureEntriesOf(text)).toHaveLength(1);
+    expect(capture(text)).toHaveLength(1);
   });
 
   it('★★ pickOf：精确 key 优先，退到去 #N 后缀，再退到 `method url`', () => {
-    const entries = captureEntriesOf(
+    const entries = capture(
       envelope([
         entry('POST', `${URL}/api/publish`, T0 + 5),
         entry('POST', `${URL}/api/publish`, T0 + 6, { key: `POST ${URL}/api/publish#2` }),
@@ -202,7 +255,7 @@ describe('一轮一次调用的「信封行」：形状 + 体（入参 / 出参�
   });
 
   it('★★ 同一个 key 跨轮重名（opencli 的计数器每批重置）：给 at 才钉得住是哪一次', () => {
-    const entries = captureEntriesOf(
+    const entries = capture(
       envelope([
         entry('POST', `${URL}/api/save`, T0 + 5, { request: { body: '{"id":1}' } }),
         entry('POST', `${URL}/api/save`, T0 + 9, { request: { body: '{"id":2}' } }),
@@ -225,7 +278,7 @@ describe('一轮一次调用的「信封行」：形状 + 体（入参 / 出参�
       }),
     ]);
 
-    const entries = captureEntriesOf([flying, flying, landed, landed].join('\n'));
+    const entries = capture([flying, flying, landed, landed].join('\n'));
 
     expect(entries).toHaveLength(1);
     expect(entries[0]?.status).toBe(200);
@@ -237,7 +290,7 @@ describe('一轮一次调用的「信封行」：形状 + 体（入参 / 出参�
 describe('合并两份来源：按 method + url 去重，钩子那份优先', () => {
   it('★ 同一条两边都有 ⇒ 留钩子那条（它有 body），捕获那条补上 key 之后不算两条', () => {
     const hook = [POST()];
-    const captured = captureCallsOf(captureEntriesOf(line('POST', `${URL}/api/publish`, T0 + 3)));
+    const captured = captureCallsOf(capture(line('POST', `${URL}/api/publish`, T0 + 3)));
 
     const merged = mergeCalls(hook, captured);
 
@@ -250,7 +303,7 @@ describe('合并两份来源：按 method + url 去重，钩子那份优先', ()
   it('★ 只有捕获有的那条留下（source = capture），结果按 at 升序', () => {
     const hook = [call('GET', `${URL}/api/list`, '', 'hook')].map((one) => ({ ...one, at: T0 + 30 }));
     const captured = captureCallsOf(
-      captureEntriesOf(
+      capture(
         [line('POST', `${URL}/api/publish`, T0 + 10), line('DELETE', `${URL}/api/x`, T0 + 50)].join('\n'),
       ),
     );
@@ -269,7 +322,7 @@ describe('合并两份来源：按 method + url 去重，钩子那份优先', ()
   it('★★ 钩子那份原样留着（两条同名也算两次真调用）；**捕获两条同名也是两次真调用**（只在钩子那几条上配对）', () => {
     const hook: RecordCall[] = [POST(), { ...POST(), at: 2 }];
     const captured = captureCallsOf(
-      captureEntriesOf([
+      capture([
         line('POST', `${URL}/api/publish`, T0 + 1, { body: '{"id":1}' }),
         line('POST', `${URL}/api/publish`, T0 + 2, { body: '{"id":2}' }),
       ].join('\n')),
@@ -380,7 +433,7 @@ describe('捕获这条来源接进 read / stop（真工具 + shell 桩）', () =
     expect(out.noBody).toBe(true);
     expect(out.probeCommand).toBe('');
     expect(out.lastFile.endsWith('.last')).toBe(true);
-    expect(out.text).toContain('该段共 2 条请求（页面钩子 0 条；会话捕获该段 2 条）');
+    expect(out.text).toContain('该段共 2 条请求（页面钩子已随窗口关闭，条数读不到了；会话捕获该段 2 条）');
     expect(out.text).toContain('只有方法 / URL，无法获取 body');
     expect(out.text).toContain('先征得用户同意');
   });

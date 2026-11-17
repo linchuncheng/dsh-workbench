@@ -30,6 +30,13 @@ for (const item of sets) {
   if (item.surface === 'absent' && surface !== undefined) {
     gaps.push('这份集合不该给命令面（它没有可探测的命令行），但 runtime.commandSurface() 给了');
   }
+  if (surface !== undefined) {
+    for (const member of ['commandResult', 'browserCapture']) {
+      if (typeof surface[member] !== 'function') {
+        gaps.push(`命令面给了，但没给 ${member}：这条运行时回什么格式由谁认？`);
+      }
+    }
+  }
   const cliDirNames = ['cliCatalogPath', 'vendorPluginsDir', 'runtimeInstallCommand'].filter(
     (name) => typeof set.modules[name] === 'function',
   );

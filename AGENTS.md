@@ -50,8 +50,8 @@ pnpm run check                        # 门禁：整仓那一套（= `pnpm -w ru
 `lint:commit` → `build` → `check:deps` → `typecheck` → `lint` → `check:duplication` →
 `coverage` → `check:gates:target --fail-on-red` → `arch` → `check:docs` →
 `check:copy:strict` → `check:runtimes` → `selfcheck` → `check:modules` →
-`check:adapter-defaults` → `scripts/check-adapter-contract.mjs` → `check:release-packages` →
-`check:release-artifacts`
+`check:adapter-defaults` → `scripts/check-adapter-contract.mjs` →
+`scripts/check-opencli-wire.mjs` → `check:release-packages` → `check:release-artifacts`
 <!-- doc-facts:end gate-chain-inline -->
 
 `pnpm release` 的闸也是它。
@@ -104,6 +104,8 @@ pnpm run check                        # 门禁：整仓那一套（= `pnpm -w ru
 
 ## 文档路由（公开）
 
+先按触发定位，命中哪一行就读那份，再动代码。
+
 | 触发 | 读 |
 |---|---|
 | 新用户怎么用 | [`packages/core/README.md`](packages/core/README.md) · [`README.md`](README.md) |
@@ -114,7 +116,7 @@ pnpm run check                        # 门禁：整仓那一套（= `pnpm -w ru
 | 模块的构建、十四条判据、模板、设计底稿 | [`packages/module-tools/README.md`](packages/module-tools/README.md) |
 | 共享契约、哑组件、宿主工具、收录判据 | [`packages/shared/README.md`](packages/shared/README.md) |
 | 最小可安装模块样本 | [`packages/module-hello/README.md`](packages/module-hello/README.md) |
-| 想理清设计分层与改动落点 | [`DESIGN-BOUNDARIES.md`](DESIGN-BOUNDARIES.md) |
+| 改跨层的东西：接缝、能力口、包依赖方向、某段命令或格式归谁 | [`DESIGN-BOUNDARIES.md`](DESIGN-BOUNDARIES.md)：§2 接缝 · §5 改动落哪 · §6 守卫 |
 | 改文档站、加一页、换配色 | [`packages/docs/README.md`](packages/docs/README.md) |
 | 对某个术语拿不准 | [`CONTEXT.md`](CONTEXT.md) |
 | 想知道某个选择为什么是这样 | `private-docs/docs/adr/`（需要私有仓权限） |

@@ -33,8 +33,8 @@ pnpm run check
 `lint:commit` → `build` → `check:deps` → `typecheck` → `lint` → `check:duplication` →
 `coverage` → `check:gates:target --fail-on-red` → `arch` → `check:docs` →
 `check:copy:strict` → `check:runtimes` → `selfcheck` → `check:modules` →
-`check:adapter-defaults` → `scripts/check-adapter-contract.mjs` → `check:release-packages` →
-`check:release-artifacts`
+`check:adapter-defaults` → `scripts/check-adapter-contract.mjs` →
+`scripts/check-opencli-wire.mjs` → `check:release-packages` → `check:release-artifacts`
 <!-- doc-facts:end gate-chain-inline -->
 
 `pnpm run dev` starts the workbench on `:3081` next to `dsh web` on `:3080` and

@@ -252,3 +252,20 @@ export interface DataReader {
     options?: DataCallOptions,
   ): Promise<DataResult<T>>;
 }
+
+export interface BrowserCaptureRow {
+  readonly key: string;
+  readonly at: number;
+  readonly method: string;
+  readonly url: string;
+  readonly status: number;
+  readonly ct: string;
+  readonly size: number;
+  readonly request: string;
+  readonly response: string;
+  readonly requestFullSize: number;
+  readonly responseFullSize: number;
+  readonly requestSizeExact: boolean;
+  readonly responseSizeExact: boolean;
+  readonly headers: string;
+}

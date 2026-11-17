@@ -49,7 +49,7 @@ const backgroundLine = (command: string, argv: readonly string[]): string =>
 describe('actBrowser：把子命令原样挂到 opencli browser <会话> 上', () => {
   it('★★ 参数各自引号、背景前缀与 --window background 都带上，超时默认 15 秒', async () => {
     const rig = fakeShell([{ stdout: 'noise {"clicked":true} tail' }]);
-    const got = await actBrowser(rig.seam, 'opencli', 'workbench', ['click', '.wb-cardOpen'], undefined, backgroundLine);
+    const got = await actBrowser(rig.seam, 'opencli', 'workbench', ['click', '.wb-cardOpen'], undefined, { line: backgroundLine });
 
     expect(rig.lines[0]).toBe(
       "'opencli' 'browser' 'workbench' 'click' '.wb-cardOpen' '--window' 'background'",
@@ -62,8 +62,8 @@ describe('actBrowser：把子命令原样挂到 opencli browser <会话> 上', (
 
   it('★ 超时可传；抠不出 JSON 时 payload 是 undefined（不假装读到）', async () => {
     const rig = fakeShell([{ stdout: '没有什么 JSON' }, { stdout: '{"matches_n":2}' }]);
-    const first = await actBrowser(rig.seam, 'opencli', 'workbench', ['state'], 1234, backgroundLine);
-    const second = await actBrowser(rig.seam, 'opencli', 'workbench', ['find', '.a'], undefined, backgroundLine);
+    const first = await actBrowser(rig.seam, 'opencli', 'workbench', ['state'], 1234, { line: backgroundLine });
+    const second = await actBrowser(rig.seam, 'opencli', 'workbench', ['find', '.a'], undefined, { line: backgroundLine });
 
     expect(rig.timeouts[0]).toBe(1234);
     expect(first.payload).toBeUndefined();
@@ -94,6 +94,36 @@ describe('actErrorOf：四档话术，先超时、再 opencli 的 error 信封',
     );
     expect(actErrorOf(step({ error: { message: '   ' } }, { ok: false, stderr: 'boom' }))).toBe('boom');
     expect(actErrorOf(step({ error: '不是对象' }, { ok: false, stderr: 'boom' }))).toBe('boom');
+  });
+
+  it('★★ 2.x 解出来的错误就是 payload 本身：message + hint 都要说出来', () => {
+    expect(
+      actErrorOf(
+        step({ code: 'BROWSER_TARGET_AMBIGUOUS', message: '有 2 个标签页对得上', hint: '换一个 target 再试' }, { ok: false }),
+      ),
+    ).toBe('有 2 个标签页对得上（换一个 target 再试）');
+    expect(actErrorOf(step({ code: 'E', message: '就一句' }, { ok: false }))).toBe('就一句');
+  });
+
+  it('★★ 2.x 的排障信息接在下一行：候选与追踪目录（都在失败那一次的原文里）', () => {
+    const got = actErrorOf(
+      step(
+        {
+          code: 'BROWSER_TARGET_AMBIGUOUS',
+          message: '有 2 个标签页对得上',
+          hint: '换一个 target',
+          candidates: [{ id: 1, title: '收件箱' }, { id: 2, title: '草稿' }],
+          trace: { dir: '/tmp/opencli-trace/abc' },
+        },
+        { ok: false },
+      ),
+    );
+
+    expect(got).toBe('有 2 个标签页对得上（换一个 target）\n候选：1 收件箱 / 2 草稿\n追踪：/tmp/opencli-trace/abc');
+  });
+
+  it('★ 没有候选与追踪就不多一行', () => {
+    expect(actErrorOf(step({ code: 'E', message: '一句话' }, { ok: false }))).toBe('一句话');
   });
 
   it('★ 成功且没有信封就没有错；否则 stderr → stdout → 兜底那句', () => {

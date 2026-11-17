@@ -1,5 +1,5 @@
 import { runInNewContext } from 'node:vm';
-import { RECORD_READ_SCRIPT } from '../model/diy-record-scripts';
+import { RECORD_READ_SCRIPT } from '../model/diy-record-read-scripts';
 
 export const PAGE_URL = 'https://inventory.example.com/env';
 const BAR_SIZE = { width: 300, height: 40 };

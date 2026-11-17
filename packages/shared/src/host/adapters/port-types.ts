@@ -1,6 +1,7 @@
 import type { DshHostContext } from '../../api/dsh.js';
 import type { Seam } from '../seam/run.js';
 import type { RuntimeCapabilities, RuntimeProfile } from '../../contract/capabilities.js';
+import type { BrowserCaptureRow } from '../../contract/data.js';
 import type { PluginPackageKind } from '../../contract/protocol/bundle-install.js';
 import type { LibNeed, SupplySource } from '../../contract/needs.js';
 import type { NeedProbeInput, UnitCapability } from '../../contract/unit-capability.js';
@@ -190,6 +191,8 @@ export interface RuntimeCommandSurface {
   invoke(site: string, command?: string): string;
   help(site: string): string;
   browser?(verb: readonly string[]): string;
+  commandResult?(stdout: string): unknown;
+  browserCapture?(text: string): readonly BrowserCaptureRow[];
   background?(command: string, argv: readonly string[]): string;
   readonly authorHint?: string;
 }

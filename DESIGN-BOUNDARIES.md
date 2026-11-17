@@ -110,7 +110,7 @@
 |---|---|
 | L1 | `arch`（S69 不出现 adapter 包名、S72 按能力不按 id）、`check:runtimes`、`WB-A1`、core selfcheck |
 | L2 | `SH-A1`（shared 不依赖 core / adapter）、shared `check-state`、typecheck |
-| L3 | `check:adapter-defaults`、`node scripts/check-adapter-contract.mjs`、集成夹具 |
+| L3 | `check:adapter-defaults`、`node scripts/check-adapter-contract.mjs`（任何命令面都得给 `commandResult` / `browserCapture`）、`node scripts/check-opencli-wire.mjs`（opencli 的信封与错误块只许在 `adapter-runtime/src/cli/opencli-wire.ts` 认）、集成夹具 |
 | L4 | module-tools 14 判据（contracts / source / arch / kit / cards / style / primitives / standalone …）；模块 arch 的 S01 / S16 / S23 / S71–S74（S74：测试住 `__tests__/`）；`check:modules` |
 | L5 | module-tools selfcheck（128 条：golden / scaffold / arch-gate / lint-gate / discover / migrate / meta …）、`check:docs` 的判据表一致性 |
 | L6 | `check-workshop-generation.sh`、seed / 入口自检、工坊生成探针 |

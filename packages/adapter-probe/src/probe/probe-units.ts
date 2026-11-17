@@ -1,3 +1,4 @@
+import { opencliResultOf } from '@dsh-workbench/adapter-runtime';
 import { commandNamesMatch } from './command-name.js';
 import {
   OPENCLI_TIMEOUT_MS,
@@ -7,7 +8,6 @@ import {
   needIdOf,
   noWrite,
   npmSourceOf,
-  parseJsonLoose,
   productWrite,
   quoteShellArgFor,
   type Seam,
@@ -37,13 +37,9 @@ const BINARY_PROBE_TIMEOUT_MS = 5_000;
 const KNOWN_RUNTIMES: readonly string[] = ['opencli'];
 
 export function parsePluginList(stdout: string): unknown[] | undefined {
-  const parsed = parseJsonLoose(stdout);
+  const parsed = opencliResultOf(stdout);
   if (Array.isArray(parsed)) return parsed;
-  if (typeof parsed === 'object' && parsed !== null) {
-    const data = (parsed as Record<string, unknown>)['data'];
-    if (Array.isArray(data)) return data;
-    if (data === undefined && (parsed as Record<string, unknown>)['ok'] === false) return [];
-  }
+  if (typeof parsed === 'object' && parsed !== null && 'error' in parsed) return [];
   return /no plugins? installed/i.test(stdout) ? [] : undefined;
 }
 

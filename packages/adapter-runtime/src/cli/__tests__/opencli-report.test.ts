@@ -51,20 +51,36 @@ describe('opencli 版本握手', () => {
     expect(opencliHandshakeText(report)).toContain('2.0.3');
   });
 
-  it('盘上是别的版本：握手不通过，话里点出两边', async () => {
+  it('★★ 盘上是范围内的别的版本（1.8.8）：握手照样通过', async () => {
     const home = tempHome();
     vi.stubEnv('DSH_HOME', home);
     const root = join(home, 'workbench', 'opencli');
     writeJson(join(root, 'toolchain', 'node_modules', '@jackwener', 'opencli', 'package.json'), {
-      version: '2.1.0',
+      version: '1.8.8',
+    });
+
+    const { opencliVersionReport, opencliHandshakeOk, opencliHandshakeText } = await load();
+    const report = opencliVersionReport();
+
+    expect(report.cli).toBe('1.8.8');
+    expect(opencliHandshakeOk(report)).toBe(true);
+    expect(opencliHandshakeText(report)).toContain('1.8.8');
+  });
+
+  it('★ 盘上出了范围（3.0.0）：握手不通过，话里点出范围与实装', async () => {
+    const home = tempHome();
+    vi.stubEnv('DSH_HOME', home);
+    const root = join(home, 'workbench', 'opencli');
+    writeJson(join(root, 'toolchain', 'node_modules', '@jackwener', 'opencli', 'package.json'), {
+      version: '3.0.0',
     });
 
     const { opencliVersionReport, opencliHandshakeOk, opencliHandshakeText } = await load();
     const report = opencliVersionReport();
 
     expect(opencliHandshakeOk(report)).toBe(false);
-    expect(opencliHandshakeText(report)).toContain('2.1.0');
-    expect(opencliHandshakeText(report)).toContain('2.0.3');
+    expect(opencliHandshakeText(report)).toContain('3.0.0');
+    expect(opencliHandshakeText(report)).toContain('>=1.8.0 <3.0.0');
   });
 
   it('灰度：DSH_WB_OPENCLI_PIN 一设，钉的版本跟着走', async () => {
@@ -139,11 +155,14 @@ describe('插件的 peer 范围也要进握手', () => {
     expect(opencliHandshakeNote(report).zh).toContain('opencli-plugin-demo');
   });
 
-  it('★ 换 pin 到 3.x：原来合格的插件立刻算问题（换代时能被发现）', async () => {
+  it('★ 盘上换成 3.x：原来合格的插件立刻算问题（换代时能被发现）', async () => {
     const home = tempHome();
     vi.stubEnv('DSH_HOME', home);
     seed(home, '>=1.8.0 <3.0.0');
-    vi.stubEnv('DSH_WB_OPENCLI_PIN', '3.0.0');
+    const root = join(home, 'workbench', 'opencli');
+    writeJson(join(root, 'toolchain', 'node_modules', '@jackwener', 'opencli', 'package.json'), {
+      version: '3.0.0',
+    });
 
     const { opencliVersionReport } = await load();
 

@@ -6,9 +6,8 @@ import { boardFactOf, boardSituation, type BoardFactState, type BoardProbe, type
 import { cliCommandOf } from '@dsh-workbench/shared/host';
 import { artifactsDirOf } from '@/shared/api/host/diy-artifacts';
 import { hostSurface } from '@dsh-workbench/shared/host';
-import { surfaceOf } from '@/shared/api/host/runtime-surface';
 import { asRecord, asText, unitsOf, workspaceOf } from './diy-context';
-import { readyPageOf, type LineMaker, type WorkbenchPage } from './diy-browser';
+import { readyPageOf, wireOf, type Wire, type WorkbenchPage } from './diy-browser';
 
 export type BoardState = BoardFactState;
 
@@ -20,7 +19,7 @@ export interface PageHandle {
   readonly seam: Seam;
   readonly command: string;
   readonly session: string;
-  readonly line?: LineMaker;
+  readonly wire?: Wire;
   readonly bound: boolean;
   readonly board: BoardState;
   readonly boardPath: string;
@@ -162,7 +161,8 @@ export async function pageAt(
   }
   const command = cliCommandOf(ctx);
   const session = asText(args['session']) || BROWSER_SCREEN_SESSION;
-  const handshake = await readyPageOf(seam, command, session);
+  const wire = wireOf(ctx);
+  const handshake = await readyPageOf(seam, command, session, wire);
   if (!handshake.ok && options.requireWorkbench !== false && !hostSurface().capabilities.pageDebug) {
     throw new Error(desktopPageText(handshake.page));
   }
@@ -195,7 +195,7 @@ export async function pageAt(
     seam,
     command,
     session,
-    ...(surfaceOf(ctx)?.background === undefined ? {} : { line: surfaceOf(ctx)?.background }),
+    wire,
     bound: handshake.bound,
     board,
     boardPath: handshake.page.board,

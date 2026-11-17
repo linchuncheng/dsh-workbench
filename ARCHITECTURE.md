@@ -862,7 +862,8 @@ mount() 抛错 / 工具注册到一半失败
      env       { name }                               环境变量
 ```
 
-`peer 范围` 今天写的是 `>=2.0.0 <3.0.0`：插件声明「我只适配这一段运行时」。它是三方里唯一由插件主动写的版本约束。
+`peer 范围` 今天写的是 `>=1.8.0 <3.0.0`（通道插件）：插件声明「我只适配这一段运行时」。它是三方里唯一由插件主动写的版本约束。
+壳这边认哪一段写在 `OPENCLI_SUPPORTED_RANGE`（也是 `>=1.8.0 <3.0.0`），装哪一份写在 `OPENCLI_PIN`（2.0.3）——**装的支持范围与装哪一份是两件事**：盘上已经是范围内别的版本就照用，出了范围才按未就绪重装。
 换大版本时这条约束就会跳出来：插件没跟着改范围，模块立刻显示「版本不一致」。
 
 #### 判定
@@ -1113,7 +1114,7 @@ pnpm run check
 lint:commit → build → check:deps → typecheck → lint → check:duplication → coverage →
 check:gates:target --fail-on-red → arch → check:docs → check:copy:strict → check:runtimes →
 selfcheck → check:modules → check:adapter-defaults → scripts/check-adapter-contract.mjs →
-check:release-packages → check:release-artifacts
+scripts/check-opencli-wire.mjs → check:release-packages → check:release-artifacts
 ```
 <!-- doc-facts:end gate-chain -->
 

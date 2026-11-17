@@ -1,4 +1,5 @@
 import { tailLines } from '@dsh-workbench/shared/host';
+import { opencliResultOf } from '@dsh-workbench/adapter-runtime';
 
 export type PreflightBridgeIssue = 'daemon' | 'extension' | 'profile' | 'stale' | 'unknown';
 
@@ -7,20 +8,14 @@ export const BRIDGE_ISSUE_ORDER: readonly PreflightBridgeIssue[] = ['profile', '
 function jsonReportOf(text: string): BridgeReport | undefined {
   const trimmed = text.trim();
   if (!trimmed.startsWith('{')) return undefined;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch {
-    return { ok: false, issues: ['unknown'], detail: tailLines(text, 3) };
-  }
-  if (typeof parsed !== 'object' || parsed === null) {
-    return { ok: false, issues: ['unknown'], detail: tailLines(text, 3) };
-  }
-  const data = (parsed as Record<string, unknown>)['data'];
-  if (typeof data !== 'object' || data === null) {
+  const data = opencliResultOf(trimmed);
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
     return { ok: false, issues: ['unknown'], detail: tailLines(text, 3) };
   }
   const fields = data as Record<string, unknown>;
+  if (fields['daemonRunning'] === undefined && fields['extensionConnected'] === undefined) {
+    return { ok: false, issues: ['unknown'], detail: tailLines(text, 3) };
+  }
   const found = new Set<PreflightBridgeIssue>();
   if (fields['daemonRunning'] !== true) found.add('daemon');
   if (fields['daemonStale'] === true) found.add('stale');
