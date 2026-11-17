@@ -233,7 +233,9 @@ jobs:
             Write-Host "::error title=plugin list failed::$body"
             throw "opencli plugin list failed: $LASTEXITCODE"
           }
-          if (-not $raw.Contains('hello @')) {
+          $parsed = $raw | ConvertFrom-Json
+          $rows = if ($parsed -is [array]) { $parsed } elseif ($null -ne $parsed.data) { $parsed.data } else { @() }
+          if (-not ($rows | Where-Object { $_.name -eq 'hello' })) {
             $body = ((($raw -split "`r?`n") | Where-Object { $_ -ne '' } | Select-Object -Last 30 | ForEach-Object { ($_ -replace '%', '%25') + '%0A' }) -join '')
             Write-Host "::error title=plugin not listed::$body"
             throw 'plugin hello not listed'
