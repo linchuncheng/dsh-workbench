@@ -4,6 +4,7 @@ import type { DshHostContext } from '../../api/dsh.js';
 import { asRecord } from '../../contract/guards.js';
 import { declarationProblemsOf, readDeclaration } from '../../contract/unit-declaration.js';
 import { packageSourceOf } from './installed-sources.js';
+import { npmrcEntries } from './npmrc.js';
 import { scopeOf } from '../adapters/adapter-types.js';
 import { workbenchRoot } from '../data/data-root.js';
 import { isPackageName } from '../data/spec.js';
@@ -130,16 +131,9 @@ function registryFromNpmrc(profileDir: string, pkg: string): string | undefined 
   }
   const scope = scopeOf(pkg);
   let fallback: string | undefined;
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim();
-    if (trimmed === '' || trimmed.startsWith('#') || trimmed.startsWith(';')) continue;
-    const separator = trimmed.indexOf('=');
-    if (separator <= 0) continue;
-    const key = trimmed.slice(0, separator).trim();
-    const value = unquoted(trimmed.slice(separator + 1).trim());
-    if (value === '') continue;
-    if (scope !== null && key === `${scope}:registry`) return value;
-    if (key === 'registry') fallback = value;
+  for (const entry of npmrcEntries(text)) {
+    if (scope !== null && entry.key === `${scope}:registry`) return unquoted(entry.value);
+    if (entry.key === 'registry') fallback = unquoted(entry.value);
   }
   return fallback;
 }

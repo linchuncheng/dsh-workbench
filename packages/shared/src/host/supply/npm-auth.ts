@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { npmrcEntries } from './npmrc.js';
 
 interface ScopedAuth {
   readonly prefix: string;
@@ -37,18 +38,14 @@ function normalizedPrefix(prefix: string): string {
 
 function scopedAuthOf(text: string): readonly ScopedAuth[] {
   const scopes = new Map<string, Map<string, string>>();
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (line === '' || line.startsWith('#') || line.startsWith(';')) continue;
-    const at = line.indexOf('=');
-    if (at <= 0) continue;
-    const key = line.slice(0, at).trim();
+  for (const entry of npmrcEntries(text)) {
+    const { key } = entry;
     if (!key.startsWith('//')) continue;
     const fieldAt = key.lastIndexOf(':');
     if (fieldAt <= 2) continue;
     const field = key.slice(fieldAt + 1);
     if (!AUTH_FIELDS.has(field)) continue;
-    const value = expandEnv(unquote(line.slice(at + 1).trim()));
+    const value = expandEnv(unquote(entry.value));
     if (value === '') continue;
     const prefix = normalizedPrefix(key.slice(0, fieldAt));
     const fields = scopes.get(prefix) ?? new Map<string, string>();
