@@ -2,5 +2,23 @@
   "market": "https://github.com/novaeth/dsh-workbench-market.git",
   "module": "@dsh-workbench/module-hello",
   "plugin": "opencli-plugin-hello",
-  "updateFrom": "1.2.3-beta.4"
+  "updateFrom": "1.2.3-beta.4",
+  "desktop": {
+    "version": "0.2.2-rc.3",
+    "macosArm64": {
+      "url": "https://download.deepseek.com/desktop/dsh-latest-macos-arm64.dmg",
+      "etag": "812a13eae932dcf8054e74af1aeef361"
+    },
+    "windowsX64": {
+      "url": "https://download.deepseek.com/desktop/dsh-latest-windows-x64.exe",
+      "etag": "a00249bd408a1341c8c453294c03c506"
+    }
+  },
+  "chromeForTesting": {
+    "version": "158.0.8127.36"
+  },
+  "opencliExtension": {
+    "tag": "v2.0.3",
+    "asset": "opencli-extension-v1.0.27.zip"
+  }
 }

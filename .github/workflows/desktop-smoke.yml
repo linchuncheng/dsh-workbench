@@ -46,7 +46,14 @@ jobs:
       - name: Install Desktop
         shell: bash
         run: |
-          curl -fL --retry 2 -o "$RUNNER_TEMP/dsh-desktop-mac.dmg" "https://download.deepseek.com/desktop/dsh-latest-macos-arm64.dmg"
+          url="$DESKTOP_SMOKE_DESKTOP_MAC_URL"
+          expected="$DESKTOP_SMOKE_DESKTOP_MAC_ETAG"
+          etag=$(curl -sSI --retry 2 --max-time 30 "$url" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag"{print $2; exit}' | tr -d '"')
+          if [ "$etag" != "$expected" ]; then
+            echo "::error title=Desktop 版本漂了::fixture $expected，上游 $etag"
+            exit 1
+          fi
+          curl -fL --retry 2 -o "$RUNNER_TEMP/dsh-desktop-mac.dmg" "$url"
           hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dsh-mnt" "$RUNNER_TEMP/dsh-desktop-mac.dmg"
           cp -R "$RUNNER_TEMP/dsh-mnt/DeepSeek Harness.app" /Applications/
           hdiutil detach "$RUNNER_TEMP/dsh-mnt"
