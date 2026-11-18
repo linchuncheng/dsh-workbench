@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { forgetRecordTab, rememberRecordTab } from '../diy-record-tab';
 import { createDiyRig } from '../../__tests__/diy-harness';
-import { armProbe, ARM_OK, GET, POST, URL, entry, envelope, heldStore, line } from '../../__tests__/record-fixtures';
+import { armProbe, ARM_OK, GET, POST, URL, decodedLineOf, entry, envelope, heldStore, line } from '../../__tests__/record-fixtures';
 import { captureFileOf, lastCaptureFileOf } from '../diy-record';
 import { artifactsDirOf } from '@/shared/api/host/diy-artifacts';
 import type { RecordListRow } from '../diy-record-text';
@@ -58,7 +58,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
     expect(built.record.live(Date.now())?.phase).toBe('armed');
     expect(built.record.live(Date.now())?.unit).toBe('demo');
     expect(built.commands.some((one) => one.includes("'--window' 'foreground'"))).toBe(true);
-    expect(built.commands.some((one) => one.includes('location.href'))).toBe(true);
+    expect(built.commands.some((one) => decodedLineOf(one).includes('location.href'))).toBe(true);
     expect(built.commands.some((one) => one.includes("'network' '--follow'"))).toBe(true);
     expect(built.commands.some((one) => one.includes('kill -0') || one.includes('pkill'))).toBe(false);
     expect(out.capture).toBe(true);
@@ -198,8 +198,8 @@ describe('录制交接：prepare / read / stop 三把', () => {
 
     await built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL, doing: '发布' }, rig.diyExec());
 
-    const wipe = built.commands.findIndex((one) => one.includes('sessionStorage.removeItem'));
-    const bar = built.commands.findIndex((one) => one.includes('XMLHttpRequest'));
+    const wipe = built.commands.findIndex((one) => decodedLineOf(one).includes('sessionStorage.removeItem'));
+    const bar = built.commands.findIndex((one) => decodedLineOf(one).includes('XMLHttpRequest'));
     expect(wipe).toBeGreaterThanOrEqual(0);
     expect(bar).toBeGreaterThan(wipe);
     expect(capture.endsWith('.jsonl')).toBe(true);

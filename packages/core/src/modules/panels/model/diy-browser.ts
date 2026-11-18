@@ -1,6 +1,7 @@
 import { productWrite, quoteShellArg, type DshHostContext, type Seam, type WriteIntent } from '@dsh-workbench/shared/host';
 import { browserReadOf, surfaceOf } from '@/shared/api/host/runtime-surface';
 import { PAGE_PROBE } from './diy-scripts';
+import { evalPayloadOf } from './diy-eval';
 
 const BACKGROUND_ENV: Readonly<Record<string, string>> = { OPENCLI_WINDOW: 'background' };
 const FOREGROUND_ENV: Readonly<Record<string, string>> = { OPENCLI_WINDOW: 'foreground' };
@@ -155,7 +156,7 @@ export async function workbenchPageOf(
   const step = await runBrowserStep(
     seam,
     command,
-    ['browser', session, 'eval', PAGE_PROBE, '--window', 'background'],
+    ['browser', session, 'eval', evalPayloadOf(PAGE_PROBE), '--window', 'background'],
     undefined,
     wire,
   );

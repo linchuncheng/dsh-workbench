@@ -9,7 +9,7 @@ import { takeHeldNotices } from '@/shared/api/host/diy-debug-act';
 import { forgetRecordTab } from '../diy-record-tab';
 import { createDiyRig } from '../../__tests__/diy-harness';
 import type { ProbeStep } from '../../__tests__/diy-harness';
-import { ARM_OK, POST, URL, heldStore, line } from '../../__tests__/record-fixtures';
+import { ARM_OK, POST, URL, decodedLineOf, heldStore, line } from '../../__tests__/record-fixtures';
 import { RECORD_ARM_SCRIPTS } from '../diy-record-scripts';
 import { releaseRecord, rememberWorkbenchApp } from '../diy-record';
 import { watchFinishStepOf } from '../diy-record-watch';
@@ -46,7 +46,7 @@ function recordingShell(plan: readonly ProbeStep[], order: string[], snap = '{"o
   return {
     resolve(request: { command: string }) {
       order.push(markerOf(request.command));
-      snapEval = request.command.includes("'no-snap'");
+      snapEval = decodedLineOf(request.command).includes("'no-snap'");
       return request;
     },
     async execute() {

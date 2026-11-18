@@ -3,6 +3,9 @@ import { formSnapOf, writeFormFields, writeFormHtml, type FormSnap } from '@/sha
 import { actBrowser } from './diy-browser-act';
 import type { Wire } from './diy-browser';
 import { RECORD_SNAP_SCRIPT } from './diy-record-read-scripts';
+import { evalPayloadOf } from './diy-eval';
+
+export { evalPayloadOf };
 
 let recordTab: string | undefined;
 let recordSite: string | undefined;
@@ -90,5 +93,6 @@ export function snapViewOf(snap: FormSnap | null): FormSnapView | null {
 
 export function recordEval(script: string): readonly string[] {
   const tab = recordTab;
-  return tab === undefined ? ['eval', script] : ['eval', '--tab', tab, script];
+  const payload = evalPayloadOf(script);
+  return tab === undefined ? ['eval', payload] : ['eval', '--tab', tab, payload];
 }

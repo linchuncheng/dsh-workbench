@@ -6,6 +6,12 @@ import { armFailureText } from '../diy-record-text';
 import { fakeSeamOf } from '../../__tests__/seam-fake';
 
 const WINDOWS_LINE_CAP = 8191;
+
+const decodedOf = (line: string): string => {
+  const flat = line.replace(/['\\]/g, '');
+  const encoded = /atob\(([A-Za-z0-9+/=]+)\)/.exec(flat)?.[1];
+  return encoded === undefined ? line : Buffer.from(encoded, 'base64').toString('utf8');
+};
 const PART_CAP = 6000;
 
 type Plan = { readonly stdout?: string; readonly exitCode?: number };
@@ -70,9 +76,9 @@ describe('浮条分段注入：每段都离 Windows 的命令行上限有余量'
     expect(seen).toHaveLength(total);
     expect(outcome.part).toBe(total);
     expect(outcome.parts).toBe(total);
-    expect(seen[1]).toContain('__dsh-record-bar');
-    expect(seen.findIndex((one) => one.includes('正在准备录制…'))).toBeLessThan(
-      seen.findIndex((one) => one.includes('XMLHttpRequest')),
+    expect(decodedOf(seen[1] ?? '')).toContain('__dsh-record-bar');
+    expect(seen.findIndex((one) => decodedOf(one).includes('正在准备录制…'))).toBeLessThan(
+      seen.findIndex((one) => decodedOf(one).includes('XMLHttpRequest')),
     );
   });
 

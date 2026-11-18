@@ -98,3 +98,9 @@ export const heldStore = (expect: RecordExpect | null, captureFile = '/w/shots/r
   if (!move.ok) throw new Error('begin failed');
   return store;
 };
+
+export const decodedLineOf = (line: string): string => {
+  const flat = line.replace(/['"\\]/g, '');
+  const encoded = /atob\(([A-Za-z0-9+/=]+)\)/.exec(flat)?.[1];
+  return encoded === undefined ? line : Buffer.from(encoded, 'base64').toString('utf8');
+};

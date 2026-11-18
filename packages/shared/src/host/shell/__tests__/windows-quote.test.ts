@@ -28,6 +28,10 @@ function enginesOf(): readonly string[] {
   });
 }
 
+function encodedOf(script: string): string {
+  return `Function(decodeURIComponent(escape(atob('${Buffer.from(script, 'utf8').toString('base64')}'))))()`;
+}
+
 describe('Windows：命令拼接后子进程收到的原样字节', () => {
   it.runIf(process.platform === 'win32')('★★ 带引号 / & / | / % / 括号的负载原样到达', () => {
     const root = mkdtempSync(join(tmpdir(), 'wb-quote-'));
@@ -35,12 +39,13 @@ describe('Windows：命令拼接后子进程收到的原样字节', () => {
     const engines = enginesOf();
     expect(engines.length).toBeGreaterThan(0);
     for (const engine of engines) {
-      const line = [quoteShellArgFor(cmd, 'win32'), quoteShellArgFor(NASTY, 'win32')].join(' ');
+      const payload = encodedOf(NASTY);
+      const line = [quoteShellArgFor(cmd, 'win32'), quoteShellArgFor(payload, 'win32')].join(' ');
       const run = spawnSync(engine, ['-NoProfile', '-NonInteractive', '-Command', callOperatorOf('pwsh', line)], {
         encoding: 'utf8',
       });
       const received = run.stdout.trim() === '' ? [] : (JSON.parse(run.stdout) as string[]);
-      expect({ engine, received }).toEqual({ engine, received: [NASTY] });
+      expect({ engine, received }).toEqual({ engine, received: [payload] });
     }
   });
 });
