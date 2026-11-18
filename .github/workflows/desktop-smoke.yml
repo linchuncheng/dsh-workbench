@@ -2,6 +2,25 @@ name: desktop-smoke
 
 "on":
   workflow_dispatch:
+    inputs:
+      desktopMode:
+        type: choice
+        options: [pinned, latest]
+        default: pinned
+      browserMode:
+        type: choice
+        options: [pinned, latest]
+        default: pinned
+  workflow_call:
+    inputs:
+      desktopMode:
+        type: string
+        required: false
+        default: pinned
+      browserMode:
+        type: string
+        required: false
+        default: pinned
   push:
     branches: [main]
   pull_request:
@@ -30,6 +49,8 @@ jobs:
     with:
       image: windows-2025
       label: win11
+      desktopMode: ${{ inputs.desktopMode || 'pinned' }}
+      browserMode: ${{ inputs.browserMode || 'pinned' }}
 
   windows-10:
     name: desktop / windows 10-class (server 2022)
@@ -37,6 +58,8 @@ jobs:
     with:
       image: windows-2022
       label: win10
+      desktopMode: ${{ inputs.desktopMode || 'pinned' }}
+      browserMode: ${{ inputs.browserMode || 'pinned' }}
 
   macos:
     name: desktop / macos arm64
@@ -44,6 +67,8 @@ jobs:
     timeout-minutes: 25
     env:
       DESKTOP_SMOKE_OS: mac
+      DESKTOP_SMOKE_DESKTOP_MODE: ${{ inputs.desktopMode || 'pinned' }}
+      DESKTOP_SMOKE_BROWSER_MODE: ${{ inputs.browserMode || 'pinned' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -56,14 +81,18 @@ jobs:
         timeout-minutes: 10
         shell: bash
         run: |
-          url="$DESKTOP_SMOKE_DESKTOP_MAC_URL"
-          expected="$DESKTOP_SMOKE_DESKTOP_MAC_ETAG"
-          etag=$(curl -sSI --retry 2 --max-time 30 "$url" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag"{print $2; exit}' | tr -d '"')
-          if [ "$etag" != "$expected" ]; then
-            echo "::error title=Desktop 版本漂了::fixture $expected，上游 $etag"
-            exit 1
+          if [ "${DESKTOP_SMOKE_DESKTOP_MODE:-pinned}" = "latest" ]; then
+            curl -fL --retry 2 -o "$RUNNER_TEMP/dsh-desktop-mac.dmg" "https://download.deepseek.com/desktop/dsh-latest-macos-arm64.dmg"
+          else
+            url="$DESKTOP_SMOKE_DESKTOP_MAC_URL"
+            expected="$DESKTOP_SMOKE_DESKTOP_MAC_ETAG"
+            etag=$(curl -sSI --retry 2 --max-time 30 "$url" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag"{print $2; exit}' | tr -d '"')
+            if [ "$etag" != "$expected" ]; then
+              echo "::error title=Desktop 版本漂了::fixture $expected，上游 $etag"
+              exit 1
+            fi
+            curl -fL --retry 2 -o "$RUNNER_TEMP/dsh-desktop-mac.dmg" "$url"
           fi
-          curl -fL --retry 2 -o "$RUNNER_TEMP/dsh-desktop-mac.dmg" "$url"
           hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dsh-mnt" "$RUNNER_TEMP/dsh-desktop-mac.dmg"
           cp -R "$RUNNER_TEMP/dsh-mnt/DeepSeek Harness.app" /Applications/
           hdiutil detach "$RUNNER_TEMP/dsh-mnt"

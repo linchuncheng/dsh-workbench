@@ -9,6 +9,14 @@ name: desktop-smoke-windows
       label:
         type: string
         required: true
+      desktopMode:
+        type: string
+        required: false
+        default: pinned
+      browserMode:
+        type: string
+        required: false
+        default: pinned
 
 permissions:
   contents: read
@@ -20,6 +28,8 @@ jobs:
     timeout-minutes: 25
     env:
       DESKTOP_SMOKE_OS: ${{ inputs.label }}
+      DESKTOP_SMOKE_DESKTOP_MODE: ${{ inputs.desktopMode }}
+      DESKTOP_SMOKE_BROWSER_MODE: ${{ inputs.browserMode }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -33,12 +43,16 @@ jobs:
         shell: pwsh
         run: |
           $installer = Join-Path $env:RUNNER_TEMP 'dsh-desktop-${{ inputs.label }}.exe'
-          $url = $env:DESKTOP_SMOKE_DESKTOP_WIN_URL
-          $expected = $env:DESKTOP_SMOKE_DESKTOP_WIN_ETAG
-          $head = Invoke-WebRequest -Method Head -Uri $url
-          $etag = ([string]$head.Headers.ETag).Trim('"')
-          if ($etag -ne $expected) { throw "Desktop 版本漂了：fixture $expected，上游 $etag" }
-          Invoke-WebRequest -Uri $url -OutFile $installer
+          if ($env:DESKTOP_SMOKE_DESKTOP_MODE -eq 'latest') {
+            Invoke-WebRequest -Uri 'https://download.deepseek.com/desktop/dsh-latest-windows-x64.exe' -OutFile $installer
+          } else {
+            $url = $env:DESKTOP_SMOKE_DESKTOP_WIN_URL
+            $expected = $env:DESKTOP_SMOKE_DESKTOP_WIN_ETAG
+            $head = Invoke-WebRequest -Method Head -Uri $url
+            $etag = ([string]$head.Headers.ETag).Trim('"')
+            if ($etag -ne $expected) { throw "Desktop 版本漂了：fixture $expected，上游 $etag" }
+            Invoke-WebRequest -Uri $url -OutFile $installer
+          }
           $install = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "installer failed: $($install.ExitCode)" }
           $deadline = (Get-Date).AddSeconds(120)

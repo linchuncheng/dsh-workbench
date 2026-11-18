@@ -28,6 +28,12 @@ const opencliAsset = /opencli-extension-v[0-9.]+\.zip/u.exec(opencliAssets)?.[0]
 
 const desktopMac = await headDesktop(FIXTURE.desktop.macosArm64.url);
 const desktopWin = await headDesktop(FIXTURE.desktop.windowsX64.url);
+const desktopChanged =
+  desktopMac.etag !== FIXTURE.desktop.macosArm64.etag || desktopWin.etag !== FIXTURE.desktop.windowsX64.etag;
+const browserChanged =
+  cftMeta.channels.Stable.version !== FIXTURE.chromeForTesting.version ||
+  opencliTag !== FIXTURE.opencliExtension.tag ||
+  opencliAsset !== FIXTURE.opencliExtension.asset;
 const changes = [];
 
 if (desktopMac.etag !== FIXTURE.desktop.macosArm64.etag) changes.push(`desktop macos: ${desktopMac.etag}`);
@@ -39,7 +45,9 @@ if (opencliTag !== FIXTURE.opencliExtension.tag) changes.push(`opencli tag: ${op
 if (opencliAsset !== FIXTURE.opencliExtension.asset) changes.push(`opencli asset: ${opencliAsset}`);
 
 const result = {
-  changed: changes.length > 0,
+  changed: desktopChanged || browserChanged,
+  desktopChanged,
+  browserChanged,
   heartbeat,
   changes,
   desktop: {

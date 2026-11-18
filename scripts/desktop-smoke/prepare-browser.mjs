@@ -8,6 +8,7 @@ import { FIXTURE } from './fixture.mjs';
 const temp = process.env.RUNNER_TEMP ?? tmpdir();
 const platform = process.platform === 'win32' ? 'win64' : process.platform === 'darwin' ? 'mac-arm64' : 'linux64';
 const label = process.env.DESKTOP_SMOKE_OS ?? '';
+const latestMode = process.env.DESKTOP_SMOKE_BROWSER_MODE === 'latest';
 const logFile = label === '' ? undefined : `desktop-${label}-prep.log`;
 if (logFile !== undefined) writeFileSync(logFile, '');
 const log = (line) => {
@@ -80,7 +81,7 @@ const meta = await fetch('https://googlechromelabs.github.io/chrome-for-testing/
   (response) => response.json(),
 );
 const pinnedChrome = FIXTURE.chromeForTesting.version;
-if (meta.channels.Stable.version !== pinnedChrome) {
+if (!latestMode && meta.channels.Stable.version !== pinnedChrome) {
   throw new Error(`Chrome for Testing stable 漂了：fixture ${pinnedChrome}，上游 ${meta.channels.Stable.version}`);
 }
 const cft = meta.channels.Stable.downloads.chrome.find((one) => one.platform === platform);
@@ -118,13 +119,13 @@ const latest = await fetch('https://github.com/jackwener/opencli/releases/latest
 const tag = latest.url.split('/').pop();
 if (tag === undefined || tag === '') throw new Error(`latest release 解析失败：${latest.url}`);
 const pinnedTag = FIXTURE.opencliExtension.tag;
-if (tag !== pinnedTag) throw new Error(`opencli latest 漂了：fixture ${pinnedTag}，上游 ${tag}`);
+if (!latestMode && tag !== pinnedTag) throw new Error(`opencli latest 漂了：fixture ${pinnedTag}，上游 ${tag}`);
 log(`latest release: ${tag}`);
 const assets = await fetch(`https://github.com/jackwener/opencli/releases/expanded_assets/${tag}`).then((response) => response.text());
 const asset = /opencli-extension-v[0-9.]+\.zip/u.exec(assets)?.[0];
 if (asset === undefined) throw new Error(`latest release 里没有扩展包：${assets.slice(0, 200)}`);
 const pinnedAsset = FIXTURE.opencliExtension.asset;
-if (asset !== pinnedAsset) throw new Error(`opencli 扩展包漂了：fixture ${pinnedAsset}，上游 ${asset}`);
+if (!latestMode && asset !== pinnedAsset) throw new Error(`opencli 扩展包漂了：fixture ${pinnedAsset}，上游 ${asset}`);
 const extensionUrl = `https://github.com/jackwener/opencli/releases/download/${tag}/${asset}`;
 log(`extension: ${extensionUrl}`);
 await withRetries('下载扩展', async () => {
