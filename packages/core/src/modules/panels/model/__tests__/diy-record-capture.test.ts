@@ -300,6 +300,19 @@ describe('合并两份来源：按 method + url 去重，钩子那份优先', ()
     expect(merged[0]?.key).toBe(`POST ${URL}/api/publish`);
   });
 
+  it('★★ 钩子记的是无协议地址（host:port/…）也认出来：同一次保存不该列两条', () => {
+    const hook = [{ ...call('POST', `${URL}/api/issue/save`, '', 'hook'), at: T0 + 1 }];
+    const captured = captureCallsOf(capture(line('POST', `${URL}/api/issue/save`, T0 + 2))).map((one) => ({
+      ...one,
+      url: one.url.replace(/^http:\/\//u, ''),
+    }));
+
+    const merged = mergeCalls(hook, captured);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.source).toBe('hook');
+  });
+
   it('★ 只有捕获有的那条留下（source = capture），结果按 at 升序', () => {
     const hook = [call('GET', `${URL}/api/list`, '', 'hook')].map((one) => ({ ...one, at: T0 + 30 }));
     const captured = captureCallsOf(

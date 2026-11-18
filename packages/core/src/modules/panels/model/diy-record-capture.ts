@@ -94,7 +94,7 @@ function callKeyOf(one: { readonly method: string; readonly url: string }): stri
   return `${one.method} ${one.url}`;
 }
 
-const ORIGIN = /^[a-z][a-z0-9+.-]*:\/\/[^/?#]+/i;
+const ORIGIN = /^(?:[a-z][a-z0-9+.-]*:\/\/)?(?:localhost|\[[0-9a-f:]+\]|(?:[a-z0-9-]+\.)+[a-z0-9-]+)(?::\d+)?/i;
 
 function barePathOf(url: string): string {
   return url.replace(ORIGIN, '') || '/';
