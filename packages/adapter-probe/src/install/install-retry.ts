@@ -1,4 +1,4 @@
-import { storeMismatchIn } from '../runtime/store-mismatch.js';
+import { storeMismatchIn } from '@dsh-workbench/shared/host';
 import { transientFetchIn } from '../runtime/transient-fetch.js';
 
 const TRANSIENT_ATTEMPTS = 3;

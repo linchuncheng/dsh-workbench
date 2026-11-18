@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { quoteShellArg, quoteShellArgFor, removePath, writeTextFile } from '@dsh-workbench/shared/host';
 import type { Seam } from '@dsh-workbench/shared/host';
 import { bootstrapEnv, runBootstrapCommand } from '../runtime/bootstrap-run.js';
-import { storeMismatchIn } from '../runtime/store-mismatch.js';
+import { storeMismatchIn } from '@dsh-workbench/shared/host';
 import { hostSurface } from '../runtime/platform.js';
 import { desktopNodeExecutable, desktopPnpmPath } from '../runtime/desktop-runtime.js';
 import type { PnpmProcess } from '../runtime/desktop-runtime.js';
