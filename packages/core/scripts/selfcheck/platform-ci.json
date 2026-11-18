@@ -221,6 +221,9 @@
     ],
     "capture": [
       "packages/core/src/modules/panels/model/__tests__/diy-record-live.test.ts"
+    ],
+    "shell-quote": [
+      "packages/shared/src/host/shell/__tests__/windows-quote.test.ts"
     ]
   }
 }
