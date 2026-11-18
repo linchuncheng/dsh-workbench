@@ -109,7 +109,7 @@ pnpm run check                        # 门禁：整仓那一套（= `pnpm -w ru
 | 触发 | 读 |
 |---|---|
 | 新用户怎么用 | [`packages/core/README.md`](packages/core/README.md) · [`README.md`](README.md) |
-| 装 profile、起实例、排障、给别人用 | [`packages/core/README.md`](packages/core/README.md) |
+| 安装（Desktop 插件页）、排障、数据落在哪 | [`packages/core/README.md`](packages/core/README.md) |
 | 改结构、加域、加面板模块、认清层序与两个运行时 | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | 起进程 / 跑 shell 命令（选执行缝还是具名例外） | [`docs/agents/command-execution.md`](docs/agents/command-execution.md) |
 | 给模块作者：加一个模块 / 过门禁 / 发布 | [`packages/core/skills/workbench-module-diy/`](packages/core/skills/workbench-module-diy/SKILL.md) |

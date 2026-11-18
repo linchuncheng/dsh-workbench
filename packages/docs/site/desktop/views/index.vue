@@ -86,7 +86,7 @@ defineOptions({
               class="meta-dot"
               style="--c: var(--purple)"
             ></span>
-            独立实例 :3081
+            Desktop 插件
           </div>
           <div class="meta-sep"></div>
           <div class="meta-item">
@@ -139,7 +139,7 @@ defineOptions({
           <p>全量功能堆在眼前，日常只需两三处。其余都是干扰。</p>
           <div class="p-fix">
             <span class="p-fix-tag">只取所需</span>
-            <span class="p-fix-text">以模块为界，按需而装。</span>
+            <span class="p-fix-text">以模块为界，按需安装。</span>
           </div>
         </div>
 
@@ -168,7 +168,7 @@ defineOptions({
       <div class="section-header">
         <span class="section-eyebrow">CUSTOMIZE</span>
         <h2>看板，由你定义。</h2>
-        <p>装、开、排、配、造。一张随工作生长的看板。</p>
+        <p>安装、打开、排序、配置、创建。一张随工作生长的看板。</p>
       </div>
 
       <div class="feature-grid">
@@ -189,8 +189,8 @@ defineOptions({
               <path d="M3 8l9 5 9-5M12 13v8" />
             </svg>
           </div>
-          <h3>装。以模块为单位。</h3>
-          <p>缺陷、构建、分析。需要什么，装什么。</p>
+          <h3>安装。以模块为单位。</h3>
+          <p>缺陷、构建、分析。需要什么，安装什么。</p>
         </div>
         <div class="f-card">
           <div
@@ -227,7 +227,7 @@ defineOptions({
             </svg>
           </div>
           <h3>开与排。一项目一板。</h3>
-          <p>卡片、顺序，都由你定。拖动，即调整。</p>
+          <p>模块、顺序，都由你定。拖动，即调整。</p>
         </div>
         <div class="f-card">
           <div
@@ -298,8 +298,8 @@ defineOptions({
               />
             </svg>
           </div>
-          <h3>配与造。从配置到创造。</h3>
-          <p>每块卡片，都有它的设置。缺什么，让 agent 造。</p>
+          <h3>配置与创建。从配置到创造。</h3>
+          <p>每块模块，都有它的设置。缺少什么，让 agent 创建。</p>
         </div>
       </div>
     </section>
@@ -330,7 +330,7 @@ defineOptions({
             </svg>
           </div>
           <h3>同屏。</h3>
-          <p>对话、卡片、详情，并排。</p>
+          <p>对话、模块、详情，并排。</p>
         </div>
         <div class="f-card">
           <div
@@ -383,7 +383,7 @@ defineOptions({
       <div class="section-header">
         <span class="section-eyebrow">GET STARTED</span>
         <h2>开始使用。</h2>
-        <p>几步就好。遇到问题，也有答案。</p>
+        <p>几步即可完成。遇到问题，也有答案。</p>
       </div>
 
       <div class="qs-entry">
@@ -405,11 +405,11 @@ defineOptions({
             </svg>
           </div>
           <h3>快速开始</h3>
-          <p>建实例，启动，打开 :3081。首次安装 OpenCLI 扩展，数据才会出现。</p>
+          <p>在 Desktop 中安装，重新打开窗口。首次安装 OpenCLI 扩展，数据才会出现。</p>
           <PagodaDocLinkToView
             view="guide/quickstart"
             class="qs-link"
-          >跟着做 →</PagodaDocLinkToView>
+          >查看步骤 →</PagodaDocLinkToView>
         </div>
         <div class="qs-card">
           <div
@@ -430,7 +430,7 @@ defineOptions({
             </svg>
           </div>
           <h3>看板如何定义</h3>
-          <p>装模块，开卡片，拖顺序。缺什么，让 agent 造。</p>
+          <p>安装模块，打开看板，拖动顺序。缺少什么，让 agent 创建。</p>
           <PagodaDocLinkToView
             view="guide/modules"
             class="qs-link"
@@ -464,7 +464,7 @@ defineOptions({
             </svg>
           </div>
           <h3>常见问题</h3>
-          <p>起不来、看板空、装进 Desktop 没反应？按症状找答案。</p>
+          <p>启动失败、看板为空、Desktop 中没有反应？按症状查找答案。</p>
           <PagodaDocLinkToView
             view="faq"
             class="qs-link"
@@ -473,11 +473,11 @@ defineOptions({
       </div>
 
       <p class="qs-alt">
-        也可以装进现有环境。
+        安装一次，长期使用。
         <PagodaDocLinkToView
           view="guide/install"
           class="qs-alt-link"
-        >三种装法 →</PagodaDocLinkToView>
+        >安装与卸载 →</PagodaDocLinkToView>
       </p>
     </section>
 
@@ -485,7 +485,7 @@ defineOptions({
     <section class="footer-cta">
       <div class="footer-cta-inner">
         <h2>从一张看板开始。</h2>
-        <p>独立实例，有自己的端口、profile 与运行时目录。会话与项目，沿用现有数据。账号与权限，留在原处。不需要时，删掉两个目录即可复原。</p>
+        <p>安装在 Desktop 中，会话与项目沿用现有的那一份。账号与权限，留在原处。不需要时，从插件页移除即可复原。</p>
         <a
           href="#/guide/quickstart"
           class="btn-primary"
