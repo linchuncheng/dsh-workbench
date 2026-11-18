@@ -270,7 +270,7 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     expect(shot.attrs['aria-label']).toBe('拍一张当前页面的截图');
     expect(shot.disabled).toBe(false);
     expect(end.attrs['title']).toBe('结束录制');
-    expect(end.innerHTML).toContain('<rect');
+    expect(end.innerHTML).toContain('data:image/svg+xml;base64,');
     expect(end.children[0]?.textContent).toBe('结束');
     expect(shot.attrs['style']).toContain('padding:0 8px');
     expect(shot.attrs['style']).not.toContain('width:24px');

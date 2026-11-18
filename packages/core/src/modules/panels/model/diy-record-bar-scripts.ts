@@ -4,6 +4,28 @@ import {
   RECORD_KEY,
 } from './diy-record-keys';
 
+
+const CROP_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5V1.5H5M11 1.5h3.5V5M14.5 11v3.5H11M5 14.5H1.5V11"/><rect x="6" y="6" width="4" height="4" rx="1"/></svg>';
+const SQUARE_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1.5" fill="#ffffff"/></svg>';
+
+const iconHtmlOf = (svg: string, size: number): string => {
+  const encoded = Buffer.from(svg, 'utf8').toString('base64');
+  return (
+    '<span style="display:inline-block;flex:0 0 auto;width:' +
+    String(size) +
+    'px;height:' +
+    String(size) +
+    'px;background-repeat:no-repeat;background-position:center;background-size:contain;background-image:url(data:image/svg+xml;base64,' +
+    encoded +
+    ')"></span>'
+  );
+};
+
+const CROP_ICON = iconHtmlOf(CROP_SVG, 13);
+const SQUARE_ICON = iconHtmlOf(SQUARE_SVG, 12);
+
 export const RECORD_ARM_BAR_SCRIPT = `(() => {
   const KEY = ${JSON.stringify(RECORD_KEY)};
   const BAR = ${JSON.stringify(RECORD_BAR_KEY)};
@@ -62,12 +84,12 @@ export const RECORD_ARM_BAR_SCRIPT = `(() => {
   shot.setAttribute('tabindex', '-1');
   shot.setAttribute('title', '拍一张当前页面的截图');
   shot.setAttribute('aria-label', '拍一张当前页面的截图');
-  shot.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" style="display:block;flex:0 0 auto" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5V1.5H5M11 1.5h3.5V5M14.5 11v3.5H11M5 14.5H1.5V11"></path><rect x="6" y="6" width="4" height="4" rx="1"></rect></svg>截图';
+  shot.textContent = '截图';
   end.type = 'button';
   end.setAttribute('tabindex', '-1');
   end.setAttribute('title', '结束录制');
   end.setAttribute('aria-label', '结束录制');
-  end.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" style="display:block;flex:0 0 auto" aria-hidden="true" focusable="false"><rect x="2" y="2" width="8" height="8" rx="1.5" fill="currentColor"></rect></svg>';
+
   const endText = document.createElement('span');
   endText.textContent = '结束';
   end.appendChild(endText);
@@ -77,6 +99,7 @@ export const RECORD_ARM_BAR_SCRIPT = `(() => {
   bar.appendChild(shot);
   bar.appendChild(end);
   shell.nodes = { grip, dot, label, shot, end };
+
   shell.look = look;
   bar.style.display = 'flex';
   label.textContent = '正在准备录制…';
@@ -135,8 +158,14 @@ export const RECORD_ARM_BAR_ITEMS_SCRIPT = `(() => {
   }
   if (shell.nodes !== undefined) {
     shell.bar.style.display = 'flex';
+    shell.nodes.shot.innerHTML = ${JSON.stringify(CROP_ICON + '截图')};
+    shell.nodes.end.innerHTML = ${JSON.stringify(SQUARE_ICON + '<span>结束</span>')};
+    shell.squareIcon = ${JSON.stringify(SQUARE_ICON)};
     return { ok: true, reused: true };
   }
+  shell.nodes.shot.innerHTML = ${JSON.stringify(CROP_ICON + '截图')};
+  shell.nodes.end.innerHTML = ${JSON.stringify(SQUARE_ICON + '<span>结束</span>')};
+  shell.squareIcon = ${JSON.stringify(SQUARE_ICON)};
 })()`;
 
 export const RECORD_ARM_BAR_WIRING_SCRIPT = `(() => {
@@ -167,8 +196,7 @@ export const RECORD_ARM_BAR_WIRING_SCRIPT = `(() => {
   const idleHtml = end.innerHTML;
   const spinHtml =
     '<span style="display:inline-block;width:10px;height:10px;border:1.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:999px;corner-shape:round;animation:__dshRecordSpin .8s linear infinite"></span><span>正在回到工作台…</span>';
-  const doneHtml =
-    '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><rect x="2" y="2" width="8" height="8" rx="1.5" fill="currentColor"></rect></svg><span>已结束</span>';
+  const doneHtml = shell.squareIcon + '<span>已结束</span>';
   let switching = false;
   let handedOff = false;
   const settle = () => {
