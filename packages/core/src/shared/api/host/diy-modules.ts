@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { workspaceDeclarationIn, workspaceDirsOf } from '@dsh-workbench/shared/host';
 
 export interface DiyModule {
   readonly unit: string;
@@ -32,70 +33,16 @@ function manifestAt(dir: string): Record<string, unknown> | undefined {
   }
 }
 
-function pnpmGlobs(root: string): readonly string[] {
-  const file = join(root, 'pnpm-workspace.yaml');
-  if (!existsSync(file)) return [];
-  const globs: string[] = [];
-  let inside = false;
-  for (const line of readFileSync(file, 'utf8').split('\n')) {
-    const bare = line.replace(/#.*$/u, '').trimEnd();
-    if (/^packages\s*:/u.test(bare)) {
-      inside = true;
-      continue;
-    }
-    if (!inside) continue;
-    if (bare.trim() === '') continue;
-    if (/^\s+-/u.test(bare)) {
-      const raw = bare
-        .replace(/^\s*-\s*/u, '')
-        .trim()
-        .replace(/^['"]|['"]$/gu, '');
-      if (raw !== '') globs.push(raw);
-      continue;
-    }
-    if (!/^\s/u.test(bare)) break;
-  }
-  return globs;
-}
-
-function npmGlobs(root: string): readonly string[] {
-  const workspaces = manifestAt(root)?.['workspaces'];
-  if (Array.isArray(workspaces)) return workspaces.filter((one): one is string => typeof one === 'string');
-  const nested = asRecord(workspaces)?.['packages'];
-  return Array.isArray(nested) ? nested.filter((one): one is string => typeof one === 'string') : [];
-}
-
-function declaredGlobs(root: string): readonly string[] {
-  return [...pnpmGlobs(root), ...npmGlobs(root)];
-}
-
 export type WorkspaceShape = 'workspace' | 'package' | 'bare';
 
 export function shapeOf(root: string): WorkspaceShape {
-  if (pnpmGlobs(root).length > 0 || npmGlobs(root).length > 0) return 'workspace';
+  if (workspaceDeclarationIn(root).patterns.length > 0) return 'workspace';
   return manifestAt(root) === undefined ? 'bare' : 'package';
-}
-
-function dirsOfPattern(root: string, pattern: string): readonly string[] {
-  const clean = pattern.replace(/^\.\//u, '').replace(/\/+$/u, '');
-  if (clean === '' || clean.includes('**')) return [];
-  if (clean.endsWith('/*')) {
-    const base = join(root, clean.slice(0, -2));
-    if (!existsSync(base)) return [];
-    return readdirSync(base, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
-      .map((entry) => join(base, entry.name));
-  }
-  if (clean.includes('*')) return [];
-  return [join(root, clean)];
 }
 
 export function modulesIn(root: string, installed: readonly string[] = []): readonly DiyModule[] {
   const already = new Set(installed);
-  const dirs = new Set<string>([
-    root,
-    ...declaredGlobs(root).flatMap((pattern) => dirsOfPattern(root, pattern)),
-  ]);
+  const dirs = new Set<string>([root, ...workspaceDirsOf(root, workspaceDeclarationIn(root).patterns)]);
   const rows: DiyModule[] = [];
   for (const dir of dirs) {
     let manifest: unknown;
