@@ -234,12 +234,18 @@ importers:
       proper-lockfile:
         specifier: ^4.1.2
         version: 4.1.2
+      tinyglobby:
+        specifier: ^0.2.17
+        version: 0.2.17
       which:
         specifier: ^7.0.0
         version: 7.0.0
       write-file-atomic:
         specifier: ^8.0.0
         version: 8.0.0
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
     devDependencies:
       '@arch-guard/core':
         specifier: ^0.12.0
@@ -386,9 +392,15 @@ importers:
       semver:
         specifier: ^7.8.5
         version: 7.8.5
+      tinyglobby:
+        specifier: ^0.2.17
+        version: 0.2.17
       write-file-atomic:
         specifier: ^8.0.0
         version: 8.0.0
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
     devDependencies:
       '@arch-guard/core':
         specifier: ^0.12.0
