@@ -101,6 +101,11 @@ after the release build, `packages/core/CHANGELOG.md` (shipped with
 
 `pnpm release` 的 preflight 会跑 `pnpm run check:compat`：有未解决的 `compat` issue 就停。确需豁免时先跑 `pnpm run check:compat -- --waiver "原因"`，把理由记进发布记录。
 
+`compat-watch` 每 6 小时把 Desktop / Chrome for Testing / opencli 的 latest 与
+`scripts/desktop-smoke/fixture.json` 里的固定版本比较；漂了会开 `compat` issue。需要跑桌面 smoke 的
+required 路径用 fixture 里的固定版本（Desktop 用 ETag 校验，Chrome / opencli 用版本号校验）；升级
+fixture 只走独立 bump PR，不和产品改动混在一起。
+
 ## Documentation facts
 
 Some document blocks are generated from code, not hand-written. Change the source
@@ -189,9 +194,10 @@ node packages/core/scripts/selfcheck/index.mjs --tag win32
 ```
 
 The full `pnpm run check` is still the release gate and is expected before pushing. CI runs the
-full gate on linux and macOS (`.github/workflows/gate.yml`); Windows has no full gate, so
-`platform-smoke` covers the platform-sensitive tests there. Run the gate locally (or in a
-worktree) before pushing.
+full gate on linux and macOS (`.github/workflows/gate.yml`). Windows runs the full unit suite and
+static checks in `.github/workflows/windows-full.yml` on `main` and the weekly schedule;
+`platform-smoke` keeps the manifest tests on PRs and on Windows Server 2022, and desktop smoke
+covers install/self-update paths. Run the gate locally (or in a worktree) before pushing.
 
 ## Docs site
 
