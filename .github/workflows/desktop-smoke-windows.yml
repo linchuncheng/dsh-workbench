@@ -206,7 +206,7 @@ jobs:
           if ([string]::IsNullOrEmpty($env:DESKTOP_SMOKE_PLUGIN)) { throw 'DESKTOP_SMOKE_PLUGIN is empty' }
           if ([string]::IsNullOrEmpty($env:DESKTOP_SMOKE_OPENCLI)) { throw 'prepare-browser 没导出 DESKTOP_SMOKE_OPENCLI' }
           $pluginId = (Get-Content "scripts/desktop-smoke/plugins/$env:DESKTOP_SMOKE_PLUGIN/opencli-plugin.json" -Raw | ConvertFrom-Json).name
-          $raw = (& $env:DESKTOP_SMOKE_OPENCLI plugin list 2>&1 | Out-String)
+          $raw = (& $env:DESKTOP_SMOKE_OPENCLI plugin list -f json 2>&1 | Out-String)
           Write-Host $raw
           if ($LASTEXITCODE -ne 0) {
             $body = ((($raw -split "`r?`n") | Where-Object { $_ -ne '' } | Select-Object -Last 30 | ForEach-Object { ($_ -replace '%', '%25') + '%0A' }) -join '')
