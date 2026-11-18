@@ -47,9 +47,9 @@ describe('bootstrapEnv（自举命令的环境）', () => {
         parent: { PATH: '/bin', HOME: '/real-home' },
         shellKind: 'posix',
       });
-      expect(env['HOME']).toBe('/workbench/opencli/home');
-      expect(env['npm_config_cache']).toBe('/workbench/opencli/npm-cache');
-      expect(env['NPM_CONFIG_CACHE']).toBe('/workbench/opencli/npm-cache');
+      expect(env['HOME']).toBe(join('/workbench/opencli', 'home'));
+      expect(env['npm_config_cache']).toBe(join('/workbench/opencli', 'npm-cache'));
+      expect(env['NPM_CONFIG_CACHE']).toBe(join('/workbench/opencli', 'npm-cache'));
       expect(env['NPM_CONFIG_USERCONFIG']).toBe(join(realHome, '.npmrc'));
       expect(env['PATH']).toBe('/bin');
       expect(env['USERPROFILE']).toBeUndefined();
@@ -63,7 +63,7 @@ describe('bootstrapEnv（自举命令的环境）', () => {
     try {
       const env = bootstrapEnv({ opencliRoot: '/wb/opencli', realHome, parent: {}, shellKind: 'pwsh' });
       expect(env['NPM_CONFIG_USERCONFIG']).toBeUndefined();
-      expect(env['USERPROFILE']).toBe('/wb/opencli/home');
+      expect(env['USERPROFILE']).toBe(join('/wb/opencli', 'home'));
     } finally {
       rmSync(realHome, { recursive: true, force: true });
     }
