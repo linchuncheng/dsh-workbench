@@ -163,11 +163,7 @@ describe('用户自己按的三个键：给 agent 一条 notice，状态那一�
           startedAt: 1,
           t0: null,
           t1: null,
-          shots: [],
           shotsSeen: 0,
-          shotTries: null,
-          beats: 0,
-          beatMs: 0,
         }),
       ),
     ).toContain('这一场收了');

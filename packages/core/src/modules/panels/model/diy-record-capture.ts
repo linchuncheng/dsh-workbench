@@ -94,6 +94,19 @@ function callKeyOf(one: { readonly method: string; readonly url: string }): stri
   return `${one.method} ${one.url}`;
 }
 
+const ORIGIN = /^[a-z][a-z0-9+.-]*:\/\/[^/?#]+/i;
+
+function barePathOf(url: string): string {
+  return url.replace(ORIGIN, '') || '/';
+}
+
+function sameCallOf(
+  left: { readonly method: string; readonly url: string },
+  right: { readonly method: string; readonly url: string },
+): boolean {
+  return left.method === right.method && barePathOf(left.url) === barePathOf(right.url);
+}
+
 export function mergeCalls(
   hook: readonly RecordCall[],
   captured: readonly RecordCall[],
@@ -102,13 +115,11 @@ export function mergeCalls(
   const hooks = hook.length;
   const claimed = new Set<number>();
   for (const one of captured) {
-    const key = callKeyOf(one);
     let found = -1;
     for (let index = 0; index < hooks; index += 1) {
       if (claimed.has(index)) continue;
       const kept = out[index];
-      if (kept === undefined || callKeyOf(kept) !== key) continue;
-      if (kept.key !== '' && kept.key !== one.key) continue;
+      if (kept === undefined || !sameCallOf(kept, one)) continue;
       found = index;
       break;
     }

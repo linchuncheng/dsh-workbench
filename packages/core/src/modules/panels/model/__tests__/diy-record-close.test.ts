@@ -6,10 +6,13 @@ import { BROWSER_RECORD_SESSION, WORKBENCH_ADAPTERS } from '@dsh-workbench/share
 import type { DshHostContext, DshShell } from '@dsh-workbench/shared/host';
 import { fakeSeamOf } from '../../__tests__/seam-fake';
 import { takeHeldNotices } from '@/shared/api/host/diy-debug-act';
+import { forgetRecordTab } from '../diy-record-tab';
 import { createDiyRig } from '../../__tests__/diy-harness';
 import type { ProbeStep } from '../../__tests__/diy-harness';
 import { ARM_OK, POST, URL, heldStore, line } from '../../__tests__/record-fixtures';
-import { releaseRecord, rememberWorkbenchApp, watchFinishStepOf } from '../diy-record';
+import { RECORD_ARM_SCRIPTS } from '../diy-record-scripts';
+import { releaseRecord, rememberWorkbenchApp } from '../diy-record';
+import { watchFinishStepOf } from '../diy-record-watch';
 import { DIY_RECORD_READ_TOOL, DIY_RECORD_STOP_TOOL } from '../../unit';
 
 const writeCapture = (path: string, text: string): void => {
@@ -37,14 +40,28 @@ const markerOf = (command: string): string => {
   return 'cmd:other';
 };
 
-function recordingShell(plan: readonly ProbeStep[], order: string[]) {
+function recordingShell(plan: readonly ProbeStep[], order: string[], snap = '{"ok":false,"code":"no-snap"}') {
   let index = 0;
+  let snapEval = false;
   return {
     resolve(request: { command: string }) {
       order.push(markerOf(request.command));
+      snapEval = request.command.includes("'no-snap'");
       return request;
     },
     async execute() {
+      if (snapEval) {
+        snapEval = false;
+        return {
+          result: async () => ({
+            exitCode: 0,
+            timedOut: false,
+            aborted: false,
+            stdout: { text: snap, truncated: false },
+            stderr: { text: '', truncated: false },
+          }),
+        };
+      }
       const step = plan[Math.min(index, plan.length - 1)] ?? {};
       index += 1;
       return {
@@ -64,6 +81,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
   const rig = createDiyRig();
 
   beforeEach(() => {
+    forgetRecordTab();
     rig.scaffold('demo');
     takeHeldNotices('s1');
   });
@@ -75,7 +93,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
     return record;
   };
 
-  it('★★ 认到 finished ⇒ notice 先出去、接着 `tab list` + `tab close <page>` + **把租约也还掉**、然后收工', async () => {
+  it('★★ 认到 finished ⇒ 先取快照、叫醒 agent、把工作台带回前台；**窗口留着**（收尾时才关）', async () => {
     const record = held();
     const order: string[] = [];
     const agents = {
@@ -105,7 +123,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
     });
 
     expect(out).toEqual({ stop: true, delivered: true });
-    expect(order).toEqual(['cmd:eval', 'notice', 'cmd:tab-list', 'cmd:tab-close', 'cmd:other']);
+    expect(order).toEqual(['cmd:eval', 'cmd:eval', 'notice']);
     expect(takeHeldNotices('s1')).toHaveLength(1);
   });
 
@@ -122,7 +140,16 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
       dropped: 0,
       calls: [POST()],
     });
-    const seam = fakeSeamOf(recordingShell([{ stdout: stale }, { stdout: '{"ok":true}' }], order));
+    const seam = fakeSeamOf(
+      recordingShell(
+        [
+          { stdout: stale },
+          { stdout: '{"ok":true}' },
+          ...RECORD_ARM_SCRIPTS.map(() => ({ stdout: '{"ok":true}' })),
+        ],
+        order,
+      ),
+    );
 
     const out = await watchFinishStepOf({
       ctx: { get: () => undefined } as unknown as DshHostContext,
@@ -136,7 +163,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
 
     expect(out).toEqual({ stop: false, delivered: false });
     expect(record.live(Date.now())?.phase).toBe('recording');
-    expect(order).toEqual(['cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval', 'cmd:eval']);
+    expect(order).toHaveLength(RECORD_ARM_SCRIPTS.length + 2);
   });
 
   it('★★ 那一页已经没了（eval 报错 + tab list 是空的）⇒ 收工，不再每拍都去撞一次', async () => {
@@ -194,7 +221,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
     expect(readFileSync(captureFile, 'utf8')).toContain('publish');
   });
 
-  it('★★ 用户按「结束」⇒ 关完那一扇还要把工作台带回前台（不然他找不到窗口）', async () => {
+  it('★★ 用户按「结束」⇒ 把工作台带回前台（不然他找不到对话），录制的窗口留在那儿', async () => {
     const record = held();
     const order: string[] = [];
     const brought: string[] = [];
@@ -234,65 +261,44 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
 
     expect(out).toEqual({ stop: true, delivered: true });
     expect(brought).toEqual(['DeepSeek Harness']);
-    expect(order).toEqual(['cmd:eval', 'cmd:tab-list', 'cmd:tab-close', 'cmd:other']);
+    expect(order).toEqual(['cmd:eval', 'cmd:eval']);
   });
 
-  it('★★ 那扇窗里还留着 opencli 会话自己那个 about:blank ⇒ 顺手也关掉，别攒着（然后把租约还掉，下一场才开新窗）', async () => {
-    const record = held();
+  it('★★ 收尾那一拍才关窗：认准记住的那一扇，同窗那个 about:blank 一起收掉', async () => {
     const order: string[] = [];
-    const ctx = { get: () => undefined } as unknown as DshHostContext;
-    const seam = fakeSeamOf(recordingShell(
-      [
-        { stdout: finishedPayload() },
-        {
-          stdout: JSON.stringify([
-            { page: 'blank', url: 'about:blank', title: 'about:blank' },
-            { page: 'p1', url: URL, title: '环境' },
-          ]),
-        },
-        { stdout: '{"closed":"p1"}' },
-        { stdout: '{"closed":"blank"}' },
-      ],
-      order,
-    ));
-
-    const out = await watchFinishStepOf({
-      ctx,
-      seam,
-      command: '',
-      sessionId: 's1',
-      store: record,
-      url: URL,
-      captureFile: '/w/shots/rec-demo.jsonl',
-    });
-
-    expect(out).toEqual({ stop: true, delivered: true });
-    expect(order).toEqual(['cmd:eval', 'cmd:tab-list', 'cmd:tab-close', 'cmd:tab-close', 'cmd:other']);
-  });
-
-  it('★ 关窗失败（tab list 报错 / 关窗那一拍抛了）⇒ 照旧收工，叫醒不受影响', async () => {
-    const ctx = { get: () => undefined } as unknown as DshHostContext;
-    const order: string[] = [];
-
-    const failed = await watchFinishStepOf({
-      ctx,
-      seam: fakeSeamOf(recordingShell(
+    const seam = fakeSeamOf(
+      recordingShell(
         [
-          { stdout: finishedPayload() },
-          { stdout: '', stderr: 'tab list 挂了', exitCode: 1 },
-          { stdout: '', stderr: '整会话 close 也没成', exitCode: 1 },
+          {
+            stdout: JSON.stringify([
+              { page: 'blank', url: 'about:blank', title: 'about:blank' },
+              { page: 'p1', url: URL, title: '环境' },
+            ]),
+          },
+          { stdout: '{"closed":"p1"}' },
+          { stdout: '{"closed":"blank"}' },
+          { stdout: '{"ok":true,"data":[]}' },
         ],
         order,
-      )),
+      ),
+    );
+
+    const cleaned = await releaseRecord({
+      seam,
       command: '',
-      sessionId: 's1',
-      store: held(),
+      session: BROWSER_RECORD_SESSION,
       url: URL,
       captureFile: '/w/shots/rec-demo.jsonl',
+      tab: 'p1',
     });
 
-    expect(failed).toEqual({ stop: true, delivered: true });
-    expect(takeHeldNotices('s1')).toHaveLength(1);
+    expect(cleaned.tab).toBe(true);
+    expect(order).toEqual(['cmd:tab-list', 'cmd:tab-close', 'cmd:tab-close', 'cmd:tab-list', 'cmd:other']);
+  });
+
+  it('★ 快照那一拍炸了（shell 没了）⇒ 照旧叫醒、照旧收工，不把这一段丢掉', async () => {
+    const ctx = { get: () => undefined } as unknown as DshHostContext;
+    const order: string[] = [];
 
     let calls = 0;
     const throwing = {
@@ -314,6 +320,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
         };
       },
     } as unknown as DshShell;
+
     const boom = await watchFinishStepOf({
       ctx,
       seam: fakeSeamOf(throwing),
@@ -347,8 +354,8 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
 
     expect(out.rows).toHaveLength(1);
     expect(out.text).toContain('录完了 · 1 条（⭐ 1）');
-    expect(out.text).toContain('录制窗口已关闭');
-    expect(built.commands.some((one) => one.includes("'eval'"))).toBe(false);
+    expect(out.text).toContain('录制窗口先留着');
+    expect(out.text).toContain('POST');
   });
 
   it('★★ 他没按「开始」就按了「结束」⇒ 台账也要落到 finished（区间从 0 起），不然读那一段会去碰页面、opencli 又补一个空白标签', async () => {
@@ -415,13 +422,13 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
     expect(record.live(Date.now())?.t0).toBe(0);
   });
 
-  it('★ 已经 finished 的那一场：看护那一拍顺手把窗收掉并收工（不再空转）', async () => {
+  it('★ 已经 finished 的那一场：看护那一拍先补读页面钩子、再补快照就收工（窗口照旧留着，等收尾）', async () => {
     const record = heldStore(null);
     const at = Date.now();
     record.started('s1', at, at);
     record.finished('s1', at + 5, at + 5);
     const order: string[] = [];
-    const seam = fakeSeamOf(recordingShell([{ stdout: '[]' }], order));
+    const seam = fakeSeamOf(recordingShell([{ stdout: '{"ok":false,"code":"no-snap"}' }, { stdout: '[]' }], order));
 
     const out = await watchFinishStepOf({
       ctx: { get: () => undefined } as unknown as DshHostContext,
@@ -434,7 +441,43 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
     });
 
     expect(out).toEqual({ stop: true, delivered: false });
-    expect(order).toEqual(['cmd:tab-list']);
+    expect(order).toEqual(['cmd:eval', 'cmd:eval']);
+  });
+
+  it('★★★ 结束那一刻先把表单快照取走：页面下一秒可能就跳走，宿主不追着要就永远拿不到了', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-snap-'));
+    const captureFile = join(dir, 'rec-demo.jsonl');
+    writeFileSync(captureFile, '', 'utf8');
+    const record = heldStore(null);
+    const at = Date.now();
+    record.started('s1', at, at);
+    record.finished('s1', at + 5, at + 5);
+    const order: string[] = [];
+    const snap = {
+      ok: true,
+      href: URL,
+      title: '新建工单',
+      at,
+      bytes: 42,
+      truncated: false,
+      html: '<form><input name="title" required></form>',
+      fields: [{ name: 'title', label: '标题', kind: 'input', required: true, filled: false, value: '', options: [] }],
+    };
+    const seam = fakeSeamOf(recordingShell([{ stdout: '[]' }], order, JSON.stringify(snap)));
+
+    await watchFinishStepOf({
+      ctx: { get: () => undefined } as unknown as DshHostContext,
+      seam,
+      command: '',
+      sessionId: 's1',
+      store: record,
+      url: URL,
+      captureFile,
+    });
+
+    expect(order).toEqual(['cmd:eval', 'cmd:eval']);
+    expect(readFileSync(join(dir, 'rec-demo-form.html'), 'utf8')).toContain('name="title"');
+    expect(JSON.parse(readFileSync(join(dir, 'rec-demo-form.json'), 'utf8'))['fields']).toHaveLength(1);
   });
 
   it('★ releaseRecord 仍然 tolerant：标签已经不在（空列表）⇒ 不报"收窗失败"', async () => {
@@ -471,7 +514,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
       ],
     });
 
-    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec())) as {
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true, forceWhy: '夹具里没有表单快照' }, rig.diyExec())) as {
       cleaned: { readonly tab: boolean; readonly capture: boolean };
       text: string;
     };

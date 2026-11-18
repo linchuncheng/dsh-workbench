@@ -1,5 +1,5 @@
 import { clockOf } from '../runtime/time.js';
-import { createHold } from './hold.js';
+import { beginMove, createHold } from './hold.js';
 /**
  * 调试约定的两个相位：`debugging` 正占着用户的屏，`paused` 已暂停但仍持着约定。
  */
@@ -82,6 +82,12 @@ export interface DebugStore {
   settle?(): Promise<void>;
 }
 
+function debugSeedOf(pact: DebugPact, now: number): DebugState {
+  const who = { sessionId: pact.sessionId, workspacePath: pact.workspacePath, title: pact.title };
+  const where = { board: pact.board, unit: pact.unit, name: pact.name };
+  return { phase: 'debugging', ...who, ...where, startedAt: now, at: now };
+}
+
 /**
  * 造一份新的调试约定存储（进程内存，同一时刻只可能有一份有效约定）。
  * @returns 存取口；动作成不成都在返回的 `DebugMove` 里，不抛异常。
@@ -99,19 +105,7 @@ export function createDebugStore(): DebugStore {
   return {
     live: (now) => hold.live(now),
 
-    begin(pact) {
-      return hold.begin(pact.sessionId, pact.now, (now) => ({
-        phase: 'debugging',
-        sessionId: pact.sessionId,
-        workspacePath: pact.workspacePath,
-        title: pact.title,
-        board: pact.board,
-        unit: pact.unit,
-        name: pact.name,
-        startedAt: now,
-        at: now,
-      }));
-    },
+    begin: (pact) => beginMove(hold, pact, debugSeedOf),
 
     pause: turn('paused'),
 

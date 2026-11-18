@@ -211,7 +211,7 @@ export const checks = [
                 ? '收工没收干净：停捕获与收标签都要走 releaseRecord'
                 : !index.includes('DIY_RECORD_SERVICE') ||
                     !index.includes('diyRecordRoutes(record)') ||
-                    !index.includes('registerRecordTools(ctx, record)')
+                    !/registerRecordTools\(ctx, record[,)]/.test(index)
                   ? '这一族没在 index.ts 里接上（服务 / 路由 / 工具三处）'
                   : '';
       report(

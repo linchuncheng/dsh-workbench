@@ -8,7 +8,7 @@ import { wireOf } from './diy-browser';
 import { browserRowsOf } from '@/shared/api/host/runtime-surface';
 import { RECORD_READ_SCRIPT } from './diy-record-read-scripts';
 import { captureEntriesOf, pickAllOf, pickOf } from './diy-record-capture';
-import { recordEval } from './diy-record';
+import { recordEval } from './diy-record-tab';
 import { moveOrThrow, recordPageOf, renderRecordDetail } from './diy-record-text';
 import type { RecordPageRead } from './diy-record-text';
 import { DIY_RECORD_DETAIL_TOOL, DIY_RECORD_PREPARE_TOOL, DIY_RECORD_READ_TOOL } from '../unit';

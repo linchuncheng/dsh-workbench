@@ -227,12 +227,12 @@ describe('审批详情座：外壳自己的族也画同一件 ApprovalPlan', () 
     }
   });
 
-  it('★ 那一屏画的就是 ApprovalPlan：三行 + 一句 warn（"录制结束后不会自动切回"）', () => {
+  it('★ 那一屏画的就是 ApprovalPlan：三行、没有 warn（多余那句话不上屏）', () => {
     const view = planOf({ unit: 'demo', url: SITE, doing: '发布' });
 
     expect(view?.type).toBe(ApprovalPlan);
     expect(view?.props.rows).toHaveLength(3);
-    expect(view?.props.warn).toBe('录制结束后不会自动切回，左栏底部会显示一条状态。');
+    expect(view?.props.warn).toBeUndefined();
   });
 });
 

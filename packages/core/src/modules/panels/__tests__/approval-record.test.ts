@@ -44,6 +44,16 @@ describe('录制那一档：已经活着的一场录制，再 prepare 连问都�
     });
   });
 
+  it('★★ 同一场流程的上一段已结束 ⇒ 补录不再打回（复用同一扇窗，不重复问）', () => {
+    const store = heldStore(null);
+    const now = Date.now();
+    store.started('s1', now, now);
+    store.finished('s1', now, now);
+    const policy = panelsApprovalFor(undefined, () => store.live(Date.now()));
+
+    expect(policy(call('s1'))).not.toMatchObject({ kind: 'deny' });
+  });
+
   it('★ 没有活着的录制 / 没交取值器 ⇒ 照旧问（收工之后重新 prepare 要再点一次头）', async () => {
     const empty = panelsApprovalFor(undefined, () => null);
 

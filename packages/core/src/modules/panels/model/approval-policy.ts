@@ -27,6 +27,7 @@ function recordHeldVerdict(
   if (call.name !== DIY_RECORD_PREPARE_TOOL || recording === undefined) return undefined;
   const held = recording();
   if (held === null) return undefined;
+  if (held.phase === 'finished') return undefined;
   const code = held.sessionId === call.session ? 'already-held' : 'held-by-other';
   return { kind: 'deny', reason: recordRefusalText(code, held) };
 }

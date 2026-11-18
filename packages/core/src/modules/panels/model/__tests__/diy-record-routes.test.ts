@@ -38,27 +38,6 @@ describe('录制交接那条只读路由：让用户那一屏自己知道该画�
     expect(answer.state.url).toBe('https://inventory.example.com/env');
   });
 
-  it('★★ 落图台账随 state 一起交出去（左栏那一格据此说「已拍 N 张」）', () => {
-    const store = createRecordStore();
-    const now = Date.now();
-    store.begin({
-      sessionId: 's1',
-      workspace: '/w/diy',
-      unit: 'demo',
-      name: 'demo',
-      url: 'https://inventory.example.com/env',
-      title: '',
-      action: '发布',
-      expect: null,
-      captureFile: '/w/diy/shots/rec-demo.jsonl',
-      now,
-    });
-    store.shotTaken('s1', { n: 1, at: 5, path: '/w/diy/shots/rec-shot-demo-1.png' }, now);
-
-    const answer = read(diyRecordRoutes(store)) as { state: { shots: unknown } };
-
-    expect(answer.state.shots).toEqual([{ n: 1, at: 5, path: '/w/diy/shots/rec-shot-demo-1.png' }]);
-  });
 
   it('★ 收工之后 ⇒ 又是 null（那条提醒自己消失）', () => {
     const store = createRecordStore();

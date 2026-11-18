@@ -15,7 +15,8 @@ import { inferredAuthorOf, publishPreviewOf } from '@/shared/api/host/diy-publis
 import { stopObservers, withObserverCleanup } from './model/diy-observers';
 import { diyDebugRoutes } from './model/diy-debug-routes';
 import { diyRecordRoutes } from './model/diy-record-routes';
-import { registerRecordTools } from './model/diy-record-tools';
+import { registerRecordTools, type RecordFlowPort } from './model/diy-record-tools';
+import type { DiyFlowRuns } from './model/flow/runs';
 import { releaseQuietly } from './model/diy-record';
 import { createMarketService } from './model/market';
 import { createMarketDiscover } from './model/market-discover';
@@ -57,6 +58,34 @@ import { DIY_PRESET_ID } from '@/shared/api/diy';
 import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedReason } from './model/closed-tool';
 import { registerToolboxTools } from './model/toolbox-tools';
 import { panelsUnit, screenOnlyToolsFor } from './unit';
+
+function recordFlowOf(runs: DiyFlowRuns): RecordFlowPort {
+  return {
+    flowOf: (session) => {
+      const flow = runs.flowOf(session);
+      return flow === null ? null : { id: flow.id };
+    },
+    stepOf: (session) => {
+      const step = runs.stepOf(session);
+      return step === null ? null : { id: step.id, ...(step.title === undefined ? {} : { title: step.title }) };
+    },
+    start: (session) => {
+      if (runs.flowOf(session) !== null) return;
+      runs.start(session, { destination: 'write-record' });
+    },
+    advance: async (session, value) => {
+      await runs.advance(session, value);
+    },
+    finish: async (session) => {
+      await runs.advance(session, { done: true });
+    },
+    gaps: (session) => {
+      const scan = runs.valuesOf(session)['scan'];
+      const gaps = typeof scan === 'object' && scan !== null ? (scan as Record<string, unknown>)['gaps'] : undefined;
+      return Array.isArray(gaps) ? gaps.filter((one): one is string => typeof one === 'string') : [];
+    },
+  };
+}
 
 export const panelsHost: UnitOwnedFace = {
   unit: panelsUnit.id,
@@ -293,7 +322,7 @@ export const panelsHost: UnitOwnedFace = {
         ),
         ...registerDiyPlanTool(ctx, diyRuns),
         ...registerDiyStepTool(ctx, diyRuns),
-        ...registerRecordTools(ctx, record),
+        ...registerRecordTools(ctx, record, recordFlowOf(diyRuns)),
         ...registerLongTaskTools(ctx, longTaskRuns),
       ],
       factsOf: (call) => panelsFactsOf(call, manifests()),

@@ -58,7 +58,7 @@ export async function planStep(
       if (!planned.ok) return refused(input, planned.problem ?? '方案没递上去');
       return advanced(planned.step, input.destination);
     } else if (at !== null) {
-      const position = positionOf(at, input.destination);
+      const position = positionOf(at, input.destination, runs.valuesOf(session));
       return refused(
         input,
         `现在停在第 ${position.index}/${position.total} 步（${running.title ?? at}），这一步用 workbench_diy_step 递`,

@@ -24,7 +24,7 @@ export const RECORD_ARM_STATE_SCRIPT = `(() => {
   const KEEP = ${JSON.stringify(RECORD_KEEP_KEY)};
   const CAP = ${String(CALL_CAP)};
   const BODY_MAX = ${String(BODY_MAX)};
-  const blank = () => ({ phase: 'armed', t0: null, t1: null, href: location.href, dropped: 0, calls: [], shots: 0, shotsAt: null });
+  const blank = () => ({ phase: 'recording', t0: Date.now(), t1: null, href: location.href, dropped: 0, calls: [], shots: 0 });
   const readKeep = () => {
     try {
       const raw = sessionStorage.getItem(KEEP);
@@ -59,16 +59,12 @@ export const RECORD_ARM_STATE_SCRIPT = `(() => {
   const repaint = () => {
     if (typeof state.__repaint === 'function') state.__repaint();
   };
-  const beatOf = (kind) => {
+  const wake = () => {
     try {
-      state.beatN = (typeof state.beatN === 'number' ? state.beatN : 0) + 1;
-      state.beatKind = kind;
-      state.beatAt = Date.now();
-      keep();
-      if (typeof window.__dshBeatWake === 'function') {
-        const wake = window.__dshBeatWake;
-        window.__dshBeatWake = null;
-        wake();
+      if (typeof window.__dshRecordWake === 'function') {
+        const call = window.__dshRecordWake;
+        window.__dshRecordWake = null;
+        call();
       }
     } catch (error) {}
   };
@@ -77,6 +73,7 @@ export const RECORD_ARM_STATE_SCRIPT = `(() => {
     if (state.phase !== 'recording') return null;
     const target = String(url === undefined || url === null ? '' : url);
     const verb = String(method === '' || method === undefined ? 'GET' : method).toUpperCase();
+    if (verb !== 'GET' && typeof state.__api.snapForm === 'function') state.__api.snapForm();
     const row = {
       method: verb,
       url: target,
@@ -118,8 +115,102 @@ export const RECORD_ARM_STATE_SCRIPT = `(() => {
     }
     record(method, url, body, status, ct, response);
   };
-  state.__api = { begin, finish, keep, beatOf };
+  state.__api = { begin, finish, keep, wake };
+  keep();
   return { ok: true, phase: state.phase, size: state.calls.length };
+})()`;
+
+export const RECORD_ARM_SNAP_SCRIPT = `(() => {
+  const KEY = ${JSON.stringify(RECORD_KEY)};
+  const state = window[KEY];
+  if (state === null || typeof state !== 'object') return { ok: false, code: 'not-armed' };
+  const keep = state.__api !== undefined && typeof state.__api.keep === 'function' ? state.__api.keep : () => {};
+  const SNAP_MAX = 120000;
+  const SNAP_PAGES = 3;
+  const textOfNode = (node) => {
+    const labels = node.labels;
+    const first = labels !== undefined && labels !== null && labels.length > 0 ? labels[0] : null;
+    const label = first !== null ? first : typeof node.closest === 'function' ? node.closest('label') : null;
+    const item = typeof node.closest === 'function' ? node.closest('.ant-form-item') : null;
+    const itemLabel = item !== null && item.querySelector !== undefined ? item.querySelector('.ant-form-item-label, label') : null;
+    const pick = label !== null && label !== undefined ? label : itemLabel;
+    const raw = pick !== null && pick !== undefined && typeof pick.textContent === 'string' ? pick.textContent : '';
+    return raw.replace(/\\s+/g, ' ').trim().slice(0, 120);
+  };
+  const requiredOf = (node, label) => {
+    if (node.required === true) return true;
+    if (node.getAttribute !== undefined && node.getAttribute('aria-required') === 'true') return true;
+    if (/[*＊]\\s*$/.test(label)) return true;
+    const item = typeof node.closest === 'function' ? node.closest('.ant-form-item') : null;
+    return item !== null && item !== undefined && item.classList !== undefined && item.classList.contains('ant-form-item-required');
+  };
+  const optionsOf = (node) => {
+    const list = node.options;
+    if (list === undefined || list === null || typeof list.length !== 'number') return [];
+    return Array.prototype.slice.call(list, 0, 20).map((one) => String(one.value === '' ? one.text : one.value + ':' + one.text));
+  };
+  const fieldsNow = () => {
+    const found = document.querySelectorAll('input, select, textarea, [contenteditable="true"]');
+    const rows = [];
+    for (let index = 0; index < found.length; index += 1) {
+      const node = found[index];
+      if (node.type === 'hidden') continue;
+      if (typeof node.closest === 'function' && node.closest('#__dsh-record-bar') !== null) continue;
+      const label = textOfNode(node);
+      const name = String(node.name || node.id || (node.getAttribute !== undefined ? node.getAttribute('aria-label') || '' : '') || label || '').slice(0, 80);
+      rows.push({
+        name,
+        label,
+        kind: String(node.tagName || '').toLowerCase() + (node.type === undefined || node.type === '' ? '' : ':' + String(node.type)),
+        required: requiredOf(node, label),
+        filled: String(node.value === undefined || node.value === null ? '' : node.value) !== '',
+        value: String(node.value === undefined || node.value === null ? '' : node.value).slice(0, 120),
+        options: optionsOf(node),
+      });
+      if (rows.length >= 60) break;
+    }
+    return rows;
+  };
+  const regionOf = (nodes) => {
+    let node = nodes.length > 0 ? nodes[0] : null;
+    if (node === null) return null;
+    let up = 0;
+    while (up < 3 && node.parentElement !== null && node.parentElement !== undefined) {
+      const parent = node.parentElement;
+      if (parent.querySelector('form') !== null) return parent.querySelector('form');
+      if (nodes.every((one) => parent.contains(one))) node = parent;
+      up += 1;
+    }
+    return node.parentElement !== null && node.parentElement !== undefined ? node.parentElement : node;
+  };
+  const snapForm = () => {
+    try {
+      const found = document.querySelectorAll('input, select, textarea, [contenteditable="true"]');
+      if (found.length === 0) return 0;
+      const nodes = Array.prototype.slice.call(found);
+      const region = regionOf(nodes);
+      const html = region !== null && typeof region.outerHTML === 'string' ? region.outerHTML : '';
+      const page = {
+        at: Date.now(),
+        href: location.href,
+        title: String(document.title || '').slice(0, 160),
+        html: html.slice(0, SNAP_MAX),
+        bytes: html.length,
+        truncated: html.length > SNAP_MAX,
+        fields: fieldsNow(),
+      };
+      const pages = Array.isArray(state.snapPages) ? state.snapPages : [];
+      const kept = pages.filter((one) => one !== null && typeof one === 'object' && one.href !== page.href);
+      kept.push(page);
+      state.snapPages = kept.slice(Math.max(0, kept.length - SNAP_PAGES));
+      state.snap = page;
+      return page.fields.length;
+    } catch (error) {
+      return 0;
+    }
+  };
+  state.__api.snapForm = snapForm;
+  return { ok: true };
 })()`;
 
 export const RECORD_ARM_NET_SCRIPT = `(() => {
@@ -232,6 +323,8 @@ export const RECORD_ARM_NET_SCRIPT = `(() => {
     }
   };
   window[FRESH] = true;
+  state.__ready = true;
+  if (typeof state.__repaint === 'function') state.__repaint();
   return { ok: true, fresh: true };
 })()`;
 
@@ -250,19 +343,17 @@ export const RECORD_RESET_SCRIPT = `(() => {
     } catch (error) {}
     window[name] = undefined;
   }
-  for (const id of ['__dsh-record-bar', '__dsh-record-bar-style']) {
-    const node = document.getElementById(id);
-    if (node !== null && node !== undefined && typeof node.remove === 'function') node.remove();
-  }
   return { ok: true };
 })()`;
 
 export const RECORD_ARM_SCRIPTS = [
   RECORD_ARM_STATE_SCRIPT,
-  RECORD_ARM_NET_SCRIPT,
   RECORD_ARM_BAR_SCRIPT,
   RECORD_ARM_BAR_ITEMS_SCRIPT,
   RECORD_ARM_BAR_WIRING_SCRIPT,
+  RECORD_ARM_SNAP_SCRIPT,
+  RECORD_ARM_NET_SCRIPT,
 ] as const;
 
 export const RECORD_ARM_SCRIPT = RECORD_ARM_SCRIPTS.join(';\n');
+

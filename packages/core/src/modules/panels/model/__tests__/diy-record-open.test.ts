@@ -40,6 +40,39 @@ const wireRead = (raw: string): unknown => {
   return typeof box['data'] === 'string' ? JSON.parse(box['data']) : box['data'];
 };
 
+
+function urlShellOf(
+  plan: { readonly start: string; readonly afterOpen: string; readonly wrapped?: boolean },
+  seen: string[],
+): DshShell {
+  let here = plan.start;
+  return {
+    resolve(request: { command: string }) {
+      seen.push(request.command);
+      if (request.command.includes("'open'")) here = plan.afterOpen;
+      return request;
+    },
+    async execute(request: { command: string }) {
+      const command = request.command;
+      let text = '';
+      if (command.includes("'tab' 'list'")) text = '[]';
+      else if (command.includes("'eval'")) {
+        const hrefText = href(here);
+        text = plan.wrapped === true ? JSON.stringify({ ok: true, data: hrefText }) : hrefText;
+      }
+      return {
+        result: async () => ({
+          exitCode: 0,
+          timedOut: false,
+          aborted: false,
+          stdout: { text, truncated: false },
+          stderr: { text: '', truncated: false },
+        }),
+      };
+    },
+  } as unknown as DshShell;
+}
+
 const call = (shell: DshShell) =>
   openRecordPage({
     seam: fakeSeamOf(shell),
@@ -53,32 +86,42 @@ const call = (shell: DshShell) =>
 describe('开录制那一页：开完必须核地址，核不过就回落到 open', () => {
   it('★★ 开出来就是我们那一页 ⇒ ok，且不去发 open', async () => {
     const seen: string[] = [];
-    const out = await call(planShellOf([{}, { stdout: '[]' }, {}, {}, { stdout: href(WANT) }], seen));
-    expect(out).toEqual({ ok: true, at: WANT, why: '' });
+    const out = await call(urlShellOf({ start: WANT, afterOpen: WANT }, seen));
+    expect(out.ok).toBe(true);
+    expect(out.at).toBe(WANT);
     expect(seen.some((one) => one.includes("'open'"))).toBe(false);
   });
 
   it('★★ 2.x 把答案装在 data 里：拆一层之后照样认得出是我们那一页', async () => {
     const seen: string[] = [];
-    const wrapped = JSON.stringify({ ok: true, data: JSON.stringify({ href: WANT }) });
-    const out = await call(planShellOf([{}, { stdout: '[]' }, {}, {}, { stdout: wrapped }], seen));
+    const out = await call(urlShellOf({ start: WANT, afterOpen: WANT, wrapped: true }, seen));
     expect(out.ok).toBe(true);
     expect(out.at).toBe(WANT);
   });
 
   it('★★ 开出来是空白页 ⇒ 回落 open；open 之后对了 ⇒ ok', async () => {
     const seen: string[] = [];
-    const out = await call(
-      planShellOf([{}, { stdout: '[]' }, {}, {}, { stdout: href('about:blank') }, {}, {}, { stdout: href(`${WANT}/`) }], seen),
-    );
+    const out = await call(urlShellOf({ start: 'about:blank', afterOpen: `${WANT}/` }, seen));
     expect(out.ok).toBe(true);
     expect(seen.some((one) => one.includes("'open'"))).toBe(true);
+    expect(out.at).toBe(`${WANT}/`);
+  });
+
+  it('★★ 开窗那一下没回页 id ⇒ 从 tab list 里按地址认回来（不然收尾/补录都指不到那一扇）', async () => {
+    const seen: string[] = [];
+    const tabs = JSON.stringify([{ page: 'blank', url: 'about:blank' }, { page: 'p7', url: WANT }]);
+    const out = await call(
+      planShellOf([{}, { stdout: '[]' }, {}, {}, { stdout: href(WANT) }, { stdout: tabs }], seen),
+    );
+    expect(out.ok).toBe(true);
+    expect(out.page).toBe('p7');
+    expect(seen.some((one) => one.includes("'tab' 'list'"))).toBe(true);
   });
 
   it('★★ 两次都不是 ⇒ ok:false，`at` 是它真实在哪 —— 不许假装开好了', async () => {
     const seen: string[] = [];
     const out = await call(
-      planShellOf([{}, { stdout: '[]' }, {}, {}, { stdout: href('about:blank') }, {}, {}, { stdout: href('about:blank') }], seen),
+      planShellOf([{}, { stdout: '[]' }, {}, {}, { stdout: href('about:blank') }], seen),
     );
     expect(out.ok).toBe(false);
     expect(out.at).toBe('about:blank');

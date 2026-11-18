@@ -8,10 +8,12 @@ import type { DiyFlowRuns } from './runs';
 
 const STEP_FIELDS: Readonly<Record<string, readonly string[]>> = {
   probe: ['sites'],
+  scan: ['needsSupplement', 'gaps'],
   build: ['unit'],
   install: ['unit', 'installed'],
   verify: ['passed', 'unverified'],
   ledger: ['design'],
+  finish: ['done'],
 };
 
 function nextOf(step: string, destination: string | null): string {
@@ -26,10 +28,12 @@ function nextOf(step: string, destination: string | null): string {
 
 const STEP_NEXT: Readonly<Record<string, string>> = {
   probe: '做完站探，把读到的站点递上来',
+  scan: '探测完，把「要不要补录」和缺口一起递上来',
   build: '写完模块，把模块标识递上来',
   install: '安装完成之后，把模块标识与安装结果递上来',
   verify: '走完一遍，把通过的与没验的递上来',
   ledger: '把这次的设计文件名递上来',
+  finish: '材料齐了就把 done 递上来；缺口不想掩掉就如实留着',
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -54,6 +58,12 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       type: 'object',
       properties: {
         sites: { type: 'array', description: '站探那步：读到了哪些站点 / 表。', items: { type: 'string' } },
+        needsSupplement: { type: 'boolean', description: '探测那步：这次要不要再补录一段。' },
+        gaps: {
+          type: 'array',
+          description: '探测那步：还缺什么（补录要补的东西），一条一句。',
+          items: { type: 'string' },
+        },
         unit: { type: 'string', description: '创建与安装那步：模块标识。' },
         installed: { type: 'boolean', description: '安装那步：是否安装成功。' },
         passed: { type: 'array', description: '检查那步：验过且通过的。', items: { type: 'string' } },
@@ -96,7 +106,8 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       if (!advanced.ok) throw new Error(advanced.problem ?? '这一步没递进去');
       const destination = destinationOf(runs.inputOf(session));
       const step = advanced.step;
-      const at = positionOf(step?.id ?? null, destination);
+      const values = runs.valuesOf(session);
+      const at = positionOf(step?.id ?? null, destination, values);
       return plainJson({
         ok: true,
         step: step?.id ?? '',
@@ -107,7 +118,7 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
         text:
           step === null
             ? `流程走完了：共 ${at.total} 步，全部递过。`
-            : `停在第 ${at.index}/${at.total} 步（${titleOf(step.id, destination)}）。下一步：${
+            : `停在第 ${at.index}/${at.total} 步（${titleOf(step.id, destination, values)}）。下一步：${
                 nextOf(step.id, destination)
               }。`,
       });

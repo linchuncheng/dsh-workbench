@@ -4,7 +4,6 @@ import {
   createRecordStore,
   parseRecordIntent,
   recordOwnerText,
-  shotDueOf,
   type RecordPact,
   type RecordState,
 } from '../diy-record.js';
@@ -171,137 +170,16 @@ describe('用户在左栏按的三个键：意图词表只此一份', () => {
   });
 });
 
-describe('按计数落图的台账：落成才前进，失败如实记、同一个计数只重试一次', () => {
-  const shot = (n: number, extra: Partial<RecordState['shots'][number]> = {}) => ({
-    n,
-    at: 1500 + n,
-    path: `/w/diy/shots/rec-shot-demo-${String(n)}.png`,
-    ...extra,
-  });
-
-  it('★ begin 时台账是空的（还没人按过「截图」）', () => {
+describe('他按「截图」：只记那个数，不记账、不重试', () => {
+  it('★★ begin 时 0；记过一次就跟到那个数；别人的会话不许写', () => {
     const store = createRecordStore();
-    const state = held(store.begin(pact('s1', 1000)));
+    expect(held(store.begin(pact('s1', 1000))).shotsSeen).toBe(0);
 
-    expect(state.shots).toEqual([]);
-    expect(state.shotsSeen).toBe(0);
-    expect(state.shotTries).toBeNull();
-  });
+    const seen = held(store.shotSeen('s1', 2, 1100));
+    expect(seen.shotsSeen).toBe(2);
+    expect(seen.at).toBe(1100);
 
-  it('★★ 落成一张 ⇒ 台账一条、shotsSeen 跟到那个计数、重试数清零', () => {
-    const store = createRecordStore();
-    store.begin(pact('s1', 1000));
-    store.shotFailed('s1', shot(1, { error: '第一次没成' }), 1501);
-
-    const state = held(store.shotTaken('s1', shot(1), 1502));
-
-    expect(state.shots).toEqual([shot(1)]);
-    expect(state.shotsSeen).toBe(1);
-    expect(state.shotTries).toBeNull();
-  });
-
-  it('★★ 落失败 ⇒ 那一条带 error 原文、shotsSeen 一步不前进、同一个计数重试一次就试满了', () => {
-    const store = createRecordStore();
-    store.begin(pact('s1', 1000));
-
-    const first = held(store.shotFailed('s1', shot(1, { error: 'opencli：截不下来' }), 1501));
-    expect(first.shots).toEqual([shot(1, { error: 'opencli：截不下来' })]);
-    expect(first.shotsSeen).toBe(0);
-    expect(first.shotTries).toEqual({ n: 1, tries: 1 });
-
-    const retried = held(store.shotFailed('s1', shot(1, { error: '还是截不下来' }), 1601));
-    expect(retried.shots).toEqual([shot(1, { error: '还是截不下来' })]);
-    expect(retried.shotTries).toEqual({ n: 1, tries: 2 });
-  });
-
-  it('★★ shotDueOf：没涨不拍 / 涨了才拍 / 试满两次就放下 / 他再按一下（计数换新）重来', () => {
-    const store = createRecordStore();
-    const state = held(store.begin(pact('s1', 1000)));
-
-    expect(shotDueOf(state, 0)).toBeNull();
-    expect(shotDueOf(state, 1)).toBe(1);
-    expect(shotDueOf(state, 2.9)).toBe(2);
-    expect(shotDueOf(state, Number.NaN)).toBeNull();
-
-    const done = held(store.shotTaken('s1', shot(1), 1500));
-    expect(shotDueOf(done, 1)).toBeNull();
-    expect(shotDueOf(done, 2)).toBe(2);
-
-    const failed = held(store.shotFailed('s1', shot(2, { error: '没成' }), 1501));
-    expect(shotDueOf(failed, 2)).toBe(2);
-
-    const tried = held(store.shotFailed('s1', shot(2, { error: '还是没成' }), 1502));
-    expect(shotDueOf(tried, 2)).toBeNull();
-    expect(shotDueOf(tried, 3)).toBe(3);
-  });
-
-  it('★ 台账按计数排好，且同一张只留最新那条（重试不叠行）', () => {
-    const store = createRecordStore();
-    store.begin(pact('s1', 1000));
-    store.shotTaken('s1', shot(2), 1500);
-    store.shotFailed('s1', shot(1, { error: '没成' }), 1501);
-
-    const state = held(store.shotFailed('s1', shot(1, { error: '重试也没成' }), 1502));
-
-    expect(state.shots.map((one) => one.n)).toEqual([1, 2]);
-    expect(state.shots).toHaveLength(2);
-    expect(state.shots[0]?.error).toBe('重试也没成');
-  });
-
-  it('★ 台账不是谁都能写的：别人的会话 / 没有那一场，当场拒', () => {
-    const store = createRecordStore();
-
-    expect(store.shotTaken('s1', shot(1), 1000)).toEqual({ ok: false, code: 'none' });
-    expect(store.shotFailed('s1', shot(1), 1000)).toEqual({ ok: false, code: 'none' });
-
-    store.begin(pact('s1', 1000));
-    expect(store.shotTaken('s2', shot(1), 1100)).toEqual({ ok: false, code: 'not-owner' });
-    expect(store.shotFailed('s2', shot(1), 1100)).toEqual({ ok: false, code: 'not-owner' });
-    expect(store.live(1100)?.shots).toEqual([]);
-  });
-});
-
-describe('门铃那一格：命中记一次，超时一个字不动', () => {
-  it('★★ begin 时 0 次；命中一次 +1，并把这一次等了多少毫秒记下', () => {
-    const store = createRecordStore();
-    const state = held(store.begin(pact('s1', 1000)));
-
-    expect(state.beats).toBe(0);
-    expect(state.beatMs).toBe(0);
-
-    const first = held(store.beat('s1', 42, 1200));
-    expect(first.beats).toBe(1);
-    expect(first.beatMs).toBe(42);
-    expect(first.at).toBe(1200);
-
-    const second = held(store.beat('s1', 7, 1300));
-    expect(second.beats).toBe(2);
-    expect(second.beatMs).toBe(7);
-  });
-
-  it('★★ 跟着相位走不丢（started / finished 都保留），收工连它一起清；别人的会话不许写', () => {
-    const store = createRecordStore();
-    store.begin(pact('s1', 1000));
-    store.beat('s1', 12, 1100);
-    store.started('s1', 2000, 2001);
-    store.finished('s1', 3000, 3002);
-
-    const live = store.live(3002);
-    expect(live?.beats).toBe(1);
-    expect(live?.beatMs).toBe(12);
-
-    expect(store.beat('s2', 5, 3100)).toEqual({ ok: false, code: 'not-owner' });
-    expect(held(store.beat('s1', 5, 3200)).beats).toBe(2);
-    expect(store.stop('s1', 3300).ok).toBe(true);
-    expect(store.live(3300)).toBeNull();
-    expect(store.beat('s1', 5, 3400)).toEqual({ ok: false, code: 'none' });
-  });
-
-  it('★ 负数 / 小数收成正经毫秒（读侧那一行不出现 "-0 毫秒" 这种话）', () => {
-    const store = createRecordStore();
-    store.begin(pact('s1', 1000));
-
-    expect(held(store.beat('s1', -3, 1100)).beatMs).toBe(0);
-    expect(held(store.beat('s1', 4.7, 1200)).beatMs).toBe(4);
+    expect(store.shotSeen('s2', 3, 1200)).toEqual({ ok: false, code: 'not-owner' });
+    expect(store.live(1200)?.shotsSeen).toBe(2);
   });
 });

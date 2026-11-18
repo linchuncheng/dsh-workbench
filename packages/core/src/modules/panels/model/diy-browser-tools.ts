@@ -1,6 +1,7 @@
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
 import {
   BROWSER_READ_SESSION,
+  BROWSER_RECORD_SESSION,
   pathsWrite,
   productWrite,
   seamOf,
@@ -8,11 +9,13 @@ import {
   type WriteIntent,
 } from '@dsh-workbench/shared/host';
 import { dirname } from 'node:path';
+import { objectSchemaOf } from './tool-registry-guard';
 import { cliCommandOf } from '@dsh-workbench/shared/host';
 import { cropPngFile } from '@/shared/api/host/png-crop';
 import { asNumber, asRecord, asText, OUTPUT, plainJson } from './diy-context';
 import { surfaceOf } from '@/shared/api/host/runtime-surface';
-import { LOOK_TIMEOUT_MS, payloadOf, runBrowserStep, wireOf, type Wire } from './diy-browser';
+import { hostOf, LOOK_TIMEOUT_MS, payloadOf, runBrowserStep, wireOf, type Wire } from './diy-browser';
+import { retainedTabOf } from './diy-record-tab';
 import { clipNote, clipOf, defaultShotPath, deviceClipRect } from './diy-browser-clip';
 import { ensureDirOf } from '@/shared/api/host/diy-artifacts';
 import { pageAt, type PageHandle } from './diy-page';
@@ -232,18 +235,19 @@ function parametersOf(row: BrowserToolRow, command: string): Record<string, unkn
     };
   }
   if (row.clip === true) {
-    properties['clip'] = {
-      type: 'object',
-      properties: {
+    properties['clip'] = objectSchemaOf(
+      {
         x: { type: 'number', description: '左边（CSS px）。' },
         y: { type: 'number', description: '上边（CSS px）。' },
         width: { type: 'number', description: '宽（CSS px）。' },
         height: { type: 'number', description: '高（CSS px）。' },
       },
-      required: ['x', 'y', 'width', 'height'],
-      additionalProperties: false,
-      description: '只截取该区域：截图后本地裁剪；区域不在视口内时退回整屏截图。',
-    };
+      {
+        required: ['x', 'y', 'width', 'height'],
+        additionalProperties: false,
+        description: '只截取该区域：截图后本地裁剪；区域不在视口内时退回整屏截图。',
+      },
+    );
   }
   return { type: 'object', properties, additionalProperties: false };
 }
@@ -268,14 +272,6 @@ function needsCardOf(row: BrowserToolRow, raw: Record<string, unknown>): boolean
   if (row.evalInCard === true && asText(raw['in']) === 'card') return true;
   if (row.css !== undefined && asText(raw['scope']) === 'card') return true;
   return stringsOf(raw['args']).some((one) => one.includes(CARD_TOKEN));
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return '';
-  }
 }
 
 async function onSiteOnce(seam: Seam, command: string, site: string, wire?: Wire): Promise<boolean> {
@@ -318,7 +314,8 @@ function readRefusalOf(row: BrowserToolRow, raw: Record<string, unknown>): strin
   if (cardAsked) {
     return '只读线没有「用户模块界面」：unit、scope=card、in=card 与 $card 仅在页面调试模式下可用。';
   }
-  return row.clip === true ? '只读线不支持截图裁剪：clip 仅在页面调试模式下可用（需要图片请使用 _screenshot）。' : '';
+  const clipAsked = row.clip === true && raw['clip'] !== undefined && raw['clip'] !== null;
+  return clipAsked ? '只读线不支持截图裁剪：clip 只在页面调试模式下可用；这里给一个文件路径就整屏截一张。' : '';
 }
 
 async function runReadTool(
@@ -336,17 +333,21 @@ async function runReadTool(
   const timeoutMs = requested !== undefined && requested > 0 ? requested : DEFAULT_TIMEOUT_MS;
   const argv = stringsOf(raw['args']);
   const wire = wireOf(ctx);
-  const opened = await onSiteOnce(seam, command, site, wire);
+  const retained = retainedTabOf();
+  const onRetained = retained !== null && retained.site !== '' && hostOf(retained.site) === hostOf(site);
+  const session = onRetained ? BROWSER_RECORD_SESSION : BROWSER_READ_SESSION;
+  const target = onRetained && retained !== null ? ['--tab', retained.tab] : [];
+  const opened = onRetained ? false : await onSiteOnce(seam, command, site, wire);
   const step = await runBrowserStep(
     seam,
     command,
-    ['browser', BROWSER_READ_SESSION, ...row.verb, ...argv, '--window', 'background'],
+    ['browser', session, ...row.verb, ...argv, ...target, '--window', 'background'],
     timeoutMs,
     wire,
   );
   const hint = row.tool === DIY_EVAL_TOOL ? loginHintOf(step.stdout, site) : '';
   return {
-    session: BROWSER_READ_SESSION,
+    session,
     verb: row.verb.join(' '),
     argv,
     opened,

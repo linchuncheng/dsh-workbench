@@ -104,7 +104,7 @@ export function panelsFactsOf(
   if (call.source === DIY_STATUS_TOOL || call.source === DIY_PANEL_TOOL) return [PANELS_FACT];
   if (call.source === DIY_PLAN_TOOL || call.source === DIY_STEP_TOOL) return [DIY_FLOW_ROUTE];
   if (DEBUG_TOOLS.includes(call.source)) return [DIY_DEBUG_FACT];
-  if (RECORD_TOOLS.includes(call.source)) return [DIY_RECORD_FACT];
+  if (RECORD_TOOLS.includes(call.source)) return [DIY_RECORD_FACT, DIY_FLOW_ROUTE];
   const request = requestOf(call);
   if (request === undefined) return undefined;
   return [

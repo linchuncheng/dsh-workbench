@@ -15,6 +15,28 @@ export type FakeEvent = {
   preventDefault?: () => void;
 };
 
+const attrMatch = (node: FakeEl, part: string): boolean => {
+  const box = part.match(/^\[([a-z-]+)(?:=\s*"?'?([^\]"']*)"?'?)?\]$/i);
+  if (box === null) return false;
+  const name = box[1] ?? '';
+  const want = box[2];
+  const got = node.getAttribute(name);
+  return want === undefined ? got !== null : got === want;
+};
+
+const partMatch = (node: FakeEl, part: string): boolean => {
+  if (part === '') return true;
+  if (part.startsWith('[')) return attrMatch(node, part);
+  if (part.startsWith('#')) return node.id === part.slice(1);
+  if (part.startsWith('.')) return node.className.split(/\s+/).includes(part.slice(1));
+  return String(node.tagName).toLowerCase() === part.toLowerCase();
+};
+
+const selectorMatch = (node: FakeEl, selector: string): boolean =>
+  selector
+    .split(',')
+    .some((one) => one.trim().split(/(?=[.#[])/).every((piece) => partMatch(node, piece.trim())));
+
 export class FakeEl {
   readonly attrs: Record<string, string> = {};
   readonly style: Record<string, string> = {};
@@ -52,6 +74,10 @@ export class FakeEl {
     this.attrs[name] = value;
   }
 
+  get name(): string {
+    return this.attrs['name'] ?? '';
+  }
+
   getAttribute(name: string): string | null {
     return this.attrs[name] ?? null;
   }
@@ -66,6 +92,39 @@ export class FakeEl {
 
   remove(): void {
     this.removed = true;
+  }
+
+  get outerHTML(): string {
+    const attrs = Object.entries(this.attrs)
+      .map(([name, value]) => ` ${name}="${value}"`)
+      .join('');
+    const own = `${String(this.tagName).toLowerCase()}${attrs}`;
+    return `<${own}>${this.innerHTML}${this.children.map((kid) => kid.outerHTML).join('')}</${String(this.tagName).toLowerCase()}>`;
+  }
+
+  contains(node: FakeEl): boolean {
+    return this.children.some((kid) => kid === node || kid.contains(node));
+  }
+
+  closest(selector: string): FakeEl | null {
+    if (selectorMatch(this, selector)) return this;
+    return this.parentElement === null ? null : this.parentElement.closest(selector);
+  }
+
+  querySelector(selector: string): FakeEl | null {
+    return this.querySelectorAll(selector)[0] ?? null;
+  }
+
+  querySelectorAll(selector: string): FakeEl[] {
+    const hits: FakeEl[] = [];
+    const walk = (node: FakeEl): void => {
+      for (const kid of node.children) {
+        if (selectorMatch(kid, selector)) hits.push(kid);
+        walk(kid);
+      }
+    };
+    walk(this);
+    return hits;
   }
 
   getBoundingClientRect(): { left: number; top: number; width: number; height: number } {
@@ -158,6 +217,10 @@ export type Harness = {
   };
   doc: {
     head: FakeEl;
+    body: FakeEl;
+    title: string;
+    querySelector: (selector: string) => FakeEl | null;
+    querySelectorAll: (selector: string) => FakeEl[];
     documentElement: FakeEl;
     createElement: (tagName: string) => FakeEl;
     getElementById: (id: string) => FakeEl | null;
@@ -174,8 +237,13 @@ export const makeHarness = (options: { storage?: FakeStorage } = {}): Harness =>
   const created: FakeEl[] = [];
   const listeners: Listener[] = [];
   const storage = options.storage ?? new FakeStorage();
+  const body = new FakeEl('body');
   const doc: Harness['doc'] = {
     head: new FakeEl('head'),
+    body,
+    title: '新建工单',
+    querySelector: (selector) => body.querySelector(selector),
+    querySelectorAll: (selector) => body.querySelectorAll(selector),
     documentElement: new FakeEl('html'),
     createElement: (tagName) => {
       const element = new FakeEl(tagName);

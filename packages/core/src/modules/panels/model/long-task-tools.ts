@@ -1,4 +1,5 @@
-import type { DshHostContext, DshToolDefinition, DshToolOutputDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
+import { toolRegistryOf } from './tool-registry-guard';
+import type { DshHostContext, DshToolDefinition, DshToolOutputDefinition, DshToolRunContext } from '@dsh-workbench/shared/host';
 import type { LongTaskBase, LongTaskRegistry } from '@dsh-workbench/shared/host';
 import { sessionIdOf, sessionWorkspace } from '@dsh-workbench/shared/host';
 import { LONG_TASKS_LIST_TOOL, LONG_TASKS_STOP_TOOL } from '../unit';
@@ -143,11 +144,8 @@ export function registerLongTaskTools(
   ctx: DshHostContext,
   longTaskRuns?: LongTaskRunsLookup | undefined,
 ): Array<() => void> {
-  const tools = ctx.get('tools') as DshToolRegistry | undefined;
-  if (tools === undefined) {
-    ctx.logger?.info?.('[dsh-workbench] 没有 tools 服务，跳过外壳长任务工具注册');
-    return [];
-  }
+  const tools = toolRegistryOf(ctx, '跳过外壳长任务工具注册');
+  if (tools === undefined) return [];
 
   const listTool: DshToolDefinition = {
     name: LONG_TASKS_LIST_TOOL,

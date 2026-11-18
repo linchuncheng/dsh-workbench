@@ -31,17 +31,18 @@ export interface RecordPageRead {
   readonly dropped: number;
   readonly unhooked: boolean;
   readonly shots: number;
-  readonly shotsAt: number | null;
-  readonly beat: boolean;
-  readonly beatKind: string;
   readonly calls: readonly RecordCall[];
+  readonly snap: RecordSnapRead | null;
 }
 
-export interface RecordShotLine {
-  readonly n: number;
+export interface RecordSnapRead {
+  readonly href: string;
+  readonly title: string;
+  readonly bytes: number;
+  readonly truncated: boolean;
   readonly at: number;
-  readonly path: string;
-  readonly error?: string;
+  readonly fields: number;
+  readonly required: readonly string[];
 }
 
 export function recordPageOf(payload: Record<string, unknown> | undefined): RecordPageRead {
@@ -73,12 +74,27 @@ export function recordPageOf(payload: Record<string, unknown> | undefined): Reco
     href: typeof raw['href'] === 'string' ? raw['href'] : '',
     here: typeof raw['here'] === 'string' ? raw['here'] : '',
     dropped: typeof raw['dropped'] === 'number' ? raw['dropped'] : 0,
-    unhooked: raw['unhooked'] === 1 || raw['unhooked'] === true,
     shots: typeof raw['shots'] === 'number' ? raw['shots'] : 0,
-    shotsAt: typeof raw['shotsAt'] === 'number' ? raw['shotsAt'] : null,
-    beat: raw['beat'] === true,
-    beatKind: typeof raw['beatKind'] === 'string' ? raw['beatKind'] : '',
+    unhooked: raw['unhooked'] === 1 || raw['unhooked'] === true,
     calls,
+    snap: snapOf(raw['snap']),
+  };
+}
+
+function snapOf(raw: unknown): RecordSnapRead | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const box = raw as Record<string, unknown>;
+  const required = Array.isArray(box['required'])
+    ? box['required'].filter((one): one is string => typeof one === 'string').slice(0, 20)
+    : [];
+  return {
+    href: typeof box['href'] === 'string' ? box['href'] : '',
+    title: typeof box['title'] === 'string' ? box['title'] : '',
+    bytes: typeof box['bytes'] === 'number' ? box['bytes'] : 0,
+    truncated: box['truncated'] === true,
+    at: typeof box['at'] === 'number' ? box['at'] : 0,
+    fields: typeof box['fields'] === 'number' ? box['fields'] : 0,
+    required,
   };
 }
 
@@ -233,40 +249,13 @@ export interface RecordReadFacts {
   readonly nav: boolean;
   readonly filter: string;
   readonly captureRound: string;
-  readonly shots?: readonly RecordShotLine[];
-  readonly beats?: number;
-  readonly beatMs?: number;
-}
-
-function shortPath(path: string): string {
-  const at = path.lastIndexOf('shots/');
-  return at >= 0 ? path.slice(at) : path;
-}
-
-function shotFaultLines(shots: readonly RecordShotLine[]): readonly string[] {
-  return shots
-    .filter((one) => one.error !== undefined)
-    .map((one) => `（他按了「截图」，但有一张图没落下来：${shortPath(one.path)} —— ${one.error ?? ''}）`);
-}
-
-function beatLineOf(beats: number, beatMs: number): string {
-  return beats > 0 ? `门铃：${String(beats)} 次（最近 ${String(beatMs)} 毫秒）` : '';
-}
-
-function evidenceTailOf(shots: readonly RecordShotLine[], beats: number, beatMs: number): string {
-  const parts: string[] = [];
-  const landed = shots.filter((one) => one.error === undefined).length;
-  if (landed > 0) parts.push(`图 ${String(landed)} 张`);
-  const beat = beatLineOf(beats, beatMs);
-  if (beat !== '') parts.push(beat);
-  return parts.join(' · ');
+  readonly shots?: number;
 }
 
 export function renderRecordRead(input: RecordReadFacts): string {
-  const shots = input.shots ?? [];
-  const tail = evidenceTailOf(shots, input.beats ?? 0, input.beatMs ?? 0);
-  const sep = tail === '' ? '' : ` · ${tail}`;
-  const faults = shotFaultLines(shots);
+  const shots = input.shots ?? 0;
+  const sep = shots > 0 ? ` · 他按了 ${String(shots)} 次截图（rec-shot-*.png）` : '';
+  const faults: readonly string[] = [];
   if (!input.armed) {
     return `那一页上还没有录制条（${DIY_RECORD_PREPARE_TOOL} 起的那一场可能被导航冲掉了）—— 先 ${DIY_RECORD_PREPARE_TOOL}，或让他回到那一页再 ${DIY_RECORD_READ_TOOL}。`;
   }
@@ -297,7 +286,8 @@ export function renderRecordRead(input: RecordReadFacts): string {
     lines.push(
       input.capturedTruncated
         ? `录完了：这一段（就解析到的那部分而言）一条请求都没抓到（页面钩子 0 条 · 解析到的会话捕获里落在这个时间段里 0 条）—— 但捕获文件被截过，见上面那行。${sep}`
-        : `录完了：这一段一条请求都没抓到（页面钩子 0 条 · 会话捕获落在这个时间段里 0 条，两边都是 0 —— 不是筛掉的）。${sep}`,
+        : `录完了：这一段一条请求都没抓到（页面钩子 0 条 · 会话捕获落在这个时间段里 0 条，两边都是 0 —— 不是筛掉的）。` +
+          `若是页面一出现就点了保存，那一下发生在浮条出现之前、抓不到：重录一段，等浮条出现再点。${sep}`,
     );
   }
   if (input.dropped > 0) lines.push(`（缓冲区满了，最早丢了 ${String(input.dropped)} 条）`);

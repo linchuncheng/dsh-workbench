@@ -1,4 +1,8 @@
 import type { FlowDefinition, FlowNodeStep } from '@dsh-workbench/shared/host';
+import {
+  DIY_RECORD_PREPARE_TOOL,
+  DIY_RECORD_STOP_TOOL,
+} from '../../unit';
 
 export interface DiyFlow extends Omit<FlowDefinition, 'steps'> {
   readonly steps: readonly FlowNodeStep[];
@@ -11,12 +15,14 @@ export const HEADLESS_TITLES: Readonly<Record<string, string>> = {
   verify: '检查模块功能',
 };
 
+const schemaOf = (
+  required: readonly string[],
+  properties: Record<string, unknown>,
+): Record<string, unknown> => ({ type: 'object', required, properties });
+
 const isBuild = { $in: [{ $ref: 'in.destination' }, ['board', 'headless']] } as const;
 
-const PLAN_SCHEMA = {
-  type: 'object',
-  required: ['see', 'do', 'agent', 'data'],
-  properties: {
+const PLAN_SCHEMA = schemaOf(['see', 'do', 'agent', 'data'], {
     cells: { type: 'string' },
     steps: { type: 'string' },
     minutes: { type: 'string' },
@@ -31,39 +37,18 @@ const PLAN_SCHEMA = {
     see: { type: 'array', items: { type: 'string' } },
     do: { type: 'array', items: { type: 'string' } },
     agent: { type: 'array', items: { type: 'string' } },
-    data: { type: 'array', items: { type: 'string' } },
-  },
-} as const;
+    data: { type: 'array', items: { type: 'string' } }
+});
 
-const PROBE_SCHEMA = {
-  type: 'object',
-  required: ['sites'],
-  properties: { sites: { type: 'array' } },
-} as const;
+const PROBE_SCHEMA = schemaOf(['sites'], { sites: { type: 'array' } });
 
-const BUILD_SCHEMA = {
-  type: 'object',
-  required: ['unit'],
-  properties: { unit: { type: 'string' } },
-} as const;
+const BUILD_SCHEMA = schemaOf(['unit'], { unit: { type: 'string' } });
 
-const INSTALL_SCHEMA = {
-  type: 'object',
-  required: ['unit', 'installed'],
-  properties: { unit: { type: 'string' }, installed: { type: 'boolean' } },
-} as const;
+const INSTALL_SCHEMA = schemaOf(['unit', 'installed'], { unit: { type: 'string' }, installed: { type: 'boolean' } });
 
-const VERIFY_SCHEMA = {
-  type: 'object',
-  required: ['passed', 'unverified'],
-  properties: { passed: { type: 'array' }, unverified: { type: 'array' } },
-} as const;
+const VERIFY_SCHEMA = schemaOf(['passed', 'unverified'], { passed: { type: 'array' }, unverified: { type: 'array' } });
 
-const LEDGER_SCHEMA = {
-  type: 'object',
-  required: ['design'],
-  properties: { design: { type: 'string' } },
-} as const;
+const LEDGER_SCHEMA = schemaOf(['design'], { design: { type: 'string' } });
 const lockedTools = { deny: [...WRITE] } as const;
 const openTools = {} as const;
 
@@ -94,6 +79,55 @@ export const DIY_TWEAK_FLOW: DiyFlow = {
 
 export const DIY_BOARD_STEPS = DIY_BOARD_FLOW.steps.map((step) => step.id);
 
+const RECORD_SCHEMA = schemaOf(['rows'], { rows: { type: 'array' } });
+
+const SCAN_SCHEMA = schemaOf(['needsSupplement', 'gaps'], {
+  needsSupplement: { type: 'boolean' },
+  gaps: { type: 'array', items: { type: 'string' } },
+});
+
+const SUPPLEMENT_SCHEMA = RECORD_SCHEMA;
+
+const FINISH_SCHEMA = {
+  type: 'object',
+  required: ['done'],
+  properties: { done: { type: 'boolean' } },
+} as const;
+
+export const DIY_WRITE_RECORD_FLOW: DiyFlow = {
+  id: 'diy-write-record',
+  title: '录一次写',
+  steps: [
+    {
+      id: 'record',
+      title: '录制',
+      tools: { deny: [DIY_RECORD_STOP_TOOL] },
+      schema: RECORD_SCHEMA,
+    },
+    {
+      id: 'scan',
+      title: '探测',
+      tools: { deny: [DIY_RECORD_PREPARE_TOOL, DIY_RECORD_STOP_TOOL] },
+      schema: SCAN_SCHEMA,
+    },
+    {
+      id: 'supplement',
+      title: '补录',
+      when: { $not: { $eq: [{ $ref: 'steps.scan.needsSupplement' }, { $lit: false }] } },
+      tools: { deny: [DIY_RECORD_STOP_TOOL] },
+      schema: SUPPLEMENT_SCHEMA,
+    },
+    {
+      id: 'finish',
+      title: '完成',
+      tools: { deny: [DIY_RECORD_PREPARE_TOOL] },
+      schema: FINISH_SCHEMA,
+    },
+  ],
+};
+
 export function flowFor(destination: unknown): DiyFlow {
-  return destination === 'tweak' ? DIY_TWEAK_FLOW : DIY_BOARD_FLOW;
+  if (destination === 'tweak') return DIY_TWEAK_FLOW;
+  if (destination === 'write-record') return DIY_WRITE_RECORD_FLOW;
+  return DIY_BOARD_FLOW;
 }

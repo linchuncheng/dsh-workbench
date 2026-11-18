@@ -1,5 +1,5 @@
 import { clockOf } from '../runtime/time.js';
-import { createHold } from './hold.js';
+import { beginMove, createHold } from './hold.js';
 /**
  * 录制交接的三个相位：`armed` 等用户在外站页面上动手，`recording` 正在录，`finished` 录完待取。
  */
@@ -19,32 +19,8 @@ export interface RecordExpect {
 }
 
 /**
- * 一次「截图」在宿主台账里的那一行：页面上的计数、落图那一刻、落盘路径；没落下来时带 `error` 原文（落成的那条没有它）。
- */
-export interface RecordShot {
-  readonly n: number;
-  readonly at: number;
-  readonly path: string;
-  readonly error?: string;
-}
-
-/**
- * 某个页面计数已经试过几次：初拍算一次，失败再试一次；计数一换就从头数。
- */
-export interface RecordShotTries {
-  readonly n: number;
-  readonly tries: number;
-}
-
-/**
- * 一张图最多试几次（初拍 + 一次重试）：失败如实报过就停，不每拍重试到底。
- */
-export const RECORD_SHOT_TRIES = 2;
-
-/**
  * 一份活着的录制约定：相位 + 谁的会话 + 哪个工作区 / 单元 + 页面 URL 与标题 + 要找的那一次写 +
- * 落盘文件 + 三个时间戳，以及两份台账：按计数落图的 `shots`（`shotsSeen` 只记落成的那个计数）
- * 与门铃的 `beats` / `beatMs`（命中几次、最近一次等了多久）。
+ * 落盘文件 + 三个时间戳。
  */
 export interface RecordState {
   readonly phase: RecordPhase;
@@ -60,11 +36,7 @@ export interface RecordState {
   readonly startedAt: number;
   readonly t0: number | null;
   readonly t1: number | null;
-  readonly shots: readonly RecordShot[];
   readonly shotsSeen: number;
-  readonly shotTries: RecordShotTries | null;
-  readonly beats: number;
-  readonly beatMs: number;
   readonly at: number;
 }
 
@@ -127,24 +99,26 @@ export interface RecordStore {
   begin(pact: RecordPact): RecordMove;
   started(sessionId: string, at: number, now: number): RecordMove;
   finished(sessionId: string, at: number, now: number): RecordMove;
-  shotTaken(sessionId: string, shot: RecordShot, now: number): RecordMove;
-  shotFailed(sessionId: string, shot: RecordShot, now: number): RecordMove;
-  beat(sessionId: string, ms: number, now: number): RecordMove;
+  shotSeen(sessionId: string, n: number, now: number): RecordMove;
   stop(sessionId: string, now: number): RecordMove;
 }
 
-/**
- * 这一拍该不该落图：页面计数涨过 `shotsSeen` 才算；同一个计数已经试满就先放下，等他自己再按。
- * @param state - 当前有效的那份约定。
- * @param pageShots - 页面浮条上那个「已拍」计数。
- * @returns 该落的那个计数；不该落给 `null`（没涨 / 试满了 / 不是个正经数）。
- */
-export function shotDueOf(state: RecordState, pageShots: number): number | null {
-  if (!Number.isFinite(pageShots)) return null;
-  const n = Math.floor(pageShots);
-  if (n <= state.shotsSeen) return null;
-  if (state.shotTries !== null && state.shotTries.n === n && state.shotTries.tries >= RECORD_SHOT_TRIES) return null;
-  return n;
+function recordSeedOf(pact: RecordPact, now: number): RecordState {
+  const who = { sessionId: pact.sessionId, workspace: pact.workspace, unit: pact.unit, name: pact.name };
+  const page = { url: pact.url, title: pact.title };
+  return {
+    phase: 'armed',
+    ...who,
+    ...page,
+    action: pact.action,
+    expect: pact.expect,
+    captureFile: pact.captureFile,
+    startedAt: now,
+    t0: null,
+    t1: null,
+    shotsSeen: 0,
+    at: now,
+  };
 }
 
 /**
@@ -154,45 +128,10 @@ export function shotDueOf(state: RecordState, pageShots: number): number | null 
 export function createRecordStore(): RecordStore {
   const hold = createHold<RecordState>(RECORD_STALE_MS);
 
-  const withShot = (found: RecordState, shot: RecordShot, now: number, error: string | undefined): RecordState => {
-    const row: RecordShot = error === undefined ? shot : { n: shot.n, at: shot.at, path: shot.path, error };
-    const kept = found.shots.filter((one) => one.n !== shot.n);
-    const tries = found.shotTries !== null && found.shotTries.n === shot.n ? found.shotTries.tries : 0;
-    return {
-      ...found,
-      shots: [...kept, row].sort((one, two) => one.n - two.n),
-      shotsSeen: error === undefined ? Math.max(found.shotsSeen, shot.n) : found.shotsSeen,
-      shotTries: error === undefined ? null : { n: shot.n, tries: tries + 1 },
-      at: now,
-    };
-  };
-
   return {
     live: (now) => hold.live(now),
 
-    begin(pact) {
-      return hold.begin(pact.sessionId, pact.now, (now) => ({
-        phase: 'armed',
-        sessionId: pact.sessionId,
-        workspace: pact.workspace,
-        unit: pact.unit,
-        name: pact.name,
-        url: pact.url,
-        title: pact.title,
-        action: pact.action,
-        expect: pact.expect,
-        captureFile: pact.captureFile,
-        startedAt: now,
-        t0: null,
-        t1: null,
-        shots: [],
-        shotsSeen: 0,
-        shotTries: null,
-        beats: 0,
-        beatMs: 0,
-        at: now,
-      }));
-    },
+    begin: (pact) => beginMove(hold, pact, recordSeedOf),
 
     started(sessionId, at, now) {
       return hold.move(sessionId, now, (found) => {
@@ -210,22 +149,8 @@ export function createRecordStore(): RecordStore {
       );
     },
 
-    shotTaken(sessionId, shot, now) {
-      return hold.move(sessionId, now, (found) => ({ ok: true, state: withShot(found, shot, now, undefined) }));
-    },
-
-    shotFailed(sessionId, shot, now) {
-      return hold.move(sessionId, now, (found) => ({
-        ok: true,
-        state: withShot(found, shot, now, shot.error === undefined ? '落图失败' : shot.error),
-      }));
-    },
-
-    beat(sessionId, ms, now) {
-      return hold.move(sessionId, now, (found) => ({
-        ok: true,
-        state: { ...found, beats: found.beats + 1, beatMs: Math.max(0, Math.floor(ms)), at: now },
-      }));
+    shotSeen(sessionId, n, now) {
+      return hold.move(sessionId, now, (found) => ({ ok: true, state: { ...found, shotsSeen: n, at: now } }));
     },
 
     stop(sessionId, now) {

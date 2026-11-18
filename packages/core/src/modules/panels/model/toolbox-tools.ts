@@ -1,4 +1,5 @@
-import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
+import { toolRegistryOf } from './tool-registry-guard';
+import type { DshHostContext, DshToolDefinition, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { sessionIdOf, sessionWorkspace } from '@dsh-workbench/shared/host';
 import { presetOfSession } from '@/shared/api/host/preset-scope';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
@@ -112,11 +113,8 @@ function closedText(toolbox: Toolbox, session: string, preset: string | null, cl
 }
 
 export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Array<() => void> {
-  const tools = ctx.get('tools') as DshToolRegistry | undefined;
-  if (tools === undefined) {
-    ctx.logger?.info?.('[dsh-workbench] 没有 tools 服务，跳过工具包控制工具注册');
-    return [];
-  }
+  const tools = toolRegistryOf(ctx, '跳过工具包控制工具注册');
+  if (tools === undefined) return [];
 
   const listTool: DshToolDefinition = {
     name: TOOLBOX_LIST_TOOL,

@@ -27,6 +27,7 @@ export function FlowProgress({
   const [open, setOpen] = useState(false);
   const flow = useDiyFlow(flowSessionId);
   if (flow === null || flow.current === null) return null;
+  const label = t(flow.kind === 'record' ? 'rightbar.record.label' : 'rightbar.flow.label');
   const at = flow.steps.findIndex((step) => step.id === flow.current?.id);
   if (at < 0) return null;
 
@@ -53,7 +54,7 @@ export function FlowProgress({
         : t('rightbar.flow.statusPending');
 
   return (
-    <section className={styles.root} aria-label={t('rightbar.flow.label')}>
+    <section className={styles.root} aria-label={label}>
       <div className={styles.body}>
         <button
           type="button"
@@ -64,7 +65,7 @@ export function FlowProgress({
           <span className={styles.lead} aria-hidden="true">
             <IconSparkleRegular />
           </span>
-          <span className={styles.title}>{t('rightbar.flow.label')}</span>
+          <span className={styles.title}>{label}</span>
           <span className={styles.progress}>{progress}</span>
           <span className={styles.chevron} aria-hidden="true">
             {open ? <IconChevronUpOutlineRegular /> : <IconChevronDownOutlineRegular />}

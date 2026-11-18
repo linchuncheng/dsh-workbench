@@ -1,10 +1,9 @@
+import { join } from 'node:path';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
-import type { RecordState, RecordStore } from '@dsh-workbench/shared/host';
-import { adaptersOf, shotDueOf, type Seam } from '@dsh-workbench/shared/host';
-import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
+import type { RecordState } from '@dsh-workbench/shared/host';
+import { adaptersOf, BROWSER_RECORD_SESSION, type Seam } from '@dsh-workbench/shared/host';
 import {
   LIVE_TAIL_LINES,
-  appendCaptureLine,
   keepCaptureFile,
   readCaptureLines,
   readCaptureLinesWithKey,
@@ -15,29 +14,25 @@ import {
   type LiveLine,
 } from '@/shared/api/host/diy-capture-live';
 
-import { dirname, join } from 'node:path';
-import { deliverDebugNotice, noticeMessage, type AgentsLookup } from '@/shared/api/host/diy-debug-act';
-import { actBrowser, actErrorOf, type ActStep } from './diy-browser-act';
+import { actBrowser, type ActStep } from './diy-browser-act';
 import type { Wire } from './diy-browser';
 import { RECORD_ARM_SCRIPTS, RECORD_RESET_SCRIPT } from './diy-record-scripts';
-import { RECORD_READ_SCRIPT } from './diy-record-read-scripts';
-import { captureCallsOf, captureEntriesOf, captureLineOf, mergeCalls, segmentOf } from './diy-record-capture';
+import { forgetRecordTab, recordedTabOf, recordEval, trimmedNameOf } from './diy-record-tab';
+import { captureCallsOf, captureEntriesOf, mergeCalls, segmentOf } from './diy-record-capture';
 import type { CaptureRows } from './diy-record-capture';
 import type { CaptureEntry } from './diy-record-capture';
-import { domainOf, listRowsOf, readDomainsOf, recordPageOf, renderRecordDetail } from './diy-record-text';
+import { domainOf, listRowsOf, readDomainsOf, renderRecordDetail } from './diy-record-text';
 import type { RecordCall, RecordDetailFacts, RecordListRow, RecordPageRead } from './diy-record-text';
 import { plainJson } from './diy-context';
-import { DIY_RECORD_DETAIL_TOOL, DIY_RECORD_READ_TOOL } from '../unit';
 
 export const OPEN_TIMEOUT_MS = 30000;
 export const SETTLE_MS = 2000;
 export const WAIT_CAP_MS = 15 * 60 * 1000;
 export const POLL_MS = 1000;
+const BRING_BACK_MS = 350;
 const CAPTURE_TAIL_LINES = LIVE_TAIL_LINES;
 
 export { STATIC_URL_PATTERN } from '@/shared/api/host/diy-capture-live';
-const RECORD_WATCH_MS = 3000;
-const RECORD_WATCH_TRIES = 5;
 export const DETAIL_MAX_BYTES = 60000;
 
 export interface ArmOutcome {
@@ -72,23 +67,9 @@ export async function armRecordPage(
 }
 
 let workbenchApp: string | undefined;
-let recordTab: string | undefined;
-
-export function rememberRecordTab(page: string | undefined): void {
-  recordTab = page !== undefined && page.trim() !== '' ? page.trim() : undefined;
-}
-
-export function recordTabId(): string | undefined {
-  return recordTab;
-}
-
-export function recordEval(script: string): readonly string[] {
-  const tab = recordTab;
-  return tab === undefined ? ['eval', script] : ['eval', '--tab', tab, script];
-}
 
 export function rememberWorkbenchApp(app: string | undefined): void {
-  workbenchApp = app !== undefined && app.trim() !== '' ? app.trim() : undefined;
+  workbenchApp = trimmedNameOf(app);
 }
 
 export async function frontAppNow(ctx: DshHostContext): Promise<string | undefined> {
@@ -99,7 +80,7 @@ export async function frontAppNow(ctx: DshHostContext): Promise<string | undefin
   }
 }
 
-export async function bringBackWorkbench(ctx: DshHostContext): Promise<boolean> {
+async function bringBackOnce(ctx: DshHostContext): Promise<boolean> {
   const app = workbenchApp;
   if (app === undefined) return false;
   try {
@@ -107,6 +88,14 @@ export async function bringBackWorkbench(ctx: DshHostContext): Promise<boolean> 
   } catch {
     return false;
   }
+}
+
+
+export async function bringBackWorkbench(ctx: DshHostContext): Promise<boolean> {
+  if (workbenchApp === undefined) return false;
+  if (await bringBackOnce(ctx)) return true;
+  await pauseFor(BRING_BACK_MS);
+  return bringBackOnce(ctx);
 }
 
 export const pauseFor = (ms: number) => new Promise<void>((resolve) => {
@@ -137,23 +126,6 @@ export function lastCaptureFileOf(file: string): string {
   return `${file}.last`;
 }
 
-export function shotFileOf(captureFile: string, unit: string, n: number): string {
-  return join(dirname(captureFile), `rec-shot-${unit}-${n}.png`);
-}
-
-export async function takeShotOf(input: WatchFinishDeps, held: RecordState, n: number): Promise<void> {
-  const path = shotFileOf(input.captureFile, held.unit, n);
-  const at = Date.now();
-  try {
-    const step = await actBrowser(input.seam, input.command, BROWSER_RECORD_SESSION, ['screenshot', path], undefined, input.wire);
-    if (step.ok) input.store.shotTaken(input.sessionId, { n, at, path }, Date.now());
-    else input.store.shotFailed(input.sessionId, { n, at, path, error: actErrorOf(step) }, Date.now());
-  } catch (error) {
-    const text = error instanceof Error ? error.message : String(error);
-    input.store.shotFailed(input.sessionId, { n, at, path, error: text }, Date.now());
-  }
-}
-
 export async function startRecordCapture(
   seam: Seam,
   command: string,
@@ -163,169 +135,6 @@ export async function startRecordCapture(
   line?: LiveLine,
 ): Promise<boolean> {
   return startLiveCapture({ seam, command, session, file, rows, line });
-}
-
-export interface WatchFinishDeps {
-  readonly ctx: DshHostContext;
-  readonly seam: Seam;
-  readonly command: string;
-  readonly sessionId: string;
-  readonly store: RecordStore;
-  readonly url: string;
-  readonly captureFile: string;
-  readonly wire?: Wire;
-}
-
-async function releaseLeftoversOf(input: WatchFinishDeps): Promise<void> {
-  await releaseQuietly({
-    seam: input.seam,
-    command: input.command,
-    session: BROWSER_RECORD_SESSION,
-    url: input.url,
-    captureFile: input.captureFile,
-    wire: input.wire,
-  });
-}
-
-async function stopCaptureQuiet(input: WatchFinishDeps): Promise<boolean> {
-  try {
-    return stopLiveCapture(input.captureFile);
-  } catch {
-    return false;
-  }
-}
-
-async function recordTabCount(input: WatchFinishDeps): Promise<number> {
-  try {
-    const step = await actBrowser(input.seam, input.command, BROWSER_RECORD_SESSION, ['tab', 'list'], undefined, input.wire);
-    const box = step.payload;
-    const rows = Array.isArray(box) ? box : Array.isArray(box?.['data']) ? box['data'] : undefined;
-    return rows === undefined ? -1 : rows.length;
-  } catch {
-    return -1;
-  }
-}
-
-async function leftoversAndStop(input: WatchFinishDeps): Promise<{ readonly stop: true; readonly delivered: false }> {
-  await releaseLeftoversOf(input);
-  return { stop: true, delivered: false };
-}
-
-async function finishWatcher(
-  input: WatchFinishDeps,
-  keepCapture: boolean,
-): Promise<{ readonly stop: true; readonly delivered: false }> {
-  if (keepCapture) await stopCaptureQuiet(input);
-  await closeRecordTabQuiet(input);
-  await bringBackWorkbench(input.ctx);
-  return { stop: true, delivered: false };
-}
-
-async function keepHookCalls(input: WatchFinishDeps, calls: readonly RecordCall[]): Promise<boolean> {
-  if (calls.length === 0) return false;
-  const captured = readCaptureText(input.captureFile).text;
-  const failed = readCaptureRound(input.captureFile) === 'fail';
-  if (captured.trim() !== '' && !failed) return false;
-  return appendCaptureLine(input.captureFile, captureLineOf(calls));
-}
-
-async function closeRecordTabQuiet(input: WatchFinishDeps): Promise<boolean> {
-  try {
-    return await closeRecordTab(input.seam, input.command, BROWSER_RECORD_SESSION, input.url, input.wire);
-  } catch {
-    return false;
-  }
-}
-
-export async function watchFinishStepOf(
-  input: WatchFinishDeps,
-): Promise<{ readonly stop: boolean; readonly delivered: boolean }> {
-  const live = input.store.live(Date.now());
-  if (live === null) return leftoversAndStop(input);
-  if (live.sessionId !== input.sessionId) return { stop: true, delivered: false };
-  if (live.phase === 'finished') return finishWatcher(input, false);
-  let page: ReturnType<typeof recordPageOf>;
-  const started = Date.now();
-  try {
-    const step = await actBrowser(
-      input.seam,
-      input.command,
-      BROWSER_RECORD_SESSION,
-      recordEval(RECORD_READ_SCRIPT),
-      undefined,
-      input.wire,
-    );
-    page = recordPageOf(step.payload);
-  } catch {
-    return { stop: false, delivered: false };
-  }
-  if (page.beat) input.store.beat(input.sessionId, Math.max(0, Date.now() - started), Date.now());
-  const held = input.store.live(Date.now());
-  if (held === null) return leftoversAndStop(input);
-  if (held.sessionId !== input.sessionId) return { stop: true, delivered: false };
-  if (held.phase === 'finished') return finishWatcher(input, true);
-  if (!page.ok) {
-    const left = await recordTabCount(input);
-    return left === 0 ? finishWatcher(input, true) : { stop: false, delivered: false };
-  }
-  const due = shotDueOf(held, page.shots);
-  if (due !== null) await takeShotOf(input, held, due);
-  if (page.phase === 'finished' && page.t1 !== null) {
-    if (page.t1 < held.startedAt) {
-      await armRecordPage(input.seam, input.command, BROWSER_RECORD_SESSION, input.wire, { reset: true });
-      return { stop: false, delivered: false };
-    }
-    const now = Date.now();
-    if (held.phase === 'armed') input.store.started(input.sessionId, page.t0 ?? 0, now);
-    if (input.store.live(Date.now())?.phase === 'recording') {
-      input.store.finished(input.sessionId, page.t1, now);
-    }
-    const caught = page.calls.length;
-    const summary = `工作台 DIY：用户按了「结束录制」（${String(caught)} 条）`;
-    deliverDebugNotice(
-      input.ctx.get('agents') as AgentsLookup | undefined,
-      input.sessionId,
-      noticeMessage(
-        `用户按了「结束录制」（页面钩子上 ${String(caught)} 条）—— 去 ${DIY_RECORD_READ_TOOL} 取这一段清单，要某一条原文用 ${DIY_RECORD_DETAIL_TOOL}。`,
-        summary,
-      ),
-      'wake',
-    );
-    await stopCaptureQuiet(input);
-    await keepHookCalls(input, page.calls);
-    await closeRecordTabQuiet(input);
-    await bringBackWorkbench(input.ctx);
-    return { stop: true, delivered: true };
-  }
-  if (page.phase === 'recording' && page.t0 !== null && held.phase === 'armed') {
-    input.store.started(input.sessionId, page.t0, Date.now());
-  }
-  return { stop: false, delivered: false };
-}
-
-export interface WatchRoundOut {
-  readonly stop: boolean;
-  readonly delivered: boolean;
-}
-
-export async function watchRoundOf(input: WatchFinishDeps): Promise<WatchRoundOut> {
-  return watchFinishStepOf(input);
-}
-
-export function watchRecordFinish(input: WatchFinishDeps): void {
-  let misses = 0;
-  const tick = (): void => {
-    void watchRoundOf(input)
-      .then((out) => {
-        misses = 0;
-        if (!out.stop) setTimeout(tick, 0);
-      })
-      .catch(() => {
-        misses += 1;
-        if (misses < RECORD_WATCH_TRIES) setTimeout(tick, RECORD_WATCH_MS);
-      });
-  };
-  setTimeout(tick, 0);
 }
 
 export interface CaptureRead {
@@ -409,75 +218,75 @@ export function hookCallOf(page: RecordPageRead, key: string): RecordCall | null
 const DETAIL_WHERE_CAPTURE = '会话捕获（浏览器那一层，快照原文）';
 const DETAIL_WHERE_HOOK = '页面钩子（这一段）';
 
+const DETAIL_KEYS = [
+  'key',
+  'method',
+  'url',
+  'status',
+  'ct',
+  'at',
+  'request',
+  'response',
+  'headers',
+  'requestFullSize',
+  'responseFullSize',
+  'requestSizeExact',
+  'responseSizeExact',
+  'ambiguous',
+  'source',
+] as const;
+
 function detailFactsOf(input: RecordDetailFacts & { readonly key: string }): Record<string, unknown> {
-  return plainJson({
-    ok: true,
-    found: true,
-    key: input.key,
-    method: input.method,
-    url: input.url,
-    status: input.status,
-    ct: input.ct,
-    at: input.at,
-    request: input.request,
-    response: input.response,
-    headers: input.headers,
-    requestFullSize: input.requestFullSize,
-    responseFullSize: input.responseFullSize,
-    requestSizeExact: input.requestSizeExact,
-    responseSizeExact: input.responseSizeExact,
-    ambiguous: input.ambiguous,
-    source: input.source,
-    text: renderRecordDetail(input),
-  });
+  const picked = Object.fromEntries(DETAIL_KEYS.map((one) => [one, input[one]]));
+  return plainJson({ ok: true, found: true, ...picked, text: renderRecordDetail(input) });
 }
 
+type DetailRow = Omit<RecordDetailFacts, 'found' | 'where' | 'source' | 'ambiguous' | 'maxBytes' | 'note'> & {
+  readonly key: string;
+};
+
+const ROW_KEYS = [
+  'key',
+  'method',
+  'url',
+  'status',
+  'ct',
+  'at',
+  'request',
+  'response',
+  'headers',
+  'requestFullSize',
+  'responseFullSize',
+  'requestSizeExact',
+  'responseSizeExact',
+] as const;
+
+const rowOf = (one: Record<string, unknown>): DetailRow =>
+  Object.fromEntries(ROW_KEYS.map((key) => [key, one[key]])) as DetailRow;
+
+const detailOfRow = (
+  row: DetailRow,
+  where: string,
+  source: string,
+  maxBytes: number,
+  ambiguous: number,
+): Record<string, unknown> => detailFactsOf({ ...row, found: true, where, source, ambiguous, maxBytes, note: '' });
+
 export function detailOfEntry(entry: CaptureEntry, maxBytes: number, ambiguous = 1): Record<string, unknown> {
-  return detailFactsOf({
-    found: true,
-    where: DETAIL_WHERE_CAPTURE,
-    key: entry.key,
-    method: entry.method,
-    url: entry.url,
-    status: entry.status,
-    ct: entry.ct,
-    at: entry.at,
-    request: entry.request,
-    response: entry.response,
-    headers: entry.headers,
-    requestFullSize: entry.requestFullSize,
-    responseFullSize: entry.responseFullSize,
-    requestSizeExact: entry.requestSizeExact,
-    responseSizeExact: entry.responseSizeExact,
-    ambiguous,
-    source: 'capture',
-    maxBytes,
-    note: '',
-  });
+  return detailOfRow(rowOf({ ...entry }), DETAIL_WHERE_CAPTURE, 'capture', maxBytes, ambiguous);
 }
 
 export function detailOfCall(call: RecordCall, maxBytes: number): Record<string, unknown> {
-  return detailFactsOf({
-    found: true,
-    where: DETAIL_WHERE_HOOK,
-    key: call.key,
-    method: call.method,
-    url: call.url,
-    status: call.status,
-    ct: call.ct,
-    at: call.at,
+  const shape = {
+    ...call,
     request: call.body,
-    response: call.response,
     headers: '',
     requestFullSize: call.body.length,
     responseFullSize: call.response.length,
     requestSizeExact: false,
     responseSizeExact: false,
-    ambiguous: 0,
-    source: 'hook',
-    maxBytes,
-    note: '',
-  });
+  };
+  return detailOfRow(rowOf(shape), DETAIL_WHERE_HOOK, 'hook', maxBytes, 0);
 }
 
 function blanksOf(pages: readonly Record<string, unknown>[] | null, keep: string): readonly string[] {
@@ -501,31 +310,56 @@ function tabsOf(raw: string): readonly Record<string, unknown>[] | null {
   }
 }
 
-async function closeRecordTab(
+async function sweepBlanksOf(seam: Seam, command: string, session: string, wire?: Wire): Promise<void> {
+  const listed = await actBrowser(seam, command, session, ['tab', 'list'], undefined, wire);
+  const pages = tabsOf(listed.stdout);
+  if (pages === null) return;
+  for (const one of blanksOf(pages, '')) {
+    await actBrowser(seam, command, session, ['tab', 'close', one], undefined, wire);
+  }
+}
+
+export async function closeLeftoverTabOf(seam: Seam, command: string, url: string, wire?: Wire): Promise<void> {
+  if (recordedTabOf() === undefined) return;
+  try {
+    await closeRecordTab(seam, command, BROWSER_RECORD_SESSION, url, wire, recordedTabOf());
+  } catch {
+    forgetRecordTab();
+  }
+}
+
+export async function closeRecordTab(
   seam: Seam,
   command: string,
   session: string,
   url: string,
   wire?: Wire,
+  tab?: string,
 ): Promise<boolean> {
   const listed = await actBrowser(seam, command, session, ['tab', 'list'], undefined, wire);
   const pages = tabsOf(listed.stdout);
   if (pages !== null && pages.length === 0) return true;
+  const named = tab !== undefined && tab !== '' ? tab : '';
+  const known = named !== '' && pages !== null && pages.some((one) => one['page'] === named) ? named : '';
   const exact = pages?.find((one) => typeof one['url'] === 'string' && one['url'] === url);
-  const pick = exact ?? pages?.[0];
-  const page = pick === undefined ? '' : typeof pick['page'] === 'string' ? pick['page'] : '';
-  if (page !== '') {
-    const done = await actBrowser(seam, command, session, ['tab', 'close', page], undefined, wire);
-    if (done.ok) {
-      for (const one of blanksOf(pages, page)) {
-        await actBrowser(seam, command, session, ['tab', 'close', one], undefined, wire);
-      }
-      await actBrowser(seam, command, session, ['close'], undefined, wire);
-      return true;
-    }
+  const found = exact === undefined ? '' : typeof exact['page'] === 'string' ? exact['page'] : '';
+  const page = known !== '' ? known : found;
+  if (page === '') {
+    const released = await actBrowser(seam, command, session, ['close'], undefined, wire);
+    return released.ok;
   }
-  const released = await actBrowser(seam, command, session, ['close'], undefined, wire);
-  return released.ok;
+  const done = await actBrowser(seam, command, session, ['tab', 'close', page], undefined, wire);
+  if (!done.ok) {
+    const released = await actBrowser(seam, command, session, ['close'], undefined, wire);
+    return released.ok;
+  }
+  for (const one of blanksOf(pages, page)) {
+    await actBrowser(seam, command, session, ['tab', 'close', one], undefined, wire);
+  }
+  await sweepBlanksOf(seam, command, session, wire);
+  await actBrowser(seam, command, session, ['close'], undefined, wire);
+  forgetRecordTab();
+  return true;
 }
 
 export interface RecordRelease {
@@ -535,11 +369,12 @@ export interface RecordRelease {
   readonly url: string;
   readonly captureFile: string;
   readonly wire?: Wire;
+  readonly tab?: string;
 }
 
 export async function releaseRecord(input: RecordRelease): Promise<{ readonly tab: boolean; readonly capture: boolean }> {
   const capture = stopLiveCapture(input.captureFile);
-  const tab = await closeRecordTab(input.seam, input.command, input.session, input.url, input.wire);
+  const tab = await closeRecordTab(input.seam, input.command, input.session, input.url, input.wire, input.tab);
   return { tab, capture };
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PAGE, createBrowserRig } from '../../__tests__/browser-tools-harness';
+import { forgetRecordTab, rememberRecordTab } from '../diy-record-tab';
 import {
   BROWSER_TOOLS,
   argvOf,
@@ -235,6 +236,24 @@ describe('只读线档：同一族、另一条会话', () => {
     expect(out.timedOut).toBe(false);
     expect(out.truncated).toBe(false);
     expect(out.argv).toEqual(['--css', 'table tr', '--limit', '5']);
+    rig.dispose();
+  });
+
+  it('★★ 同站点有保留的录制页 ⇒ 直接在那扇窗上探测（不再开新会话、不把窗口弹到前台）', async () => {
+    rememberRecordTab('p9', 'https://site.example/a');
+    const rig = browserRig({ pact: false, answer: () => ({ stdout: 'ok\n' }) });
+
+    const out = await run(rig, DIY_EVAL_TOOL, { read: 'https://site.example/a', args: ['return 1'] });
+
+    expect(rig.commands).toHaveLength(1);
+    expect(rig.commands[0]).toContain('workbench-rec');
+    expect(rig.commands[0]).toContain("'--tab' 'p9'");
+    expect(rig.commands[0]).toContain("'eval'");
+    expect(rig.commands.some((one) => one.includes('workbench-read'))).toBe(false);
+    expect(rig.commands.some((one) => one.includes("'get' 'url'"))).toBe(false);
+    expect(out.session).toBe('workbench-rec');
+    expect(out.opened).toBe(false);
+    forgetRecordTab();
     rig.dispose();
   });
 

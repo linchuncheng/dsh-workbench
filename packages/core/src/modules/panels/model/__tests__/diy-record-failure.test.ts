@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { forgetRecordTab } from '../diy-record-tab';
 import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
 import { RECORD_STALE_MS } from '@dsh-workbench/shared/host';
 import type { DshHostContext, DshShell } from '@dsh-workbench/shared/host';
@@ -9,7 +10,8 @@ import { fakeSeamOf } from '../../__tests__/seam-fake';
 import { takeHeldNotices } from '@/shared/api/host/diy-debug-act';
 import { createDiyRig } from '../../__tests__/diy-harness';
 import { armProbe, GET, POST, heldStore, line } from '../../__tests__/record-fixtures';
-import { foreignDomainText, releaseQuietly, watchFinishStepOf } from '../diy-record';
+import { foreignDomainText, releaseQuietly } from '../diy-record';
+import { watchFinishStepOf } from '../diy-record-watch';
 import { RECORD_ARM_SCRIPT } from '../diy-record-scripts';
 import { domainOf, readDomainsOf, type RecordListRow } from '../diy-record-text';
 import { DIY_RECORD_PREPARE_TOOL, DIY_RECORD_READ_TOOL, DIY_RECORD_STOP_TOOL } from '../../unit';
@@ -23,6 +25,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
   const rig = createDiyRig();
 
   beforeEach(() => {
+    forgetRecordTab();
     rig.scaffold('demo');
   });
 
@@ -185,7 +188,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       ],
     });
 
-    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec())) as {
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true, forceWhy: '夹具里没有表单快照' }, rig.diyExec())) as {
       cleaned: { readonly tab: boolean; readonly capture: boolean };
       text: string;
     };
@@ -324,10 +327,10 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
     expect(live?.t1).not.toBeNull();
   });
 
-  it('★ 浮条那一半也收起：只有 `armed` 能按「开始」（finished 之后按不动）', () => {
-    expect(RECORD_ARM_SCRIPT).toContain("start.disabled = phase !== 'armed'");
+  it('★ 浮条那一半也收起：录完 / 停了之后两颗钮都按不动', () => {
+    expect(RECORD_ARM_SCRIPT).toContain("end.disabled = phase !== 'recording'");
     expect(RECORD_ARM_SCRIPT).not.toContain("phase !== 'armed' && phase !== 'finished'");
-    expect(RECORD_ARM_SCRIPT).toContain('state.calls = [];');
+    expect(RECORD_ARM_SCRIPT).toContain('calls: []');
   });
 
   it('★★ 他按了「结束录制」⇒ 宿主自己看出来并叫醒 agent（不用他再说一句"好了"）', async () => {

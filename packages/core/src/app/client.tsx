@@ -14,7 +14,6 @@ import { readPanels, sessionMenuSeat, workspaceWrites } from '@/app/layouts/side
 import { MARKET_PANEL_ID, registerMarketPanel } from '@/app/layouts/market/panel';
 import { registerDebugFooter } from '@/app/layouts/sidebar/debug-footer';
 import { clientSurface } from '@/shared/api/platform/client';
-import { registerRecordFooter } from '@/app/layouts/sidebar/record-footer';
 import { registerWorkbenchSettings } from '@/app/layouts/workbench-settings/register';
 import { selectProject, selectedProjectId } from '@/app/layouts/project-selection';
 import { WORKSHOP_PAST_TITLES, WORKSHOP_TITLE, diyStartOptions, isWorkshopPath } from '@/shared/api/diy';
@@ -422,7 +421,6 @@ function mount(ctx: DshClientContext): void {
 
   registerMarketPanel(ctx, units);
   if (clientSurface().capabilities.debugFooter) registerDebugFooter(ctx);
-  registerRecordFooter(ctx);
   registerWorkbenchSettings(ctx);
   ctx.effect(() => {
     const workshop = workshopWorkspace();

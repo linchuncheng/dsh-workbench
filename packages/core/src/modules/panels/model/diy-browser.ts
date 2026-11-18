@@ -201,3 +201,11 @@ export async function readyPageOf(
   const after = await workbenchPageOf(seam, command, session, wire);
   return { ok: after.ok, bound: true, page: after, reason: '' };
 }
+
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return '';
+  }
+}

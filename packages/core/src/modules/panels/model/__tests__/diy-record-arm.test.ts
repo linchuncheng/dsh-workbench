@@ -46,48 +46,53 @@ const armed = (plan: readonly Plan[]) => {
   return { seen, out: armRecordPage(fakeSeamOf(shellOf(plan, seen)), '', 'workbench-rec', { read: wireRead }) };
 };
 
-describe('浮条分五段注入：每段都离 Windows 的命令行上限有余量', () => {
-  it('★★★ 每一段都短于 6000 字符（Windows 单条命令 8191），五段合起来仍是原来那份钩子', () => {
-    expect(RECORD_ARM_SCRIPTS).toHaveLength(5);
+describe('浮条分段注入：每段都离 Windows 的命令行上限有余量', () => {
+  it('★★★ 每一段都短于 6000 字符（Windows 单条命令 8191），合起来仍是原来那份钩子', () => {
+    expect(RECORD_ARM_SCRIPTS.length).toBeGreaterThanOrEqual(5);
     for (const part of RECORD_ARM_SCRIPTS) {
       expect(part.length).toBeLessThanOrEqual(PART_CAP);
       expect(part.length + 200).toBeLessThan(WINDOWS_LINE_CAP);
     }
-    expect(RECORD_ARM_SCRIPT).toContain('开始录制');
-    expect(RECORD_ARM_SCRIPT).toContain('拍一张当前页面的截图');
-    expect(RECORD_ARM_SCRIPT).toContain('state.calls = [];');
+    expect(RECORD_ARM_SCRIPT).toContain('结束录制');
+    expect(RECORD_ARM_SCRIPT).toContain('calls: []');
   });
 
-  it('★★ 成功时按序发五段，回来的最后一段带页面状态', async () => {
-    const { seen, out } = armed([{}, {}, {}, {}, { stdout: '{"ok":true,"phase":"armed","calls":[]}' }]);
+  it('★★ 逐段装完：浮条先以「正在准备录制…」出现，钩子最后才装', async () => {
+    const total = RECORD_ARM_SCRIPTS.length;
+    const plan = [
+      {},
+      { stdout: '{"ok":true,"fresh":true}' },
+      ...Array.from({ length: total - 3 }, () => ({ stdout: '{"ok":true}' })),
+      { stdout: '{"ok":true,"phase":"armed","calls":[]}' },
+    ];
+    const { seen, out } = armed(plan);
     const outcome = await out;
-    expect(seen).toHaveLength(5);
-    expect(outcome.part).toBe(5);
-    expect(outcome.parts).toBe(5);
-    expect(outcome.step.payload?.['phase']).toBe('armed');
-    expect(seen[0]).toContain('__dshDiyRecordKeep');
-    expect(seen[2]).toContain('__dsh-record-bar-style');
-    expect(seen[4]).toContain('state.__repaint = paint;');
+    expect(seen).toHaveLength(total);
+    expect(outcome.part).toBe(total);
+    expect(outcome.parts).toBe(total);
+    expect(seen[1]).toContain('__dsh-record-bar');
+    expect(seen.findIndex((one) => one.includes('正在准备录制…'))).toBeLessThan(
+      seen.findIndex((one) => one.includes('XMLHttpRequest')),
+    );
   });
 
   it('★★ 2.x 把页面答案装在 data 里：拆一层之后最后一段仍带得出页面状态', async () => {
+    const total = RECORD_ARM_SCRIPTS.length;
     const { out } = armed([
-      {},
-      {},
-      {},
-      {},
+      ...Array.from({ length: total - 1 }, () => ({})),
       { stdout: JSON.stringify({ ok: true, data: { ok: true, phase: 'recording', calls: [] } }) },
     ]);
     const outcome = await out;
     expect(outcome.step.payload?.['phase']).toBe('recording');
   });
 
-  it('★★ 第三段就失败 ⇒ 不再发第四、第五段，且说得出是第几段', async () => {
+  it('★★ 第三段就失败 ⇒ 后面的不再发，且说得出是第几段', async () => {
+    const total = RECORD_ARM_SCRIPTS.length;
     const { seen, out } = armed([{}, {}, { exitCode: 1, stdout: '{"ok":false,"code":"no-bar"}' }]);
     const outcome = await out;
     expect(seen).toHaveLength(3);
     expect(outcome.step.ok).toBe(false);
-    expect(outcome).toMatchObject({ part: 3, parts: 5 });
+    expect(outcome).toMatchObject({ part: 3, parts: total });
   });
 });
 

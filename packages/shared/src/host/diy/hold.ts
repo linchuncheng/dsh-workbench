@@ -59,3 +59,11 @@ export function createHold<T extends HoldSlot>(staleMs: number): Hold<T> {
     },
   };
 }
+
+export function beginMove<T, P extends { readonly sessionId: string; readonly now: number }>(
+  hold: Hold<T>,
+  pact: P,
+  seed: (pact: P, now: number) => T,
+): HoldMove<T, HoldBusy> {
+  return hold.begin(pact.sessionId, pact.now, (now) => seed(pact, now));
+}

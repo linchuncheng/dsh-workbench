@@ -1,6 +1,7 @@
 import type { RecordExpect } from '@dsh-workbench/shared/host';
 import { createRecordStore } from '@dsh-workbench/shared/host';
 import type { RecordCall } from '../model/diy-record-text';
+import { RECORD_ARM_SCRIPTS } from '../model/diy-record-scripts';
 
 export const URL = 'https://inventory.example.com/env';
 
@@ -74,10 +75,9 @@ export const armProbe = (
   reset = false,
 ): ReadonlyArray<{ readonly stdout: string }> => [
   ...(reset ? [{ stdout: '{"ok":true}' }] : []),
-  { stdout: '{"ok":true}' },
-  { stdout: '{"ok":true,"fresh":true}' },
-  { stdout: '{"ok":true}' },
-  { stdout: '{"ok":true}' },
+  ...RECORD_ARM_SCRIPTS.slice(0, -1).map((_one, at) => ({
+    stdout: at === 1 ? '{"ok":true,"fresh":true}' : '{"ok":true}',
+  })),
   { stdout: ARM_OK(extra) },
 ];
 

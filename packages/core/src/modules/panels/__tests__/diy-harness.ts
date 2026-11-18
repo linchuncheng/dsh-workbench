@@ -22,7 +22,7 @@ import {
   type RecordStore,
 } from '@dsh-workbench/shared/host';
 import { registerDiyTools } from '../model/diy-tools';
-import { registerRecordTools } from '../model/diy-record-tools';
+import { registerRecordTools, type RecordFlowPort } from '../model/diy-record-tools';
 import { stopObservers, withObserverCleanup } from '../model/diy-observers';
 import type { BundleInstallOutcome } from '../model/market';
 import { createPanelsService } from '../model/service';
@@ -132,12 +132,26 @@ export function createDiyRig() {
   function fakeShell(plan: readonly ProbeStep[]) {
     const commands: string[] = [];
     let index = 0;
+    let snapEval = false;
     const shell = {
       resolve(request: { command: string }) {
         commands.push(request.command);
+        snapEval = request.command.includes("'no-snap'");
         return request;
       },
       async execute() {
+        if (snapEval) {
+          snapEval = false;
+          return {
+            result: async () => ({
+              exitCode: 0,
+              timedOut: false,
+              aborted: false,
+              stdout: { text: '{"ok":false,"code":"no-snap"}', truncated: false },
+              stderr: { text: '', truncated: false },
+            }),
+          };
+        }
         const step = plan[Math.min(index, plan.length - 1)] ?? {};
         index += 1;
         return {
@@ -203,6 +217,7 @@ export function createDiyRig() {
       panelState?: PanelStateStore;
       debug?: DebugStore;
       record?: RecordStore;
+      recordFlow?: RecordFlowPort;
       pact?: string | false;
       preview?: (unit: string) => PublishPreview | null;
       authorHint?: (unit: string) => Promise<string | undefined>;
@@ -287,7 +302,7 @@ export function createDiyRig() {
     });
     const disposers = [
       ...registerDiyTools(ctx as never, market as never, panels, debug, options.preview, options.authorHint),
-      ...registerRecordTools(ctx as never, record),
+      ...registerRecordTools(ctx as never, record, options.recordFlow),
     ];
     const toolOf = (name: string) => {
       const found = registered.find((one) => one.name === name);

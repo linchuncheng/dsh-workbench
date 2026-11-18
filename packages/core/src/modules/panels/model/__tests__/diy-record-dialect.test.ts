@@ -44,7 +44,7 @@ describe('会话方言归命令面：2.x 的 --session 由适配器给，整条�
 
     await built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL, doing: '发布' }, rig.diyExec());
     await built.tool(DIY_RECORD_READ_TOOL).execute({}, rig.diyExec());
-    await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec());
+    await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true, forceWhy: '夹具里没有表单快照' }, rig.diyExec());
 
     const lines = browserLines(built.commands);
     expect(lines.length).toBeGreaterThan(3);
@@ -68,7 +68,7 @@ describe('会话方言归命令面：2.x 的 --session 由适配器给，整条�
       ],
     });
 
-    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec())) as {
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true, forceWhy: '夹具里没有表单快照' }, rig.diyExec())) as {
       cleaned: { readonly tab: boolean };
     };
 

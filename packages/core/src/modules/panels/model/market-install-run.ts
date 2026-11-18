@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import {
   INSTALL_TIMEOUT_MS,
@@ -74,7 +73,7 @@ export function createInstallRunner(deps: InstallRunDeps): InstallRunner {
       const drop = dropTargetOf(planStepText(error.step), root);
       if (drop === undefined) throw installFailureOf(error, root);
       try {
-        if (existsSync(drop)) removePath(drop);
+        removePath(drop);
       } catch {
         throw installFailureOf(error, root);
       }

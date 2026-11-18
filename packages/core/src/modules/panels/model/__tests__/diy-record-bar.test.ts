@@ -1,5 +1,5 @@
 import { runInNewContext } from 'node:vm';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { RECORD_ARM_BAR_ITEMS_SCRIPT, RECORD_ARM_BAR_SCRIPT } from '../diy-record-bar-scripts';
 import { RECORD_KEEP_KEY } from '../diy-record-keys';
 import { RECORD_ARM_SCRIPT } from '../diy-record-scripts';
@@ -229,10 +229,9 @@ const last = (created: FakeEl[], match: (element: FakeEl) => boolean): FakeEl =>
 
 const gripOf = (harness: Harness): FakeEl => last(harness.created, (element) => element.attrs['title'] === '拖动浮条');
 const dotOf = (harness: Harness) => last(harness.created, (element) => element.className === '__dsh-record-dot');
-const startOf = (harness: Harness) => last(harness.created, (element) => element.attrs['title'] === '开始录制');
-const endOf = (harness: Harness) => last(harness.created, (element) => element.attrs['title'] === '结束录制');
 const shotOf = (harness: Harness) => last(harness.created, (element) => element.attrs['title'] === '拍一张当前页面的截图');
-const labelOf = (harness: Harness) => last(harness.created, (element) => element.textContent.includes('条'));
+const endOf = (harness: Harness) => last(harness.created, (element) => element.attrs['title'] === '结束录制');
+const labelOf = (harness: Harness) => last(harness.created, (element) => element.textContent.includes('请求'));
 const barOf = (harness: Harness) => {
   const bar = harness.doc.getElementById('__dsh-record-bar');
   if (bar === null) throw new Error('浮条没装上');
@@ -245,7 +244,7 @@ const flush = (): Promise<void> =>
   });
 
 describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新（把脚本真跑一遍）', () => {
-  it('★ 浮条上从左到右：拖把 | 状态点 | 文案 | 三颗钮（截图 / 相机+开始 / 方块+结束，完整那两句仍在无障碍名上）', () => {
+  it('★ 浮条上从左到右：拖把 | 状态点 | 文案 | 两颗钮（截图 / 方块+结束，完整那两句仍在无障碍名上）', () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
 
@@ -254,10 +253,9 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     const dot = dotOf(harness);
     const label = labelOf(harness);
     const shot = shotOf(harness);
-    const start = startOf(harness);
     const end = endOf(harness);
 
-    expect(bar.children).toEqual([grip, dot, label, shot, start, end]);
+    expect(bar.children).toEqual([grip, dot, label, shot, end]);
     expect(bar.attrs['style']).toContain('position:fixed');
 
     expect(grip.attrs['role']).toBe('button');
@@ -266,74 +264,73 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     expect(grip.attrs['style']).toContain('touch-action:none');
 
     expect(dot.attrs['style']).toContain('background:#ef4444');
-    expect(label.textContent).toBe('录制 · 等开始 · 0 条');
-    expect(label.textContent).not.toBe(start.textContent);
+    expect(label.textContent).toBe('录制中 · 请求 0 · 截图 0');
 
-    expect(start.attrs['aria-label']).toBe('开始录制');
     expect(end.attrs['aria-label']).toBe('结束录制');
     expect(shot.attrs['aria-label']).toBe('拍一张当前页面的截图');
-    expect(shot.attrs['title']).toBe('拍一张当前页面的截图');
-    expect(shot.innerHTML).toContain('<svg');
-    expect(shot.innerHTML).toContain('截图');
-    expect(shot.innerHTML).not.toBe(start.innerHTML);
-    expect(shot.disabled).toBe(true);
-    expect(shot.attrs['style']).toContain('cursor:default');
-    expect(shot.attrs['style']).toContain('color:rgba(255,255,255,.45)');
-    expect(shot.attrs['style']).not.toContain('background:#3b82f6');
-    expect(start.attrs['title']).toBe('开始录制');
+    expect(shot.disabled).toBe(false);
     expect(end.attrs['title']).toBe('结束录制');
-    expect(start.innerHTML).toContain('<svg');
-    expect(start.innerHTML).toContain('开始');
     expect(end.innerHTML).toContain('<rect');
     expect(end.children[0]?.textContent).toBe('结束');
-    expect(start.attrs['style']).toContain('padding:0 8px');
-    expect(start.attrs['style']).not.toContain('width:24px');
-    expect(start.attrs['style']).toContain('font-size:12px');
-    expect(start.attrs['style']).not.toContain('font:12px/1 inherit');
-    expect(start.attrs['style']).toContain('color:#fff');
-    expect(start.attrs['style']).toContain('#3b82f6');
-    expect(end.attrs['style']).toContain('cursor:default');
-    expect(end.attrs['style']).toContain('color:rgba(255,255,255,.45)');
+    expect(shot.attrs['style']).toContain('padding:0 8px');
+    expect(shot.attrs['style']).not.toContain('width:24px');
+    expect(shot.attrs['style']).toContain('font-size:12px');
+    expect(shot.attrs['style']).toContain('color:#fff');
+    expect(shot.attrs['style']).toContain('#3b82f6');
+    expect(end.attrs['style']).toContain('cursor:pointer');
+    expect(end.attrs['style']).toContain('color:#fff');
+  });
+
+  it('★★ 录制页四周那圈淡蓝呼吸光：pointer-events 关掉（点得到页面），只在录制中亮，收工一起摘', () => {
+    const harness = makeHarness();
+    runScript(RECORD_ARM_SCRIPT, harness);
+    const glow = harness.doc.getElementById('__dsh-record-glow');
+
+    expect(glow).not.toBeNull();
+    expect(glow?.attrs['style']).toContain('pointer-events:none');
+    expect(glow?.attrs['style']).toContain('position:fixed');
+    expect(glow?.attrs['style']).toContain('box-shadow:inset');
+    expect(glow?.attrs['style']).toContain('animation:__dshRecordGlow');
+
+    const sheet = harness.doc.getElementById('__dsh-record-bar-style');
+    expect(sheet?.textContent).toContain('@keyframes __dshRecordGlow');
+
+    endOf(harness).onclick?.({ detail: 1 });
+    expect(glow?.style.display).toBe('none');
+
+    runScript(RECORD_STOP_SCRIPT, harness);
+    expect(harness.doc.getElementById('__dsh-record-glow')).toBeNull();
   });
 
   it('★ 录制中每抓一条自己就涨：不用再按任何按钮', async () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
-    const start = startOf(harness);
     const label = labelOf(harness);
 
-    start.onclick?.();
-    expect(label.textContent).toBe('录制中 · 0 条');
+    expect(label.textContent).toBe('录制中 · 请求 0 · 截图 0');
 
     await harness.win.fetch('/api/publish', { method: 'POST', body: '{"env":"test"}' });
     await flush();
-    expect(label.textContent).toBe('录制中 · 1 条');
+    expect(label.textContent).toBe('录制中 · 请求 1 · 截图 0');
 
     await harness.win.fetch('/api/publish', { method: 'POST', body: '{"env":"test"}' });
     await flush();
-    expect(label.textContent).toBe('录制中 · 2 条');
+    expect(label.textContent).toBe('录制中 · 请求 2 · 截图 0');
 
     expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
     expect(harness.storage.raw(RECORD_KEEP_KEY)?.calls).toHaveLength(2);
 
     endOf(harness).onclick?.({ detail: 1 });
     endOf(harness).onclick?.({ detail: 1 });
-    expect(label.textContent).toBe('录制完成 · 2 条');
+    expect(label.textContent).toBe('已结束 · 请求 2 · 正在回到工作台…');
   });
 
   it('★★ 键盘敲出来的点击不算数：截图工具回车确认不会把录制结束掉', () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
-    const start = startOf(harness);
     const end = endOf(harness);
 
-    start.onclick?.({ detail: 1 });
-    expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
-
     end.onclick?.({ detail: 0 });
-    expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
-
-    end.onclick?.({ detail: 1 });
     expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
 
     end.onclick?.({ detail: 1 });
@@ -345,7 +342,7 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     runScript(RECORD_ARM_BAR_SCRIPT, harness);
     runScript(RECORD_ARM_BAR_ITEMS_SCRIPT, harness);
 
-    for (const button of [startOf(harness), shotOf(harness), endOf(harness)]) {
+    for (const button of [shotOf(harness), endOf(harness)]) {
       expect(button.attrs['style']).toContain('border:0');
       expect(button.attrs['style']).toContain('padding:0 8px');
       expect(button.attrs['style']).toContain('background:#2b3444');
@@ -353,55 +350,56 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     expect(endOf(harness).children[0]?.textContent).toBe('结束');
   });
 
-  it('★★ 「结束」是红的：常态 #ef4444，按下变「确认结束」时更深；截图/开始仍走蓝', () => {
+  it('★★ 开页那一拍画的浮条顺带报地址：开窗核对全指着它，缺了就被当成空白页', () => {
+    const harness = makeHarness();
+    const out = runScript(RECORD_ARM_BAR_SCRIPT, harness) as { ok?: unknown; href?: unknown };
+
+    expect(out?.ok).toBe(true);
+    expect(out?.href).toBe(PAGE_URL);
+  });
+
+  it('★★ 「结束」是红的（#ef4444），开始/截图仍走蓝；它写着「结束」，不是「确认结束」', () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
-    const start = startOf(harness);
-    const shot = shotOf(harness);
     const end = endOf(harness);
 
-    expect(start.attrs['style']).toContain('background:#3b82f6');
-    start.onclick?.({ detail: 1 });
-    expect(shot.attrs['style']).toContain('background:#3b82f6');
+    expect(shotOf(harness).attrs['style']).toContain('background:#3b82f6');
     expect(end.attrs['style']).toContain('background:#ef4444');
+    expect(end.children[0]?.textContent).toBe('结束');
+  });
+
+  it('★★ 结束一下就结束（不再二次确认）：一次点击就把相位推到 finished 并叫醒宿主', () => {
+    const harness = makeHarness();
+    runScript(RECORD_ARM_SCRIPT, harness);
+    const end = endOf(harness);
 
     end.onclick?.({ detail: 1 });
-    expect(end.attrs['style']).toContain('background:#dc2626');
-    expect(end.children[0]?.textContent).toBe('确认结束');
+
+    expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('finished');
+    expect(labelOf(harness).textContent).toBe('已结束 · 请求 0 · 正在回到工作台…');
+    expect(end.disabled).toBe(true);
   });
 
-  it('★★ 结束要两下：一下只亮「确认结束」，四秒不点自己退回', () => {
-    vi.useFakeTimers();
-    try {
-      const harness = makeHarness();
-      runScript(RECORD_ARM_SCRIPT, harness);
-      startOf(harness).onclick?.({ detail: 1 });
-      const end = endOf(harness);
-      const word = end.children[0];
-
-      end.onclick?.({ detail: 1 });
-      expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
-      expect(word?.textContent).toBe('确认结束');
-
-      vi.advanceTimersByTime(4100);
-      expect(word?.textContent).toBe('结束');
-      expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('recording');
-
-      end.onclick?.({ detail: 1 });
-      end.onclick?.({ detail: 1 });
-      expect(harness.storage.raw(RECORD_KEEP_KEY)?.phase).toBe('finished');
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('★ 三个按钮都不进 Tab 顺序：焦点永远落不到「结束」上', () => {
+  it('★ 两个按钮都不进 Tab 顺序：焦点永远落不到「结束」上', () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
 
-    expect(startOf(harness).attrs['tabindex']).toBe('-1');
     expect(shotOf(harness).attrs['tabindex']).toBe('-1');
     expect(endOf(harness).attrs['tabindex']).toBe('-1');
+  });
+
+  it('★★ 他自己按「截图」才记一张：计数 +1、落进 sessionStorage、不用等任何人', () => {
+    const harness = makeHarness();
+    runScript(RECORD_ARM_SCRIPT, harness);
+    const shot = shotOf(harness);
+    expect(shot.disabled).toBe(false);
+
+    const kept = (): unknown => (harness.storage.raw(RECORD_KEEP_KEY) as Record<string, unknown> | undefined)?.['shots'];
+    shot.onclick?.();
+    expect(kept()).toBe(1);
+    shot.onclick?.();
+    expect(kept()).toBe(2);
+    expect(labelOf(harness).textContent).toBe('录制中 · 请求 0 · 截图 2');
   });
 
   it('★ 红色呼吸点只在录制中亮；关键帧住在注入的样式里；收工连样式一起摘', () => {
@@ -412,20 +410,9 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
 
     expect(sheet?.textContent).toContain('@keyframes __dshRecordBreath');
     expect(sheet?.textContent).toContain('infinite');
-    expect(dot.style.display).toBe('none');
-
-    startOf(harness).onclick?.();
     expect(dot.style.display).toBe('inline-block');
 
     endOf(harness).onclick?.({ detail: 1 });
-    endOf(harness).onclick?.({ detail: 1 });
-    expect(dot.style.display).toBe('none');
-
-    const start = startOf(harness);
-    expect(start.disabled).toBe(true);
-    expect(start.attrs['style']).not.toContain('#3b82f6');
-
-    start.onclick?.();
     expect(dot.style.display).toBe('none');
 
     runScript(RECORD_STOP_SCRIPT, harness);
@@ -466,14 +453,13 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
   it('★ 钩子的漏点补上：XHR 走 loadend（失败/中止也算一条）、失败的 fetch 也算、beacon 也算', async () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
-    startOf(harness).onclick?.();
     const label = labelOf(harness);
 
     const caught = new harness.win.XMLHttpRequest();
     caught.open('POST', `${PAGE_URL}/api/publish`);
     caught.send('{"env":"test"}');
     caught.fire('loadend');
-    expect(label.textContent).toBe('录制中 · 1 条');
+    expect(label.textContent).toBe('录制中 · 请求 1 · 截图 0');
 
     const aborted = new harness.win.XMLHttpRequest();
     aborted.status = 0;
@@ -481,20 +467,19 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     aborted.open('POST', `${PAGE_URL}/api/publish-again`);
     aborted.send('');
     aborted.fire('loadend');
-    expect(label.textContent).toBe('录制中 · 2 条');
+    expect(label.textContent).toBe('录制中 · 请求 2 · 截图 0');
 
     const failing = makeHarness({ fetcher: () => Promise.reject(new Error('net down')) });
     runScript(RECORD_ARM_SCRIPT, failing);
-    startOf(failing).onclick?.();
     await failing.win.fetch('/api/publish', { method: 'POST', body: '{"env":"test"}' }).catch(() => undefined);
     await flush();
-    expect(labelOf(failing).textContent).toBe('录制中 · 1 条');
+    expect(labelOf(failing).textContent).toBe('录制中 · 请求 1 · 截图 0');
     const rows = failing.storage.raw(RECORD_KEEP_KEY)?.calls as Array<Record<string, unknown>>;
     expect(rows[0]?.['status']).toBe(0);
     expect(rows[0]?.['ct']).toBe('fetch-error');
 
     harness.navigator.sendBeacon?.(`${PAGE_URL}/api/track`, '{"a":1}');
-    expect(label.textContent).toBe('录制中 · 3 条');
+    expect(label.textContent).toBe('录制中 · 请求 3 · 截图 0');
 
     runScript(RECORD_STOP_SCRIPT, harness);
     expect(harness.navigator.sendBeacon).toBeDefined();
@@ -504,7 +489,6 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
   it('★ 非字符串 body 别记成 "{}"：FormData / Blob / URLSearchParams 各有各的写法', async () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
-    startOf(harness).onclick?.();
 
     await harness.win.fetch('/api/form', { method: 'POST', body: new FakeFormData() });
     await harness.win.fetch('/api/blob', { method: 'POST', body: new FakeBlob(7) });
@@ -518,7 +502,6 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
   it('★★ 同一个 XHR 对象复用两轮：send 两次就记两条，不许叠成三条', () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
-    startOf(harness).onclick?.();
     const label = labelOf(harness);
 
     const pooled = new harness.win.XMLHttpRequest();
@@ -529,12 +512,12 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     pooled.send('{"n":2}');
     pooled.fire('loadend');
 
-    expect(label.textContent).toBe('录制中 · 2 条');
+    expect(label.textContent).toBe('录制中 · 请求 2 · 截图 0');
     const rows = harness.storage.raw(RECORD_KEEP_KEY)?.calls as Array<Record<string, unknown>>;
     expect(rows.map((one) => one['url'])).toEqual([`${PAGE_URL}/api/first`, `${PAGE_URL}/api/second`]);
   });
 
-  it('★★ 重注入之后可见的那条 label 还得跟着涨（record 走的是活落点，不是被摘掉的旧 label）', async () => {
+  it('★★ 重注入不重建浮条：同一条 label 继续跟着涨（不闪、不换节点）', async () => {
     const harness = makeHarness();
     runScript(RECORD_ARM_SCRIPT, harness);
     const firstLabel = labelOf(harness);
@@ -542,16 +525,14 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
     runScript(RECORD_ARM_SCRIPT, harness);
     const bar = barOf(harness);
     const visible = labelOf(harness);
-    expect(visible).not.toBe(firstLabel);
+    expect(visible).toBe(firstLabel);
     expect(bar.children).toContain(visible);
 
-    startOf(harness).onclick?.();
     await harness.win.fetch('/api/publish', { method: 'POST', body: '{"env":"test"}' });
     await flush();
 
-    expect(visible.textContent).toBe('录制中 · 1 条');
+    expect(visible.textContent).toBe('录制中 · 请求 1 · 截图 0');
     expect(bar.children).toContain(visible);
-    expect(firstLabel.textContent).toBe('录制 · 等开始 · 0 条');
   });
 
   it('★ 等 agent 读的时候反复重注入：不叠监听、位置不丢；拖把也能用键盘挪', () => {
@@ -564,7 +545,7 @@ describe('录制浮条：拖把 · 呼吸点 · 图标钮 · 条数实时更新�
 
     const bar = barOf(harness);
     const grip = gripOf(harness);
-    expect(bar.children).toEqual([grip, dotOf(harness), labelOf(harness), shotOf(harness), startOf(harness), endOf(harness)]);
+    expect(bar.children).toEqual([grip, dotOf(harness), labelOf(harness), shotOf(harness), endOf(harness)]);
 
     grip.onkeydown?.({ key: 'ArrowRight', shiftKey: false, preventDefault: () => {} });
     expect(bar.style.left).toBe('816px');

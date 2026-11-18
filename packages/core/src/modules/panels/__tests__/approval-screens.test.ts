@@ -266,6 +266,9 @@ async function document(): Promise<string> {
     '**2026-11-15 去掉 `panels_hide` 那一屏**：把一格收起来可逆、只是挪位置，问一次不值；',
     '删除仍但问（`modules_uninstall`），「加自己的、能撤的」不问，「引外来的、删掉的、占屏的、发出去的」问。',
     '',
+    '**2026-11-18 去掉 `workbench_diy_record_prepare` 那一屏的 warn**：录完不切回来这件事由左栏底部那条',
+    '状态自己说，审批屏不再重复；这一屏只剩 站点 / 录制功能 / 保存到 三行。',
+    '',
   ];
   for (const tool of ASK_TOOLS) parts.push(...(await screenOf(tool)));
   parts.push(...(await pluginScreen()));

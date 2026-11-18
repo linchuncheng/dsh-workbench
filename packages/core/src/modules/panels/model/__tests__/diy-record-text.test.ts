@@ -108,6 +108,11 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
     expect(filterTextOf({ method: '', urlContains: '' })).toBe('');
   });
 
+  it('★ 页面读数带上「他按了几次截图」那个数；缺字段给 0', () => {
+    expect(recordPageOf({ ok: true, phase: 'recording', shots: 3 }).shots).toBe(3);
+    expect(recordPageOf({ ok: true, phase: 'armed' }).shots).toBe(0);
+  });
+
   it('★ 页面上那份 payload 缺字段时逐格给缺省（不许把 undefined 放到正文里）', () => {
     const read = recordPageOf({ ok: true, phase: 'finished' });
     expect(read.phase).toBe('finished');
@@ -115,46 +120,6 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
     expect(read.calls).toEqual([]);
     expect(recordPageOf(undefined).ok).toBe(false);
     expect(recordPageOf(undefined).phase).toBe('none');
-  });
-
-  it('★ 页面读数带上 shots / shotsAt；缺字段给 0 / null', () => {
-    const read = recordPageOf({ ok: true, phase: 'finished', shots: 2, shotsAt: 7 });
-    expect(read.shots).toBe(2);
-    expect(read.shotsAt).toBe(7);
-
-    const none = recordPageOf({ ok: true, phase: 'armed' });
-    expect(none.shots).toBe(0);
-    expect(none.shotsAt).toBeNull();
-  });
-
-  it('★★ 图 / 门铃并进抬头那一行：没按过不出现、落了给数量、失败如实报', () => {
-    const rows = listRowsOf([POST()], null);
-    const text = renderRecordRead(
-      facts({ rows, shots: [{ n: 1, at: 1, path: '/w/diy/shots/rec-shot-demo-1.png' }] }),
-    );
-    expect(text.split('\n')[0]).toBe('录完了 · 1 条（⭐ 1） · 图 1 张');
-    expect(text).not.toContain('这一段还落了');
-
-    const recording = renderRecordRead(facts({ phase: 'recording', rows, hookCaught: 1 }));
-    expect(recording).toContain('还在录');
-    expect(recording).not.toContain('图 ');
-
-    const none = renderRecordRead(facts({ rows }));
-    expect(none).not.toContain('图 ');
-
-    const failed = renderRecordRead(
-      facts({ rows, shots: [{ n: 1, at: 1, path: '/w/diy/shots/rec-shot-demo-1.png', error: '运行时报了个错' }] }),
-    );
-    expect(failed).toContain('一张图没落下来');
-    expect(failed).toContain('运行时报了个错');
-    expect(failed).not.toContain('图 1 张');
-  });
-
-  it('★★ 门铃那一行：命中过才出（N 次 + 最近毫秒），没命中一个字都不出', () => {
-    expect(renderRecordRead(facts({ beats: 0, beatMs: 0 }))).not.toContain('门铃：');
-    expect(renderRecordRead(facts({ beats: 1, beatMs: 42 }))).toContain('门铃：1 次（最近 42 毫秒）');
-    expect(renderRecordRead(facts({ phase: 'recording', beats: 2, beatMs: 7 }))).toContain('门铃：2 次（最近 7 毫秒）');
-    expect(renderRecordRead(facts({ beats: 3, beatMs: 3001 }))).toContain('门铃：3 次（最近 3001 毫秒）');
   });
 
   it('★ 那段话：还没按开始 / 还在录 / 录完一条都没有 —— 分档说清', () => {
@@ -405,12 +370,11 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
   });
 
   it('★ 三段脚本都在：浮条三态 + sessionStorage 落盘 + 卸钩子', () => {
-    expect(RECORD_ARM_SCRIPT).toContain('开始录制');
     expect(RECORD_ARM_SCRIPT).toContain('结束录制');
-    expect(RECORD_ARM_SCRIPT).toContain('拍一张当前页面的截图');
+    expect(RECORD_ARM_SCRIPT).toContain('结束录制');
     expect(RECORD_ARM_SCRIPT).toContain('sessionStorage');
     expect(RECORD_READ_SCRIPT).toContain('not-armed');
-    expect(RECORD_READ_SCRIPT).toContain('shotsAt');
+    expect(RECORD_READ_SCRIPT).toContain('__dshRecordWake');
     expect(RECORD_STOP_SCRIPT).toContain('removeItem');
   });
 

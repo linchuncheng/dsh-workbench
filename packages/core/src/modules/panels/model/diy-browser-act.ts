@@ -14,11 +14,12 @@ export async function actBrowser(
   argv: readonly string[],
   timeoutMs = ACT_TIMEOUT_MS,
   wire: Wire = {},
+  window = 'background',
 ): Promise<ActStep> {
   const step = await runBrowserStep(
     seam,
     command,
-    ['browser', session, ...argv, '--window', 'background'],
+    ['browser', session, ...argv, '--window', window],
     timeoutMs,
     wire,
   );

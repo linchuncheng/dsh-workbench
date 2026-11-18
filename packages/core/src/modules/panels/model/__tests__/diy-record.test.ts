@@ -1,8 +1,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { forgetRecordTab, rememberRecordTab } from '../diy-record-tab';
 import { createDiyRig } from '../../__tests__/diy-harness';
-import { armProbe, GET, POST, URL, entry, envelope, heldStore, line } from '../../__tests__/record-fixtures';
+import { armProbe, ARM_OK, GET, POST, URL, entry, envelope, heldStore, line } from '../../__tests__/record-fixtures';
 import { captureFileOf, lastCaptureFileOf } from '../diy-record';
 import { artifactsDirOf } from '@/shared/api/host/diy-artifacts';
 import type { RecordListRow } from '../diy-record-text';
@@ -22,6 +23,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
   const rig = createDiyRig();
 
   beforeEach(() => {
+    forgetRecordTab();
     rig.scaffold('demo');
   });
 
@@ -36,7 +38,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
         { stdout: '{}' },
         { stdout: JSON.stringify({ href: URL }) },
         ...armProbe({}, true),
-        { stdout: '' },
+        { stdout: ARM_OK() },
       ],
     });
 
@@ -60,6 +62,121 @@ describe('录制交接：prepare / read / stop 三把', () => {
     expect(built.commands.some((one) => one.includes("'network' '--follow'"))).toBe(true);
     expect(built.commands.some((one) => one.includes('kill -0') || one.includes('pkill'))).toBe(false);
     expect(out.capture).toBe(true);
+  });
+
+  it('★★★ 写请求缺「必填信息」先不结束：把缺什么回给你，窗口也不关', async () => {
+    const capture = captureAt(rig);
+    writeCapture(capture, [line('POST', `${URL}/api/publish`, 15)].join('\n') + '\n');
+    writeCapture(`${capture}.first`, 'ok');
+    const record = heldStore({ method: 'POST', urlContains: '/api/publish' }, capture);
+    const at = Date.now();
+    record.started('s1', at, at);
+    const built = rig.harness({ withTools: true, pact: false, record, probe: [] });
+
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec())) as {
+      ok: boolean;
+      code: string;
+      missing: readonly string[];
+      text: string;
+    };
+
+    expect(out.ok).toBe(false);
+    expect(out.code).toBe('materials-missing');
+    expect(out.missing).toContain('必填信息');
+    expect(out.text).toContain('先别结束');
+    expect(record.live(Date.now())).not.toBeNull();
+  });
+
+  it('★★ force 不许空手：不给 forceWhy 直接拒', async () => {
+    const capture = captureAt(rig);
+    writeCapture(capture, [line('POST', `${URL}/api/publish`, 15)].join('\n') + '\n');
+    writeCapture(`${capture}.first`, 'ok');
+    const record = heldStore({ method: 'POST', urlContains: '/api/publish' }, capture);
+    const at = Date.now();
+    record.started('s1', at, at);
+    const built = rig.harness({ withTools: true, pact: false, record, probe: [] });
+
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true }, rig.diyExec())) as {
+      ok: boolean;
+      code: string;
+      text: string;
+    };
+
+    expect(out.ok).toBe(false);
+    expect(out.code).toBe('force-without-why');
+    expect(out.text).toContain('forceWhy');
+  });
+
+  it('★★★ 补录：上一段的窗还开着 ⇒ 先收起它，再开一扇新的（新的才会带焦点弹到前台）', async () => {
+    rig.scaffold('demo');
+    const capture = captureAt(rig);
+    const held = heldStore(null, capture);
+    const at = Date.now() - 10_000;
+    held.started('s1', at, at);
+    held.finished('s1', at + 5000, at + 5000);
+    rememberRecordTab('p1', URL);
+
+    const built = rig.harness({
+      withTools: true,
+      pact: false,
+      record: held,
+      probe: [
+        { stdout: '' },
+        { stdout: JSON.stringify({ data: [{ page: 'p1', url: URL }] }) },
+        { stdout: '' },
+        { stdout: JSON.stringify({ page: 'p2', url: URL }) },
+        { stdout: JSON.stringify({ href: URL }) },
+        ...armProbe({}, true),
+        { stdout: ARM_OK() },
+      ],
+    });
+
+    const out = (await built.tool(DIY_RECORD_PREPARE_TOOL).execute(
+      { unit: 'demo', url: URL, doing: '发布' },
+      rig.diyExec(),
+    )) as { ok: boolean; phase: string; capture: boolean; text: string };
+
+    expect(out.ok).toBe(true);
+    expect(out.capture).toBe(true);
+    expect(out.text).toContain('新的');
+    expect(built.commands.some((one) => one.includes("'tab' 'new'"))).toBe(true);
+    expect(built.record.live(Date.now())?.phase).toBe('armed');
+    expect(built.record.live(Date.now())?.captureFile.endsWith('rec-demo.jsonl')).toBe(true);
+  });
+
+  it('★★ 补录时那扇窗已经被他自己关了 ⇒ 退回开新窗，不卡在「那一页没开起来」', async () => {
+    rig.scaffold('demo');
+    const held = heldStore(null, captureAt(rig));
+    const at = Date.now() - 10_000;
+    held.started('s1', at, at);
+    held.finished('s1', at + 5000, at + 5000);
+    rememberRecordTab('gone', URL);
+
+    const built = rig.harness({
+      withTools: true,
+      pact: false,
+      record: held,
+      probe: [
+        { stdout: '[]' },
+        { stdout: '' },
+        { stdout: '[]' },
+        { stdout: '[]' },
+        { stdout: JSON.stringify({ page: 'p2', url: URL }) },
+        { stdout: JSON.stringify({ href: URL }) },
+        ...armProbe({}, true),
+        { stdout: ARM_OK() },
+      ],
+    });
+
+    const out = (await built.tool(DIY_RECORD_PREPARE_TOOL).execute(
+      { unit: 'demo', url: URL, doing: '发布' },
+      rig.diyExec(),
+    )) as { ok: boolean; capture: boolean };
+
+    expect(out.ok).toBe(true);
+    expect(out.capture).toBe(true);
+    expect(built.commands.some((one) => one.includes("'tab' 'new'"))).toBe(true);
+    expect(built.record.live(Date.now())?.phase).toBe('armed');
   });
 
   it('★★ 开录前先擦掉上一场留在 sessionStorage 里的账：不然新窗口一开就是「录制完成」', async () => {
@@ -211,7 +328,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
       ],
     });
 
-    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec())) as {
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true, forceWhy: '夹具里没有表单快照' }, rig.diyExec())) as {
       probeCommand: string;
       rows: readonly RecordListRow[];
       lastFile: string;
@@ -234,6 +351,36 @@ describe('录制交接：prepare / read / stop 三把', () => {
     expect(built.commands.some((one) => one.includes('tab') && one.includes('close'))).toBe(true);
   });
 
+  it('★★ 窗口关了以后 read 从磁盘读回快照：字段数与必填都认得出，不崩', async () => {
+    const capture = captureAt(rig);
+    writeCapture(capture, [line('POST', `${URL}/api/publish`, 15)].join('\n') + '\n');
+    const record = heldStore({ method: 'POST', urlContains: '/api/publish' }, capture);
+    const at = Date.now();
+    record.started('s1', at, at);
+    record.finished('s1', at, at);
+    writeFileSync(
+      `${capture.replace(/\.jsonl$/, '')}-form.json`,
+      JSON.stringify({
+        href: `${URL}/env`,
+        title: '环境',
+        at,
+        bytes: 120,
+        truncated: false,
+        fields: [
+          { name: 'title', label: '标题', kind: 'text', required: true, filled: true, value: '甲', options: [] },
+          { name: 'note', label: '备注', kind: 'text', required: false, filled: false, value: '', options: [] },
+        ],
+      }),
+    );
+    const built = rig.harness({ withTools: true, pact: false, record, probe: [] });
+
+    const out = (await built.tool(DIY_RECORD_READ_TOOL).execute({}, rig.diyExec())) as { text: string };
+
+    expect(out.text).toContain('表单快照：2 个字段');
+    expect(out.text).toContain('必填 1（title）');
+    expect(out.text).not.toContain('必填信息');
+  });
+
   it('★★ stop 时窗口已被看守关掉 ⇒ 不再补注入、不再 eval，也不谎报「钩子 0 条」', async () => {
     const capture = captureAt(rig);
     writeCapture(capture, [line('POST', `${URL}/api/publish`, 15)].join('\n') + '\n');
@@ -252,7 +399,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
       ],
     });
 
-    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec())) as { text: string };
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true, forceWhy: '夹具里没有表单快照' }, rig.diyExec())) as { text: string };
 
     expect(out.text).toContain('页面钩子已随窗口关闭，条数读不到了');
     expect(out.text).toContain('录制窗口的标签已关闭');

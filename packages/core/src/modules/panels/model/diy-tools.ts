@@ -1,4 +1,5 @@
-import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
+import { toolRegistryOf } from './tool-registry-guard';
+import type { DshHostContext, DshToolDefinition, DshToolRunContext } from '@dsh-workbench/shared/host';
 import type { DebugStore, PanelStateStore } from '@dsh-workbench/shared/host';
 import { PANEL_STATE_SERVICE, UNITS_SERVICE, WORKBENCH_ADAPTERS, supplyPortOf } from '@dsh-workbench/shared/host';
 import type { AdapterSet, LongTaskBase, LongTaskRegistry } from '@dsh-workbench/shared/host';
@@ -71,11 +72,8 @@ export function registerDiyTools(
   installRuns?: LongTaskRegistry<LongTaskBase>,
 ): Array<() => void> {
   const supply = supplyPortOf(ctx);
-  const tools = ctx.get('tools') as DshToolRegistry | undefined;
-  if (tools === undefined) {
-    ctx.logger?.info?.('[dsh-workbench] 没有 tools 服务，跳过 DIY 工具注册');
-    return [];
-  }
+  const tools = toolRegistryOf(ctx, '跳过 DIY 工具注册');
+  if (tools === undefined) return [];
 
   const statusTool: DshToolDefinition = {
     name: DIY_STATUS_TOOL,

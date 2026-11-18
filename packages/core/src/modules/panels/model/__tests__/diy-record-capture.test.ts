@@ -420,7 +420,7 @@ describe('捕获这条来源接进 read / stop（真工具 + shell 桩）', () =
       ],
     });
 
-    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({}, rig.diyExec())) as {
+    const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true, forceWhy: '夹具里没有表单快照' }, rig.diyExec())) as {
       probeCommand: string;
       rows: readonly RecordListRow[];
       lastFile: string;
@@ -436,5 +436,18 @@ describe('捕获这条来源接进 read / stop（真工具 + shell 桩）', () =
     expect(out.text).toContain('该段共 2 条请求（页面钩子已随窗口关闭，条数读不到了；会话捕获该段 2 条）');
     expect(out.text).toContain('只有方法 / URL，无法获取 body');
     expect(out.text).toContain('先征得用户同意');
+  });
+});
+
+describe('两个来源说的是同一笔写', () => {
+  it('★★ 钩子给相对路径、捕获给绝对地址：算一笔，不报成两条', () => {
+    const hook = [{ ...POST(), url: '/env/api/publish', at: 1000 }];
+    const captured = [{ ...POST(), url: `${URL}/api/publish`, key: 'POST /env/api/publish', at: 1000 }];
+
+    const merged = mergeCalls(hook, captured);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.body).toContain('test');
+    expect(merged[0]?.key).toBe('POST /env/api/publish');
   });
 });

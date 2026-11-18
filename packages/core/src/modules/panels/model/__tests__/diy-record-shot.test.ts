@@ -1,50 +1,44 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
-import type { DshHostContext } from '@dsh-workbench/shared/host';
-import type { Seam } from '@dsh-workbench/shared/host';
+import type { DshHostContext, Seam } from '@dsh-workbench/shared/host';
 import { createDiyRig } from '../../__tests__/diy-harness';
-import { URL, heldStore } from '../../__tests__/record-fixtures';
-import { releaseRecord, shotFileOf, watchFinishStepOf } from '../diy-record';
-import { fakeSeamOf } from '../../__tests__/seam-fake';
+import { POST, URL, heldStore } from '../../__tests__/record-fixtures';
+import { watchRoundOf } from '../diy-record-watch';
 
-const recording = (extra: Record<string, unknown> = {}): string =>
-  JSON.stringify({ ok: true, phase: 'recording', t0: 1, t1: null, shots: 0, shotsAt: null, calls: [], ...extra });
+const pageOf = (extra: Record<string, unknown> = {}): string =>
+  JSON.stringify({ ok: true, phase: 'recording', t0: 1, t1: null, calls: [POST()], shots: 0, ...extra });
 
-describe('录制交接：他按一下「截图」，宿主按计数落图', () => {
+describe('他自己按「截图」：一次按一次落图，不按不落', () => {
   const rig = createDiyRig();
 
   beforeEach(() => {
     rig.scaffold('demo');
   });
 
-  const shotsDir = join('/w', 'shots');
-  const captureFile = join(shotsDir, 'rec-demo.jsonl');
-  const shotPath = join(shotsDir, 'rec-shot-demo-1.png');
-
-  const stepOf = async (
-    built: ReturnType<ReturnType<typeof createDiyRig>['harness']>,
-    record: ReturnType<typeof heldStore>,
-    sessionId = 's1',
-  ) =>
-    watchFinishStepOf({
-      ctx: built.ctx as unknown as DshHostContext,
-      seam: built.ctx.get('workbenchSeam') as unknown as Seam,
-      command: '',
-      sessionId,
-      store: record,
-      url: URL,
-      captureFile,
-    });
-
-  it('★ 路径是这一族自己的名字：与 rec-<unit>.jsonl 同目录、rec-shot- 前缀（不改工坊那一页那份）', () => {
-    expect(shotFileOf(captureFile, 'demo', 2)).toBe(join(shotsDir, 'rec-shot-demo-2.png'));
-    expect(shotFileOf(captureFile, 'demo', 1)).not.toContain(join('shots', 'demo-'));
-    expect(shotFileOf(captureFile, 'demo', 1)).toBe(join(dirname(captureFile), 'rec-shot-demo-1.png'));
+  const deps = (built: ReturnType<ReturnType<typeof createDiyRig>['harness']>, record: ReturnType<typeof heldStore>) => ({
+    ctx: built.ctx as unknown as DshHostContext,
+    seam: built.ctx.get('workbenchSeam') as unknown as Seam,
+    command: '',
+    sessionId: 's1',
+    store: record,
+    url: URL,
+    captureFile: '/w/diy/shots/rec-demo.jsonl',
   });
 
-  it('★★ 计数涨了 ⇒ argv 恰好是 `screenshot <path>`（视口截图：不许 --full-page，也不许 --width/--height），台账记下它', async () => {
+  it('★★ 计数涨了 ⇒ 一条 `screenshot` 落成 rec-shot-<unit>-<n>.png，记账跟到那一个数', async () => {
+    const record = heldStore(null);
+    const at = Date.now();
+    record.started('s1', at, at);
+    const built = rig.harness({ withTools: true, pact: false, record, probe: [{ stdout: pageOf({ shots: 1 }) }] });
+
+    await watchRoundOf(deps(built, record));
+
+    const shots = built.commands.filter((one) => one.includes("'screenshot'"));
+    expect(shots).toHaveLength(1);
+    expect(built.commands.join('\n')).toContain(`rec-shot-demo-${Math.floor(at / 1000).toString(36)}-1.png`);
+    expect(record.live(Date.now())?.shotsSeen).toBe(1);
+  });
+
+  it('★★ 同一个计数不再重发（一轮一条，不因为下一轮又看到它就再落一张）', async () => {
     const record = heldStore(null);
     const at = Date.now();
     record.started('s1', at, at);
@@ -52,123 +46,25 @@ describe('录制交接：他按一下「截图」，宿主按计数落图', () =
       withTools: true,
       pact: false,
       record,
-      probe: [
-        { stdout: recording({ shots: 1, shotsAt: at }) },
-        { stdout: JSON.stringify({ path: shotPath }) },
-      ],
+      probe: [{ stdout: pageOf({ shots: 1 }) }, { stdout: pageOf({ shots: 1 }) }],
     });
 
-    const step = await stepOf(built, record);
+    await watchRoundOf(deps(built, record));
+    await watchRoundOf(deps(built, record));
 
-    expect(step.stop).toBe(false);
-    const shot = built.commands.find((one) => one.includes("'screenshot'"));
-    expect(shot).toBeDefined();
-    expect(shot).toContain(`'screenshot' '${shotPath}'`);
-    expect(shot).not.toContain('--full-page');
-    expect(shot).not.toContain('--width');
-    expect(shot).not.toContain('--height');
-    expect(shot).toContain(BROWSER_RECORD_SESSION);
-    expect(shot).not.toContain('demo-999');
-
-    const live = record.live(Date.now());
-    expect(live?.shots).toEqual([{ n: 1, at: expect.any(Number), path: shotPath }]);
-    expect(live?.shotsSeen).toBe(1);
+    expect(built.commands.filter((one) => one.includes("'screenshot'"))).toHaveLength(1);
+    expect(record.live(Date.now())?.shotsSeen).toBe(1);
   });
 
-  it('★★ 计数没涨 ⇒ 一条命令都不发（只 eval 那一拍，不许空拍）', async () => {
+  it('★★ 没按过就不落图（不给用户攒一堆没意义的图）', async () => {
     const record = heldStore(null);
     const at = Date.now();
     record.started('s1', at, at);
-    const built = rig.harness({
-      withTools: true,
-      pact: false,
-      record,
-      probe: [{ stdout: recording() }],
-    });
+    const built = rig.harness({ withTools: true, pact: false, record, probe: [{ stdout: pageOf() }] });
 
-    await stepOf(built, record);
+    await watchRoundOf(deps(built, record));
 
-    expect(built.commands).toHaveLength(1);
-    expect(built.commands.some((one) => one.includes("'screenshot'"))).toBe(false);
-    expect(record.live(Date.now())?.shots).toEqual([]);
+    expect(built.commands.filter((one) => one.includes("'screenshot'"))).toHaveLength(0);
     expect(record.live(Date.now())?.shotsSeen).toBe(0);
-  });
-
-  it('★★ 同一张已经落过 ⇒ 也不再拍（计数得比台账里落成的那个高）', async () => {
-    const record = heldStore(null);
-    const at = Date.now();
-    record.started('s1', at, at);
-    record.shotTaken('s1', { n: 1, at, path: shotPath }, at);
-    const built = rig.harness({
-      withTools: true,
-      pact: false,
-      record,
-      probe: [{ stdout: recording({ shots: 1 }) }],
-    });
-
-    await stepOf(built, record);
-
-    expect(built.commands.some((one) => one.includes("'screenshot'"))).toBe(false);
-    expect(record.live(Date.now())?.shots).toHaveLength(1);
-  });
-
-  it('★★ opencli 报错 ⇒ 台账带原文、shotsSeen 不前进、下一拍重试一次、仍失败就停', async () => {
-    const record = heldStore(null);
-    const at = Date.now();
-    record.started('s1', at, at);
-    const built = rig.harness({
-      withTools: true,
-      pact: false,
-      record,
-      probe: [
-        { stdout: recording({ shots: 1 }) },
-        { exitCode: 1, stderr: 'opencli：这一页截不下来' },
-        { stdout: recording({ shots: 1 }) },
-        { exitCode: 1, stderr: 'opencli：还是截不下来' },
-        { stdout: recording({ shots: 1 }) },
-      ],
-    });
-
-    await stepOf(built, record);
-    const first = record.live(Date.now());
-    expect(first?.shotsSeen).toBe(0);
-    expect(first?.shots).toEqual([
-      { n: 1, at: expect.any(Number), path: shotPath, error: 'opencli：这一页截不下来' },
-    ]);
-
-    await stepOf(built, record);
-    const second = record.live(Date.now());
-    expect(second?.shotsSeen).toBe(0);
-    expect(second?.shots).toEqual([
-      { n: 1, at: expect.any(Number), path: shotPath, error: 'opencli：还是截不下来' },
-    ]);
-
-    await stepOf(built, record);
-    expect(built.commands.filter((one) => one.includes("'screenshot'"))).toHaveLength(2);
-    expect(record.live(Date.now())?.shots).toHaveLength(1);
-  });
-
-  it('★★ 收工（releaseRecord）不许删掉已经落下的 .png（跟 .last 一个待遇）', async () => {
-    const file = join(rig.root(), 'workbench', 'diy', 'shots', 'rec-demo.jsonl');
-    const png = join(rig.root(), 'workbench', 'diy', 'shots', 'rec-shot-demo-1.png');
-    mkdirSync(dirname(png), { recursive: true });
-    writeFileSync(png, 'png-bytes');
-
-    writeFileSync(`${file}.first`, 'ok');
-    const fake = rig.fakeShell([
-      { stdout: JSON.stringify([{ page: 'p1', url: URL }]) },
-      { stdout: '{"closed":"p1"}' },
-    ]);
-    const cleaned = await releaseRecord({
-      seam: fakeSeamOf(fake.shell),
-      command: '',
-      session: BROWSER_RECORD_SESSION,
-      url: URL,
-      captureFile: file,
-    });
-
-    expect(cleaned.capture).toBe(true);
-    expect(cleaned.tab).toBe(true);
-    expect(existsSync(png)).toBe(true);
   });
 });

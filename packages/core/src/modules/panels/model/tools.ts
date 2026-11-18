@@ -1,4 +1,5 @@
-import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
+import { toolRegistryOf } from './tool-registry-guard';
+import type { DshHostContext, DshToolDefinition, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { sessionWorkspace } from '@dsh-workbench/shared/host';
 import type { ValueHandoff } from '@dsh-workbench/shared/host';
 import { panelsHandoffEntry } from './handoff';
@@ -88,11 +89,8 @@ export function registerPanelTools(
   panels: PanelsService,
   values?: ValueHandoff,
 ): Array<() => void> {
-  const tools = ctx.get('tools') as DshToolRegistry | undefined;
-  if (tools === undefined) {
-    ctx.logger?.info?.('[dsh-workbench] 没有 tools 服务，跳过户表面板工具注册');
-    return [];
-  }
+  const tools = toolRegistryOf(ctx, '跳过户表面板工具注册');
+  if (tools === undefined) return [];
 
   const listTool: DshToolDefinition = {
     name: PANELS_LIST_TOOL,

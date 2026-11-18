@@ -13,8 +13,7 @@ export const RECORD_READ_SCRIPT = `(async () => {
       state = null;
     }
   }
-  if (state === null || typeof state !== 'object') return { ok: false, code: 'not-armed', phase: 'none', calls: [], shots: 0, shotsAt: null, beat: false, beatKind: '' };
-  const from = typeof state.beatSeen === 'number' ? state.beatSeen : 0;
+  if (state === null || typeof state !== 'object') return { ok: false, code: 'not-armed', phase: 'none', calls: [] };
   let resolveWake = null;
   const woken = new Promise((resolve) => {
     resolveWake = resolve;
@@ -24,18 +23,12 @@ export const RECORD_READ_SCRIPT = `(async () => {
     resolveWake = null;
     if (go !== null) go();
   };
-  window.__dshBeatWake = onBeat;
-  const changed = () => (typeof state.beatN === 'number' ? state.beatN : 0) !== from;
-  if (!changed()) {
-    let timer = null;
-    await Promise.race([woken, new Promise((resolve) => { timer = setTimeout(resolve, BEAT_WAIT); })]);
-    if (timer !== null) clearTimeout(timer);
-  }
-  if (window.__dshBeatWake === onBeat) window.__dshBeatWake = null;
-  const after = typeof state.beatN === 'number' ? state.beatN : 0;
-  const beat = after !== from;
-  state.beatSeen = after;
-  return { ok: true, phase: typeof state.phase === 'string' ? state.phase : 'armed', t0: state.t0 === undefined ? null : state.t0, t1: state.t1 === undefined ? null : state.t1, href: typeof state.href === 'string' ? state.href : '', here: location.href, dropped: typeof state.dropped === 'number' ? state.dropped : 0, shots: typeof state.shots === 'number' ? state.shots : 0, shotsAt: typeof state.shotsAt === 'number' ? state.shotsAt : null, beat, beatKind: beat && typeof state.beatKind === 'string' ? state.beatKind : '', calls: Array.isArray(state.calls) ? state.calls : [] };
+  window.__dshRecordWake = onBeat;
+  let timer = null;
+  await Promise.race([woken, new Promise((resolve) => { timer = setTimeout(resolve, BEAT_WAIT); })]);
+  if (timer !== null) clearTimeout(timer);
+  if (window.__dshRecordWake === onBeat) window.__dshRecordWake = null;
+  return { ok: true, phase: typeof state.phase === 'string' ? state.phase : 'armed', t0: state.t0 === undefined ? null : state.t0, t1: state.t1 === undefined ? null : state.t1, href: typeof state.href === 'string' ? state.href : '', here: location.href, dropped: typeof state.dropped === 'number' ? state.dropped : 0, shots: typeof state.shots === 'number' ? state.shots : 0, calls: Array.isArray(state.calls) ? state.calls : [], snap: typeof state.snap !== 'object' || state.snap === null ? null : { href: String(state.snap.href === undefined ? '' : state.snap.href), title: String(state.snap.title === undefined ? '' : state.snap.title), bytes: typeof state.snap.bytes === 'number' ? state.snap.bytes : 0, truncated: state.snap.truncated === true, at: typeof state.snap.at === 'number' ? state.snap.at : 0, fields: Array.isArray(state.snap.fields) ? state.snap.fields.length : 0, required: Array.isArray(state.snap.fields) ? state.snap.fields.filter((one) => one !== null && typeof one === 'object' && one.required === true).map((one) => String(one.name === undefined ? '' : one.name)).slice(0, 20) : [] } };
 })()`;
 
 export const RECORD_STOP_SCRIPT = `(() => {
@@ -68,6 +61,8 @@ export const RECORD_STOP_SCRIPT = `(() => {
   }
   const bar = document.getElementById('__dsh-record-bar');
   if (bar !== null) bar.remove();
+  const glow = document.getElementById('__dsh-record-glow');
+  if (glow !== null) glow.remove();
   const sheet = document.getElementById('__dsh-record-bar-style');
   if (sheet !== null) sheet.remove();
   try {
@@ -94,4 +89,31 @@ export const RECORD_STOP_SCRIPT = `(() => {
     sessionStorage.removeItem(KEEP);
   } catch (error) {}
   return { ok: true, unhooked, phase: state !== null && typeof state === 'object' ? state.phase : 'none', t0: state !== null && typeof state === 'object' && state.t0 !== undefined ? state.t0 : null, t1: state !== null && typeof state === 'object' && state.t1 !== undefined ? state.t1 : null, calls: state !== null && typeof state === 'object' && Array.isArray(state.calls) ? state.calls : [], dropped: state !== null && typeof state === 'object' && typeof state.dropped === 'number' ? state.dropped : 0 };
+})()`;
+
+export const RECORD_SNAP_SCRIPT = `(() => {
+  const KEY = ${JSON.stringify(RECORD_KEY)};
+  const KEEP = ${JSON.stringify(RECORD_KEEP_KEY)};
+  let state = window[KEY] !== null && typeof window[KEY] === 'object' ? window[KEY] : null;
+  if (state === null) {
+    try {
+      const raw = sessionStorage.getItem(KEEP);
+      state = raw === null ? null : JSON.parse(raw);
+    } catch (error) {
+      state = null;
+    }
+  }
+  if (state === null || typeof state !== 'object') return { ok: false, code: 'not-armed' };
+  const snap = state.snap;
+  if (snap === null || typeof snap !== 'object') return { ok: false, code: 'no-snap' };
+  return {
+    ok: true,
+    href: String(snap.href === undefined ? '' : snap.href),
+    title: String(snap.title === undefined ? '' : snap.title),
+    at: typeof snap.at === 'number' ? snap.at : 0,
+    bytes: typeof snap.bytes === 'number' ? snap.bytes : 0,
+    truncated: snap.truncated === true,
+    html: String(snap.html === undefined ? '' : snap.html),
+    fields: Array.isArray(snap.fields) ? snap.fields : [],
+  };
 })()`;

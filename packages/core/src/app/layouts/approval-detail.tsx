@@ -469,7 +469,7 @@ export function shellApprovalPlan(
     return { rows: moduleSupplyRows(manifests?.find((one) => one.id === id), id, t) };
   }
   if (input.tool === DIY_RECORD_PREPARE_TOOL) {
-    return { rows: recordApprovalRows(input.args, t), warn: t('approval.record.noSwitch') };
+    return { rows: recordApprovalRows(input.args, t) };
   }
   if (input.tool === LONG_TASKS_STOP_TOOL) {
     return {
