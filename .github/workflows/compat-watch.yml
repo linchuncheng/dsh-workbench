@@ -1,0 +1,54 @@
+name: compat-watch
+
+"on":
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: compat-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: latest versions / drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Resolve latest versions
+        id: watch
+        shell: bash
+        run: |
+          node scripts/ci/compat-watch.mjs --json > compat.json
+          node -e "const j=require('./compat.json'); console.log('changed='+j.changed)" >> "$GITHUB_OUTPUT"
+          node scripts/ci/compat-watch.mjs
+      - name: Open compat issue
+        if: steps.watch.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create compat --color B60205 --description "上游兼容性" 2>/dev/null || true
+          number=$(gh issue list --label compat --state open --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            echo "已存在 compat issue #$number"
+            exit 0
+          fi
+          {
+            echo "上游版本和 fixture 不一致；先跑 latest canary，再决定是否 bump。"
+            echo
+            echo '```json'
+            cat compat.json
+            echo '```'
+          } > compat.md
+          gh issue create --title "compat: 上游版本漂移" --label compat --body-file compat.md
