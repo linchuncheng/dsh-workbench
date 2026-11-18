@@ -179,6 +179,26 @@ describe('录制交接：prepare / read / stop 三把', () => {
     expect(built.record.live(Date.now())?.phase).toBe('armed');
   });
 
+  it('★★★ 六段都返回 ok、但页面侧没就绪 ⇒ 不再当成成功，报清楚停在哪', async () => {
+    const built = rig.harness({
+      withTools: true,
+      pact: false,
+      probe: [
+        { stdout: '' },
+        { stdout: '[]' },
+        { stdout: JSON.stringify({ page: 'p1', url: URL }) },
+        { stdout: '{}' },
+        { stdout: JSON.stringify({ href: URL }) },
+        ...armProbe({}, true).slice(0, -1),
+        { stdout: JSON.stringify({ ok: true, fresh: true, ready: false, bar: true, href: URL, title: '空白页' }) },
+      ],
+    });
+
+    await expect(
+      built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL, doing: '发布' }, rig.diyExec()),
+    ).rejects.toThrow('没有就绪');
+  });
+
   it('★★ 开录前先擦掉上一场留在 sessionStorage 里的账：不然新窗口一开就是「录制完成」', async () => {
     rig.scaffold('demo');
     const capture = captureAt(rig);

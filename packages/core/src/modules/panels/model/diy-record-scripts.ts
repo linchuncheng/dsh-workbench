@@ -325,7 +325,14 @@ export const RECORD_ARM_NET_SCRIPT = `(() => {
   window[FRESH] = true;
   state.__ready = true;
   if (typeof state.__repaint === 'function') state.__repaint();
-  return { ok: true, fresh: true };
+  return {
+    ok: true,
+    fresh: true,
+    ready: window[KEY] === state && state.__ready === true,
+    bar: document.getElementById('__dsh-record-bar') !== null,
+    href: typeof location === 'object' ? String(location.href) : '',
+    title: String(document.title ?? ''),
+  };
 })()`;
 
 export const RECORD_RESET_SCRIPT = `(() => {
@@ -344,6 +351,17 @@ export const RECORD_RESET_SCRIPT = `(() => {
     window[name] = undefined;
   }
   return { ok: true };
+})()`;
+
+export const RECORD_READY_SCRIPT = `(() => {
+  const KEY = ${JSON.stringify(RECORD_KEY)};
+  const state = window[KEY];
+  return {
+    ready: state !== null && typeof state === 'object' && state.__ready === true,
+    bar: document.getElementById('__dsh-record-bar') !== null,
+    href: typeof location === 'object' ? String(location.href) : '',
+    title: String(document.title ?? ''),
+  };
 })()`;
 
 export const RECORD_ARM_SCRIPTS = [

@@ -69,6 +69,16 @@ export interface RecordFlowPort {
 export const RECORD_FLOW_ID = 'diy-write-record';
 export const RECORD_SEGMENT_CAP = 3;
 
+function netFactsOf(
+  payload: Record<string, unknown> | undefined,
+): { readonly ready: boolean; readonly bar: boolean; readonly href: string; readonly title: string } | undefined {
+  const box = payload?.['data'];
+  const data = typeof box === 'object' && box !== null ? (box as Record<string, unknown>) : payload;
+  if (data === undefined || data === null || typeof data['ready'] !== 'boolean') return undefined;
+  const text = (key: string): string => (typeof data[key] === 'string' ? String(data[key]) : '');
+  return { ready: data['ready'] === true, bar: data['bar'] === true, href: text('href'), title: text('title') };
+}
+
 export function registerRecordTools(
   ctx: DshHostContext,
   store: RecordStore,
@@ -169,6 +179,14 @@ export function registerRecordTools(
 
         const armed = await armRecordPage(seam, command, BROWSER_RECORD_SESSION, wire, { reset: true });
         const page = recordPageOf(armed.step.payload);
+        const net = netFactsOf(armed.step.payload);
+        if (armed.step.ok && page.ok && net !== undefined && !net.ready) {
+          throw new Error(
+            `浮条已注入，但这页没有就绪（第 ${String(armed.part)}/${String(armed.parts)} 段都返回过 ok；` +
+              `浮条${net.bar ? '在' : '不在'} · href=${net.href || '?'} · title=${net.title || '?'}）。` +
+              '多半是注入那几拍页面又跳了一次：重新 prepare 一次通常能恢复；仍不行就把这段贴给作者。',
+          );
+        }
         if (!armed.step.ok || !page.ok) {
           throw new Error(
             armFailureText({

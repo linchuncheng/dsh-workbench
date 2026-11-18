@@ -39,7 +39,7 @@ export const RECORD_ARM_BAR_SCRIPT = `(() => {
   grip.setAttribute('tabindex', '0');
   grip.setAttribute('title', '拖动浮条');
   grip.setAttribute('aria-label', '拖动浮条');
-  grip.setAttribute('style', 'flex:0 0 auto;width:12px;height:18px;border-radius:3px;cursor:grab;touch-action:none;background-image:radial-gradient(circle,rgba(255,255,255,.5) 1.2px,transparent 1.3px);background-size:6px 6px;background-position:center center');
+  grip.setAttribute('style', 'flex:0 0 auto;align-self:center;width:12px;height:18px;border-radius:3px;cursor:grab;touch-action:none;background-image:radial-gradient(circle,rgba(255,255,255,.5) 1.2px,transparent 1.3px);background-size:6px 6px;background-position:center center');
   const dot = document.createElement('span');
   dot.className = '__dsh-record-dot';
   dot.setAttribute('aria-hidden', 'true');
@@ -62,12 +62,12 @@ export const RECORD_ARM_BAR_SCRIPT = `(() => {
   shot.setAttribute('tabindex', '-1');
   shot.setAttribute('title', '拍一张当前页面的截图');
   shot.setAttribute('aria-label', '拍一张当前页面的截图');
-  shot.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5V1.5H5M11 1.5h3.5V5M14.5 11v3.5H11M5 14.5H1.5V11"></path><rect x="6" y="6" width="4" height="4" rx="1"></rect></svg>截图';
+  shot.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" style="display:block;flex:0 0 auto" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5V1.5H5M11 1.5h3.5V5M14.5 11v3.5H11M5 14.5H1.5V11"></path><rect x="6" y="6" width="4" height="4" rx="1"></rect></svg>截图';
   end.type = 'button';
   end.setAttribute('tabindex', '-1');
   end.setAttribute('title', '结束录制');
   end.setAttribute('aria-label', '结束录制');
-  end.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><rect x="2" y="2" width="8" height="8" rx="1.5" fill="currentColor"></rect></svg>';
+  end.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" style="display:block;flex:0 0 auto" aria-hidden="true" focusable="false"><rect x="2" y="2" width="8" height="8" rx="1.5" fill="currentColor"></rect></svg>';
   const endText = document.createElement('span');
   endText.textContent = '结束';
   end.appendChild(endText);
