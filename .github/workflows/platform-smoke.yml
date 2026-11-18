@@ -30,11 +30,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             label: linux
-          - os: macos-latest
+          - os: macos-15
             label: mac
-          - os: windows-latest
+          - os: windows-2025
             label: win-2025
           - os: windows-2022
             label: win-2022
