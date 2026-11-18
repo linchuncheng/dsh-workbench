@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { asRecord } from '../../contract/guards.js';
 import { join } from 'node:path';
 
 import { globSync } from 'tinyglobby';
@@ -22,12 +23,6 @@ export class PnpmConfigError extends Error {
   }
 }
 
-function recordOf(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Readonly<Record<string, unknown>>)
-    : undefined;
-}
-
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -46,7 +41,7 @@ function patternsOfList(value: readonly unknown[]): readonly string[] {
 
 function manifestOf(root: string): Readonly<Record<string, unknown>> | undefined {
   try {
-    return recordOf(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')));
+    return asRecord(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')));
   } catch {
     return undefined;
   }
@@ -55,7 +50,7 @@ function manifestOf(root: string): Readonly<Record<string, unknown>> | undefined
 function patternsOfManifest(manifest: Readonly<Record<string, unknown>>): readonly string[] | undefined {
   const workspaces = manifest['workspaces'];
   if (Array.isArray(workspaces)) return patternsOfList(workspaces);
-  const nested = recordOf(workspaces)?.['packages'];
+  const nested = asRecord(workspaces)?.['packages'];
   return Array.isArray(nested) ? patternsOfList(nested) : undefined;
 }
 
@@ -67,7 +62,7 @@ export function workspaceDeclarationOf(text: string): WorkspaceDeclaration {
   } catch (error) {
     throw new PnpmConfigError('unparsable', `pnpm-workspace.yaml 解析不了：${errorText(error)}`);
   }
-  const record = recordOf(document);
+  const record = asRecord(document);
   if (record === undefined) return { declared: false, patterns: [], empty: false };
   const packages = record['packages'];
   if (packages === undefined) return { declared: false, patterns: [], empty: false };

@@ -11,6 +11,7 @@ import type {
   MarketLocalizedText,
   MarketSourceConfig,
 } from '../../contract/protocol/market-index.js';
+import { asRecord } from '../../contract/guards.js';
 import { MARKET_INDEX_DIR, MARKET_INDEX_FORMAT } from '../../contract/protocol/market-index.js';
 import { marketText } from '../../lib/market-index.js';
 import { compareVersions, isValidVersion } from '../runtime/version.js';
@@ -51,12 +52,6 @@ export function gitUrlOk(url: string): boolean {
   if (parsed.username !== '' && parsed.protocol !== 'ssh:') return false;
   if (parsed.search !== '' || parsed.hash !== '') return false;
   return true;
-}
-
-function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Readonly<Record<string, unknown>>)
-    : undefined;
 }
 
 function asText(value: unknown): string {

@@ -1,4 +1,5 @@
 import { parse } from 'yaml';
+import { asRecord } from '../../contract/guards.js';
 
 /** lockfile 里一条包记录：名字、版本、可选 tarball 与从 tarball 推出来的 registry 根。 */
 export interface LockEntry {
@@ -9,12 +10,6 @@ export interface LockEntry {
 }
 
 const PACKAGE_NAME = /^(?:@[^/\s]+\/)?[^/\s@]+$/;
-
-function recordOf(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Readonly<Record<string, unknown>>)
-    : undefined;
-}
 
 function textOf(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -54,13 +49,13 @@ export function lockEntriesOf(text: string): readonly LockEntry[] {
   } catch {
     return [];
   }
-  const packages = recordOf(recordOf(document)?.['packages']);
+  const packages = asRecord(asRecord(document)?.['packages']);
   if (packages === undefined) return [];
   const entries = new Map<string, LockEntry>();
   for (const [key, value] of Object.entries(packages)) {
     const split = splitLockKey(key);
     if (split === undefined) continue;
-    const resolution = recordOf(recordOf(value)?.['resolution']);
+    const resolution = asRecord(asRecord(value)?.['resolution']);
     const tarball = textOf(resolution?.['tarball']);
     const registry = tarball === '' ? undefined : registryRootOf(split.name, tarball);
     const id = `${split.name}@${split.version}`;
