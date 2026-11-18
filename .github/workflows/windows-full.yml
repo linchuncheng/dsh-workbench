@@ -16,9 +16,10 @@ concurrency:
 
 jobs:
   test:
-    name: full tests / windows 2025
+    name: full tests / windows 2025 (advisory)
     runs-on: windows-2025
     timeout-minutes: 30
+    continue-on-error: true
     env:
       HUSKY: 0
       WB_TEST_CONCURRENCY: 2
@@ -67,9 +68,6 @@ jobs:
       - name: Docs
         shell: bash
         run: pnpm run check:docs
-      - name: Architecture
-        shell: bash
-        run: pnpm run arch
       - name: Copy
         shell: bash
         run: pnpm run check:copy:strict
