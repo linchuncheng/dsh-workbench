@@ -6,7 +6,7 @@ import { discoverPackages, workspaceRootOf } from '../../../src/support/discover
 
 
 const TITLE =
-  '模块发现：按 pnpm-workspace / package.json workspaces 的 glob 找包（块列表含无缩进、行内数组、* 与 **、! 排除、符号链接、嵌套工作区；没有声明才退回 packages/*；不支持的 glob 明确报错）';
+  '模块发现：按 pnpm-workspace / package.json workspaces 的 glob 找包（块列表含无缩进、行内数组、* 与 **、{} 与 ! 排除、符号链接、嵌套工作区；没有声明才退回 packages/*）';
 
 function makePkg(dir, name) {
   mkdirSync(dir, { recursive: true });
@@ -22,15 +22,6 @@ function namesOf(root) {
   return discoverPackages({ root })
     .map((pkg) => pkg.manifest.name)
     .sort();
-}
-
-function expectThrows(run, label, problems) {
-  try {
-    run();
-    problems.push(`${label}：没有报错`);
-  } catch {
-    return;
-  }
 }
 
 export const checks = [
@@ -113,9 +104,14 @@ export const checks = [
           problems.push('没读 package.json workspaces 的对象形式');
         }
 
-        const unsupported = join(base, 'unsupported');
-        writeYaml(unsupported, ['packages:', '  - "{libs,apps}/*"']);
-        expectThrows(() => discoverPackages({ root: unsupported }), '花括号 glob', problems);
+        const braced = join(base, 'braced');
+        writeYaml(braced, ['packages:', '  - "{libs,apps}/*"']);
+        makePkg(join(braced, 'libs', 'l'), '@demo/braced-lib');
+        makePkg(join(braced, 'apps', 'a'), '@demo/braced-app');
+        const bracedNames = namesOf(join(braced, 'libs', 'l'));
+        for (const want of ['@demo/braced-lib', '@demo/braced-app']) {
+          if (!bracedNames.includes(want)) problems.push(`花括号 glob 没发现 ${want}：${bracedNames.join(', ')}`);
+        }
 
         process.env.DSH_WB_ROOT = join(base, 'isolated');
         if (namesOf(join(custom, 'modules', 'mod-a')).length !== 0) {
