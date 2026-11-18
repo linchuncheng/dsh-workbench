@@ -21,7 +21,8 @@ export async function updateDependencyRow(
     throw new Error(`这一行有两份来源，先统一声明再更新：${target.conflict}`);
   }
   const seen = new Map<string, UnitCapability>();
-  for (const manifest of target.declarers) seen.set(manifest.id, await deps.capabilityOf(manifest.id, true));
+  for (const [index, manifest] of target.declarers.entries())
+    seen.set(manifest.id, await deps.capabilityOf(manifest.id, index === 0));
   const primary = target.declarers[0];
   const before = primary === undefined ? undefined : seen.get(primary.id);
   const commands = dependencyCommandPlan({ target, capability: before, capabilities: seen });
@@ -32,8 +33,8 @@ export async function updateDependencyRow(
   }
   await deps.runAll(commands);
   const after = new Map<string, UnitCapability>();
-  for (const manifest of target.declarers)
-    after.set(manifest.id, await deps.capabilityOf(manifest.id, true));
+  for (const [index, manifest] of target.declarers.entries())
+    after.set(manifest.id, await deps.capabilityOf(manifest.id, index === 0));
   const behind = dependencyStillBehind(target, after);
   if (behind !== undefined) throw new Error(`更新命令已完成，但还差一步：${behind}`);
   deps.logger?.info?.(`[dsh-workbench] 已更新依赖 ${target.id}`);

@@ -147,9 +147,11 @@ export function createMarketService(options: {
     readonly unit?: string;
     readonly id?: string;
   }): Promise<void> {
-    for (const id of affectedUnitsOf(catalog(), request)) {
-      if (id !== request.unit) await capabilityOf(id, true);
-    }
+    const affected = affectedUnitsOf(catalog(), request);
+    const first = affected[0];
+    if (first === undefined) return;
+    await capabilityOf(first, true);
+    for (const id of affected.slice(1)) await capabilityOf(id, false);
   }
 
   async function snapshot(force = false): Promise<{ modules: MarketEntry[]; shared: SharedDependency[] }> {
@@ -296,7 +298,7 @@ export function createMarketService(options: {
       );
       if (absent.length === 0) {
         onInstalled?.(unit);
-        return entryOf(unit, true);
+        return entryOf(unit, false);
       }
       for (const state of absent) {
         if (state.provision !== undefined && state.provision !== 'ready') {
@@ -312,7 +314,7 @@ export function createMarketService(options: {
       }
       await probeSharing({ action: 'install', unit });
       onInstalled?.(unit);
-      return entryOf(unit, true);
+      return entryOf(unit, false);
     },
 
     async update(unit) {
@@ -334,7 +336,7 @@ export function createMarketService(options: {
         throw new Error(`没有可执行的更新命令（这一格还是旧的样子：${before.detail ?? ''}）`);
       }
       await probeSharing({ action: 'update', unit });
-      const entry = await entryOf(unit, true);
+      const entry = await entryOf(unit, false);
       const behind = supplyUpdateStillBehind(entry.capability);
       if (behind !== undefined) throw new Error(behind);
       return entry;
@@ -356,7 +358,7 @@ export function createMarketService(options: {
       const keptFor = await envDropper.drop(unit, needsOf(unit), before);
       await plugins.sweep();
       await probeSharing({ action: 'uninstall', unit });
-      const entry = await entryOf(unit, true);
+      const entry = await entryOf(unit, false);
       onUninstalled?.(unit);
       return {
         entry: { ...entry, capability: { ...entry.capability, released: true } },
