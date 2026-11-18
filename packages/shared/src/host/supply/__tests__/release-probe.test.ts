@@ -1,3 +1,4 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -198,5 +199,147 @@ describe('检测结果以 tarball 为准，不只信 npm view', () => {
     await expect(
       probe.missingReleaseParts({ seam, name: '@a/mod', version: '1.0.0', registry: REGISTRY }),
     ).resolves.toEqual([]);
+  });
+});
+
+describe('私有源的 HEAD 要带 npm 自己的凭据', () => {
+  it('★ npmrc 里配了 token → HEAD 带上它，新版才认', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-wb-release-head-'));
+    const file = join(dir, '.npmrc');
+    writeFileSync(file, '//r.example/:_authToken=secret\n');
+    vi.stubEnv('NPM_CONFIG_USERCONFIG', file);
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<{ ok: boolean; status: number }>>(
+      async () => ({ ok: true, status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const fake = createFakeShell((call) => {
+      const line = String(call.command ?? '');
+      return line.includes('dist.tarball')
+        ? { stdout: 'https://r.example/pkg-1.1.0.tgz\n' }
+        : { stdout: '1.1.0\n' };
+    });
+    const seam = createSeam({ shell: fake.shell, runtimeRoot: ROOT });
+
+    try {
+      await expect(
+        createReleaseProbe().latestVersion({ seam, name: '@a/mod', registry: REGISTRY }),
+      ).resolves.toBe('1.1.0');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://r.example/pkg-1.1.0.tgz',
+        expect.objectContaining({ method: 'HEAD', headers: { authorization: 'Bearer secret' } }),
+      );
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('★ 没有配凭据就不发 Authorization', async () => {
+    vi.stubEnv('NPM_CONFIG_USERCONFIG', join(tmpdir(), 'dsh-wb-missing-npmrc'));
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<{ ok: boolean; status: number }>>(
+      async () => ({ ok: true, status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const fake = createFakeShell((call) => {
+      const line = String(call.command ?? '');
+      return line.includes('dist.tarball')
+        ? { stdout: 'https://r.example/pkg-1.1.0.tgz\n' }
+        : { stdout: '1.1.0\n' };
+    });
+    const seam = createSeam({ shell: fake.shell, runtimeRoot: ROOT });
+
+    try {
+      await expect(
+        createReleaseProbe().latestVersion({ seam, name: '@a/mod', registry: REGISTRY }),
+      ).resolves.toBe('1.1.0');
+      expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty('headers');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('鉴权拿不到时的兜底', () => {
+  it('★ 没有凭据、HEAD 401 → 以 npm view 的结果为准', async () => {
+    vi.stubEnv('NPM_CONFIG_USERCONFIG', join(tmpdir(), 'dsh-wb-missing-npmrc'));
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<{ ok: boolean; status: number }>>(
+      async () => ({ ok: false, status: 401 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const fake = createFakeShell((call) => {
+      const line = String(call.command ?? '');
+      return line.includes('dist.tarball')
+        ? { stdout: 'https://r.example/pkg-1.1.0.tgz\n' }
+        : { stdout: '1.1.0\n' };
+    });
+    const seam = createSeam({ shell: fake.shell, runtimeRoot: ROOT });
+
+    try {
+      await expect(
+        createReleaseProbe().latestVersion({ seam, name: '@a/mod', registry: REGISTRY }),
+      ).resolves.toBe('1.1.0');
+      expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty('headers');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('★ 凭据被拒（403）也算验证不了 → 仍以 npm view 为准', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-wb-release-head-'));
+    const file = join(dir, '.npmrc');
+    writeFileSync(file, '//r.example/:_authToken=secret\n');
+    vi.stubEnv('NPM_CONFIG_USERCONFIG', file);
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<{ ok: boolean; status: number }>>(
+      async () => ({ ok: false, status: 403 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const fake = createFakeShell((call) => {
+      const line = String(call.command ?? '');
+      return line.includes('dist.tarball')
+        ? { stdout: 'https://r.example/pkg-1.1.0.tgz\n' }
+        : { stdout: '1.1.0\n' };
+    });
+    const seam = createSeam({ shell: fake.shell, runtimeRoot: ROOT });
+
+    try {
+      await expect(
+        createReleaseProbe().latestVersion({ seam, name: '@a/mod', registry: REGISTRY }),
+      ).resolves.toBe('1.1.0');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://r.example/pkg-1.1.0.tgz',
+        expect.objectContaining({ headers: { authorization: 'Bearer secret' } }),
+      );
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('★ 明确 404 → 还是不算有新版', async () => {
+    vi.stubEnv('NPM_CONFIG_USERCONFIG', join(tmpdir(), 'dsh-wb-missing-npmrc'));
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<{ ok: boolean; status: number }>>(
+      async () => ({ ok: false, status: 404 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const fake = createFakeShell((call) => {
+      const line = String(call.command ?? '');
+      return line.includes('dist.tarball')
+        ? { stdout: 'https://r.example/pkg-1.1.0.tgz\n' }
+        : { stdout: '1.1.0\n' };
+    });
+    const seam = createSeam({ shell: fake.shell, runtimeRoot: ROOT });
+
+    try {
+      await expect(
+        createReleaseProbe().latestVersion({ seam, name: '@a/mod', registry: REGISTRY }),
+      ).resolves.toBeUndefined();
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
   });
 });

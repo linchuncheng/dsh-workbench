@@ -13,6 +13,7 @@ import {
 import { compareVersions, isValidVersion } from '../runtime/version.js';
 import { parseJsonLoose } from '../../lib/text.js';
 import { quoteShellArg } from '../shell/shell-text.js';
+import { authHeaderOf } from './npm-auth.js';
 
 function cacheFlag(cacheDir: string | undefined): string {
   return cacheDir === undefined ? '' : ` --cache ${quoteShellArg(cacheDir)}`;
@@ -203,8 +204,13 @@ const MAX_TARBALL_PROBES = 3;
 function defaultHead(url: string): Promise<boolean> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), HEAD_TIMEOUT_MS);
-  return fetch(url, { method: 'HEAD', signal: controller.signal })
-    .then((response) => response.ok)
+  const authorization = authHeaderOf(url);
+  return fetch(url, {
+    method: 'HEAD',
+    signal: controller.signal,
+    ...(authorization === undefined ? {} : { headers: { authorization } }),
+  })
+    .then((response) => response.ok || response.status === 401 || response.status === 403)
     .catch(() => false)
     .finally(() => {
       clearTimeout(timer);
