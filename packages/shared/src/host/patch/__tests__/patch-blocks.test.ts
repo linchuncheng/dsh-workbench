@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { patchBlocks, spannedBlocks } from '../patch-blocks.js';
 
@@ -33,5 +34,24 @@ describe('patch 分块：行尾 CRLF 与 LF 同解', () => {
       [0, 2],
       [2, 5],
     ]);
+  });
+});
+
+describe('patch 分块：YAML 节点区间', () => {
+  it('!!js 自定义标签不挡分块', () => {
+    const text = readFileSync(
+      new URL('../../supply/__tests__/fixtures/patch/with-js-tags.yml', import.meta.url),
+      'utf8',
+    );
+    expect(patchBlocks(text).map((one) => one.key)).toEqual(['id:webserver', 'insert:workbench']);
+  });
+
+  it('块标量里的 - 不当成新块', () => {
+    const text = ['- id: a', '  config:', '    body: |', '      - not a block', '- id: b', ''].join('\n');
+    expect(patchBlocks(text).map((one) => one.key)).toEqual(['id:a', 'id:b']);
+  });
+
+  it('坏 YAML 明确抛，不猜', () => {
+    expect(() => patchBlocks('- id: [')).toThrow(/解析不了/);
   });
 });

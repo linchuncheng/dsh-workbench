@@ -77,12 +77,21 @@ function appendBlocks(text: string, blocks: readonly PatchBlock[]): string {
   return out;
 }
 
+function parseReason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function mergeBlocks(
   ownText: string,
   incoming: readonly PatchBlock[],
   overwrite: ReadonlySet<string>,
 ): { ok: true; text: string; written: string[]; skipped: string[] } | { ok: false; reason: string } {
-  const own = patchBlocks(ownText);
+  let own: PatchBlock[];
+  try {
+    own = patchBlocks(ownText);
+  } catch (error) {
+    return { ok: false, reason: parseReason(error) };
+  }
   const mine = new Set(own.map((block) => block.key));
   const written: string[] = [];
   const skipped: string[] = [];
@@ -96,12 +105,22 @@ export function mergeBlocks(
     skipped.push(block.id);
   }
   if (take.length === 0) return { ok: true, text: ownText, written, skipped };
-  const replaced = replaceBlocks(ownText, take.filter((block) => mine.has(block.key)));
+  let replaced: string;
+  try {
+    replaced = replaceBlocks(ownText, take.filter((block) => mine.has(block.key)));
+  } catch (error) {
+    return { ok: false, reason: parseReason(error) };
+  }
   const text = appendBlocks(
     replaced,
     take.filter((block) => !mine.has(block.key)),
   );
-  const check = patchBlocks(text);
+  let check: PatchBlock[];
+  try {
+    check = patchBlocks(text);
+  } catch (error) {
+    return { ok: false, reason: parseReason(error) };
+  }
   const expected = new Set([...mine, ...take.map((block) => block.key)]);
   if (check.length !== expected.size || new Set(check.map((block) => block.key)).size !== expected.size) {
     return { ok: false, reason: '写入前的自检没过：行的 id 会重复或丢行' };
