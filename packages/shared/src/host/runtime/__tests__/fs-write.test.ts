@@ -29,14 +29,14 @@ describe('宿主文件写入口', () => {
     expect(readdirSync(join(ROOT, 'a', 'b'))).toEqual(['note.txt']);
   });
 
-  it('mode 默认保留已有文件的权限位', () => {
+  it.skipIf(process.platform === 'win32')('mode 默认保留已有文件的权限位', () => {
     const file = join(ROOT, 'secret.txt');
     writeFileSync(file, 'old', { mode: 0o600 });
     writeTextFile(file, 'new');
     expect(statSync(file).mode & 0o777).toBe(0o600);
   });
 
-  it('显式 mode 生效，可执行文件 0755', () => {
+  it.skipIf(process.platform === 'win32')('显式 mode 生效，可执行文件 0755', () => {
     const secret = join(ROOT, 'explicit.txt');
     writeTextFile(secret, 's', { mode: 0o600 });
     expect(statSync(secret).mode & 0o777).toBe(0o600);
