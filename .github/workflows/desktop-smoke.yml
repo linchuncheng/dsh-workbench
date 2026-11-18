@@ -44,6 +44,7 @@ jobs:
       - name: Build local workbench (except docs)
         run: pnpm run build:libs
       - name: Install Desktop
+        timeout-minutes: 10
         shell: bash
         run: |
           url="$DESKTOP_SMOKE_DESKTOP_MAC_URL"
@@ -64,8 +65,10 @@ jobs:
           if command -v opencli >/dev/null 2>&1; then echo "unexpected opencli: $(command -v opencli)"; exit 1; fi
           echo 'opencli: missing (expected)'
       - name: Prepare opencli browser extension
+        timeout-minutes: 10
         run: node scripts/desktop-smoke/prepare-browser.mjs
       - name: Open Desktop, install workbench and market module, restart once
+        timeout-minutes: 15
         shell: bash
         env:
           DESKTOP_WORKBENCH_SPEC: ${{ github.workspace }}/packages/core
@@ -85,7 +88,10 @@ jobs:
               sleep 1
             done
             pkill -9 -f 'DeepSeek Harness' 2>/dev/null || true
-            sleep 2
+            for _ in $(seq 1 5); do
+              if ! pgrep -f 'DeepSeek Harness' >/dev/null 2>&1; then return 0; fi
+              sleep 1
+            done
           }
           start_app() {
             ( cd / && exec "$BIN" --remote-debugging-port="$1" >> "$APP_LOG" 2>> "$APP_ERR" ) &
@@ -124,30 +130,25 @@ jobs:
             return 1
           }
           stop_app
-          sleep 2
           start_app 9222
           if ! wait_page 9222; then echo 'first instance produced no page'; exit 1; fi
           run_logged probe-install node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9222 desktop-mac.png --install-via-ui
           stop_app
-          sleep 2
           start_app 9223
           if ! wait_page 9223; then
             echo 'restart produced no page; trying once more'
             stop_app
-            sleep 3
             start_app 9223
             wait_page 9223 || { echo 'restart still produced no page'; exit 1; }
           fi
           run_logged probe-after-restart node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9223 desktop-mac-after-restart.png --verify-only --expect-workbench
           stop_app
-          sleep 2
           start_app 9226
           if ! wait_page 9226; then echo 'add-plugin instance produced no page'; exit 1; fi
           run_logged add-plugin-probe node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9226 desktop-mac-add-plugin.png --add-plugin "$DESKTOP_SMOKE_PLUGIN"
           # 自更新这条 E2E 已经立住：三段都按硬判据走，红就挡这条腿。
           # 夹具要在 app 关着时把 profile 翻成"已迁移"的链接形态：先停掉上一个实例。
           stop_app
-          sleep 2
           run_logged update-fixture node "$GITHUB_WORKSPACE/scripts/desktop-smoke/self-update-update-fixture.mjs" "$HOME/.dsh" desktop "$DESKTOP_SMOKE_UPDATE_FROM"
           start_app 9227
           if ! wait_page 9227; then
@@ -163,7 +164,6 @@ jobs:
           fi
           export DESKTOP_SMOKE_EXPECT_RUNNING_VERSION="$to"
           stop_app
-          sleep 2
           start_app 9228
           if ! wait_page 9228; then
             echo "::error title=update-after-restart::起 9228 后没有页面"
@@ -172,7 +172,6 @@ jobs:
           if ! run_logged_allowed update-after-restart node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9228 desktop-mac-after-self-update.png --verify-only --expect-workbench; then
             echo "第一次重启后体检没过：再启一次（换链后的头一跑在 Windows/mac 上偶发拿不到宿主路由）"
             stop_app
-            sleep 3
             start_app 9228
             if ! wait_page 9228; then
               echo "::error title=update-after-restart::重试时起 9228 后没有页面"
@@ -181,6 +180,7 @@ jobs:
             run_logged update-after-restart-retry node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9228 desktop-mac-after-self-update-retry.png --verify-only --expect-workbench
           fi
       - name: Assert opencli installed
+        timeout-minutes: 5
         shell: bash
         run: |
           if [ -z "${DESKTOP_SMOKE_OPENCLI:-}" ]; then
@@ -193,6 +193,7 @@ jobs:
           fi
           "$DESKTOP_SMOKE_OPENCLI" --version
       - name: Assert module installed
+        timeout-minutes: 5
         shell: bash
         run: |
           export SMOKE_MANIFEST="$HOME/.dsh/profiles/desktop/package.json"
@@ -206,6 +207,7 @@ jobs:
           console.log(name, spec ?? 'bundle');
           "
       - name: Assert opencli plugin installed
+        timeout-minutes: 5
         shell: bash
         run: |
           if [ -z "${DESKTOP_SMOKE_PLUGIN:-}" ]; then
