@@ -214,7 +214,14 @@ jobs:
             throw "opencli plugin list failed: $LASTEXITCODE"
           }
           $parsed = $raw | ConvertFrom-Json
-          $rows = if ($parsed -is [array]) { $parsed } elseif ($null -ne $parsed.data) { $parsed.data } else { @() }
+          $rows = @()
+          if ($parsed -is [array]) {
+            $rows = $parsed
+          } elseif ($null -ne $parsed -and $parsed.PSObject.Properties.Name -contains 'data') {
+            $rows = @($parsed.data)
+          } elseif ($null -ne $parsed) {
+            $rows = @($parsed)
+          }
           if (-not ($rows | Where-Object { $_.name -eq $pluginId })) {
             $body = ((($raw -split "`r?`n") | Where-Object { $_ -ne '' } | Select-Object -Last 30 | ForEach-Object { ($_ -replace '%', '%25') + '%0A' }) -join '')
             Write-Host "::error title=plugin not listed::$body"
