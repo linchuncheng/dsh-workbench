@@ -7,12 +7,14 @@ const SRC = join(ROOT, 'src');
 
 const BARRELS = ['index.ts', 'host.ts'];
 
+const INTERNAL = new Set(['lib/react.ts', 'host/supply/npm-auth.ts', 'host/supply/npmrc.ts']);
+
 function isTestingEntry(rel) {
   return rel === 'testing.ts' || rel.startsWith('testing/');
 }
 
 function isInternal(rel) {
-  return rel === 'lib/react.ts';
+  return INTERNAL.has(rel);
 }
 
 function walk(dir, acc = []) {
@@ -92,7 +94,7 @@ emit(
   'host.ts',
   modules.filter((file) => {
     const rel = relOf(file, SRC);
-    return rel.startsWith('host/') || rel.startsWith('adapters/');
+    return (rel.startsWith('host/') || rel.startsWith('adapters/')) && !isInternal(rel);
   }),
   SRC,
   keptHostSpecs(),
