@@ -39,7 +39,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-smoke-${{ github.ref }}
+  group: desktop-smoke-${{ github.ref }}-${{ inputs.desktopMode || 'pinned' }}-${{ inputs.browserMode || 'pinned' }}
   cancel-in-progress: true
 
 jobs:
