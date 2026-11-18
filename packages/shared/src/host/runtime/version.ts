@@ -12,6 +12,11 @@ export function isValidVersion(value: string): boolean {
   return semver.valid(value.trim()) !== null;
 }
 
+export function isBetaVersion(value: string): boolean {
+  const parsed = semver.prerelease(value.trim());
+  return parsed !== null && String(parsed[0]).toLowerCase() === 'beta';
+}
+
 export function isNewerVersion(latest: string, installed: string): boolean {
   if (latest === installed) return false;
   const compared = compareVersions(latest, installed);

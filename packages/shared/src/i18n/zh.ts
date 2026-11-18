@@ -766,7 +766,7 @@ export const zh = {
   'mcpOnDemand.lead': 'MCP 工具归入工具包，需要时由 agent 开启并请你批准。',
   'mcpOnDemand.failed': '保存设置失败',
   'updatePrerelease.nav': '检查预发布版本',
-  'updatePrerelease.lead': '更新检查也包含 beta、rc 这类预发布版本。',
+  'updatePrerelease.lead': '更新检查也包含 rc 这类预发布版本。',
   'updatePrerelease.failed': '保存设置失败',
   'workbenchSettings.nav': '工作台设置',
   'workbenchSettings.lead': '只影响这份工作台；会话和项目与其他工作台共用。',

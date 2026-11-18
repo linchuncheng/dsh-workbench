@@ -770,7 +770,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'mcpOnDemand.lead': 'MCP tools are grouped into tool packs; the agent enables one when needed and asks for your approval.',
   'mcpOnDemand.failed': 'Could not save the setting',
   'updatePrerelease.nav': 'Check prerelease versions',
-  'updatePrerelease.lead': 'Update checks also include prerelease versions such as beta and rc.',
+  'updatePrerelease.lead': 'Update checks also include prerelease versions such as rc.',
   'updatePrerelease.failed': 'Could not save the setting',
   'workbenchSettings.nav': 'Workbench settings',
   'workbenchSettings.lead': 'These settings affect only this workbench; sessions and projects are shared with other workbenches.',

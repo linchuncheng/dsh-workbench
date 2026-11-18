@@ -142,9 +142,9 @@ GitHub Actions runs three workflows:
   plus Windows Server 2022/2025 through `desktop-smoke-windows.yml`): installs the shipped Desktop
   build, installs the workbench from the plugin page, runs preflight, loads the opencli extension,
   installs `module-hello` from the market, restarts once and asserts the card. It also drives the
-  workbench's own self-update the way a user meets it: a fixture installs the newest published beta,
+  workbench's own self-update the way a user meets it: a fixture installs the newest published build,
   keeps an older-labelled copy of that install as the running version, points the profile at it and
-  turns `includePrerelease` on, so the registry's newer published beta shows up as an update; the probe
+  turns `includePrerelease` on, so a newer published release shows up as an update; the probe
   clicks 「更新」 on the workbench row, asserts the interface stays up and the row says the new version
   is ready while the running version is still the old one, then a restarted instance asserts the
   running version is the new one. The self-update legs are hard-gated. The install target and the

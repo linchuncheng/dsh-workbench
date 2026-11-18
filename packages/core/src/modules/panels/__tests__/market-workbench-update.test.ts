@@ -157,7 +157,32 @@ describe('workbench_modules_update_workbench（工作台自己那一份）', () 
     ]);
   });
 
-  it('★ 打开非正式版本后，更新工作台装的是版本表里最新的预发布', async () => {
+  it('★ 打开非正式版本后，更新工作台装的是版本表里最新的 rc', async () => {
+    const h = harness({
+      manifests: [],
+      bundles: fakeBundles(),
+      workbench: (pkg) => ({ pkg, version: '0.1.18', registry: 'https://r.example/' }),
+      npmLatest: '0.1.19',
+      npmVersions: ['0.1.19', '0.1.20-beta.0', '0.1.21-rc.0'],
+      includePrerelease: true,
+    });
+
+    const payload = await call(h, MODULES_UPDATE_WORKBENCH_TOOL, {});
+
+    expect(payload.change).toMatchObject({ target: '@dsh-workbench/core@0.1.21-rc.0' });
+    expect(h.selfUpdates).toEqual([
+      {
+        dshHome: '/tmp/dsh-home',
+        profile: 'workbench',
+        pkg: '@dsh-workbench/core',
+        from: '0.1.18',
+        to: '0.1.21-rc.0',
+        pinned: true,
+      },
+    ]);
+  });
+
+  it('★ 打开非正式版本后，源上只有更新的 beta → 仍装稳定版', async () => {
     const h = harness({
       manifests: [],
       bundles: fakeBundles(),
@@ -169,14 +194,14 @@ describe('workbench_modules_update_workbench（工作台自己那一份）', () 
 
     const payload = await call(h, MODULES_UPDATE_WORKBENCH_TOOL, {});
 
-    expect(payload.change).toMatchObject({ target: '@dsh-workbench/core@0.1.20-beta.0' });
+    expect(payload.change).toMatchObject({ target: '@dsh-workbench/core@0.1.19' });
     expect(h.selfUpdates).toEqual([
       {
         dshHome: '/tmp/dsh-home',
         profile: 'workbench',
         pkg: '@dsh-workbench/core',
         from: '0.1.18',
-        to: '0.1.20-beta.0',
+        to: '0.1.19',
         pinned: true,
       },
     ]);

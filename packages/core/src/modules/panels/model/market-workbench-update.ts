@@ -86,9 +86,7 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
     throw new Error('这个版本已经安装完成，先重启工作台再更新。');
   }
   const spec =
-    askedLatest === undefined
-      ? `${read.pkg}@${deps.includePrerelease?.() === true ? 'beta' : 'latest'}`
-      : `${read.pkg}@${askedLatest}`;
+    askedLatest === undefined ? `${read.pkg}@latest` : `${read.pkg}@${askedLatest}`;
   const run = deps.selfUpdate ?? deps.supply?.startSelfUpdate ?? (() => { throw new Error('self-update 适配器未提供'); });
   let failure = '';
   const dshVersion = deps.dshVersion?.();

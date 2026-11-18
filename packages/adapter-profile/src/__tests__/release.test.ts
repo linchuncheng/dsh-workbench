@@ -94,18 +94,29 @@ describe('latestVersion（问源）', () => {
     expect(await latestVersion({ seam: fake.seam, name: PKG, registry: REGISTRY })).toBe('1.0.0-beta.0');
   });
 
-  it('★ 打开 includePrerelease：问整张版本表，取最高的那一版（含预发布）', async () => {
+  it('★ 打开 includePrerelease：问整张版本表，beta 不参与，取最高的 rc', async () => {
     const fake = createFakeShell((call: ShellCall): ShellReply =>
       call.command.includes('npm view')
-        ? { stdout: JSON.stringify(['1.0.39', '1.0.40', '1.0.41-beta.1']) }
+        ? { stdout: JSON.stringify(['1.0.39', '1.0.40', '1.0.41-beta.2', '1.0.41-rc.1']) }
         : { stdout: '' },
     );
     const seam = createSeam({ shell: fake.shell, runtimeRoot: '/tmp/wb-seam-test' });
 
     expect(await latestVersion({ seam, name: PKG, registry: REGISTRY, includePrerelease: true })).toBe(
-      '1.0.41-beta.1',
+      '1.0.41-rc.1',
     );
     expect(fake.calls[0]?.command).toContain('versions --json');
+  });
+
+  it('★ 打开 includePrerelease，但预发布只有 beta：beta 不算新版', async () => {
+    const fake = createFakeShell((call: ShellCall): ShellReply =>
+      call.command.includes('npm view')
+        ? { stdout: JSON.stringify(['1.0.39', '1.0.40', '1.0.41-beta.2']) }
+        : { stdout: '' },
+    );
+    const seam = createSeam({ shell: fake.shell, runtimeRoot: '/tmp/wb-seam-test' });
+
+    expect(await latestVersion({ seam, name: PKG, registry: REGISTRY, includePrerelease: true })).toBe('1.0.40');
   });
 
   it('默认只问 latest：不会因为源上有预发布就提示更新', async () => {
@@ -151,17 +162,17 @@ describe('probeRelease', () => {
     expect(release).toEqual({ installed: '1.0.39', latest: '1.0.40' });
   });
 
-  it('★ 打开 includePrerelease：探测到的最新版也可以是预发布', async () => {
+  it('★ 打开 includePrerelease：探测到的最新版也可以是 rc', async () => {
     const fake = createFakeShell((call: ShellCall): ShellReply => {
       if (call.command.includes('npm ls')) return ledgerWith('1.0.39');
-      if (call.command.includes('npm view')) return { stdout: JSON.stringify(['1.0.39', '1.0.40-beta.0']) };
+      if (call.command.includes('npm view')) return { stdout: JSON.stringify(['1.0.39', '1.0.40-rc.0']) };
       return { stdout: '' };
     });
     const seam = createSeam({ shell: fake.shell, runtimeRoot: '/tmp/wb-seam-test' });
 
     expect(await probeRelease({ seam, package: PKG, registry: REGISTRY, includePrerelease: true })).toEqual({
       installed: '1.0.39',
-      latest: '1.0.40-beta.0',
+      latest: '1.0.40-rc.0',
     });
   });
 

@@ -80,7 +80,7 @@ describe('「已安装 opencli 插件」那一段的数据：台账说了算', (
     );
   });
 
-  it('★ 打开 includePrerelease：插件的最新版也取版本表里最高的预发布', async () => {
+  it('★ 打开 includePrerelease：插件的最新版取版本表里最高的 rc，beta 不参与', async () => {
     const ledger = rig();
     ledger.intend({ package: PKG, registry: REGISTRY });
     ledger.complete(PKG, 'inventory');
@@ -88,7 +88,7 @@ describe('「已安装 opencli 插件」那一段的数据：台账说了算', (
     const fake = createFakeShell((call) =>
       call.command.startsWith('npm ls')
         ? { stdout: JSON.stringify({ dependencies: { [PKG]: { version: '1.0.24' } } }) }
-        : { stdout: JSON.stringify(['1.0.24', '1.0.25-beta.0']) },
+        : { stdout: JSON.stringify(['1.0.24', '1.0.25-beta.0', '1.0.25-rc.1']) },
     );
 
     const rows = await installedPlugins({
@@ -97,7 +97,7 @@ describe('「已安装 opencli 插件」那一段的数据：台账说了算', (
       includePrerelease: true,
     });
 
-    expect(rows[0]?.latest).toBe('1.0.25-beta.0');
+    expect(rows[0]?.latest).toBe('1.0.25-rc.1');
     expect(fake.commands().some((line) => line.includes('versions --json'))).toBe(true);
   });
 

@@ -5,6 +5,7 @@ import {
   declarationProblemsOf,
   declaresPackage,
   readDeclaration,
+  isBetaVersion,
   param,
   PLUGIN_ID,
   SUPPORTED_API_VERSIONS,
@@ -61,6 +62,15 @@ const holdLog = new Map<string, string>();
 
 export function resetHoldLog(): void {
   holdLog.clear();
+}
+
+function visibleVersions<T extends { readonly version: string; readonly prerelease: boolean }>(
+  versions: readonly T[],
+  includePrerelease: boolean,
+): readonly T[] {
+  return versions.filter(
+    (entry) => !isBetaVersion(entry.version) && (includePrerelease || !entry.prerelease),
+  );
 }
 
 function updateBlockOf(raw: unknown, problems: readonly string[]): ModuleUpdateBlock | undefined {
@@ -174,7 +184,7 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
       ? null
       : await input.manager.listVersions(read.pkg, registry).catch(() => null);
   const versions = listed?.status === 'listed' ? listed.versions : [];
-  const visible = input.includePrerelease ? versions : versions.filter((entry) => !entry.prerelease);
+  const visible = visibleVersions(versions, input.includePrerelease);
   const newest = visible[0]?.version;
   const chosen =
     newest !== undefined && (queried === undefined || supply.isNewerVersion(newest, queried))
@@ -271,7 +281,7 @@ export function moduleVersionsHandler(
             ? await manager.listVersions(module.pkg, registry).catch(() => null)
             : null;
         const listed = list?.status === 'listed' ? list.versions : [];
-        const visible = includePrereleaseNow ? listed : listed.filter((entry) => !entry.prerelease);
+        const visible = visibleVersions(listed, includePrereleaseNow);
         const newest = visible[0]?.version;
         const latest =
           newest === undefined

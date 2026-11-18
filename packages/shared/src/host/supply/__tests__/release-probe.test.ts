@@ -8,7 +8,7 @@ import {
   VERSION_CHECK_TTL_MS,
 } from '../../../config/constants.js';
 import { createFakeShell } from '../../../testing/host-fakes.js';
-import { createReleaseProbe } from '../release-probe.js';
+import { candidatesOf, createReleaseProbe } from '../release-probe.js';
 import { createSeam } from '../../seam/run.js';
 
 const ROOT = join(tmpdir(), 'dsh-wb-release-probe');
@@ -198,5 +198,19 @@ describe('检测结果以 tarball 为准，不只信 npm view', () => {
     await expect(
       probe.missingReleaseParts({ seam, name: '@a/mod', version: '1.0.0', registry: REGISTRY }),
     ).resolves.toEqual([]);
+  });
+});
+
+describe('candidatesOf', () => {
+  it('打开 includePrerelease 也跳过 beta：rc 照取，候选按版本从高到低排', () => {
+    expect(
+      candidatesOf(JSON.stringify(['1.0.0', '1.1.0-beta.0', '1.2.0-rc.0', '1.1.0']), true),
+    ).toEqual(['1.2.0-rc.0', '1.1.0', '1.0.0']);
+  });
+
+  it('只有 beta 时没有候选，稳定版那一档照旧读 latest', () => {
+    expect(candidatesOf(JSON.stringify(['1.1.0-beta.0']), true)).toEqual([]);
+    expect(candidatesOf('1.1.0-beta.0\n', false)).toEqual(['1.1.0-beta.0']);
+    expect(candidatesOf('1.1.0\n', false)).toEqual(['1.1.0']);
   });
 });

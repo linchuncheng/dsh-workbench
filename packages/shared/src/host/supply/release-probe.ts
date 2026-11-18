@@ -10,7 +10,7 @@ import {
   VERSION_CHECK_TIMEOUT_MS,
   VERSION_CHECK_TTL_MS,
 } from '../../config/constants.js';
-import { compareVersions, isValidVersion } from '../runtime/version.js';
+import { compareVersions, isBetaVersion, isValidVersion } from '../runtime/version.js';
 import { parseJsonLoose } from '../../lib/text.js';
 import { quoteShellArg } from '../shell/shell-text.js';
 
@@ -48,6 +48,7 @@ export function candidatesOf(stdout: string, includePrerelease: boolean): readon
   return list
     .filter((value): value is string => typeof value === 'string' && isValidVersion(value))
     .map((value) => value.trim())
+    .filter((value) => !isBetaVersion(value))
     .sort((left, right) => (compareVersions(right, left) ?? 0));
 }
 
