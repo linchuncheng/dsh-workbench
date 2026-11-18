@@ -23,7 +23,7 @@
     }
   },
   "bin": {
-    "dsh-workbench": "./bin/dsh-workbench"
+    "dsh-workbench": "./bin/dsh-workbench.mjs"
   },
   "files": [
     "dist",
