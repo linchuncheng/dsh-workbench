@@ -210,6 +210,7 @@ export interface RuntimePort {
   seed(ctx: DshHostContext, options: RuntimeSeedOptions): void;
   frontApp?(ctx: DshHostContext): Promise<string | undefined>;
   bringToFront?(ctx: DshHostContext, app: string): Promise<boolean>;
+  raiseBrowser?(ctx: DshHostContext): Promise<boolean>;
 }
 
 export interface PluginDeclarationSource {

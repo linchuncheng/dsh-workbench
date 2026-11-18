@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { createSeam } from '@dsh-workbench/shared/host';
-import { bringBackWindow, frontAppNow, isBrowserApp, rememberFrontApp, restoreFocus } from '../front-app.js';
+import { bringBackWindow, frontAppNow, isBrowserApp, raiseBrowser, rememberFrontApp, restoreFocus } from '../front-app.js';
 
 function seamOf(replies: { readonly stdout?: string; readonly exitCode?: number }[]) {
   const fake = createFakeShell(replies);
@@ -93,5 +93,28 @@ describe('前台是浏览器时，记住的是那一页（不是整个浏览器�
     expect(isBrowserApp('com.brave.Browser')).toBe(true);
     expect(isBrowserApp('Google Chrome')).toBe(true);
     expect(isBrowserApp('com.deepseek.harness')).toBe(false);
+  });
+});
+
+describe('把浏览器整体抬到系统最前：系统级那一步', () => {
+  it('★★ 认第一个能起来的浏览器名（macOS 上是 open -a \'Google Chrome\'）', async () => {
+    const { fake, seam } = seamOf([{ exitCode: 1 }, {}]);
+
+    expect(await raiseBrowser(seam, 'darwin')).toBe(true);
+    expect(fake.calls).toHaveLength(2);
+  });
+
+  it('★★ 一个都起不来 → false，不假装成功', async () => {
+    const { fake, seam } = seamOf([{ exitCode: 1 }, { exitCode: 1 }, { exitCode: 1 }, { exitCode: 1 }]);
+
+    expect(await raiseBrowser(seam, 'darwin')).toBe(false);
+    expect(fake.calls).toHaveLength(4);
+  });
+
+  it('★ Windows 上走 AppActivate（不是 open）', async () => {
+    const { fake, seam } = seamOf([{}]);
+
+    expect(await raiseBrowser(seam, 'win32')).toBe(true);
+    expect(fake.calls[0]?.command ?? '').toContain('AppActivate');
   });
 });

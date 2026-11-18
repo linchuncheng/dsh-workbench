@@ -37,11 +37,13 @@ interface AdapterSet {
   `supply` 只给探针与市场用。
 - `ProbePort`：`probeUnits` / `registerPreflight` / `declaredPluginCommands`。
 - `RuntimePort`：必需 `packageRoot` / `capabilities` / `commands` / `runners` / `health` / `seed`；
-  可选 `profile` / `commandSurface` / `check` / `frontApp` / `bringToFront` / `versionReport`。
+  可选 `profile` / `commandSurface` / `check` / `frontApp` / `bringToFront` / `raiseBrowser` / `versionReport`。
   `versionReport` 交的是"哪些插件跟这一版运行时对不上"，外壳把它喂给探针 —— 探针不自己去读
   运行时的文件。
   `frontApp` 问"现在前台是哪个应用"，`bringToFront` 把它带回前台 —— 录制结束时把工作台窗口
   拉回来用的就是这一对；平台分支住在适配器里，外壳只问。
+  `raiseBrowser` 把浏览器整体抬到系统最前（录制的窗口只在 Chrome 内部置顶，系统级那一步归它）
+  —— 录制开窗后立刻调一次，失败就静默跳过。
   它是**中立**的：端口不点名任何具体运行时，运行时叫什么由模块清单的 `runtime` / `runs` 声明。
 - `PluginSurface`：`declarationLookup` / `createUnits`。
 - `HostActions`：config sync 与 profile create 的 handler/action。

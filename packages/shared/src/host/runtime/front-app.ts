@@ -39,6 +39,15 @@ export function bringBackCommand(app: string, platform: HostOs): string | undefi
   return undefined;
 }
 
+export function activateAppCommand(app: string, platform: HostOs): string | undefined {
+  const name = app.trim();
+  if (name === '') return undefined;
+  if (platform === 'darwin') return `open -a ${quoteFor(name, platform)}`;
+  if (platform === 'win32') return windowsBringBack(name);
+  if (platform === 'linux') return `xdotool search --name ${quoteFor(name, platform)} windowactivate`;
+  return undefined;
+}
+
 function windowsBringBack(app: string): string {
   const pid = app.trim();
   if (!/^\d+$/.test(pid)) return `if ((New-Object -ComObject WScript.Shell).AppActivate('${app.replaceAll("'", "''")}')) { exit 0 } else { exit 1 }`;

@@ -91,6 +91,14 @@ async function bringBackOnce(ctx: DshHostContext): Promise<boolean> {
 }
 
 
+export async function raiseBrowserNow(ctx: DshHostContext): Promise<boolean> {
+  try {
+    return (await adaptersOf(ctx).runtime.raiseBrowser?.(ctx)) === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function bringBackWorkbench(ctx: DshHostContext): Promise<boolean> {
   if (workbenchApp === undefined) return false;
   if (await bringBackOnce(ctx)) return true;

@@ -1,7 +1,10 @@
 .root {
   box-sizing: border-box;
   width: 100%;
-  max-width: var(--dsh-chat-content-width);
+  max-width: min(
+    var(--dsh-composer-card-max-width, var(--wb-len-960)),
+    calc(100% - var(--wb-len-32))
+  );
   margin: 0 auto;
   overflow: hidden;
   border-radius: var(--dsw-radius-lg);

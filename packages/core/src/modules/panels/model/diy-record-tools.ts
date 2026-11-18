@@ -17,7 +17,7 @@ import { doorOf, stopPageOf } from './diy-record-door';
 import { recordDetailToolOf } from './diy-record-detail-tool';
 import { stopLiveCapture } from '@/shared/api/host/diy-capture-live';
 import { openRecordWithRetryOf } from './diy-record-open';
-import { armRecordPage, bringBackWorkbench, frontAppNow, rememberWorkbenchApp } from './diy-record';
+import { armRecordPage, bringBackWorkbench, frontAppNow, raiseBrowserNow, rememberWorkbenchApp } from './diy-record';
 import { browserRowsOf, surfaceOf } from '@/shared/api/host/runtime-surface';
 import { RECORD_READ_SCRIPT } from './diy-record-read-scripts';
 import {
@@ -165,6 +165,7 @@ export function registerRecordTools(
         });
         if (!opened.ok) throw new Error(opened.why);
         if (opened.page !== undefined) rememberRecordTab(opened.page, url);
+        await raiseBrowserNow(ctx);
 
         const armed = await armRecordPage(seam, command, BROWSER_RECORD_SESSION, wire, { reset: true });
         const page = recordPageOf(armed.step.payload);

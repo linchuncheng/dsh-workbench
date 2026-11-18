@@ -48,6 +48,16 @@
         "packages/adapter-probe/src/runtime/__tests__/browser-wake.test.ts"
       ]
     },
+    "packages/adapter-probe/src/runtime/front-app.ts": {
+      "os": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/runtime/__tests__/front-app.test.ts"
+      ]
+    },
     "packages/adapter-probe/src/runtime/platform.ts": {
       "os": [
         "darwin",
