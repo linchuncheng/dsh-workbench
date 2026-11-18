@@ -99,6 +99,8 @@ after the release build, `packages/core/CHANGELOG.md` (shipped with
 `@dsh-workbench/core`) must contain the same version. Check one version directly with
 `pnpm run check:changelog -- --version <version>`.
 
+`pnpm release` 的 preflight 会跑 `pnpm run check:compat`：有未解决的 `compat` issue 就停。确需豁免时先跑 `pnpm run check:compat -- --waiver "原因"`，把理由记进发布记录。
+
 ## Documentation facts
 
 Some document blocks are generated from code, not hand-written. Change the source

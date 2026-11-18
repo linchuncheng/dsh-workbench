@@ -29,6 +29,7 @@
     "check:gates:target": "node scripts/gates/target.mjs",
     "check:modules": "node packages/module-tools/bin/dsh-wb-module.mjs check",
     "check:modules:static": "pnpm run check:contracts && pnpm run check:protocol && pnpm run check:source && pnpm run check:seam && pnpm run check:arch && pnpm run check:lint && pnpm run check:style && pnpm run check:alias && pnpm run check:markers",
+    "check:compat": "node scripts/check-compat.mjs",
     "check:contracts": "node packages/module-tools/bin/dsh-wb-module.mjs check --only contracts",
     "check:protocol": "node packages/module-tools/bin/dsh-wb-module.mjs check --only protocol",
     "dev": "pnpm --filter @dsh-workbench/core run dev",
