@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { editDistance } from '../text/distance.js';
 
 export const DSH_THEME_PACKAGE = '@deepseek-ai/dsh-client-ui-theme';
 export const SHELL_PACKAGE = '@dsh-workbench/core';
@@ -137,21 +138,6 @@ export function readTokens(startDirs: readonly string[]): TokenSet {
   return { dsw, wb };
 }
 
-function distance(left: string, right: string): number {
-  let previous = Array.from({ length: right.length + 1 }, (_unused, index) => index);
-  for (let row = 1; row <= left.length; row += 1) {
-    const current = [row];
-    for (let column = 1; column <= right.length; column += 1) {
-      const same = left[row - 1] === right[column - 1] ? 0 : 1;
-      current.push(
-        Math.min((previous[column] ?? 0) + 1, (current[column - 1] ?? 0) + 1, (previous[column - 1] ?? 0) + same),
-      );
-    }
-    previous = current;
-  }
-  return previous[right.length] ?? 0;
-}
-
 function commonPrefixLength(left: string, right: string): number {
   const cap = Math.min(left.length, right.length);
   let at = 0;
@@ -166,7 +152,7 @@ export function nearestTokens(name: string, names: readonly string[], limit = 6)
   return names
     .flatMap((one) => {
       const lower = one.toLowerCase();
-      const typos = lower.length < 3 ? Number.POSITIVE_INFINITY : distance(lower, wanted);
+      const typos = lower.length < 3 ? Number.POSITIVE_INFINITY : editDistance(lower, wanted);
       if (typos <= 2) return [{ one, typos }];
       const prefix = commonPrefixLength(lower, wanted);
       if (prefix < 8) return [];
