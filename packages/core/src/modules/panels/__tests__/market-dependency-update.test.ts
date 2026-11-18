@@ -116,3 +116,26 @@ describe('共用依赖那一跳：跑完要强探，仍落后就抛', () => {
     expect(dependencyStillBehind(target, new Map([['a', state('ok')]]))).toBeUndefined();
   });
 });
+
+describe('共用依赖那一跳：同批模块只强探一次', () => {
+  it('★ 第一份强探、其余复用同一次读数（装前一趟、装后一趟）', async () => {
+    const second: UnitManifest = { ...unit, id: 'b', titleKey: 'b.mine' };
+    const target = findDependency([unit, second], 'extension:demo');
+    if (target === undefined) throw new Error('找不到目标');
+    const forces: boolean[] = [];
+    let ran = false;
+
+    await updateDependencyRow(target, {
+      capabilityOf: async (_unit, force) => {
+        forces.push(force === true);
+        return state(ran ? 'ok' : 'outdated');
+      },
+      runAll: async () => {
+        ran = true;
+      },
+      snapshot: async () => [],
+    });
+
+    expect(forces).toEqual([true, false, true, false]);
+  });
+});
