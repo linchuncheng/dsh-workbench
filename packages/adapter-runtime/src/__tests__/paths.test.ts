@@ -62,6 +62,15 @@ describe('pnpm 的 store 跟随既有 node_modules（装好的那份不许翻面
     expect(storeDirFor(project, read)).toBe(join(isolatedRoot(), 'npm-cache'));
   });
 
+  it('★ 记录里带着 store 版本（v10 / v11）→ 只取到根，让当前 pnpm 自己挑版本', () => {
+    expect(storeDirFor(project, readerOf(`storeDir: ${join(isolatedRoot(), 'pnpm-store', 'v10')}\n`).read)).toBe(
+      join(isolatedRoot(), 'pnpm-store'),
+    );
+    expect(storeDirFor(project, readerOf(`storeDir: ${join(isolatedRoot(), 'npm-cache', 'v11')}\n`).read)).toBe(
+      join(isolatedRoot(), 'npm-cache'),
+    );
+  });
+
   it('值被单引号或双引号包住 → 去掉配对的那一对', () => {
     expect(storeDirFor(project, readerOf("storeDir: '/opt/store-a'\n").read)).toBe('/opt/store-a');
     expect(storeDirFor(project, readerOf('storeDir: "/opt/store-b"\n').read)).toBe('/opt/store-b');

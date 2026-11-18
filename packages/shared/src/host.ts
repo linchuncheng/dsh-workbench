@@ -136,6 +136,7 @@ export * from './host/supply/reinstall-record.js';
 export * from './host/supply/release-age.js';
 export * from './host/supply/release-packages.generated.js';
 export * from './host/supply/release-probe.js';
+export * from './host/supply/store-mismatch.js';
 export * from './host/supply/supply-index.js';
 export * from './host/supply/update-journal-manifest.js';
 export * from './host/supply/update-journal-types.js';

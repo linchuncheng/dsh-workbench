@@ -78,13 +78,18 @@ function lineStoreDir(text: string): string | undefined {
   return value === '' ? undefined : value;
 }
 
+function storeRootOf(value: string): string {
+  return value.replace(/[\\/]v\d+$/u, '');
+}
+
 export function storeDirFor(
   projectDir: string,
   read: (file: string) => string | undefined = readTextFile,
 ): string {
   const text = read(join(projectDir, 'node_modules', '.modules.yaml'));
   if (text === undefined) return pnpmStoreDir();
-  return jsonStoreDir(text) ?? lineStoreDir(text) ?? pnpmStoreDir();
+  const recorded = jsonStoreDir(text) ?? lineStoreDir(text);
+  return recorded === undefined ? pnpmStoreDir() : storeRootOf(recorded);
 }
 
 export function toolchainOpencliDir(): string {

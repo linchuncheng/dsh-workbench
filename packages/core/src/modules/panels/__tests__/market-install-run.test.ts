@@ -1,4 +1,4 @@
-import { mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -68,6 +68,33 @@ describe('createInstallRunner', () => {
     ]);
     expect(fake.commands()).toEqual([`pnpm add --dir ${TARGET} x`]);
     expect(existsSync(dir)).toBe(true);
+  });
+
+  it('★ store 对不上：清掉隔离运行时那份 node_modules 再装一遍', async () => {
+    const dir = join(ROOT, 'plugins-npm');
+    mkdirSync(join(dir, 'node_modules'), { recursive: true });
+    writeFileSync(join(dir, 'node_modules', 'keep.txt'), 'x');
+    const { fake, runner } = runnerWith([
+      { exitCode: 1, stderr: 'ERR_PNPM_UNEXPECTED_STORE  Unexpected store location' },
+      {},
+    ]);
+
+    await runner.runAll([{ kind: 'run', line: `pnpm add --dir '${dir}' x` }]);
+
+    expect(fake.commands()).toHaveLength(2);
+    expect(existsSync(join(dir, 'node_modules'))).toBe(false);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('★ store 对不上但不在隔离运行时里 → 不替人清 node_modules', async () => {
+    const { fake, runner } = runnerWith([
+      { exitCode: 1, stderr: 'ERR_PNPM_UNEXPECTED_STORE  Unexpected store location' },
+    ]);
+
+    await expect(runner.runAll([{ kind: 'run', line: `pnpm add --dir '${TARGET}' x` }])).rejects.toThrow(
+      /UNEXPECTED_STORE|安装/,
+    );
+    expect(fake.commands()).toHaveLength(1);
   });
 
   it('★ 执行缝自己抛的错不被 optional 吞掉（沙箱拒绝要冒出去）', async () => {
