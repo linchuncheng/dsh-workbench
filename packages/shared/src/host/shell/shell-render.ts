@@ -133,7 +133,7 @@ function displayRunOf(
 
 /**
  * 把一个安装计划步骤渲染成人能读的一行；`run` 给原命令（带上它的环境变量与 pwsh 的 `&` 调用符），
- * 文件操作按平台给等价写法。这一行只用于展示与事实记录：文件操作真跑在 `node:fs` 上，不经过 shell。
+ * 文件操作按平台给等价写法，且整行交给 shell 时也要幂等（先删再建）。
  * @param step - 计划步骤。
  * @param platform - 目标平台，默认当前 `process.platform`。
  * @returns 该步骤的一行文本。
@@ -151,8 +151,8 @@ export function planStepText(step: PluginPlanStep, platform: NodeJS.Platform = p
   }
   if (step.kind === 'link') {
     return platform === 'win32'
-      ? `New-Item -ItemType Junction -Path ${quote(step.path)} -Target ${quote(step.target)}`
-      : `ln -s ${quote(step.target)} ${quote(step.path)}`;
+      ? `Remove-Item -Recurse -Force ${quote(step.path)} -ErrorAction SilentlyContinue; New-Item -ItemType Junction -Path ${quote(step.path)} -Target ${quote(step.target)}`
+      : `rm -rf ${quote(step.path)} && ln -s ${quote(step.target)} ${quote(step.path)}`;
   }
   return platform === 'win32'
     ? `Copy-Item -Recurse -Force ${quote(step.from)} ${quote(step.to)}`
