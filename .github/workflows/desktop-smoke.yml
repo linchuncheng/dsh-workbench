@@ -4,6 +4,15 @@ name: desktop-smoke
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - 'scripts/desktop-smoke/**'
+      - 'packages/core/bin/**'
+      - 'packages/core/package.json'
+      - 'packages/core/src/shared/api/host/**'
+      - 'packages/core/src/modules/**'
+      - '.github/workflows/desktop-smoke.yml'
+      - '.github/workflows/desktop-smoke-windows.yml'
   schedule:
     - cron: '17 2 * * 1'
 
