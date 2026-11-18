@@ -51,3 +51,28 @@ jobs:
               tail -n 120 windows-full.log
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  static:
+    name: static checks / windows 2025
+    runs-on: windows-2025
+    timeout-minutes: 20
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build (except docs)
+        shell: bash
+        run: pnpm run build:libs
+      - name: Docs
+        shell: bash
+        run: pnpm run check:docs
+      - name: Architecture
+        shell: bash
+        run: pnpm run arch
+      - name: Copy
+        shell: bash
+        run: pnpm run check:copy:strict
+      - name: Module static checks
+        shell: bash
+        run: pnpm run check:modules:static
