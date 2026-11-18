@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execaSync } from 'execa';
 
 const args = process.argv.slice(2);
 const waiverAt = args.indexOf('--waiver');
@@ -18,11 +18,12 @@ if ((process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? '') === '') {
 
 let issues;
 try {
-  issues = JSON.parse(
-    execFileSync('gh', ['issue', 'list', ...repoArgs, '--label', 'compat', '--state', 'open', '--json', 'number,title,url'], {
-      encoding: 'utf8',
-    }),
+  const result = execaSync(
+    'gh',
+    ['issue', 'list', ...repoArgs, '--label', 'compat', '--state', 'open', '--json', 'number,title,url'],
+    { encoding: 'utf8' },
   );
+  issues = JSON.parse(result.stdout);
 } catch (error) {
   console.error(`✖ 查不了 compat issue：${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
