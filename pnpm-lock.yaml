@@ -38,6 +38,9 @@ importers:
       gh-pages:
         specifier: ^6.3.0
         version: 6.3.0
+      github-slugger:
+        specifier: ^2.0.0
+        version: 2.0.0
       globals:
         specifier: ^17.13.0
         version: 17.13.0
@@ -47,6 +50,9 @@ importers:
       jscpd:
         specifier: 5.4.2
         version: 5.4.2
+      markdown-it:
+        specifier: ^14.3.3
+        version: 14.3.3
       semver:
         specifier: ^7.8.5
         version: 7.8.5
@@ -4083,6 +4089,9 @@ packages:
     resolution: {integrity: sha512-Ot5lU6jK0Eb+sszG8pciXdjMXdBJ5wODvgjR+imihTqsUWF2K6dJ9HST55lgqcs8wWcw6o6wAsUzfcYRhJPXbA==}
     engines: {node: '>=10'}
     hasBin: true
+
+  github-slugger@2.0.0:
+    resolution: {integrity: sha512-IaOQ9puYtjrkq7Y0Ygl9KDZnrf/aiUJYUpVf89y8kyaxbRG7Y1SrX/jaumrv81vc61+kiMempujsM3Yw7w5qcw==}
 
   glob-parent@3.1.0:
     resolution: {integrity: sha512-E8Ak/2+dZY6fnzlR7+ueWvhsH1SjHr4jjss4YS/h4py44jY9MhK/VFdaZJAWDz6BbL21KeteKxFSFpq8OS5gVA==}
@@ -10568,6 +10577,8 @@ snapshots:
       find-cache-dir: 3.3.2
       fs-extra: 11.4.1
       globby: 11.1.0
+
+  github-slugger@2.0.0: {}
 
   glob-parent@3.1.0:
     dependencies:
