@@ -22,6 +22,12 @@ interface Edit {
   readonly text: string;
 }
 
+function hasRange(value: unknown): value is { readonly range: readonly [number, number, number] } {
+  if (typeof value !== 'object' || value === null) return false;
+  const range = (value as { readonly range?: unknown }).range;
+  return Array.isArray(range) && range.length === 3;
+}
+
 function scalarValue(node: unknown): string | undefined {
   return isScalar(node) && typeof node.value === 'string' ? node.value : undefined;
 }
@@ -100,7 +106,7 @@ function appendExcludes(text: string, wants: readonly ExcludeWant[]): string {
   if (!document.has('minimumReleaseAgeExclude')) return appendMissing(text, wants);
   const node = document.get('minimumReleaseAgeExclude', true);
   if (node === null || node === undefined) return fillEmptyKey(text, wants);
-  if (!isSeq(node) || node.range === null) {
+  if (!isSeq(node) || !hasRange(node)) {
     throw new PnpmConfigError('unsupported-shape', 'minimumReleaseAgeExclude 只能写成块列表，不能是字符串或映射');
   }
   const values = node.items.map(scalarValue).filter((value): value is string => value !== undefined);
@@ -123,7 +129,7 @@ function appendExcludes(text: string, wants: readonly ExcludeWant[]): string {
       continue;
     }
     if (exact) continue;
-    if (found.range === null) continue;
+    if (!hasRange(found)) continue;
     const value = scalarValue(found) ?? '';
     const version = want.entry.slice(want.match.length + 1);
     if (versionListed(value, version)) continue;
@@ -132,8 +138,8 @@ function appendExcludes(text: string, wants: readonly ExcludeWant[]): string {
     const inner = raw.replace(/^['"]/u, '').replace(/['"]$/u, '');
     edits.push({ start: found.range[0], end: found.range[1], text: `${quote}${inner} || ${version}${quote}` });
   }
-  const last = node.items[node.items.length - 1];
-  if (missing.length > 0 && last !== undefined && last.range !== null) {
+  const last = [...node.items].reverse().find(hasRange);
+  if (missing.length > 0 && last !== undefined) {
     const indent = lineIndentOf(text, last.range[0]);
     const end = lineEndOf(text, last.range[1]);
     const lines = missing.map((entry) => `${end.eol}${indent}- ${quoted(entry)}`).join('');
