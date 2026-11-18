@@ -24,7 +24,13 @@ function patchPathOf(deps: SidebarEditionDeps): string | null {
 }
 
 export function editionOfPatch(text: string): SidebarEdition {
-  const block = patchBlocks(lf(text)).find((one) => !one.insert && one.id === UI_SIDEBAR);
+  let blocks: ReturnType<typeof patchBlocks>;
+  try {
+    blocks = patchBlocks(lf(text));
+  } catch {
+    return 'official';
+  }
+  const block = blocks.find((one) => !one.insert && one.id === UI_SIDEBAR);
   if (block === undefined) return 'official';
   return block.body.split('\n').some((line) => DISABLED_LINE.test(line)) ? 'custom' : 'official';
 }

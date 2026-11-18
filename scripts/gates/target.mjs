@@ -1,4 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import GithubSlugger from 'github-slugger';
+import MarkdownIt from 'markdown-it';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 
@@ -961,24 +963,32 @@ function proseLinesOf(text) {
   return out;
 }
 
-function slugOf(text) {
-  return text
-    .replace(/<[^>]+>/g, '')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/[*_~]/g, '')
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s_-]/gu, '')
-    .trim()
-    .replace(/\s+/g, '-');
+const markdown = new MarkdownIt({ html: true });
+
+function headingTextOf(inline) {
+  return (inline.children ?? [])
+    .map((child) => {
+      if (child.type === 'text' || child.type === 'code_inline' || child.type === 'image') return child.content;
+      if (child.type === 'softbreak' || child.type === 'hardbreak') return ' ';
+      return '';
+    })
+    .join('');
 }
 
 function headingSlugsOf(text) {
   const slugs = new Set();
-  for (const { text: line } of proseLinesOf(text)) {
-    const heading = line.match(/^#{1,6}\s+(.+)$/);
-    if (heading !== null) slugs.add(slugOf(heading[1]));
-    for (const anchor of line.matchAll(/<a\s+(?:id|name)="([^"]+)"/g)) slugs.add(anchor[1]);
-  }
+  const slugger = new GithubSlugger();
+  const tokens = markdown.parse(text, {});
+  tokens.forEach((token, index) => {
+    if (token.type === 'heading_open') {
+      const inline = tokens[index + 1];
+      if (inline?.type === 'inline') slugs.add(slugger.slug(headingTextOf(inline)));
+      return;
+    }
+    if (token.type === 'html_block' || token.type === 'html_inline') {
+      for (const anchor of token.content.matchAll(/<a\s+(?:id|name)="([^"]+)"/g)) slugs.add(anchor[1]);
+    }
+  });
   return slugs;
 }
 

@@ -134,6 +134,13 @@ describe('配置同步：写回', () => {
     const merged = mergeBlocks(OWN_PATCH, [], new Set());
     expect(merged).toEqual({ ok: true, text: OWN_PATCH, written: [], skipped: [] });
   });
+
+  it('自己的 patch 坏掉 → 返回原因，不抛', () => {
+    const merged = mergeBlocks('- id: [', idBlocksOf(WEB_PATCH), new Set());
+    expect(merged.ok).toBe(false);
+    if (merged.ok) return;
+    expect(merged.reason).toContain('解析不了');
+  });
 });
 
 describe('配置同步：读写文件与快照', () => {

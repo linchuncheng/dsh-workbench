@@ -3,42 +3,17 @@ import { normalizeRegistry, sameRegistry, scopeOf } from '../adapters/adapter-ty
 import fs from 'node:fs';
 import path from 'node:path';
 import { writeTextFile } from '../runtime/fs-write.js';
+import { lockEntriesOf } from '../supply/pnpm-lock.js';
 export const REGISTRY_MARKER =
   '# dsh-workbench 写的：这一行的包只在这个源上（dsh 卸载没有源参数，pnpm 得问得到）';
 
-function registryRootOf(name: string, tarball: string): string | null {
-  const at = tarball.indexOf(`/${name}/-/`);
-  if (at > 0) return normalizeRegistry(tarball.slice(0, at));
-  try {
-    return normalizeRegistry(new URL(tarball).origin);
-  } catch {
-    return null;
-  }
-}
-
-const PACKAGE_KEY = /^ {2}'?(\S+)'?:\s*$/;
-const PACKAGE_NAME = /^(?:@[^/\s]+\/)?[^/\s@]+$/;
-const TARBALL = /tarball:\s*(\S+?)\}?\s*$/;
-
 export function sourcesFromLockfile(text: string): readonly RegistryEntry[] {
   const found = new Map<string, string | null>();
-  let name: string | null = null;
-  for (const line of text.split('\n')) {
-    const key = PACKAGE_KEY.exec(line);
-    if (key !== null) {
-      const raw = key[1] ?? '';
-      const at = raw.lastIndexOf('@');
-      const candidate = at > 0 ? raw.slice(0, at) : '';
-      name = PACKAGE_NAME.test(candidate) ? candidate : null;
-      continue;
-    }
-    if (name === null) continue;
-    const tarball = TARBALL.exec(line);
-    if (tarball === null) continue;
-    const scope = scopeOf(name);
-    const root = registryRootOf(name, tarball[1] ?? '');
-    name = null;
-    if (scope === null || root === null) continue;
+  for (const entry of lockEntriesOf(text)) {
+    if (entry.registry === undefined) continue;
+    const scope = scopeOf(entry.name);
+    if (scope === null) continue;
+    const root = normalizeRegistry(entry.registry);
     const seen = found.get(scope);
     if (seen === undefined) found.set(scope, root);
     else if (!sameRegistry(seen, root)) found.set(scope, null);

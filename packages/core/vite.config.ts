@@ -112,7 +112,9 @@ const hostRuntimeDeps = [
   'execa',
   'which',
   'proper-lockfile',
+  'tinyglobby',
   'write-file-atomic',
+  'yaml',
   ...workspaceRuntimeDeps(),
 ];
 

@@ -1,4 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import postcss from 'postcss';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DSW_PREFIX, dshHome, nearestTokens, readTokens } from '@dsh-workbench/shared/host';
@@ -54,26 +55,29 @@ function rowSpacingOf(property, value) {
 }
 
 function selfManagedRowsIn(css) {
+  let root;
+  try {
+    root = postcss.parse(css);
+  } catch {
+    return [];
+  }
   const hits = [];
-  for (const block of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selector = block[1].replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\s+/g, ' ').trim();
+  root.walkRules((rule) => {
+    const selector = rule.selector.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\s+/g, ' ').trim();
     const form = Array.from(selector.matchAll(/\.([A-Za-z][\w-]*)/g), (one) => one[1])
       .filter((token) => isFormContainer(token) && !NOT_A_FORM.test(token));
-    if (form.length === 0) continue;
-
-    const body = block[2].replace(/\/\*[\s\S]*?\*\//g, (one) => ' '.repeat(one.length));
-    const bodyAt = block.index + block[1].length + 1;
-    for (const decl of body.matchAll(/([-\w]+)\s*:\s*([^;]*)/g)) {
-      const prop = rowSpacingOf(decl[1], decl[2]);
-      if (prop === null) continue;
+    if (form.length === 0) return;
+    rule.walkDecls((decl) => {
+      const prop = rowSpacingOf(decl.prop, decl.value);
+      if (prop === null) return;
       hits.push({
-        line: css.slice(0, bodyAt + decl.index).split('\n').length,
+        line: decl.source?.start?.line ?? 1,
         selector: selector.slice(0, 60),
         prop,
-        decl: `${decl[1]}: ${decl[2].trim()}`.slice(0, 60),
+        decl: `${decl.prop}: ${decl.value}`.slice(0, 60),
       });
-    }
-  }
+    });
+  });
   return hits;
 }
 
@@ -248,14 +252,24 @@ function contractFilesFor(moduleDir) {
   ];
 }
 
+function classNamesIn(css) {
+  let root;
+  try {
+    root = postcss.parse(css);
+  } catch {
+    return [];
+  }
+  const names = [];
+  root.walkRules((rule) => {
+    for (const match of rule.selector.matchAll(/\.([A-Za-z][\w-]*)/g)) names.push(match[1]);
+  });
+  return names;
+}
+
 function contractOf(moduleDir) {
   const files = contractFilesFor(moduleDir);
   if (files.length === 0) return null;
-  return new Set(
-    files.flatMap((file) =>
-      Array.from(readFileSync(file, 'utf8').matchAll(CLASS_TOKEN), (match) => match[2]),
-    ),
-  );
+  return new Set(files.flatMap((file) => classNamesIn(readFileSync(file, 'utf8'))));
 }
 
 export const title = '样式归属';

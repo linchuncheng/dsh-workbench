@@ -207,14 +207,6 @@
       "tests": [
         "packages/shared/src/host/shell/__tests__/shell-text.test.ts"
       ]
-    },
-    "packages/core/bin/dsh-workbench.mjs": {
-      "os": [
-        "win32"
-      ],
-      "tests": [
-        "packages/core/src/shared/api/host/__tests__/dsh-workbench-bin.test.ts"
-      ]
     }
   },
   "suites": {

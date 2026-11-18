@@ -23,7 +23,7 @@
     }
   },
   "bin": {
-    "dsh-workbench": "./bin/dsh-workbench.mjs"
+    "dsh-workbench": "./bin/dsh-workbench"
   },
   "files": [
     "dist",
@@ -123,8 +123,10 @@
     "dayjs": "^1.11.23",
     "prompts": "^2.4.2",
     "proper-lockfile": "^4.1.2",
+    "tinyglobby": "^0.2.17",
     "which": "^7.0.0",
     "write-file-atomic": "^8.0.0",
+    "yaml": "^2.9.1",
     "execa": "^10.2.0"
   },
   "license": "MIT",

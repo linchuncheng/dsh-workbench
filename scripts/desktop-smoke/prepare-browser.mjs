@@ -1,12 +1,12 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
+import { Browser, detectBrowserPlatform, install, resolveBuildId } from '@puppeteer/browsers';
 import { execa } from 'execa';
 
 import { FIXTURE } from './fixture.mjs';
 
 const temp = process.env.RUNNER_TEMP ?? tmpdir();
-const platform = process.platform === 'win32' ? 'win64' : process.platform === 'darwin' ? 'mac-arm64' : 'linux64';
 const label = process.env.DESKTOP_SMOKE_OS ?? '';
 const latestMode = process.env.DESKTOP_SMOKE_BROWSER_MODE === 'latest';
 const logFile = label === '' ? undefined : `desktop-${label}-prep.log`;
@@ -77,27 +77,27 @@ function writeEnv(entries) {
   appendFileSync(file, `${entries.map(([key, value]) => `${key}=${value}`).join('\n')}\n`);
 }
 
-const meta = await fetch('https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json').then(
-  (response) => response.json(),
-);
+const browserPlatform = detectBrowserPlatform();
+if (browserPlatform === undefined) throw new Error(`认不出平台：${process.platform}/${process.arch}`);
+const buildId = await resolveBuildId(Browser.CHROME, browserPlatform, 'stable');
 const pinnedChrome = FIXTURE.chromeForTesting.version;
-if (!latestMode && meta.channels.Stable.version !== pinnedChrome) {
-  throw new Error(`Chrome for Testing stable 漂了：fixture ${pinnedChrome}，上游 ${meta.channels.Stable.version}`);
+if (!latestMode && buildId !== pinnedChrome) {
+  throw new Error(`Chrome for Testing stable 漂了：fixture ${pinnedChrome}，上游 ${buildId}`);
 }
-const cft = meta.channels.Stable.downloads.chrome.find((one) => one.platform === platform);
-if (cft === undefined) throw new Error(`Chrome for Testing 没有 ${platform} 包`);
-log(`cft: ${cft.url}`);
-const chrome =
-  process.platform === 'win32'
-    ? join(temp, 'cft', 'chrome-win64', 'chrome.exe')
-    : join(temp, 'cft', 'chrome-mac-arm64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing');
+log(`cft: chrome@${buildId} · ${browserPlatform}`);
+let chrome = '';
 await withRetries('准备 Chrome', async () => {
-  await download(cft.url, join(temp, 'cft.zip'));
-  await unzip(join(temp, 'cft.zip'), join(temp, 'cft'));
-  if (!existsSync(chrome)) {
-    throw new Error(`Chrome for Testing 没解出来：${chrome}\n解出来的目录：\n${treeOf(join(temp, 'cft'))}`);
-  }
+  const installed = await install({
+    browser: Browser.CHROME,
+    buildId,
+    cacheDir: join(temp, 'cft-cache'),
+    platform: browserPlatform,
+  });
+  chrome = installed.executablePath;
 });
+if (!existsSync(chrome)) {
+  throw new Error(`Chrome for Testing 没解出来：${chrome}\n解出来的目录：\n${treeOf(join(temp, 'cft-cache'))}`);
+}
 if (process.platform === 'win32') {
   const version = await execa('powershell', [
     '-NoProfile',

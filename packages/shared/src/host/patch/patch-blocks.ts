@@ -1,3 +1,5 @@
+import { isSeq, LineCounter, parseDocument } from 'yaml';
+
 export interface PatchBlock {
   readonly key: string;
   readonly id: string;
@@ -47,10 +49,15 @@ function blockOf(body: string, index: number): PatchBlock {
 
 export function spannedBlocks(text: string): SpannedBlock[] {
   const lines = text.split(/\r?\n/);
-  const starts: number[] = [];
-  lines.forEach((line, index) => {
-    if (/^- /.test(line) || line === '-') starts.push(index);
-  });
+  const lineCounter = new LineCounter();
+  const document = parseDocument(text, { lineCounter, logLevel: 'silent' });
+  if (document.errors.length > 0) {
+    throw new Error(`cordis.patch.yml 解析不了：${document.errors[0]?.message ?? '原因不明'}`);
+  }
+  const items = isSeq(document.contents) ? document.contents.items : [];
+  const starts = items.flatMap((item) =>
+    item.range === null ? [] : [lineCounter.linePos(item.range[0]).line - 1],
+  );
   const blocks: SpannedBlock[] = [];
   for (let i = 0; i < starts.length; i += 1) {
     const from = starts[i] ?? 0;

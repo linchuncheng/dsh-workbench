@@ -1,0 +1,4 @@
+packages:
+
+  '@acme/y@1.0.0':
+    resolution: {integrity: sha512-abc}

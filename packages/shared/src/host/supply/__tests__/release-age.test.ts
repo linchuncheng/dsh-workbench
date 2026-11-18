@@ -59,6 +59,41 @@ describe('pnpm 冷却期豁免：把当前这一版补进名单', () => {
     expect(ensureReleaseAge({ dir, packages: PACKAGES })).toBe(false);
   });
 
+  it('flow 写法先转块再补，不写坏 YAML', () => {
+    const flow = ['packages:', '  - .', "minimumReleaseAgeExclude: ['@dsh-workbench/core@1.2.3']", ''].join('\n');
+    const out = withReleaseAge('1.2.9', PACKAGES, flow);
+    expect(out).toContain("  - '@dsh-workbench/core@1.2.3 || 1.2.9'");
+    expect(out).toContain("  - '@dsh-workbench/shared@1.2.9'");
+    expect(out).not.toContain('[');
+    expect(withReleaseAge('1.2.9', PACKAGES, out)).toBe(out);
+  });
+
+  it('注释不因追加而丢', () => {
+    const commented = [
+      '# 顶注',
+      'packages:',
+      '  - .',
+      '',
+      'minimumReleaseAgeExclude:',
+      "  - '@dsh-workbench/core@1.2.3' # 行内注",
+      '',
+    ].join('\n');
+    const out = withReleaseAge('1.2.9', PACKAGES, commented);
+    expect(out).toContain('# 顶注');
+    expect(out).toContain('# 行内注');
+    expect(out).toContain("  - '@dsh-workbench/shared@1.2.9'");
+  });
+
+  it('名单写成字符串：明确报块列表，不猜', () => {
+    expect(() => withReleaseAge('1.2.9', PACKAGES, "minimumReleaseAgeExclude: '@x@1.0.0'\n")).toThrow(/块列表/);
+  });
+
+  it('坏 YAML 的 ensure 不抛，返回 false', () => {
+    const dir = mkdtempSync(join(ROOT, 'broken-'));
+    writeFileSync(releaseAgeFileOf(dir), 'minimumReleaseAgeExclude: [\n', 'utf8');
+    expect(ensureReleaseAge({ dir, packages: PACKAGES })).toBe(false);
+  });
+
   it('scope 通配只写一条；换了 scope 才补新的', () => {
     const once = withReleaseAgeScopes(['@dsh-workbench/*', '@dsh-workbench/*'], WORKSPACE);
     expect(once.split('\n').filter((line) => line.trim() === "- '@dsh-workbench/*'").length).toBe(1);

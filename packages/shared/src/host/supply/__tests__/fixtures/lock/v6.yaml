@@ -1,0 +1,9 @@
+lockfileVersion: 6.0
+
+packages:
+
+  /@acme/module-legacy/0.3.0:
+    resolution: {tarball: https://npm.example.com/team/@acme/module-legacy/-/module-legacy-0.3.0.tgz}
+
+  /plain-pkg/1.2.3:
+    resolution: {tarball: https://npm.example.com/plain-pkg/-/plain-pkg-1.2.3.tgz}
