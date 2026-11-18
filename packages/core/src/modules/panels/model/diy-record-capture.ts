@@ -40,6 +40,29 @@ export function captureEntriesOf(text: string, rows?: CaptureRows): readonly Cap
     if (kept !== undefined) out[found] = richerOf(kept, one);
   };
   for (const one of rows === undefined ? [] : rows(text)) push(one);
+  return collapseNearOf(out);
+}
+
+const DUP_WINDOW_MS = 50;
+
+function collapseNearOf(entries: readonly CaptureEntry[]): readonly CaptureEntry[] {
+  const out: CaptureEntry[] = [];
+  const last = new Map<string, number>();
+  for (const one of entries) {
+    const id = `${one.method} ${barePathOf(one.url)}`;
+    const at = last.get(id);
+    const kept = at === undefined ? undefined : out[at];
+    const twin =
+      kept !== undefined &&
+      (kept.key === '') !== (one.key === '') &&
+      Math.abs(kept.at - one.at) <= DUP_WINDOW_MS;
+    if (twin && at !== undefined) {
+      out[at] = richerOf(kept, one);
+      continue;
+    }
+    last.set(id, out.length);
+    out.push(one);
+  }
   return out;
 }
 
