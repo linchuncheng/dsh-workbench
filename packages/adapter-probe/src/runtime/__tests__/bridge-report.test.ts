@@ -87,6 +87,34 @@ describe('readBridgeReport：手上的 doctor 是 JSON 还是文本', () => {
     expect(report.detail).toBe('Everything looks good!');
   });
 
+  it('★★ 旧 CLI 说 daemon 是旧进程（stale; CLI vX）→ 认成 stale，不只当它没起来', () => {
+    const report = readBridgeReport(
+      [
+        'opencli v1.8.8 doctor (node v24.21.0)',
+        '',
+        '[WARN] Daemon: running on port 19825 (v2.0.3, stale; CLI v1.8.8)',
+        '[OK] Extension: connected (v1.0.27)',
+        '[OK] Connectivity: connected in 0.0s',
+      ].join('\n'),
+    );
+
+    expect(report.issues).toContain('stale');
+    expect(report.issues).toContain('daemon');
+  });
+
+  it('★★ 版本对不上的另一种写法（v2.0.3 != CLI v2.0.2）也认成 stale', () => {
+    const report = readBridgeReport(
+      [
+        'opencli v2.0.2 doctor (node v24.15.0)',
+        '',
+        '[STALE] Daemon: running on port 19825 (v2.0.3 != CLI v2.0.2)',
+        '[OK] Extension: connected (v1.0.24)',
+      ].join('\n'),
+    );
+
+    expect(report.issues).toContain('stale');
+  });
+
   it('★ 读不懂的输出 → unknown，不假装通过', () => {
     const report = readBridgeReport('{"ok":true}');
 

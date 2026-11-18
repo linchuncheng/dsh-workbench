@@ -31,6 +31,18 @@ export const STALE_DAEMON_BRIDGE = [
   '  Run: opencli daemon restart',
 ].join('\n');
 
+export const DOWN_DAEMON_BRIDGE = [
+  'opencli v2.0.2 doctor (node v24.15.0)',
+  '',
+  '[MISSING] Daemon: not running',
+  '[OK] Extension: connected (v1.0.24)',
+  '[OK] Connectivity: connected in 0.0s',
+  '',
+  'Issues:',
+  '  • Daemon not running.',
+  '  Run: opencli daemon restart',
+].join('\n');
+
 export const BROKEN_BRIDGE = [
   'opencli v2.0.2 doctor (node v24.15.0)',
   '',

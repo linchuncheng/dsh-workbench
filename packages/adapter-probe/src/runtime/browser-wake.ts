@@ -293,7 +293,8 @@ export function bridgeFixCommand(
   platform: NodeJS.Platform = process.platform,
 ): string | undefined {
   const token = quoteShellArgFor(command, platform);
-  if (issues.includes('profile') || issues.includes('stale')) return `${token} profile list`;
+  if (issues.includes('stale')) return `${token} daemon stop && ${token} daemon restart`;
+  if (issues.includes('profile')) return `${token} profile list`;
   if (issues.includes('daemon')) return `${token} daemon restart`;
   return undefined;
 }

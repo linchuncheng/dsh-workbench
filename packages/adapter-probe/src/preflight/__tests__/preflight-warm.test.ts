@@ -3,12 +3,56 @@ import { canWarm, createPreflight } from '../../index.js';
 import type { Preflight } from '../../index.js';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { createSeam } from '@dsh-workbench/shared/host';
-import { ALL_OK, BROKEN_BRIDGE, GOOD_BRIDGE_REPORT, STALE_DAEMON_BRIDGE, build } from './preflight-fixtures';
+import { ALL_OK, BROKEN_BRIDGE, DOWN_DAEMON_BRIDGE, GOOD_BRIDGE_REPORT, build } from './preflight-fixtures';
 
 function seamFor(shell: Parameters<typeof createSeam>[0]['shell']) {
   return createSeam({ shell, runtimeRoot: '/tmp/wb-seam-test' });
 }
 
+
+describe('daemon 与 CLI 版本不一致：先停再起，不必等人动手', () => {
+  it('★★ stale → 自己跑 stop + restart 再复检一次，桥接翻成 ok', async () => {
+    const { fake, preflight } = build([
+      { stdout: '2.0.3\n' },
+      { stdout: DOWN_DAEMON_BRIDGE.replace('[MISSING] Daemon: not running', '[WARN] Daemon: running on port 19825 (v2.0.3, stale; CLI v1.8.8)') },
+      {},
+      {},
+      { stdout: GOOD_BRIDGE_REPORT },
+    ]);
+
+    const snapshot = await preflight.run();
+
+    expect(snapshot.steps.map((item) => `${item.id}=${item.status}`)).toEqual(['cli=ok', 'bridge=ok']);
+    expect(fake.commands()).toEqual([
+      "'opencli' --version",
+      "'opencli' doctor",
+      "'opencli' daemon stop",
+      "'opencli' daemon restart",
+      "'opencli' doctor",
+    ]);
+  });
+
+  it('★★ 停完再起还是不一致 → 保留 stale，把那条命令交给人', async () => {
+    const stale = DOWN_DAEMON_BRIDGE.replace(
+      '[MISSING] Daemon: not running',
+      '[WARN] Daemon: running on port 19825 (v2.0.3, stale; CLI v1.8.8)',
+    );
+    const { fake, preflight } = build([
+      { stdout: '2.0.3\n' },
+      { stdout: stale },
+      {},
+      {},
+      { stdout: stale },
+    ]);
+
+    const snapshot = await preflight.run();
+
+    expect(snapshot.steps[1]?.status).toBe('warn');
+    expect(snapshot.bridgeIssues).toContain('stale');
+    expect(snapshot.steps[1]?.command).toContain('daemon stop && ');
+    expect(fake.commands().filter((one) => one.includes('daemon restart'))).toHaveLength(1);
+  });
+});
 
 describe('启动预热站点登录态（ADR-0024）', () => {
   const TWO_READS = (): readonly (readonly string[])[] => [
@@ -104,7 +148,7 @@ describe('启动预热站点登录态（ADR-0024）', () => {
   it('★ doctor 说 daemon 没起来、可预热那条命令自己把通道跑通了 → 结论留到自愈之后再给：中途不闪「没连上」，复检后桥接翻成 ok', async () => {
     const replies = [
       { stdout: '2.0.3\n' },
-      { stdout: STALE_DAEMON_BRIDGE },
+      { stdout: DOWN_DAEMON_BRIDGE },
       { stdout: '{}' },
       { stdout: GOOD_BRIDGE_REPORT },
     ];
@@ -140,9 +184,9 @@ describe('启动预热站点登录态（ADR-0024）', () => {
     const { fake, preflight } = build(
       [
         { stdout: '2.0.3\n' },
-        { stdout: STALE_DAEMON_BRIDGE },
+        { stdout: DOWN_DAEMON_BRIDGE },
         { exitCode: 1, stderr: 'nope' },
-        { stdout: STALE_DAEMON_BRIDGE },
+        { stdout: DOWN_DAEMON_BRIDGE },
       ],
       undefined,
       () => [['inventory', 'enterprises']],
@@ -154,7 +198,7 @@ describe('启动预热站点登录态（ADR-0024）', () => {
     expect(snapshot.steps[2]?.status).toBe('warn');
     expect(snapshot.bridgeIssues).toEqual(['daemon']);
     expect(snapshot.steps[1]?.command).toContain('daemon restart');
-    expect(snapshot.steps[1]?.detail).toContain('Stale daemon detected');
+    expect(snapshot.steps[1]?.detail).toContain('Daemon not running');
     expect(fake.commands()).toEqual([
       "'opencli' --version",
       "'opencli' doctor",
@@ -167,7 +211,7 @@ describe('启动预热站点登录态（ADR-0024）', () => {
     const { preflight } = build(
       [
         { stdout: '2.0.3\n' },
-        { stdout: STALE_DAEMON_BRIDGE },
+        { stdout: DOWN_DAEMON_BRIDGE },
         { exitCode: 1, stderr: 'nope' },
         { stdout: GOOD_BRIDGE_REPORT },
       ],

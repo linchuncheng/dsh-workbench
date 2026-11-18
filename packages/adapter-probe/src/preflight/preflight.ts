@@ -138,6 +138,7 @@ export function createPreflight(options: {
   };
   let running: Promise<PreflightSnapshot> | null = null;
   let shellStalled = false;
+  let daemonHealed = false;
 
   function set(next: Partial<PreflightSnapshot> & { steps?: PreflightStep[] }): PreflightSnapshot {
     current = { ...current, ...next, log: [...logLines], at: now() };
@@ -225,7 +226,24 @@ export function createPreflight(options: {
     const report = readBridgeReport(result.stdout);
     rememberBridgeFacts(report.facts);
     if (report.ok) return report;
+    const healed = await restartStaleDaemon(report);
+    if (healed !== undefined) return healed;
     return { ...report, command: bridgeFixCommand(command, report.issues, platform) };
+  }
+
+  async function restartStaleDaemon(report: { ok: boolean; issues: readonly PreflightBridgeIssue[] }): Promise<BridgeVerdict | undefined> {
+    if (daemonHealed) return undefined;
+    if (!report.issues.includes('stale')) return undefined;
+    daemonHealed = true;
+    appendLog('bridge', '先停旧 daemon 再起新的：版本不一致时 restart 顶不掉占着端口的那一个');
+    await exec('bridge', `${commandToken} daemon stop`, PREFLIGHT_DOCTOR_TIMEOUT_MS, 'never');
+    const started = await exec('bridge', `${commandToken} daemon restart`, PREFLIGHT_DOCTOR_TIMEOUT_MS, 'never');
+    if (started.kind !== 'ok') return undefined;
+    const again = await exec('bridge', `${commandToken} doctor`, PREFLIGHT_DOCTOR_TIMEOUT_MS);
+    if (again.kind !== 'ok') return undefined;
+    const healed = readBridgeReport(again.stdout);
+    rememberBridgeFacts(healed.facts);
+    return healed.ok ? healed : { ...healed, command: bridgeFixCommand(command, healed.issues, platform) };
   }
 
   async function installOpencli(): Promise<{ ok: boolean; detail: string }> {

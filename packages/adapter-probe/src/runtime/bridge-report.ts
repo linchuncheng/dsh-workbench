@@ -88,6 +88,8 @@ export function readBridgeReport(stdout: string): BridgeReport {
 
   const found = new Set<PreflightBridgeIssue>();
   if (!/^\[OK\] Daemon:/m.test(text)) found.add('daemon');
+  const daemonLine = /^\[[A-Z]+\] Daemon:[^\n]*$/mu.exec(text)?.[0] ?? '';
+  if (/stale|!=/iu.test(daemonLine)) found.add('stale');
   if (!/^\[OK\] Extension:/m.test(text)) found.add('extension');
   if (/Multiple Chrome profiles are connected/i.test(text)) found.add('profile');
   if (/Default browser profile is stale|Selected browser profile is not connected/i.test(text)) {

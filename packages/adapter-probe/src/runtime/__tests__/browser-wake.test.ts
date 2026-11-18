@@ -214,7 +214,9 @@ describe('命令 token 按平台引号包住', () => {
       "'C:\\Users\\John Smith\\opencli.cmd' daemon restart",
     );
     expect(bridgeFixCommand('opencli', ['profile'], 'linux')).toBe("'opencli' profile list");
-    expect(bridgeFixCommand('opencli', ['stale'], 'darwin')).toBe("'opencli' profile list");
+    expect(bridgeFixCommand('opencli', ['stale'], 'darwin')).toBe(
+      "'opencli' daemon stop && 'opencli' daemon restart",
+    );
     expect(bridgeFixCommand('opencli', ['extension'])).toBeUndefined();
   });
 
