@@ -19,7 +19,6 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
 
     testTimeout: 20000,
-    fsModuleCache: true,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary'],
