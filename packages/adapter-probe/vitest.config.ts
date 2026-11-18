@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     testTimeout: 20000,
+    fsModuleCache: true,
     setupFiles: ['./vitest.setup.ts'],
   },
 });
