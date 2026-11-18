@@ -308,7 +308,7 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
         `pnpm add --dir '${PREFIX}' 'opencli-plugin-demo@latest' ` +
           `--registry '${REGISTRY}' --store-dir '${at('pnpm-store')}' --config.cache-dir='${at('pnpm-cache')}' --config.state-dir='${at('pnpm-state')}' --allow-build='opencli-plugin-demo'`,
         `mkdir -p '${PEER_PARENT}'`,
-        `ln -s '${PEER_TARGET}' '${PEER_DIR}'`,
+        `rm -rf '${PEER_DIR}' && ln -s '${PEER_TARGET}' '${PEER_DIR}'`,
         "'opencli' plugin uninstall 'demo'",
         `NPM_CONFIG_REGISTRY='${REGISTRY}' 'opencli' plugin install '${INSTALLED_DIR}'`,
       ].join(" && "),

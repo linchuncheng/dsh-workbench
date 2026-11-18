@@ -47,7 +47,9 @@ describe('planStepText', () => {
   it('★ 文件操作步骤按平台给等价写法（Windows 上没有 rm -rf / ln -s / cp -R）', () => {
     expect(planStepText({ kind: 'remove', path: '/p/peer' }, 'darwin')).toBe("rm -rf '/p/peer'");
     expect(planStepText({ kind: 'mkdir', path: '/p' }, 'darwin')).toBe("mkdir -p '/p'");
-    expect(planStepText({ kind: 'link', target: '/t', path: '/p/peer' }, 'darwin')).toBe("ln -s '/t' '/p/peer'");
+    expect(planStepText({ kind: 'link', target: '/t', path: '/p/peer' }, 'darwin')).toBe(
+      "rm -rf '/p/peer' && ln -s '/t' '/p/peer'",
+    );
     expect(planStepText({ kind: 'copy', from: '/c', to: '/d' }, 'darwin')).toBe("cp -R '/c'/. '/d'/");
 
     expect(planStepText({ kind: 'remove', path: 'C:\\p\\peer' }, 'win32')).toBe(
@@ -55,7 +57,7 @@ describe('planStepText', () => {
     );
     expect(planStepText({ kind: 'mkdir', path: 'C:\\p' }, 'win32')).toBe("New-Item -ItemType Directory -Force 'C:\\p'");
     expect(planStepText({ kind: 'link', target: 'C:\\t', path: 'C:\\p\\peer' }, 'win32')).toBe(
-      "New-Item -ItemType Junction -Path 'C:\\p\\peer' -Target 'C:\\t'",
+      "Remove-Item -Recurse -Force 'C:\\p\\peer' -ErrorAction SilentlyContinue; New-Item -ItemType Junction -Path 'C:\\p\\peer' -Target 'C:\\t'",
     );
     expect(planStepText({ kind: 'copy', from: 'C:\\c', to: 'C:\\d' }, 'win32')).toBe(
       "Copy-Item -Recurse -Force 'C:\\c' 'C:\\d'",
