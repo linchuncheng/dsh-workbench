@@ -8,7 +8,7 @@ name: desktop-smoke
     - cron: '17 2 * * 1'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: desktop-smoke-${{ github.ref }}
@@ -243,13 +243,11 @@ jobs:
         continue-on-error: true
         shell: bash
         run: pkill -f 'DeepSeek Harness' 2>/dev/null || true
-      - name: Publish logs
-        if: failure()
+      - name: Collect logs
+        if: failure() || cancelled()
         continue-on-error: true
         shell: bash
         run: |
-          git config user.name ci
-          git config user.email ci@example.com
           shopt -s nullglob
           {
             echo "== self-update.json"; cat "$HOME/.dsh/workbench/self-update.json" 2>/dev/null
@@ -269,20 +267,28 @@ jobs:
           for log in "$HOME"/.dsh/*.log "$HOME"/.dsh/logs/*.log; do
             cp "$log" "./desktop-mac-dsh-$(basename "$log")" 2>/dev/null || true
           done
-          files=(desktop-mac*.png desktop-mac*.txt desktop-mac*.json desktop-mac*.log)
-          if [ ${#files[@]} -gt 0 ]; then
-            git add -f "${files[@]}"
-            git commit -m "ci: macos desktop smoke log [skip ci]" || true
-          fi
-          git push origin HEAD:desktop-ui-log-mac-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         if: always()
         continue-on-error: true
         with:
           name: desktop-smoke-macos
           if-no-files-found: warn
+          retention-days: 14
           path: |
             desktop-mac*.png
             desktop-mac*.txt
             desktop-mac*.json
             desktop-mac*.log
+      - name: Summarize failure
+        if: failure() || cancelled()
+        shell: bash
+        run: |
+          {
+            echo "## desktop smoke / macos"
+            for f in desktop-mac*.log; do
+              if [ -f "$f" ]; then
+                echo "### $f"
+                tail -n 100 "$f"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

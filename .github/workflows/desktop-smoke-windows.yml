@@ -11,7 +11,7 @@ name: desktop-smoke-windows
         required: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   smoke:
@@ -240,13 +240,11 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: Get-Process | Where-Object { $_.ProcessName -like '*DeepSeek*' } | Stop-Process -Force -ErrorAction SilentlyContinue
-      - name: Publish logs
-        if: failure()
+      - name: Collect logs
+        if: failure() || cancelled()
         continue-on-error: true
         shell: bash
         run: |
-          git config user.name ci
-          git config user.email ci@example.com
           shopt -s nullglob
           {
             echo "== self-update.json"; cat "$USERPROFILE/.dsh/workbench/self-update.json" 2>/dev/null
@@ -275,21 +273,29 @@ jobs:
                      "$APPDATA/DeepSeek Harness/logs"/*.log "$LOCALAPPDATA/DeepSeek Harness/logs"/*.log; do
             cp "$log" "./desktop-${{ inputs.label }}-dsh-$(basename "$log")" 2>/dev/null || true
           done
-          files=(desktop-${{ inputs.label }}*.png desktop-${{ inputs.label }}*.txt desktop-${{ inputs.label }}*.json desktop-${{ inputs.label }}*.log)
-          if [ ${#files[@]} -gt 0 ]; then
-            git add -f "${files[@]}"
-            git commit -m "ci: windows desktop smoke log [skip ci]" || true
-          fi
-          git push origin HEAD:desktop-ui-log-${{ inputs.label }}-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         if: always()
         continue-on-error: true
         with:
           name: desktop-smoke-windows-${{ inputs.label }}
           if-no-files-found: warn
+          retention-days: 14
           path: |
             desktop-${{ inputs.label }}*.png
             desktop-${{ inputs.label }}*.txt
             desktop-${{ inputs.label }}*.json
             desktop-${{ inputs.label }}*.log
 
+      - name: Summarize failure
+        if: failure() || cancelled()
+        shell: bash
+        run: |
+          {
+            echo "## desktop smoke / windows (${{ inputs.label }})"
+            for f in desktop-${{ inputs.label }}*.log; do
+              if [ -f "$f" ]; then
+                echo "### $f"
+                tail -n 100 "$f"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
