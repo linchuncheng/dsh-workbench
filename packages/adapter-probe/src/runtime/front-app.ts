@@ -1,6 +1,6 @@
 import type { Seam } from '@dsh-workbench/shared/host';
 import { opencliResultOf } from '@dsh-workbench/adapter-runtime';
-import { activateAppCommand, bringBackCommand, frontAppCommand, frontAppOf, noWrite } from '@dsh-workbench/shared/host';
+import { activateAppCommand, bringBackCommand, frontAppCommand, frontAppOf, isBrowserAppName, noWrite } from '@dsh-workbench/shared/host';
 import { currentHostOs } from './platform.js';
 
 const TIMEOUT_MS = 5000;
@@ -54,11 +54,9 @@ export interface FocusedChromeTab {
 
 let focusedTab: FocusedChromeTab | undefined;
 
-const BROWSER_APP = /chrome|chromium|edge|brave|vivaldi/i;
+export { isBrowserAppName as isBrowserApp } from '@dsh-workbench/shared/host';
 
-export function isBrowserApp(app: string): boolean {
-  return BROWSER_APP.test(app);
-}
+const browserAppOf = (app: string): boolean => isBrowserAppName(app);
 
 async function chromeCall(seam: Seam, command: string, method: string, args: string): Promise<unknown> {
   const result = await seam
@@ -106,7 +104,7 @@ export async function rememberFrontApp(
   platform = currentHostOs(),
 ): Promise<string | undefined> {
   const app = await frontAppNow(seam, platform);
-  if (app !== undefined && isBrowserApp(app)) await captureFocusedTab(seam, command);
+  if (app !== undefined && browserAppOf(app)) await captureFocusedTab(seam, command);
   return app;
 }
 
@@ -117,7 +115,7 @@ export async function restoreFocus(
   platform = currentHostOs(),
 ): Promise<boolean> {
   const saved = focusedTab;
-  if (saved !== undefined && isBrowserApp(app)) {
+  if (saved !== undefined && browserAppOf(app)) {
     const activated = await chromeCall(seam, command, 'tabs.update', JSON.stringify([saved.tabId, { active: true }]));
     const raised = await chromeCall(
       seam,

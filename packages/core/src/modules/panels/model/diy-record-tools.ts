@@ -431,7 +431,7 @@ export function registerRecordTools(
         wire,
         tab: recordedTabOf(),
       });
-      const back = await bringBackWorkbench(ctx);
+      const back = false;
       store.stop(sessionId, Date.now());
       if (flow !== undefined && flow.flowOf(sessionId)?.id === RECORD_FLOW_ID) await flow.finish(sessionId);
       segments.delete(sessionId);

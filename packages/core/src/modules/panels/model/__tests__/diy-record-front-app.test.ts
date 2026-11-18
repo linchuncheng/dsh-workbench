@@ -18,9 +18,10 @@ describe('结束录制后把工作台带回前台', () => {
     expect(await frontAppNow(ctx)).toBe('DeepSeek Harness');
   });
 
-  it('★ 结束录制 → 让适配器把它带回前台', async () => {
+  it('★★ 人还停在录制页（前台是浏览器）→ 收回到工作台', async () => {
     const asked: string[] = [];
     const ctx = ctxWith({
+      frontApp: async () => 'com.google.Chrome',
       bringToFront: async (_ctx, app) => {
         asked.push(app);
         return true;
@@ -32,9 +33,40 @@ describe('结束录制后把工作台带回前台', () => {
     expect(asked).toEqual(['DeepSeek Harness']);
   });
 
+  it('★★ 人已经切去干别的（前台是终端 / 别的应用）→ 不抢焦点', async () => {
+    const asked: string[] = [];
+    const ctx = ctxWith({
+      frontApp: async () => 'com.apple.Terminal',
+      bringToFront: async (_ctx, app) => {
+        asked.push(app);
+        return true;
+      },
+    });
+    rememberWorkbenchApp('DeepSeek Harness');
+
+    expect(await bringBackWorkbench(ctx)).toBe(false);
+    expect(asked).toEqual([]);
+  });
+
+  it('★ 工作台本来就在前台 → 什么都不用做', async () => {
+    const asked: string[] = [];
+    const ctx = ctxWith({
+      frontApp: async () => 'DeepSeek Harness',
+      bringToFront: async (_ctx, app) => {
+        asked.push(app);
+        return true;
+      },
+    });
+    rememberWorkbenchApp('DeepSeek Harness');
+
+    expect(await bringBackWorkbench(ctx)).toBe(true);
+    expect(asked).toEqual([]);
+  });
+
   it('★ 记到就一直带：两处收工（看守与 stop）都问得着，下一场 prepare 才覆盖', async () => {
     const asked: string[] = [];
     const ctx = ctxWith({
+      frontApp: async () => 'com.google.Chrome',
       bringToFront: async (_ctx, app) => {
         asked.push(app);
         return true;

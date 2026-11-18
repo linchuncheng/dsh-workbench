@@ -230,6 +230,7 @@ describe('录制结束那一刻就关窗：先叫醒、再收掉那一扇', () =
         key === WORKBENCH_ADAPTERS
           ? {
               runtime: {
+                frontApp: async () => 'com.google.Chrome',
                 bringToFront: async (_ctx: unknown, app: string) => {
                   brought.push(app);
                   return true;

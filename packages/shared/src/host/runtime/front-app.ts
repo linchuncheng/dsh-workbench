@@ -15,6 +15,12 @@ const WINDOWS_FRONT_APP = [
   '$p',
 ].join('; ');
 
+const BROWSER_APP = /chrome|chromium|edge|brave|vivaldi/i;
+
+export function isBrowserAppName(app: string): boolean {
+  return BROWSER_APP.test(app);
+}
+
 const BUNDLE_ID = /(?:bundleID|"CFBundleIdentifier")="([^"]+)"/;
 
 export function frontAppOf(stdout: string, platform: HostOs): string | undefined {

@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { RecordState } from '@dsh-workbench/shared/host';
-import { adaptersOf, BROWSER_RECORD_SESSION, type Seam } from '@dsh-workbench/shared/host';
+import { adaptersOf, BROWSER_RECORD_SESSION, isBrowserAppName, type Seam } from '@dsh-workbench/shared/host';
 import {
   LIVE_TAIL_LINES,
   keepCaptureFile,
@@ -100,7 +100,12 @@ export async function raiseBrowserNow(ctx: DshHostContext): Promise<boolean> {
 }
 
 export async function bringBackWorkbench(ctx: DshHostContext): Promise<boolean> {
-  if (workbenchApp === undefined) return false;
+  const app = workbenchApp;
+  if (app === undefined) return false;
+  const front = await frontAppNow(ctx);
+  if (front === undefined) return false;
+  if (front === app) return true;
+  if (!isBrowserAppName(front)) return false;
   if (await bringBackOnce(ctx)) return true;
   await pauseFor(BRING_BACK_MS);
   return bringBackOnce(ctx);
