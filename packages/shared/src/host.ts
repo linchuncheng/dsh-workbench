@@ -129,6 +129,8 @@ export * from './host/supply/package-kind.js';
 export * from './host/supply/package-route.js';
 export * from './host/supply/plugin-ledger.js';
 export * from './host/supply/plugin.js';
+export * from './host/supply/pnpm-lock.js';
+export * from './host/supply/pnpm-workspace.js';
 export * from './host/supply/preflight.js';
 export * from './host/supply/provision.js';
 export * from './host/supply/registry-declaration.js';

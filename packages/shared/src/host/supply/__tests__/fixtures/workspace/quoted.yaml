@@ -1,0 +1,4 @@
+# 顶注
+packages:
+  - "@scope/*"
+  - './tools/legacy'

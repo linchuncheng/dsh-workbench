@@ -1,0 +1,7 @@
+# 顶注
+packages:
+  # 行内注释
+  - packages/*
+
+catalog:
+  react: ^19.0.0

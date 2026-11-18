@@ -1,0 +1,6 @@
+packages:
+
+  '@acme/x@1.0.0':
+    resolution:
+      integrity: sha512-abc
+      tarball: https://npm.example.com/team/@acme/x/-/x-1.0.0.tgz
