@@ -1,0 +1,29 @@
+name: pr-tests
+
+"on":
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: unit tests / ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build (except docs)
+        shell: bash
+        run: pnpm run build:libs
+      - name: Unit tests (所有包)
+        shell: bash
+        run: pnpm -w run test
