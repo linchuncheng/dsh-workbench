@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { fakeSeamOf } from './seam-fake';
@@ -213,6 +216,51 @@ describe('createMarketService：update', () => {
     });
 
     await expect(market.update('issues')).rejects.toThrow(/仍是旧版本/);
+  });
+});
+
+describe('createMarketService：update 同批依赖', () => {
+  it('★ 同一份 prefix 下的两个插件，合成一条 pnpm add，不跑两遍', async () => {
+    const prefix = mkdtempSync(join(tmpdir(), 'wb-market-batch-'));
+    const suffix = ` && mkdir -p '${join(prefix, 'peer')}' && ln -s '${join(prefix, 'toolchain')}' '${join(prefix, 'peer')}'`;
+    const commandOf = (name: string, version: string): string =>
+      `pnpm add --dir '${prefix}' 'opencli-plugin-${name}@${version}' --registry 'https://r.example/' --store-dir '${join(prefix, 'store')}' --allow-build='opencli-plugin-${name}'${suffix}`;
+    const two: UnitManifest = {
+      ...unit('issues'),
+      needs: [
+        { kind: 'extension', runtime: 'opencli', name: 'one', commands: ['x'], purpose: '测试' },
+        { kind: 'extension', runtime: 'opencli', name: 'two', commands: ['y'], purpose: '测试' },
+      ],
+    };
+    let ran = false;
+    const fake = createFakeShell(() => {
+      ran = true;
+      return {};
+    });
+    const probe = vi.fn(async (id: string): Promise<UnitCapability> => ({
+      unit: id,
+      status: ran ? 'ok' : 'outdated',
+      needs: ran
+        ? [okState('one'), okState('two')]
+        : [
+            outdatedState('one', { command: commandOf('one', '1.0.0') }),
+            outdatedState('two', { command: commandOf('two', '2.0.0') }),
+          ],
+    }));
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [two],
+      probe,
+      seam: fakeSeamOf(fake.shell),
+    });
+
+    await market.update('issues');
+
+    expect(fake.commands()).toHaveLength(1);
+    expect(fake.commands()[0]).toContain("'opencli-plugin-one@1.0.0' 'opencli-plugin-two@2.0.0'");
+    expect(fake.commands()[0]?.match(/--allow-build=/gu)).toHaveLength(2);
+    expect(fake.commands()[0]?.match(/ln -s/gu)).toHaveLength(1);
+    rmSync(prefix, { recursive: true, force: true });
   });
 });
 
