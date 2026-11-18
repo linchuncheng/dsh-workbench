@@ -11,6 +11,7 @@ import type { Seam } from '@dsh-workbench/shared/host';
 import { quoteShellArg, runningVersionOf } from '@dsh-workbench/shared/host';
 import { dshVersionIn } from '@dsh-workbench/shared/host';
 import { createInstallRunner } from './market-install-run';
+import { mergeInstallCommands } from './market-batch';
 import {
   affectedUnitsOf,
   findDependency,
@@ -324,14 +325,32 @@ export function createMarketService(options: {
           (state.kind === 'extension' || state.kind === 'lib') &&
           (state.status === 'outdated' || state.status === 'unsatisfied'),
       );
-      for (const state of stale) {
-        if (state.kind === 'lib') supply.beforeLibInstall();
-        await run(
-          state.command ?? `${quoteShellArg(command)} plugin update ${quoteShellArg(state.name)}`,
-        );
-        if (state.kind === 'lib') supply.afterLibInstall();
-        logger?.info?.(`[dsh-workbench] 已更新 ${state.name}`);
-      }
+      const lineOf = (state: (typeof stale)[number]): string =>
+        state.command ?? `${quoteShellArg(command)} plugin update ${quoteShellArg(state.name)}`;
+      const runGroup = async (states: readonly (typeof stale)[number][], withLibs: boolean): Promise<void> => {
+        if (states.length === 0) return;
+        const lines = states.map((state) => lineOf(state));
+        const merged = mergeInstallCommands(lines);
+        if (withLibs) supply.beforeLibInstall();
+        try {
+          if (merged !== undefined) {
+            await run(merged);
+          } else {
+            for (const line of lines) await run(line);
+          }
+        } finally {
+          if (withLibs) supply.afterLibInstall();
+        }
+        for (const state of states) logger?.info?.(`[dsh-workbench] 已更新 ${state.name}`);
+      };
+      await runGroup(
+        stale.filter((state) => state.kind === 'lib'),
+        true,
+      );
+      await runGroup(
+        stale.filter((state) => state.kind === 'extension'),
+        false,
+      );
       if (stale.length === 0 && before.status === 'outdated') {
         throw new Error(`没有可执行的更新命令（这一格还是旧的样子：${before.detail ?? ''}）`);
       }
