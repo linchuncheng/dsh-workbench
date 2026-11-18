@@ -9,7 +9,7 @@ import { actBrowser } from './diy-browser-act';
 import type { Wire } from './diy-browser';
 import { deliverDebugNotice, noticeMessage, type AgentsLookup } from '@/shared/api/host/diy-debug-act';
 import { appendCaptureLine, readCaptureRound, readCaptureText, stopLiveCapture } from '@/shared/api/host/diy-capture-live';
-import { captureLineOf } from './diy-record-capture';
+import { captureEntriesOf, captureLineOf, segmentOf } from './diy-record-capture';
 import { recordPageOf } from './diy-record-text';
 import type { RecordCall } from './diy-record-text';
 import { DIY_RECORD_DETAIL_TOOL, DIY_RECORD_READ_TOOL } from '../unit';
@@ -78,6 +78,7 @@ async function leftoversAndStop(input: WatchFinishDeps): Promise<{ readonly stop
 async function finishWatcher(
   input: WatchFinishDeps,
   keepCapture: boolean,
+  state?: { readonly t0?: number | null; readonly t1?: number | null },
 ): Promise<{ readonly stop: true; readonly delivered: false }> {
   if (keepCapture) await stopCaptureQuiet(input);
   try {
@@ -90,18 +91,28 @@ async function finishWatcher(
       input.wire,
     );
     const page = recordPageOf(step.payload);
-    if (page.ok) await keepHookCalls(input, page.calls);
+    if (page.ok) await keepHookCalls(input, page.calls, state);
   } catch {}
   await bringBackWorkbench(input.ctx);
   await takeSnapOf(input.seam, input.command, input.captureFile, input.wire);
   return { stop: true, delivered: false };
 }
 
-async function keepHookCalls(input: WatchFinishDeps, calls: readonly RecordCall[]): Promise<boolean> {
+async function keepHookCalls(
+  input: WatchFinishDeps,
+  calls: readonly RecordCall[],
+  state?: { readonly t0?: number | null; readonly t1?: number | null },
+): Promise<boolean> {
   if (calls.length === 0) return false;
   const captured = readCaptureText(input.captureFile).text;
   const failed = readCaptureRound(input.captureFile) === 'fail';
-  if (captured.trim() !== '' && !failed) return false;
+  if (failed) return appendCaptureLine(input.captureFile, captureLineOf(calls));
+  const t0 = state?.t0 ?? null;
+  const t1 = state?.t1 ?? null;
+  if (t0 !== null && t1 !== null) {
+    const inside = segmentOf(captureEntriesOf(captured), t0, t1).inside;
+    if (inside.length > 0) return false;
+  }
   return appendCaptureLine(input.captureFile, captureLineOf(calls));
 }
 
@@ -111,7 +122,7 @@ export async function watchFinishStepOf(
   const live = input.store.live(Date.now());
   if (live === null) return leftoversAndStop(input);
   if (live.sessionId !== input.sessionId) return { stop: true, delivered: false };
-  if (live.phase === 'finished') return finishWatcher(input, false);
+  if (live.phase === 'finished') return finishWatcher(input, false, live);
   let page: ReturnType<typeof recordPageOf>;
   try {
     const step = await actBrowser(
@@ -129,7 +140,7 @@ export async function watchFinishStepOf(
   const held = input.store.live(Date.now());
   if (held === null) return leftoversAndStop(input);
   if (held.sessionId !== input.sessionId) return { stop: true, delivered: false };
-  if (held.phase === 'finished') return finishWatcher(input, true);
+  if (held.phase === 'finished') return finishWatcher(input, true, held);
   if (!page.ok) {
     const left = await recordTabCount(input);
     return left === 0 ? finishWatcher(input, true) : { stop: false, delivered: false };

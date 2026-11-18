@@ -1,10 +1,17 @@
 .root {
   box-sizing: border-box;
-  width: 100%;
-  max-width: min(
-    var(--dsh-composer-card-max-width, var(--wb-len-960)),
-    calc(100% - var(--wb-len-32))
+  flex: none;
+  width: calc(
+    100% - var(--dsh-composer-side-clearance, 0px) - var(--dsh-composer-side-clearance, 0px) -
+      var(--dsh-composer-dock-inset, 0px) - var(--dsh-composer-dock-inset, 0px) -
+      var(--dsh-composer-dock-inset, 0px) - var(--dsh-composer-dock-inset, 0px)
   );
+  max-width: calc(
+    var(--dsh-composer-card-max-width, var(--wb-len-960)) - var(--dsh-composer-dock-inset, 0px) -
+      var(--dsh-composer-dock-inset, 0px) - var(--dsh-composer-dock-inset, 0px) -
+      var(--dsh-composer-dock-inset, 0px)
+  );
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
   margin: 0 auto;
   overflow: hidden;
   border-radius: var(--dsw-radius-lg);
