@@ -169,6 +169,11 @@ are listed under `suites`. `scripts/ci/platform-tests.mjs` reads that manifest, 
 package and runs them on every leg, so adding a platform branch or test edits the manifest rather
 than the workflow.
 
+A test file that reads a host fact directly (`process.platform`, `USERPROFILE`, `ComSpec`,
+`taskkill`) must be listed under some `sites[].tests` or `suites`. The judge scans
+`packages/**/*.test.*`; an unregistered host-fact test fails it. Passing `'win32'` as an explicit
+string argument to a pure renderer is not a host fact and can stay in the normal gate.
+
 The `selfcheck` judge 「跨平台调用点」 checks the manifest against the source, the test files, the
 workflow matrix and that the runner runs on every OS leg. It also checks that
 `scripts/smoke/index.mjs` is invoked by `platform-smoke`, so a script added to that directory is
