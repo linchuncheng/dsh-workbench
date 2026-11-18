@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -163,5 +163,14 @@ describe('workspaceDirsOf：glob 展开', () => {
     const root = tempRoot();
     dirsOf(root, ['packages/a']);
     expect(workspaceDirsOf(root, ['packages/*', 'packages/a'])).toEqual([join(root, 'packages/a')]);
+  });
+
+  it('软链到工作区外的目录也返回，由调用方判 insideRoot', () => {
+    const root = tempRoot();
+    const outside = tempRoot();
+    dirsOf(root, ['packages']);
+    mkdirSync(join(outside, 'pkg'), { recursive: true });
+    symlinkSync(join(outside, 'pkg'), join(root, 'packages', 'linked'), 'dir');
+    expect(workspaceDirsOf(root, ['packages/*'])).toEqual([join(root, 'packages', 'linked')]);
   });
 });

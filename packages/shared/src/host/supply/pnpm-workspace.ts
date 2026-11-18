@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { asRecord } from '../../contract/guards.js';
 import { join } from 'node:path';
 
@@ -87,12 +87,21 @@ export function workspaceDeclarationIn(root: string): WorkspaceDeclaration {
 }
 
 const GLOB_OPTIONS = {
-  onlyDirectories: true,
+  onlyFiles: false,
+  followSymbolicLinks: true,
   absolute: true,
   expandDirectories: false,
   dot: false,
   ignore: ['**/node_modules', '**/node_modules/**'],
 };
+
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
 
 function withoutTrailing(path: string): string {
   if (path === '/' || /^[A-Za-z]:[\\/]$/u.test(path)) return path;
@@ -103,13 +112,29 @@ function inNodeModules(path: string): boolean {
   return path.split(/[\\/]+/u).includes('node_modules');
 }
 
+function symlinkDirsOf(root: string, pattern: string): readonly string[] {
+  const clean = pattern.replace(/^\.\//u, '').replace(/\/+$/u, '');
+  if (!clean.endsWith('/*')) return [];
+  const base = join(root, clean.slice(0, -2));
+  try {
+    return readdirSync(base, { withFileTypes: true })
+      .filter((entry) => entry.isSymbolicLink())
+      .map((entry) => join(base, entry.name))
+      .filter((dir) => isDirectory(dir) && !inNodeModules(dir));
+  } catch {
+    return [];
+  }
+}
+
 function dirsOfPattern(root: string, pattern: string): readonly string[] {
   const clean = pattern.replace(/^\.\//u, '').replace(/\/+$/u, '');
   if (clean === '' || clean === '.') return [root];
   try {
-    return globSync([clean], { ...GLOB_OPTIONS, cwd: root })
-      .map(withoutTrailing)
-      .filter((dir) => !inNodeModules(dir))
+    return [
+      ...globSync([clean], { ...GLOB_OPTIONS, cwd: root }).map(withoutTrailing),
+      ...symlinkDirsOf(root, clean),
+    ]
+      .filter((dir) => !inNodeModules(dir) && isDirectory(dir))
       .sort();
   } catch (error) {
     throw new PnpmConfigError(
