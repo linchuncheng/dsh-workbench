@@ -9,9 +9,17 @@ name: desktop-smoke-windows
       label:
         type: string
         required: true
+      desktopMode:
+        type: string
+        required: false
+        default: pinned
+      browserMode:
+        type: string
+        required: false
+        default: pinned
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   smoke:
@@ -20,6 +28,8 @@ jobs:
     timeout-minutes: 25
     env:
       DESKTOP_SMOKE_OS: ${{ inputs.label }}
+      DESKTOP_SMOKE_DESKTOP_MODE: ${{ inputs.desktopMode }}
+      DESKTOP_SMOKE_BROWSER_MODE: ${{ inputs.browserMode }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -29,14 +39,28 @@ jobs:
       - name: Build local workbench (except docs)
         run: pnpm run build:libs
       - name: Install Desktop
+        timeout-minutes: 10
         shell: pwsh
         run: |
           $installer = Join-Path $env:RUNNER_TEMP 'dsh-desktop-${{ inputs.label }}.exe'
-          Invoke-WebRequest -Uri 'https://download.deepseek.com/desktop/dsh-latest-windows-x64.exe' -OutFile $installer
+          if ($env:DESKTOP_SMOKE_DESKTOP_MODE -eq 'latest') {
+            Invoke-WebRequest -Uri 'https://download.deepseek.com/desktop/dsh-latest-windows-x64.exe' -OutFile $installer
+          } else {
+            $url = $env:DESKTOP_SMOKE_DESKTOP_WIN_URL
+            $expected = $env:DESKTOP_SMOKE_DESKTOP_WIN_ETAG
+            $head = Invoke-WebRequest -Method Head -Uri $url
+            $etag = ([string]$head.Headers.ETag).Trim('"')
+            if ($etag -ne $expected) { throw "Desktop 版本漂了：fixture $expected，上游 $etag" }
+            Invoke-WebRequest -Uri $url -OutFile $installer
+          }
           $install = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "installer failed: $($install.ExitCode)" }
-          Start-Sleep -Seconds 10
-          $exe = Get-ChildItem -Path @("$env:LOCALAPPDATA\Programs", "$env:ProgramFiles", "${env:ProgramFiles(x86)}") -Filter 'DeepSeek Harness.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          $deadline = (Get-Date).AddSeconds(120)
+          $exe = $null
+          while ($null -eq $exe -and (Get-Date) -lt $deadline) {
+            $exe = Get-ChildItem -Path @("$env:LOCALAPPDATA\Programs", "$env:ProgramFiles", "${env:ProgramFiles(x86)}") -Filter 'DeepSeek Harness.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($null -eq $exe) { Start-Sleep -Seconds 2 }
+          }
           if ($null -eq $exe) { throw 'DeepSeek Harness.exe not found' }
           "DESKTOP_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Assert default user has no opencli
@@ -45,8 +69,10 @@ jobs:
           if (Get-Command opencli -ErrorAction SilentlyContinue) { throw 'opencli is preinstalled; this smoke must start without it' }
           'opencli: missing (expected)'
       - name: Prepare opencli browser extension
+        timeout-minutes: 10
         run: node scripts/desktop-smoke/prepare-browser.mjs
       - name: Open Desktop, install workbench and market module, restart once
+        timeout-minutes: 15
         shell: pwsh
         env:
           DESKTOP_WORKBENCH_SPEC: ${{ github.workspace }}\packages\core
@@ -120,25 +146,21 @@ jobs:
             return $false
           }
           Stop-App
-          Start-Sleep -Seconds 2
           $app = Start-App 9222 $out $err
           "desktop pid: $($app.Id)"
           if (-not (Wait-Page 9222)) { throw 'first instance produced no page' }
           Invoke-Logged 'probe-install' { node scripts/desktop-smoke/cdp-probe.mjs 9222 desktop-${{ inputs.label }}.png --install-via-ui }
           Stop-App
-          Start-Sleep -Seconds 3
           $app2 = Start-App 9223 $out2 $err2
           "restarted desktop pid: $($app2.Id)"
           if (-not (Wait-Page 9223)) {
             'restart produced no page; trying once more'
             Stop-App
-            Start-Sleep -Seconds 3
             $app2 = Start-App 9223 $out2 $err2
             if (-not (Wait-Page 9223)) { throw 'restart still produced no page' }
           }
           Invoke-Logged 'probe-after-restart' { node scripts/desktop-smoke/cdp-probe.mjs 9223 desktop-${{ inputs.label }}-after-restart.png --verify-only --expect-workbench }
           Stop-App
-          Start-Sleep -Seconds 3
           $app5 = Start-App 9226 $out5 $err5
           "add-plugin desktop pid: $($app5.Id)"
           if (-not (Wait-Page 9226)) { throw 'add-plugin instance produced no page' }
@@ -147,7 +169,6 @@ jobs:
           # 自更新这条 E2E 已经立住：三段都按硬判据走，红就挡这条腿。
           $appRoot = Join-Path $env:USERPROFILE '.dsh'
           Stop-App
-          Start-Sleep -Seconds 3
           Invoke-Logged 'update-fixture' { node scripts/desktop-smoke/self-update-update-fixture.mjs $appRoot 'desktop' $env:DESKTOP_SMOKE_UPDATE_FROM }
           $app6 = Start-App 9227 $out6 $err6
           "self-update desktop pid: $($app6.Id)"
@@ -161,14 +182,12 @@ jobs:
           if ($to -eq '') { throw "update-probe: 探针没写出 $ready，或里面没有 to" }
           $env:DESKTOP_SMOKE_EXPECT_RUNNING_VERSION = $to
           Stop-App
-          Start-Sleep -Seconds 3
           $app7 = Start-App 9228 $out7 $err7
           "after-self-update desktop pid: $($app7.Id)"
           if (!(Wait-Page 9228)) { throw 'update-after-restart: 起 9228 后没有页面' }
           if (-not (Invoke-Allowed 'update-after-restart' { node scripts/desktop-smoke/cdp-probe.mjs 9228 desktop-${{ inputs.label }}-after-self-update.png --verify-only --expect-workbench })) {
             Write-Host '第一次重启后体检没过：再启一次（换链后的头一跑偶发拿不到宿主路由）'
             Stop-App
-            Start-Sleep -Seconds 3
             $app8 = Start-App 9228 $out7 $err7
             "after-self-update retry desktop pid: $($app8.Id)"
             if (-not (Wait-Page 9228)) { throw 'update-after-restart: 重试时起 9228 后没有页面' }
@@ -176,6 +195,7 @@ jobs:
           }
           $global:LASTEXITCODE = 0
       - name: Assert opencli installed
+        timeout-minutes: 5
         shell: pwsh
         run: |
           if ([string]::IsNullOrEmpty($env:DESKTOP_SMOKE_OPENCLI)) { throw 'prepare-browser 没导出 DESKTOP_SMOKE_OPENCLI' }
@@ -188,6 +208,7 @@ jobs:
           & $bin --version
           if ($LASTEXITCODE -ne 0) { throw "opencli --version failed: $LASTEXITCODE" }
       - name: Assert module installed
+        timeout-minutes: 5
         shell: pwsh
         run: |
           $env:SMOKE_MANIFEST = "$env:USERPROFILE\.dsh\profiles\desktop\package.json"
@@ -201,6 +222,7 @@ jobs:
           console.log(name, spec ?? 'bundle');
           "
       - name: Assert opencli plugin installed
+        timeout-minutes: 5
         shell: pwsh
         run: |
           if ([string]::IsNullOrEmpty($env:DESKTOP_SMOKE_PLUGIN)) { throw 'DESKTOP_SMOKE_PLUGIN is empty' }
@@ -240,13 +262,11 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: Get-Process | Where-Object { $_.ProcessName -like '*DeepSeek*' } | Stop-Process -Force -ErrorAction SilentlyContinue
-      - name: Publish logs
-        if: failure()
+      - name: Collect logs
+        if: failure() || cancelled()
         continue-on-error: true
         shell: bash
         run: |
-          git config user.name ci
-          git config user.email ci@example.com
           shopt -s nullglob
           {
             echo "== self-update.json"; cat "$USERPROFILE/.dsh/workbench/self-update.json" 2>/dev/null
@@ -275,21 +295,29 @@ jobs:
                      "$APPDATA/DeepSeek Harness/logs"/*.log "$LOCALAPPDATA/DeepSeek Harness/logs"/*.log; do
             cp "$log" "./desktop-${{ inputs.label }}-dsh-$(basename "$log")" 2>/dev/null || true
           done
-          files=(desktop-${{ inputs.label }}*.png desktop-${{ inputs.label }}*.txt desktop-${{ inputs.label }}*.json desktop-${{ inputs.label }}*.log)
-          if [ ${#files[@]} -gt 0 ]; then
-            git add -f "${files[@]}"
-            git commit -m "ci: windows desktop smoke log [skip ci]" || true
-          fi
-          git push origin HEAD:desktop-ui-log-${{ inputs.label }}-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         if: always()
         continue-on-error: true
         with:
           name: desktop-smoke-windows-${{ inputs.label }}
           if-no-files-found: warn
+          retention-days: 14
           path: |
             desktop-${{ inputs.label }}*.png
             desktop-${{ inputs.label }}*.txt
             desktop-${{ inputs.label }}*.json
             desktop-${{ inputs.label }}*.log
 
+      - name: Summarize failure
+        if: failure() || cancelled()
+        shell: bash
+        run: |
+          {
+            echo "## desktop smoke / windows (${{ inputs.label }})"
+            for f in desktop-${{ inputs.label }}*.log; do
+              if [ -f "$f" ]; then
+                echo "### $f"
+                tail -n 100 "$f"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -24,7 +24,8 @@
     "lint": "eslint src bin scripts",
     "arch": "arch-guard",
     "check": "pnpm run lint && pnpm run arch && pnpm run selfcheck",
-    "selfcheck": "node scripts/selfcheck/index.mjs"
+    "selfcheck": "node scripts/selfcheck/index.mjs",
+    "test": "vitest run --testTimeout=20000"
   },
   "dependencies": {
     "@arch-guard/core": "^0.12.0",
@@ -37,6 +38,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "execa": "^10.2.0",
     "globals": "^17.13.0",
+    "postcss": "^8.5.31",
     "semver": "^7.8.5",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.71.0"
@@ -51,6 +53,7 @@
     "url": "https://github.com/novaeth/dsh-workbench/issues"
   },
   "devDependencies": {
-    "@types/semver": "^7.8.0"
+    "@types/semver": "^7.8.0",
+    "vitest": "^5.0.2"
   }
 }

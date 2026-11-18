@@ -104,11 +104,11 @@ describe('modulesIn（模块按工作区自己的 workspace 配置找）', () =>
     expect(modulesIn(root).map((one) => one.unit)).toEqual(['demo']);
   });
 
-  it('glob 带 ** 或更怪的形状就跳过（不猜它想说什么）', () => {
+  it('glob 带 ** 也能展开（不再跳过）', () => {
     workspaceFile('packages:\n  - "packages/**"\n');
     scaffold('demo');
 
-    expect(modulesIn(root)).toEqual([]);
+    expect(modulesIn(root).map((one) => one.unit)).toEqual(['demo']);
   });
 });
 

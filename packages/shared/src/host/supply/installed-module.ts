@@ -4,6 +4,7 @@ import type { DshHostContext } from '../../api/dsh.js';
 import { asRecord } from '../../contract/guards.js';
 import { declarationProblemsOf, readDeclaration } from '../../contract/unit-declaration.js';
 import { packageSourceOf } from './installed-sources.js';
+import { lockEntryMapOf, type LockEntry } from './pnpm-lock.js';
 import { npmrcEntries } from './npmrc.js';
 import { scopeOf } from '../adapters/adapter-types.js';
 import { workbenchRoot } from '../data/data-root.js';
@@ -53,8 +54,9 @@ export function profileModules(profileDir: string | null): readonly ProfileModul
   const dependencies = asRecord(record.dependencies) ?? {};
   const names = bundles.length > 0 ? bundles : Object.keys(dependencies);
   const found: ProfileModule[] = [];
+  const lock = lockLookupOf(profileDir);
   for (const pkg of names) {
-    const read = readInstalledModule(profileDir, pkg);
+    const read = readInstalledModule(profileDir, pkg, lock);
     if (read.kind === 'module') {
       const spec = asText(dependencies[read.pkg]);
       found.push({
@@ -93,25 +95,13 @@ export function createDeclarationLookup(
   };
 }
 
-function registryFromLockfile(profileDir: string, pkg: string): string | undefined {
-  let text: string;
+function lockLookupOf(profileDir: string | null): ReadonlyMap<string, LockEntry> | undefined {
+  if (profileDir === null) return undefined;
   try {
-    text = fs.readFileSync(path.join(profileDir, 'pnpm-lock.yaml'), 'utf8');
+    return lockEntryMapOf(fs.readFileSync(path.join(profileDir, 'pnpm-lock.yaml'), 'utf8'));
   } catch {
     return undefined;
   }
-  const at = text.indexOf(`  ${pkg}@`);
-  const quoted = at === -1 ? text.indexOf(`  '${pkg}@`) : at;
-  if (quoted === -1) return undefined;
-  const headerEnd = text.indexOf('\n', quoted);
-  const end = headerEnd === -1 ? -1 : text.indexOf('\n  ', headerEnd + 1);
-  const block = text.slice(quoted, end === -1 ? quoted + 900 : end);
-  const match = /tarball:\s*([^\s,}]+)/.exec(block);
-  const tarball = match?.[1];
-  if (tarball === undefined || !tarball.startsWith('http')) return undefined;
-  const cut = tarball.lastIndexOf(`/${pkg}/`);
-  if (cut <= 'https://'.length) return undefined;
-  return tarball.slice(0, cut);
 }
 
 function unquoted(value: string): string {
@@ -142,12 +132,13 @@ function registryOf(
   profileDir: string,
   pkg: string,
   manifest: Readonly<Record<string, unknown>>,
+  lock?: ReadonlyMap<string, LockEntry> | undefined,
 ): string | undefined {
   const declared = asText(asRecord(manifest.publishConfig)?.registry);
   if (declared !== '') return declared;
   const recorded = packageSourceOf(profileDir, pkg);
   if (recorded !== undefined) return recorded.registry;
-  const locked = registryFromLockfile(profileDir, pkg);
+  const locked = (lock ?? lockLookupOf(profileDir))?.get(pkg)?.registry;
   return locked === undefined ? registryFromNpmrc(profileDir, pkg) : locked;
 }
 
@@ -203,7 +194,11 @@ export function declaredPluginCommands(profileDir: string | null): ReadonlyMap<s
   return declared;
 }
 
-export function readInstalledModule(profileDir: string | null, pkg: string): InstalledModule {
+export function readInstalledModule(
+  profileDir: string | null,
+  pkg: string,
+  lock?: ReadonlyMap<string, LockEntry> | undefined,
+): InstalledModule {
   if (profileDir === null || !isPackageName(pkg)) return { kind: 'unknown', pkg };
   let manifest: unknown;
   try {
@@ -216,7 +211,7 @@ export function readInstalledModule(profileDir: string | null, pkg: string): Ins
   const declared = asRecord(asRecord(record.dsh)?.workbench);
   const unit = declared === undefined ? '' : asText(declared.unit);
   if (unit === '') return { kind: 'not-module', pkg };
-  const registry = registryOf(profileDir, pkg, record);
+  const registry = registryOf(profileDir, pkg, record, lock);
   return {
     kind: 'module',
     pkg,

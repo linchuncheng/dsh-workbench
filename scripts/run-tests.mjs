@@ -52,7 +52,24 @@ const runOne = ({ name, script }) => {
     });
 };
 
-const results = await Promise.all(targets.map(runOne));
+function concurrencyOf() {
+  const configured = Number(process.env.WB_TEST_CONCURRENCY ?? "");
+  if (Number.isInteger(configured) && configured > 0) return Math.min(configured, targets.length);
+  return process.env.CI ? Math.min(3, targets.length) : targets.length;
+}
+
+const limit = concurrencyOf();
+console.log(`\n测试并发：${limit}/${targets.length}`);
+const results = new Array(targets.length);
+let next = 0;
+const worker = async () => {
+  while (next < targets.length) {
+    const index = next;
+    next += 1;
+    results[index] = await runOne(targets[index]);
+  }
+};
+await Promise.all(Array.from({ length: limit }, () => worker()));
 const failed = results
   .filter((result) => result.status !== 0)
   .map((result) => `${result.name}（${result.script}，exit ${result.status ?? "信号中断"}）`);

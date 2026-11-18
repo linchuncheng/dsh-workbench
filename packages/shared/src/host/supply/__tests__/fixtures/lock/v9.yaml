@@ -1,0 +1,12 @@
+lockfileVersion: '9.0'
+
+packages:
+
+  '@acme/module-inventory@0.1.7':
+    resolution: {integrity: sha512-abc, tarball: https://npm.example.com/team/@acme/module-inventory/-/module-inventory-0.1.7.tgz}
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-def}
+
+  '@acme/module-inventory@0.2.0':
+    resolution: {integrity: sha512-xyz, tarball: https://npm.example.com/team/@acme/module-inventory/-/module-inventory-0.2.0.tgz}

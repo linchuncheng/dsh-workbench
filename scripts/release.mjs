@@ -375,6 +375,12 @@ function assertShippedChangelog(targetVersion, options) {
   console.log(`   ✅ 随包更新日志含 v${targetVersion}`);
 }
 
+function checkCompat() {
+  console.log("\n🔒 上游兼容性（pnpm run check:compat）…");
+  sh("pnpm", ["run", "check:compat"]);
+  console.log("   ✅ 没有未解决的 compat issue");
+}
+
 function preflight(options, { checkDirty, targetVersion }) {
   if (checkDirty && !options.allowDirty) {
     const status = sh("git", ["status", "--porcelain"], { capture: true, quiet: true });
@@ -387,6 +393,7 @@ function preflight(options, { checkDirty, targetVersion }) {
   }
   assertChangelog(targetVersion);
   if (options.skipBuild) assertShippedChangelog(targetVersion, options);
+  checkCompat();
   checkNpmLogin();
   if (options.skipGate) {
 

@@ -15,7 +15,7 @@ name: platform-smoke
     - cron: '23 3 * * 1'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: platform-smoke-${{ github.ref }}
@@ -30,11 +30,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             label: linux
-          - os: macos-latest
+          - os: macos-15
             label: mac
-          - os: windows-latest
+          - os: windows-2025
             label: win-2025
           - os: windows-2022
             label: win-2022
@@ -101,16 +101,25 @@ jobs:
           fi
           tail -n 3 selfcheck.log
 
-      - name: Publish smoke logs (失败时推到分支，public 仓读不到 job 日志)
-        if: failure()
-        continue-on-error: true
+      - name: Upload smoke logs
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.label }}-${{ github.run_id }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            *.log
+      - name: Summarize failure
+        if: failure() || cancelled()
         shell: bash
         run: |
-          git config user.name ci
-          git config user.email ci@example.com
-          shopt -s nullglob
-          files=(*.log)
-          if [ ${#files[@]} -eq 0 ]; then echo "没有日志可推"; exit 0; fi
-          git add -f "${files[@]}"
-          git commit -m "ci: platform smoke log [skip ci]" || true
-          git push origin HEAD:smoke-log-${{ matrix.label }}-${{ github.run_id }}
+          {
+            echo "## smoke / ${{ matrix.label }}"
+            for f in *.log; do
+              if [ -f "$f" ]; then
+                echo "### $f"
+                tail -n 100 "$f"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -207,6 +207,14 @@
       "tests": [
         "packages/shared/src/host/shell/__tests__/shell-text.test.ts"
       ]
+    },
+    "packages/module-tools/src/checks/standalone.mjs": {
+      "os": [
+        "win32"
+      ],
+      "tests": [
+        "packages/module-tools/src/__tests__/standalone-signals.test.mjs"
+      ]
     }
   },
   "suites": {
@@ -224,6 +232,16 @@
     ],
     "shell-quote": [
       "packages/shared/src/host/shell/__tests__/windows-quote.test.ts"
+    ],
+    "host-facts": [
+      "packages/adapter-probe/src/install/__tests__/install.test.ts",
+      "packages/adapter-probe/src/runtime/__tests__/bootstrap-run.test.ts",
+      "packages/adapter-probe/src/toolchain/__tests__/toolchain-env.test.ts",
+      "packages/core/src/shared/api/host/__tests__/data-root.test.ts",
+      "packages/core/src/shared/api/host/__tests__/seed-workshop-windows.test.ts",
+      "packages/core/src/shared/api/host/__tests__/windows-launcher.test.ts",
+      "packages/shared/src/host/runtime/__tests__/fs-write.test.ts",
+      "packages/shared/src/host/seam/__tests__/seam.test.ts"
     ]
   }
 }

@@ -1,0 +1,6 @@
+- id: webserver
+  config:
+    port: !!js ctx.webStartup.port ?? 3081
+- insert:
+    - id: workbench
+      name: '@dsh-workbench/core'

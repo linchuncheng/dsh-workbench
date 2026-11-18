@@ -2,16 +2,44 @@ name: desktop-smoke
 
 "on":
   workflow_dispatch:
+    inputs:
+      desktopMode:
+        type: choice
+        options: [pinned, latest]
+        default: pinned
+      browserMode:
+        type: choice
+        options: [pinned, latest]
+        default: pinned
+  workflow_call:
+    inputs:
+      desktopMode:
+        type: string
+        required: false
+        default: pinned
+      browserMode:
+        type: string
+        required: false
+        default: pinned
   push:
     branches: [main]
+  pull_request:
+    paths:
+      - 'scripts/desktop-smoke/**'
+      - 'packages/core/bin/**'
+      - 'packages/core/package.json'
+      - 'packages/core/src/shared/api/host/**'
+      - 'packages/core/src/modules/**'
+      - '.github/workflows/desktop-smoke.yml'
+      - '.github/workflows/desktop-smoke-windows.yml'
   schedule:
     - cron: '17 2 * * 1'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: desktop-smoke-${{ github.ref }}
+  group: desktop-smoke-${{ github.ref }}-${{ inputs.desktopMode || 'pinned' }}-${{ inputs.browserMode || 'pinned' }}
   cancel-in-progress: true
 
 jobs:
@@ -21,6 +49,8 @@ jobs:
     with:
       image: windows-2025
       label: win11
+      desktopMode: ${{ inputs.desktopMode || 'pinned' }}
+      browserMode: ${{ inputs.browserMode || 'pinned' }}
 
   windows-10:
     name: desktop / windows 10-class (server 2022)
@@ -28,13 +58,17 @@ jobs:
     with:
       image: windows-2022
       label: win10
+      desktopMode: ${{ inputs.desktopMode || 'pinned' }}
+      browserMode: ${{ inputs.browserMode || 'pinned' }}
 
   macos:
     name: desktop / macos arm64
-    runs-on: macos-latest
+    runs-on: macos-15
     timeout-minutes: 25
     env:
       DESKTOP_SMOKE_OS: mac
+      DESKTOP_SMOKE_DESKTOP_MODE: ${{ inputs.desktopMode || 'pinned' }}
+      DESKTOP_SMOKE_BROWSER_MODE: ${{ inputs.browserMode || 'pinned' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -44,9 +78,21 @@ jobs:
       - name: Build local workbench (except docs)
         run: pnpm run build:libs
       - name: Install Desktop
+        timeout-minutes: 10
         shell: bash
         run: |
-          curl -fL --retry 2 -o "$RUNNER_TEMP/dsh-desktop-mac.dmg" "https://download.deepseek.com/desktop/dsh-latest-macos-arm64.dmg"
+          if [ "${DESKTOP_SMOKE_DESKTOP_MODE:-pinned}" = "latest" ]; then
+            curl -fL --retry 2 -o "$RUNNER_TEMP/dsh-desktop-mac.dmg" "https://download.deepseek.com/desktop/dsh-latest-macos-arm64.dmg"
+          else
+            url="$DESKTOP_SMOKE_DESKTOP_MAC_URL"
+            expected="$DESKTOP_SMOKE_DESKTOP_MAC_ETAG"
+            etag=$(curl -sSI --retry 2 --max-time 30 "$url" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag"{print $2; exit}' | tr -d '"')
+            if [ "$etag" != "$expected" ]; then
+              echo "::error title=Desktop 版本漂了::fixture $expected，上游 $etag"
+              exit 1
+            fi
+            curl -fL --retry 2 -o "$RUNNER_TEMP/dsh-desktop-mac.dmg" "$url"
+          fi
           hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dsh-mnt" "$RUNNER_TEMP/dsh-desktop-mac.dmg"
           cp -R "$RUNNER_TEMP/dsh-mnt/DeepSeek Harness.app" /Applications/
           hdiutil detach "$RUNNER_TEMP/dsh-mnt"
@@ -57,8 +103,10 @@ jobs:
           if command -v opencli >/dev/null 2>&1; then echo "unexpected opencli: $(command -v opencli)"; exit 1; fi
           echo 'opencli: missing (expected)'
       - name: Prepare opencli browser extension
+        timeout-minutes: 10
         run: node scripts/desktop-smoke/prepare-browser.mjs
       - name: Open Desktop, install workbench and market module, restart once
+        timeout-minutes: 15
         shell: bash
         env:
           DESKTOP_WORKBENCH_SPEC: ${{ github.workspace }}/packages/core
@@ -78,7 +126,10 @@ jobs:
               sleep 1
             done
             pkill -9 -f 'DeepSeek Harness' 2>/dev/null || true
-            sleep 2
+            for _ in $(seq 1 5); do
+              if ! pgrep -f 'DeepSeek Harness' >/dev/null 2>&1; then return 0; fi
+              sleep 1
+            done
           }
           start_app() {
             ( cd / && exec "$BIN" --remote-debugging-port="$1" >> "$APP_LOG" 2>> "$APP_ERR" ) &
@@ -117,30 +168,25 @@ jobs:
             return 1
           }
           stop_app
-          sleep 2
           start_app 9222
           if ! wait_page 9222; then echo 'first instance produced no page'; exit 1; fi
           run_logged probe-install node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9222 desktop-mac.png --install-via-ui
           stop_app
-          sleep 2
           start_app 9223
           if ! wait_page 9223; then
             echo 'restart produced no page; trying once more'
             stop_app
-            sleep 3
             start_app 9223
             wait_page 9223 || { echo 'restart still produced no page'; exit 1; }
           fi
           run_logged probe-after-restart node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9223 desktop-mac-after-restart.png --verify-only --expect-workbench
           stop_app
-          sleep 2
           start_app 9226
           if ! wait_page 9226; then echo 'add-plugin instance produced no page'; exit 1; fi
           run_logged add-plugin-probe node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9226 desktop-mac-add-plugin.png --add-plugin "$DESKTOP_SMOKE_PLUGIN"
           # 自更新这条 E2E 已经立住：三段都按硬判据走，红就挡这条腿。
           # 夹具要在 app 关着时把 profile 翻成"已迁移"的链接形态：先停掉上一个实例。
           stop_app
-          sleep 2
           run_logged update-fixture node "$GITHUB_WORKSPACE/scripts/desktop-smoke/self-update-update-fixture.mjs" "$HOME/.dsh" desktop "$DESKTOP_SMOKE_UPDATE_FROM"
           start_app 9227
           if ! wait_page 9227; then
@@ -156,7 +202,6 @@ jobs:
           fi
           export DESKTOP_SMOKE_EXPECT_RUNNING_VERSION="$to"
           stop_app
-          sleep 2
           start_app 9228
           if ! wait_page 9228; then
             echo "::error title=update-after-restart::起 9228 后没有页面"
@@ -165,7 +210,6 @@ jobs:
           if ! run_logged_allowed update-after-restart node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9228 desktop-mac-after-self-update.png --verify-only --expect-workbench; then
             echo "第一次重启后体检没过：再启一次（换链后的头一跑在 Windows/mac 上偶发拿不到宿主路由）"
             stop_app
-            sleep 3
             start_app 9228
             if ! wait_page 9228; then
               echo "::error title=update-after-restart::重试时起 9228 后没有页面"
@@ -174,6 +218,7 @@ jobs:
             run_logged update-after-restart-retry node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9228 desktop-mac-after-self-update-retry.png --verify-only --expect-workbench
           fi
       - name: Assert opencli installed
+        timeout-minutes: 5
         shell: bash
         run: |
           if [ -z "${DESKTOP_SMOKE_OPENCLI:-}" ]; then
@@ -186,6 +231,7 @@ jobs:
           fi
           "$DESKTOP_SMOKE_OPENCLI" --version
       - name: Assert module installed
+        timeout-minutes: 5
         shell: bash
         run: |
           export SMOKE_MANIFEST="$HOME/.dsh/profiles/desktop/package.json"
@@ -199,6 +245,7 @@ jobs:
           console.log(name, spec ?? 'bundle');
           "
       - name: Assert opencli plugin installed
+        timeout-minutes: 5
         shell: bash
         run: |
           if [ -z "${DESKTOP_SMOKE_PLUGIN:-}" ]; then
@@ -243,13 +290,11 @@ jobs:
         continue-on-error: true
         shell: bash
         run: pkill -f 'DeepSeek Harness' 2>/dev/null || true
-      - name: Publish logs
-        if: failure()
+      - name: Collect logs
+        if: failure() || cancelled()
         continue-on-error: true
         shell: bash
         run: |
-          git config user.name ci
-          git config user.email ci@example.com
           shopt -s nullglob
           {
             echo "== self-update.json"; cat "$HOME/.dsh/workbench/self-update.json" 2>/dev/null
@@ -269,20 +314,28 @@ jobs:
           for log in "$HOME"/.dsh/*.log "$HOME"/.dsh/logs/*.log; do
             cp "$log" "./desktop-mac-dsh-$(basename "$log")" 2>/dev/null || true
           done
-          files=(desktop-mac*.png desktop-mac*.txt desktop-mac*.json desktop-mac*.log)
-          if [ ${#files[@]} -gt 0 ]; then
-            git add -f "${files[@]}"
-            git commit -m "ci: macos desktop smoke log [skip ci]" || true
-          fi
-          git push origin HEAD:desktop-ui-log-mac-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         if: always()
         continue-on-error: true
         with:
           name: desktop-smoke-macos
           if-no-files-found: warn
+          retention-days: 14
           path: |
             desktop-mac*.png
             desktop-mac*.txt
             desktop-mac*.json
             desktop-mac*.log
+      - name: Summarize failure
+        if: failure() || cancelled()
+        shell: bash
+        run: |
+          {
+            echo "## desktop smoke / macos"
+            for f in desktop-mac*.log; do
+              if [ -f "$f" ]; then
+                echo "### $f"
+                tail -n 100 "$f"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

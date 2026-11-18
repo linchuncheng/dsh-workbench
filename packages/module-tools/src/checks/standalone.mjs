@@ -7,6 +7,10 @@ const SHELL = '@dsh-workbench/core';
 
 export const title = '独立构建';
 
+export function signalsOf(platform) {
+  return platform === 'win32' ? ['SIGINT'] : ['SIGINT', 'SIGTERM', 'SIGHUP'];
+}
+
 export async function run() {
   const shell = discoverPackages({ root: process.cwd() }).find((pkg) => pkg.manifest.name === SHELL);
   const visible = shell === undefined ? undefined : join(shell.dir, 'src');
@@ -41,12 +45,18 @@ export async function run() {
     if (existsSync(hidden) && !existsSync(visible)) renameSync(hidden, visible);
   };
 
-  const onInterrupt = () => {
+  const signals = signalsOf(process.platform);
+  const handlers = new Map();
+  const stop = (signal) => {
     restore();
-    process.removeListener('SIGINT', onInterrupt);
-    process.kill(process.pid, 'SIGINT');
+    for (const [name, handler] of handlers) process.removeListener(name, handler);
+    process.kill(process.pid, signal);
   };
-  process.on('SIGINT', onInterrupt);
+  for (const signal of signals) {
+    const handler = () => stop(signal);
+    handlers.set(signal, handler);
+    process.on(signal, handler);
+  }
 
   const problems = [];
   renameSync(visible, hidden);
@@ -71,7 +81,7 @@ export async function run() {
     }
   } finally {
     restore();
-    process.removeListener('SIGINT', onInterrupt);
+    for (const [signal, handler] of handlers) process.removeListener(signal, handler);
   }
 
   if (problems.length > 0) {

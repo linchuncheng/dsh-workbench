@@ -646,6 +646,7 @@ export function createAdapterSet(ctx): AdapterSet {
 - `peerDependencies['@dsh-workbench/core']` 管服务面。
 - `host.writes` 声明模块会写哪一档：`unit`（运行时根下自己的数据目录，常开）或 `workspace`（当前会话工作区）；
   没声明就不给执行缝门面。模块起命令走 `deps.seam`，不直接拿 dsh 的 shell 服务（模块判据会拦）。
+  外壳自己的执行缝：`run` 走 dsh 的 `ctx.shell` + `ctx.sandboxPolicy`，不另写 shell；`spawn` / `open` / 宿主后台命令走工作台自己的 process host（detached、双向管道、完整 env）。宿主侧不 require dsh 包，dsh 类型只经 `@dsh-workbench/shared` 的别名层；bash / pwsh 由组合层按 `process.platform` 选，执行缝不翻译方言。
   它不是进程隔离：模块宿主代码与宿主同进程，安全边界仍是「装不装模块 + 审批」。
 - `workbenchFaces` 只给门禁算可达性，运行期不读。
 - 不认识的键会让清单被拒；拼错由 `protocol` 判据与运行时同一套拦下。

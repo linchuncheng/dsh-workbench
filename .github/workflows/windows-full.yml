@@ -1,0 +1,78 @@
+name: windows-full
+
+"on":
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '43 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-full-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: full tests / windows 2025
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      HUSKY: 0
+      WB_TEST_CONCURRENCY: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build (except docs)
+        shell: bash
+        run: pnpm run build:libs
+      - name: Unit tests (coverage)
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm -w run coverage 2>&1 | tee windows-full.log
+      - name: Upload test log
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-full-${{ github.run_id }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: windows-full.log
+      - name: Summarize failure
+        if: failure() || cancelled()
+        shell: bash
+        run: |
+          {
+            echo "## windows full / 2025"
+            if [ -f windows-full.log ]; then
+              tail -n 120 windows-full.log
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  static:
+    name: static checks / windows 2025
+    runs-on: windows-2025
+    timeout-minutes: 20
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build (except docs)
+        shell: bash
+        run: pnpm run build:libs
+      - name: Docs
+        shell: bash
+        run: pnpm run check:docs
+      - name: Architecture
+        shell: bash
+        run: pnpm run arch
+      - name: Copy
+        shell: bash
+        run: pnpm run check:copy:strict
+      - name: Module static checks
+        shell: bash
+        run: pnpm run check:modules:static

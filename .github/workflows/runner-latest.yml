@@ -1,0 +1,52 @@
+name: runner-latest
+
+"on":
+  workflow_dispatch:
+  schedule:
+    - cron: '53 3 * * 1'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: runner-latest
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: runner drift / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux-latest
+          - os: macos-latest
+            label: mac-latest
+    env:
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build (except docs)
+        shell: bash
+        run: pnpm run build:libs
+      - name: Platform tests
+        shell: bash
+        run: node scripts/ci/platform-tests.mjs
+      - name: Open runner drift issue
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create runner-drift --color FBCA04 --description "runner 镜像漂移" 2>/dev/null || true
+          number=$(gh issue list --label runner-drift --state open --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            echo "已存在 runner-drift issue #$number"
+            exit 0
+          fi
+          gh issue create --title "runner-latest: ${{ matrix.label }} 失败" --label runner-drift --body "运行：$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

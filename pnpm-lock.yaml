@@ -20,6 +20,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.7.0))
+      '@puppeteer/browsers':
+        specifier: ^3.2.7
+        version: 3.2.7
       enquirer:
         specifier: ^2.4.1
         version: 2.4.1
@@ -38,6 +41,9 @@ importers:
       gh-pages:
         specifier: ^6.3.0
         version: 6.3.0
+      github-slugger:
+        specifier: ^2.0.0
+        version: 2.0.0
       globals:
         specifier: ^17.13.0
         version: 17.13.0
@@ -47,6 +53,9 @@ importers:
       jscpd:
         specifier: 5.4.2
         version: 5.4.2
+      markdown-it:
+        specifier: ^14.3.3
+        version: 14.3.3
       semver:
         specifier: ^7.8.5
         version: 7.8.5
@@ -234,12 +243,18 @@ importers:
       proper-lockfile:
         specifier: ^4.1.2
         version: 4.1.2
+      tinyglobby:
+        specifier: ^0.2.17
+        version: 0.2.17
       which:
         specifier: ^7.0.0
         version: 7.0.0
       write-file-atomic:
         specifier: ^8.0.0
         version: 8.0.0
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
     devDependencies:
       '@arch-guard/core':
         specifier: ^0.12.0
@@ -352,6 +367,9 @@ importers:
       globals:
         specifier: ^17.13.0
         version: 17.13.0
+      postcss:
+        specifier: ^8.5.31
+        version: 8.5.31
       semver:
         specifier: ^7.8.5
         version: 7.8.5
@@ -365,6 +383,9 @@ importers:
       '@types/semver':
         specifier: ^7.8.0
         version: 7.8.0
+      vitest:
+        specifier: ^5.0.2
+        version: 5.0.2(@types/node@24.19.0)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@24.19.0)(esbuild@0.28.2)(jiti@2.7.0)(less@4.9.1)(sass@1.106.1)(yaml@2.9.1))
 
   packages/shared:
     dependencies:
@@ -386,9 +407,15 @@ importers:
       semver:
         specifier: ^7.8.5
         version: 7.8.5
+      tinyglobby:
+        specifier: ^0.2.17
+        version: 0.2.17
       write-file-atomic:
         specifier: ^8.0.0
         version: 8.0.0
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
     devDependencies:
       '@arch-guard/core':
         specifier: ^0.12.0
@@ -2468,6 +2495,19 @@ packages:
     resolution: {integrity: sha512-QIjosiI1FYnHxxLSc+zsAToUr/NrJGzDvdI5LU2RlJ5dKnwVVhIndz/upPNGNKDaQWZsmFiu95q1pEzvSSHikA==}
     engines: {node: '>=18.12'}
 
+  '@puppeteer/browsers@3.2.7':
+    resolution: {integrity: sha512-B3C/v8OEEaJYcN1IzzgbPmt+GbFANr4Mf/NrqNuGk/dIchrv6quNqxgT+A6qE0Ge0MN95NjKUddcR1JMpYRMWA==}
+    engines: {node: '>=22.12.0'}
+    hasBin: true
+    peerDependencies:
+      proxy-agent: '>=8.0.1'
+      yauzl: ^2.10.0 || ^3.4.0
+    peerDependenciesMeta:
+      proxy-agent:
+        optional: true
+      yauzl:
+        optional: true
+
   '@rolldown/binding-android-arm-eabi@1.2.11':
     resolution: {integrity: sha512-A5kXfGKvKWWZE0TtPrfsvT+q4Y5d1QG8gGUzpYjGydM+fARM9MuX90PrXYXe0XbsDVgyxxNzHo6giCj90bsFNw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -4069,6 +4109,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  github-slugger@2.0.0:
+    resolution: {integrity: sha512-IaOQ9puYtjrkq7Y0Ygl9KDZnrf/aiUJYUpVf89y8kyaxbRG7Y1SrX/jaumrv81vc61+kiMempujsM3Yw7w5qcw==}
+
   glob-parent@3.1.0:
     resolution: {integrity: sha512-E8Ak/2+dZY6fnzlR7+ueWvhsH1SjHr4jjss4YS/h4py44jY9MhK/VFdaZJAWDz6BbL21KeteKxFSFpq8OS5gVA==}
 
@@ -5031,6 +5074,10 @@ packages:
 
   mlly@1.8.2:
     resolution: {integrity: sha512-d+ObxMQFmbt10sretNDytwt85VrbkhhUA/JBGm1MPaWJ65Cl4wOgLaB1NYvJSZ0Ef03MMEU/0xpPMXUIQ29UfA==}
+
+  modern-tar@0.8.6:
+    resolution: {integrity: sha512-LYSks0tNVqbtez/9OB0YFP6qLRSqkdAxJWOQpVaR67lNTbj2zNLyYpowkRMia5lXLCZKzxwoxkxH2MbbBR2aEg==}
+    engines: {node: '>=18.0.0'}
 
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
@@ -8673,6 +8720,11 @@ snapshots:
       write-file-atomic: 5.0.1
       write-yaml-file: 5.0.0
 
+  '@puppeteer/browsers@3.2.7':
+    dependencies:
+      modern-tar: 0.8.6
+      yargs: 18.2.0
+
   '@rolldown/binding-android-arm-eabi@1.2.11':
     optional: true
 
@@ -10554,6 +10606,8 @@ snapshots:
       fs-extra: 11.4.1
       globby: 11.1.0
 
+  github-slugger@2.0.0: {}
+
   glob-parent@3.1.0:
     dependencies:
       is-glob: 3.1.0
@@ -11567,6 +11621,8 @@ snapshots:
       pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.6.4
+
+  modern-tar@0.8.6: {}
 
   mri@1.2.0: {}
 

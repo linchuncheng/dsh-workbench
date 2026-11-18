@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { noWrite, quoteShellArg, type Seam } from '@dsh-workbench/shared/host';
+import { editDistance, noWrite, quoteShellArg, type Seam } from '@dsh-workbench/shared/host';
 
 export const SURFACE_TIMEOUT_MS = 30000;
 export const EXCERPT_LINES = 60;
@@ -158,19 +158,6 @@ export function installedVersionOf(payload: SurfacePayload | undefined): string 
   return typeof version === 'string' ? version : null;
 }
 
-function distance(left: string, right: string): number {
-  let previous = Array.from({ length: right.length + 1 }, (_unused, index) => index);
-  for (let row = 1; row <= left.length; row += 1) {
-    const current = [row];
-    for (let column = 1; column <= right.length; column += 1) {
-      const same = left[row - 1] === right[column - 1] ? 0 : 1;
-      current.push(Math.min((previous[column] ?? 0) + 1, (current[column - 1] ?? 0) + 1, (previous[column - 1] ?? 0) + same));
-    }
-    previous = current;
-  }
-  return previous[right.length] ?? 0;
-}
-
 export function nearNamesOf(name: string, names: readonly string[], limit = NEAR_LIMIT): readonly string[] {
   const wanted = name.toLowerCase();
   return names
@@ -179,7 +166,7 @@ export function nearNamesOf(name: string, names: readonly string[], limit = NEAR
       if (lower.length < 3) return lower === wanted ? [{ one, score: 0 }] : [];
       if (lower.includes(wanted)) return [{ one, score: 0 }];
       if (wanted.includes(lower)) return [{ one, score: 1 }];
-      const typos = distance(lower, wanted);
+      const typos = editDistance(lower, wanted);
       return typos <= 2 ? [{ one, score: typos + 1 }] : [];
     })
     .sort((left, right) => left.score - right.score || left.one.length - right.one.length || left.one.localeCompare(right.one))

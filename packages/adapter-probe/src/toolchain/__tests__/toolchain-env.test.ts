@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 
 import {
   desktopBundledBins,
@@ -45,7 +45,7 @@ describe('Desktop 自带工具链的 PATH', () => {
 
   it('★ 交给 shell 的 env 要带全父进程变量，只把 PATH 换成带自带 bin 的那份', () => {
     const env = desktopRuntimeEnv({ PATH: '/usr/bin', HOME: '/home/u', TERM: 'xterm' }, proc, existsIn([nodeBin, pnpmBin]));
-    expect(env['PATH']).toBe([nodeBin, pnpmBin, '/usr/bin'].join(':'));
+    expect(env['PATH']).toBe([nodeBin, pnpmBin, '/usr/bin'].join(delimiter));
     expect(env['HOME']).toBe('/home/u');
     expect(env['TERM']).toBe('xterm');
     expect(desktopRuntimeEnv({ PATH: '/usr/bin' }, { versions: {}, execPath: '/usr/bin/node' }, existsIn([nodeBin]))).toEqual({});

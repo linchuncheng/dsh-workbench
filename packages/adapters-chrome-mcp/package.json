@@ -19,7 +19,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=20000",
     "arch": "arch-guard",
     "check:runtimes": "node ../../scripts/check-adapter-package.mjs --runtime",
     "coverage": "vitest run --coverage --coverage.reporter=text-summary --testTimeout=20000"

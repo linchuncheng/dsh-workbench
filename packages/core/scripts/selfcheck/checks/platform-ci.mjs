@@ -13,6 +13,7 @@ const OS = ['darwin', 'win32', 'linux'];
 const OS_SET = new Set(OS);
 const CODE_EXT = /\.(?:ts|tsx|mjs|cjs|js)$/;
 const CANDIDATE = /process\.platform|\bhostOs\b|\bwin32\b|\bdarwin\b|\blinux\b|\bComSpec\b|\btaskkill\b/;
+const TEST_CANDIDATE = /process\.platform|\bUSERPROFILE\b|\bComSpec\b|\btaskkill\b/u;
 const SKIP_STEM = /(?:-mock|\.d)\.ts$/;
 
 const TITLE =
@@ -124,6 +125,35 @@ function scanSource(text, name = 'probe.ts') {
   if (!sensitive) return undefined;
   if (found.size === 0 && passThrough) for (const one of OS) found.add(one);
   return OS.filter((one) => found.has(one));
+}
+
+function scanTestText(text) {
+  return TEST_CANDIDATE.test(text);
+}
+
+function hostFactTestFiles() {
+  const out = [];
+  for (const file of walk(PACKAGES_DIR, { withTests: true })) {
+    if (!/\.test\.[cm]?[jt]sx?$/u.test(file)) continue;
+    if (!scanTestText(read(file))) continue;
+    out.push(normal(relative(REPO, file)));
+  }
+  return out.sort();
+}
+
+function declaredTestsOf(manifest) {
+  const out = new Set();
+  for (const entry of Object.values(manifest.sites ?? {})) {
+    for (const test of entry.tests ?? []) out.add(test);
+  }
+  for (const tests of Object.values(manifest.suites ?? {})) {
+    for (const test of tests ?? []) out.add(test);
+  }
+  return out;
+}
+
+function unregisteredHostFactTests(tests, declared) {
+  return tests.filter((test) => !declared.has(test));
 }
 
 function platformSites() {
@@ -276,6 +306,7 @@ function manifestFindings(sites, workflowsList) {
     return [`读不了清单 ${normal(relative(REPO, MANIFEST))}：${error instanceof Error ? error.message : String(error)}`];
   }
   const declared = manifest.sites ?? {};
+  const declaredTests = declaredTestsOf(manifest);
   for (const [rel, os] of sites) {
     const entry = declared[rel];
     if (entry === undefined) {
@@ -315,6 +346,9 @@ function manifestFindings(sites, workflowsList) {
       if (!existsSync(join(REPO, test))) findings.push(`suites.${name} 登记的测试不存在：${test}`);
     }
   }
+  for (const test of unregisteredHostFactTests(hostFactTestFiles(), declaredTests)) {
+    findings.push(`${test} 有宿主事实，但不在 sites[].tests 或 suites 里：登记后才会在对应腿上跑`);
+  }
   const runnerJobs = [];
   for (const workflow of workflowsList) {
     for (const job of workflow.jobs) {
@@ -346,6 +380,11 @@ export const checks = [
           'win32' &&
         scanSource('export const fine = 1;') === undefined &&
         scanSource("export type Fine = 'darwin' | 'win32';") === undefined;
+      const testScanNegative =
+        scanTestText("export const fine = process.platform === 'win32';") &&
+        !scanTestText('export const fine = 1;') &&
+        unregisteredHostFactTests(['a.test.ts'], new Set()).length === 1 &&
+        unregisteredHostFactTests(['a.test.ts'], new Set(['a.test.ts'])).length === 0;
       const job = jobsOf(
         [
           'jobs:',
@@ -388,13 +427,19 @@ export const checks = [
       const crlfNegative =
         crlfJob !== undefined &&
         jobCovers(crlfJob, 'packages/shared/src/host/shell/__tests__/shell-text.test.ts', '@dsh-workbench/shared');
-      const ok = findings.length === 0 && negative && workflowNegative && runnerNegative && crlfNegative;
+      const ok =
+        findings.length === 0 &&
+        negative &&
+        testScanNegative &&
+        workflowNegative &&
+        runnerNegative &&
+        crlfNegative;
       report(
         TITLE,
         ok,
         ok
-          ? `${sites.size} 个平台调用点都在清单里；平台测试由 ${PLATFORM_TEST_RUNNER} 按清单跑在 ${OS.join('/')} 腿上；冒烟脚本由 ${SMOKE_INDEX} 目录发现（判据负例也过）`
-          : !negative || !workflowNegative || !runnerNegative || !crlfNegative
+          ? `${sites.size} 个平台调用点都在清单里；平台测试由 ${PLATFORM_TEST_RUNNER} 按清单跑在 ${OS.join('/')} 腿上；宿主事实测试由 suites 兜住；冒烟脚本由 ${SMOKE_INDEX} 目录发现（判据负例也过）`
+          : !negative || !testScanNegative || !workflowNegative || !runnerNegative || !crlfNegative
             ? '判据自己的负例没过：扫描或 workflow 解析不可信'
             : findings.join(' · '),
       );
