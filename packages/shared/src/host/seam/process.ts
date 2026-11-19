@@ -1,8 +1,7 @@
 import { closeSync, openSync } from 'node:fs';
-import { win32 } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { execa, execaSync, type Options, type ResultPromise } from 'execa';
-import { shellKindOf } from '../shell/shell-text.js';
+import { processPlatformOf, taskkillArgvOf } from '../platform/integration/process.js';
 import type {
   ProcessChild,
   ProcessExitEvent,
@@ -58,18 +57,6 @@ export function runProcessSync(input: SyncProcessInput): SyncProcessResult {
   };
 }
 
-function windowsRootOf(systemRoot: string | undefined): string | undefined {
-  const candidate = systemRoot ?? process.env['SystemRoot'] ?? process.env['windir'];
-  return candidate !== undefined && /^[A-Za-z]:[\\/]/.test(candidate) ? candidate : undefined;
-}
-
-function taskkillArgvOf(
-  pid: number,
-  systemRoot: string,
-): { readonly file: string; readonly args: readonly string[] } {
-  return { file: win32.join(systemRoot, 'System32', 'taskkill.exe'), args: ['/pid', String(pid), '/T', '/F'] };
-}
-
 function defaultSpawnTaskkill(file: string, args: readonly string[], onFailure: () => void): void {
   execa(file, [...args], { reject: false, stdio: 'ignore' })
     .then((result) => {
@@ -92,9 +79,9 @@ function streamOf(readable: Readable | null | undefined): ProcessStream | null {
 }
 
 export function createNodeProcessHost(hostOptions: NodeProcessHostOptions = {}): ProcessHost {
-  const windows =
-    hostOptions.platform === undefined ? shellKindOf() === 'pwsh' : hostOptions.platform === 'win32';
-  const systemRoot = windowsRootOf(hostOptions.systemRoot);
+  const platform = processPlatformOf(hostOptions);
+  const windows = platform.windows;
+  const systemRoot = platform.systemRoot;
   const spawnTaskkill = hostOptions.spawnTaskkill ?? defaultSpawnTaskkill;
   return {
     spawn(options: ProcessSpawnOptions): ProcessChild {

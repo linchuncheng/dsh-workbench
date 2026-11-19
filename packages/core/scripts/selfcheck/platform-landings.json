@@ -125,6 +125,15 @@
         "packages/shared/src/host/shell/__tests__/shell-render.test.ts",
         "packages/shared/src/host/shell/__tests__/windows-quote.test.ts"
       ]
+    },
+    "host.integration.process": {
+      "path": "packages/shared/src/host/platform/integration/process.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/seam/__tests__/process.test.ts"
+      ]
     }
   },
   "ports": {},
@@ -291,15 +300,6 @@
       ],
       "tests": [
         "packages/shared/src/host/runtime/__tests__/env-policy.test.ts"
-      ]
-    },
-    "packages/shared/src/host/seam/process.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/shared/src/host/seam/__tests__/process.test.ts"
       ]
     },
     "packages/module-tools/src/checks/standalone.mjs": {
