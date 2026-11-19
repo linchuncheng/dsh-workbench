@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { BROWSER_SPECS, bridgeFixOf, browserInstallCandidates, browserProcessOf, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
+import { BROWSER_SPECS, bridgeFixOf, browserInstallCandidates, browserLaunchOf, browserProcessOf, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
 import type { DesktopBrowserId, WakeBrowserReply } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 
 const BROWSER_IDS = BROWSER_SPECS.map((one) => one.id);
@@ -127,26 +127,15 @@ export function createDesktopBrowser(options: {
   }
 
   async function launch(id: DesktopBrowserId): Promise<boolean> {
-    if (platform === 'darwin') {
-      const result = await run(`open -g -j -a ${quoteShellArgFor(appPath(id), platform)}`, LAUNCH_TIMEOUT_MS);
-      return result.ok;
-    }
-    if (platform === 'linux') {
-      const binary = quoteShellArgFor(specOf(id).linuxBinary, platform);
-      if (!(await run(`command -v ${quoteShellArgFor('setsid', platform)}`, SHORT_WAIT_MS)).ok) return false;
-      const result = await run(
-        `setsid ${binary} --no-startup-window >/dev/null 2>&1 < /dev/null &`,
-        LAUNCH_TIMEOUT_MS,
-      );
-      return result.ok;
-    }
-    if (platform === 'win32') {
-      const exe = winExecutable(id);
-      if (exe === undefined) return false;
-      const result = await run(`cmd /d /s /c start "" ${quoteShellArgFor(exe, platform)}`, LAUNCH_TIMEOUT_MS);
-      return result.ok;
-    }
-    return false;
+    const spec = browserLaunchOf(id, hostOsOf(platform), {
+      appPath: appPath(id),
+      executable: winExecutable(id),
+      linuxBinary: specOf(id).linuxBinary,
+    });
+    if (spec === undefined) return false;
+    if (spec.probe !== undefined && !(await run(spec.probe, SHORT_WAIT_MS)).ok) return false;
+    const result = await run(spec.command, LAUNCH_TIMEOUT_MS);
+    return result.ok;
   }
 
   async function observe(): Promise<void> {
