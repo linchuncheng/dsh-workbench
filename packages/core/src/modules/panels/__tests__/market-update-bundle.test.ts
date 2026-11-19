@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -27,7 +27,9 @@ function depsOf(input: {
   readonly seam?: Seam;
   readonly supply?: SupplyPort;
   readonly profile?: string;
+  readonly profileDir?: string;
   readonly profileName?: string;
+  readonly setEnabled?: BundleManager['setEnabled'];
   readonly dshHome?: string;
   readonly swapWaitMs?: number;
   readonly swapPollMs?: number;
@@ -39,6 +41,7 @@ function depsOf(input: {
     remove: async () => change({ stage: 'remove' }),
     cancel: async () => 'not-running',
     ...(input.updateBundle === undefined ? {} : { updateBundle: input.updateBundle }),
+    ...(input.setEnabled === undefined ? {} : { setEnabled: input.setEnabled }),
   };
   const routeDeps: ReplaceBundleDeps = {
     manager,
@@ -54,6 +57,7 @@ function depsOf(input: {
     seam: input.seam,
     ...(input.supply === undefined ? {} : { supply: input.supply }),
     ...(input.profile === undefined ? {} : { profile: input.profile }),
+    ...(input.profileDir === undefined ? {} : { profileDir: input.profileDir }),
     ...(input.profileName === undefined ? {} : { profileName: input.profileName }),
     ...(input.dshHome === undefined ? {} : { dshHome: input.dshHome }),
     ...(input.swapWaitMs === undefined ? {} : { swapWaitMs: input.swapWaitMs }),
@@ -99,6 +103,7 @@ describe('模块更新那一跳：跑完重新读盘对账', () => {
     expect(outcome?.change.errorCode).toBe('no-change');
     expect(outcome?.remedy?.command).toContain('dsh plugin --profile workbench add');
     expect(outcome?.remedy?.command).toContain(PKG);
+    expect(outcome?.remedy?.command).not.toContain('rm -rf');
   });
 
   it('★ 进程内卸不掉（stop-profile）→ 自己从外部换一份，回 restart-required（不让用户去终端）', async () => {
@@ -282,6 +287,53 @@ describe('模块更新那一跳：跑完重新读盘对账', () => {
     expect(outcome?.change.application).toBe('applied');
     expect(outcome?.change.version).toBe('0.2.0');
     expect(outcome?.module).toMatchObject({ kind: 'module', version: '0.2.0' });
+  });
+
+  it('★ 更新失败、包还在盘上但 profile 名单那行被摘了 → 把行放回去，不让模块凭空消失', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-bundle-row-'));
+    const profileFile = join(dir, 'package.json');
+    const write = (bundles: readonly string[]) =>
+      writeFileSync(
+        profileFile,
+        JSON.stringify({ dependencies: { [PKG]: '0.1.0' }, dsh: { profile: { bundles } } }),
+      );
+    write([]);
+    const enabled: string[] = [];
+    const outcome = await updateModuleBundle(
+      'mod',
+      depsOf({
+        installed: () => ({ kind: 'module', pkg: PKG, unit: 'mod', version: '0.1.0', registry: 'https://r.test/' }),
+        install: async () => {
+          throw new Error('不该走到自己的换包');
+        },
+        updateBundle: async () => ({
+          from: '0.1.0',
+          to: '0.2.0',
+          step: 'install',
+          change: change({
+            application: 'failed',
+            changed: false,
+            errorCode: 'ERR_PNPM_UNEXPECTED_STORE',
+            errorDetail: 'store 对不上',
+          }),
+        }),
+        setEnabled: async (name, on) => {
+          enabled.push(`${name}:${String(on)}`);
+          write(on ? [name] : []);
+          return change({ stage: 'install' });
+        },
+        profileDir: dir,
+        profile: 'desktop',
+        seam: {} as unknown as Seam,
+        supply: supplyOf(3),
+      }),
+    );
+
+    expect(enabled).toEqual([`${PKG}:true`]);
+    expect(JSON.parse(readFileSync(profileFile, 'utf8')).dsh.profile.bundles).toEqual([PKG]);
+    expect(outcome?.change.application).toBe('failed');
+    expect(outcome?.remedy?.command).toContain('dsh plugin --profile desktop add');
+    expect(outcome?.remedy?.command).toContain(`rm -rf '${join(dir, 'node_modules')}'`);
   });
 
   it('dsh 说这行不归它管（invalid-spec）→ 回退到自己的换包路径', async () => {
