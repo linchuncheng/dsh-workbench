@@ -134,6 +134,15 @@
       "tests": [
         "packages/shared/src/host/seam/__tests__/process.test.ts"
       ]
+    },
+    "host.integration.env-policy": {
+      "path": "packages/shared/src/host/platform/integration/env-policy.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/runtime/__tests__/env-policy.test.ts"
+      ]
     }
   },
   "ports": {},
@@ -291,15 +300,6 @@
       ],
       "tests": [
         "packages/adapter-probe/src/runtime/__tests__/platform.test.ts"
-      ]
-    },
-    "packages/shared/src/host/runtime/env-policy.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/shared/src/host/runtime/__tests__/env-policy.test.ts"
       ]
     },
     "packages/module-tools/src/checks/standalone.mjs": {

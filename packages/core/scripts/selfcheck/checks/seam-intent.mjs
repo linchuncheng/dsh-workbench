@@ -144,7 +144,7 @@ function hostSide(rel) {
   );
 }
 
-const ENV_ENTRY = 'packages/shared/src/host/runtime/env-policy.ts';
+const ENV_ENTRY = 'packages/shared/src/host/platform/integration/env-policy.ts';
 const ENV_OWN = ['packages/adapter-probe/src/toolchain/runtime-seed.ts'];
 
 const PATCH_PARSE_OWN = ['packages/shared/src/host/patch/patch-blocks.ts'];
