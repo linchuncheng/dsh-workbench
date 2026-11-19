@@ -3,14 +3,14 @@ import { componentsTool, registerComponentsTool } from '../diy-components';
 import { DIY_COMPONENTS_TOOL, READ_TOOLS, WRITE_TOOLS } from '../../unit';
 
 describe('workbench_diy_components · 工具形状', () => {
-  it('★ 名字是那一把、四个参数（name / scope / bucket / all），scope 只认两个面，而且只归读侧（不写东西、不用点头）', () => {
+  it('★ 名字是那一把、四个参数（name / scope / bucket / all），scope 只认四个面，而且只归读侧（不写东西、不用点头）', () => {
     const tool = componentsTool({} as never);
 
     expect(tool.name).toBe(DIY_COMPONENTS_TOOL);
     expect(tool.description.length).toBeGreaterThan(10);
     const properties = (tool.parameters as { properties: Record<string, { enum?: readonly string[] }> }).properties;
     expect(Object.keys(properties)).toEqual(['name', 'scope', 'bucket', 'all']);
-    expect(properties['scope']?.enum).toEqual(['kit', 'primitives', 'tokens']);
+    expect(properties['scope']?.enum).toEqual(['kit', 'primitives', 'tokens', 'platform']);
     expect(READ_TOOLS).toContain(DIY_COMPONENTS_TOOL);
     expect(WRITE_TOOLS).not.toContain(DIY_COMPONENTS_TOOL);
   });

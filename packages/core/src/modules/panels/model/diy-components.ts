@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
-import { dshHome, readTokens, seamOf, supplyPortOf } from '@dsh-workbench/shared/host';
+import { dshHome, hostSurface, readTokens, seamOf, supplyPortOf } from '@dsh-workbench/shared/host';
 import {
   findFileOf,
   refusesEvery,
@@ -23,12 +23,12 @@ export function componentsTool(ctx: DshHostContext): DshToolDefinition {
   return {
     name: DIY_COMPONENTS_TOOL,
     description:
-      '这份外壳里能用什么：dsh 原语、kit 的清单与类型文件（name 连 JSDoc 回）；CSS 令牌现读现给。',
+      '这份外壳里能用什么：dsh 原语、kit 清单、CSS 令牌；platform 看宿主能力。',
     parameters: {
       type: 'object',
       properties: {
         name: { type: 'string', description: '要看的那件（例 Card；--dsw-… / --wb-… 连浅/深值回）。' },
-        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens'], description: '只看一面；tokens = 令牌；不填 = kit + primitives。' },
+        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform'], description: '只看一面；tokens = 令牌；不填 = kit + primitives。' },
         bucket: { type: 'string', description: '只看某一桶并列全（例 components / alias / wb；桶名以清单为准）。' },
         all: { type: 'boolean', description: '列全表（默认每组前 12 个）—— 只在指名 scope 时生效。' },
       },
@@ -42,6 +42,19 @@ export function componentsTool(ctx: DshHostContext): DshToolDefinition {
       const name = asText(args['name']);
       const bucket = asText(args['bucket']);
       const all = args['all'] === true;
+      if (scope === 'platform') {
+        const capabilities = hostSurface().capabilities;
+        const text = [
+          '宿主能力（不返回 OS）：',
+          `fileManager: ${capabilities.fileManager}`,
+          `pageDebug: ${String(capabilities.pageDebug)}`,
+          `recording: ${String(capabilities.recording)}`,
+          `browserWake: ${String(capabilities.browserWake)}`,
+          `selfUpdateCli: ${capabilities.selfUpdateCli}`,
+          `safeMode: ${String(capabilities.safeMode)}`,
+        ].join('\n');
+        return plainJson({ workspace: root, scope, name, bucket, all, capabilities, text });
+      }
       if (scope === 'tokens' || name.startsWith('--')) {
         const profile = supplyPortOf(ctx).profileDirOf(ctx);
         const dirs = [

@@ -12,7 +12,7 @@ export const PRIMITIVES_PKG = '@deepseek-ai/dsh-client-ui-primitives';
 
 export const MANIFEST_TAIL = '//# sourceMappingURL=';
 
-export type SurfaceScope = 'all' | 'primitives' | 'kit' | 'tokens';
+export type SurfaceScope = 'all' | 'primitives' | 'kit' | 'tokens' | 'platform';
 
 export interface SurfacePayload {
   readonly [key: string]: unknown;
@@ -24,16 +24,16 @@ export interface SurfaceQuery {
 }
 
 export function scopeOf(raw: string): SurfaceScope {
-  if (raw === 'primitives' || raw === 'kit' || raw === 'tokens') return raw;
+  if (raw === 'primitives' || raw === 'kit' || raw === 'tokens' || raw === 'platform') return raw;
   return 'all';
 }
 
 export function wantsPrimitives(scope: SurfaceScope): boolean {
-  return scope !== 'kit' && scope !== 'tokens';
+  return scope !== 'kit' && scope !== 'tokens' && scope !== 'platform';
 }
 
 export function wantsKit(scope: SurfaceScope): boolean {
-  return scope !== 'primitives' && scope !== 'tokens';
+  return scope !== 'primitives' && scope !== 'tokens' && scope !== 'platform';
 }
 
 export function toolchainBinOf(root: string): string | null {
@@ -284,7 +284,7 @@ export function bucketNamesOf(
 }
 
 export const TWO_FACE_ALL =
-  '⚠️ 要全表就指名一面：scope=kit / primitives / tokens。';
+  '⚠️ 要全表就指名一面：scope=kit / primitives / tokens / platform。';
 
 export function refusesEvery(scope: SurfaceScope, all: boolean, focused: boolean): boolean {
   return all && scope === 'all' && !focused;
