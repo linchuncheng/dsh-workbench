@@ -29,6 +29,7 @@ export interface RecordPageRead {
   readonly href: string;
   readonly here: string;
   readonly dropped: number;
+  readonly hooked: boolean | null;
   readonly unhooked: boolean;
   readonly shots: number;
   readonly calls: readonly RecordCall[];
@@ -74,6 +75,7 @@ export function recordPageOf(payload: Record<string, unknown> | undefined): Reco
     href: typeof raw['href'] === 'string' ? raw['href'] : '',
     here: typeof raw['here'] === 'string' ? raw['here'] : '',
     dropped: typeof raw['dropped'] === 'number' ? raw['dropped'] : 0,
+    hooked: typeof raw['hooked'] === 'boolean' ? raw['hooked'] : null,
     shots: typeof raw['shots'] === 'number' ? raw['shots'] : 0,
     unhooked: raw['unhooked'] === 1 || raw['unhooked'] === true,
     calls,

@@ -51,6 +51,12 @@ async function releaseLeftoversOf(input: WatchFinishDeps): Promise<void> {
   });
 }
 
+async function healRecordPage(input: WatchFinishDeps): Promise<void> {
+  try {
+    await armRecordPage(input.seam, input.command, BROWSER_RECORD_SESSION, input.wire);
+  } catch {}
+}
+
 async function stopCaptureQuiet(input: WatchFinishDeps): Promise<boolean> {
   try {
     return stopLiveCapture(input.captureFile);
@@ -144,6 +150,10 @@ export async function watchFinishStepOf(
   if (!page.ok) {
     const left = await recordTabCount(input);
     return left === 0 ? finishWatcher(input, true) : { stop: false, delivered: false };
+  }
+  if (page.hooked === false && !(page.phase === 'finished' && page.t1 !== null)) {
+    await healRecordPage(input);
+    return { stop: false, delivered: false };
   }
   if (page.shots > held.shotsSeen) await takeShotOf(input, held.unit, page.shots, held.startedAt);
   if (page.phase === 'finished' && page.t1 !== null) {
