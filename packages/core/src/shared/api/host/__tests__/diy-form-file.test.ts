@@ -16,7 +16,7 @@ describe('表单快照落盘：跟捕获文件并排，名字一眼认得', () =
     expect(readFileSync(file, 'utf8')).toContain('required');
   });
 
-  it('★ 目录不可写 ⇒ 返回空串，不抛（收工那一刻不能因为存不下就失败）', () => {
+  it.skipIf(process.platform === 'win32')('★ 目录不可写 ⇒ 返回空串，不抛（收工那一刻不能因为存不下就失败）', () => {
     expect(writeFormHtml('/definitely/not/here/rec-demo.jsonl', '<form></form>')).toBe('');
   });
 });

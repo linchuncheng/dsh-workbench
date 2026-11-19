@@ -58,7 +58,7 @@ describe('跑一条 opencli：argv 原样交给执行缝，窗口模式钉在 en
       { line: backgroundLine },
     );
 
-    expect(rig.lines[0]).toBe(
+    expect(withoutCallOperator(rig.lines[0]!)).toBe(
       "'opencli' 'browser' 'workbench' 'state' '--source' 'ax' '--window' 'background'",
     );
     expect(step.ok).toBe(true);

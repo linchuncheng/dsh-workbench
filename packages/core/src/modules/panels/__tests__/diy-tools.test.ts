@@ -120,7 +120,7 @@ describe('workbench_diy · install（装 + 上板一次做完）', () => {
     };
 
     expect(specs.map((one) => one.replaceAll('\\', '/'))).toEqual([dir.replaceAll('\\', '/')]);
-    expect(result.path).toBe(dir);
+    expect(result.path.replaceAll('\\', '/')).toBe(dir.replaceAll('\\', '/'));
     expect(result.unit).toBe('demo');
     expect(result.install.application).toBe('applied');
     expect(result.panel.ok).toBe(true);
@@ -142,7 +142,7 @@ describe('workbench_diy · install（装 + 上板一次做完）', () => {
     )) as { path: string; panel: { ok: boolean } };
 
     expect(specs.map((one) => one.replaceAll('\\', '/'))).toEqual([dir.replaceAll('\\', '/')]);
-    expect(result.path).toBe(dir);
+    expect(result.path.replaceAll('\\', '/')).toBe(dir.replaceAll('\\', '/'));
     expect(result.panel.ok).toBe(true);
     expect(panels.isEnabled('demo', rig.WORKSHOP())).toBe(true);
   });

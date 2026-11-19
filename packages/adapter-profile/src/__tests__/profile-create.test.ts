@@ -81,6 +81,7 @@ describe('新建工作台：创建', () => {
         home,
         self: 'workbench',
         packageRoot: '/pkg',
+        platform: 'linux',
         runSetup: async (env) => {
           seen = env;
           makeTarget(home, 'wb2');

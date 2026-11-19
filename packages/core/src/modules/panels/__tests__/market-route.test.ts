@@ -189,7 +189,7 @@ describe('添加一个 spec：按内容判它是什么，再决定走哪条路',
     const outcome: BundleInstallOutcome = await installRouted(deps);
 
     expect(install).not.toHaveBeenCalled();
-    expect(commands).toEqual([`'opencli' plugin install '${at}'`]);
+    expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([`'opencli' plugin install '${at}'`]);
     expect(outcome.change).toMatchObject({ application: 'applied', stage: 'install' });
     expect(outcome.plugin).toEqual({ kind: 'runtime-plugin', pkg: '@t/plugin-a', name: 'plugina' });
     expect(outcome.supply).toEqual({ state: 'no-needs' });
