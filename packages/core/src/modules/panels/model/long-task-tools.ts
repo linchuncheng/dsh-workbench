@@ -7,21 +7,21 @@ import { LONG_TASKS_LIST_TOOL, LONG_TASKS_STOP_TOOL } from '../unit';
 export type LongTaskRunsLookup = () => ReadonlyMap<string, LongTaskRegistry<LongTaskBase>>;
 
 const STATUS_WORDS: Readonly<Record<string, string>> = {
-  running: '进行中',
-  'needs-human': '等人处理',
-  'needs-login': '要登录',
-  stopped: '被停了',
+  running: '运行中',
+  'needs-human': '待处理',
+  'needs-login': '需要登录',
+  stopped: '已停止',
   ok: '已完成',
-  failed: '出错',
+  failed: '失败',
 };
 
-const NO_WORKSPACE = '不知道当前会话在哪个工作区 —— 长任务按工作区记，这条读不了。';
+const NO_WORKSPACE = '读不到当前会话所在的工作区。长任务按工作区记录，无法读取。';
 
-const NO_RUNS = '这个工作区现在没有长任务运行中（也没有十分钟内刚结束的）。';
+const NO_RUNS = '当前工作区没有运行中的长任务，也没有十分钟内刚结束的。';
 
-const NO_RUN = '没有这一趟 —— unit/id 对不上。';
+const NO_RUN = '没有这条长任务，unit 与 id 不匹配。';
 
-const STALE_REGISTRY = '这一份工作台还是上一版的注册表，停不了 —— 重新起一下工作台就能停';
+const STALE_REGISTRY = '这一份工作台仍是上一版的注册表，无法停止；重新启动工作台后即可停止。';
 
 const LIST_OUTPUT: DshToolOutputDefinition = {
   schema: {
@@ -95,8 +95,8 @@ function statusWord(status: string): string {
 }
 
 function originOf(session: string, caller: string | null): string {
-  if (session === '') return '用户按的';
-  return session === caller ? '我起的' : '别的会话起的';
+  if (session === '') return '用户发起';
+  return session === caller ? '本会话发起' : '其他会话发起';
 }
 
 function listed(runs: LongTaskRunsLookup | undefined, workspace: string): readonly ListedRun[] {
@@ -125,7 +125,7 @@ function lineOf(run: ListedRun, index: number, caller: string | null): string {
     run.target,
     statusWord(run.status),
     run.step,
-    run.intervention === '' ? '' : `要人做：${run.intervention}`,
+    run.intervention === '' ? '' : `待用户处理：${run.intervention}`,
     run.id === '' ? '' : `id=${run.id}`,
     originOf(run.session, caller),
   ];
@@ -150,8 +150,7 @@ export function registerLongTaskTools(
   const listTool: DshToolDefinition = {
     name: LONG_TASKS_LIST_TOOL,
     description:
-      '看这个工作区正在运行（十分钟内也算）的长任务；等人处理的行会写明要人做什么；' +
-      '要停就调 workbench_long_tasks_stop。',
+      '查看当前工作区运行中的长任务（十分钟内结束的也算）；待处理的行写明用户需要做什么，停止用 workbench_long_tasks_stop。',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     output: LIST_OUTPUT,
     async execute(_raw: unknown, exec: DshToolRunContext) {
@@ -165,13 +164,13 @@ export function registerLongTaskTools(
   const stopTool: DshToolDefinition = {
     name: LONG_TASKS_STOP_TOOL,
     description:
-      '停掉某一趟长任务（unit 与 id 从 workbench_long_tasks_list 拿）。只是让外壳给它发中断信号，' +
-      '平台侧那趟活儿的收尾看模块自己。',
+      '停止一条长任务（unit 与 id 从 workbench_long_tasks_list 获取）。只向模块发送中断信号，' +
+      '任务如何收尾由模块决定。',
     parameters: {
       type: 'object',
       properties: {
-        unit: { type: 'string', description: '那一趟属于的单元 id（如 inventory）。' },
-        id: { type: 'string', description: '那一趟的 id（列表里 id= 后面那串）。' },
+        unit: { type: 'string', description: '长任务所属的模块标识（如 inventory）。' },
+        id: { type: 'string', description: '长任务 id（列表中 id= 后的值）。' },
       },
       required: ['unit', 'id'],
       additionalProperties: false,
@@ -188,13 +187,13 @@ export function registerLongTaskTools(
       const run = registry.snapshot(id);
       if (run === null) return { text: NO_RUN, stopped: false };
       if (run.workspace !== sessionWorkspace(exec)) {
-        return { text: `这一趟不在你当前的工作区（它在 ${run.workspace}）—— 没动它。`, stopped: false };
+        return { text: `这条长任务不在当前工作区（位于 ${run.workspace}），未执行停止。`, stopped: false };
       }
       if (!registry.stop(id, sessionIdOf(exec) ?? undefined)) {
-        return { text: `这一趟已停止运行（${statusWord(run.status)}）—— 没动它。`, stopped: false };
+        return { text: `这条长任务已停止运行（${statusWord(run.status)}），未重复执行。`, stopped: false };
       }
       return {
-        text: `停了：${unit} · ${run.target}（${id}）。这一趟的活儿收到中断信号 —— 它认不认、停在哪一步看它自己。`,
+        text: `已停止：${unit} · ${run.target}（${id}）。模块已收到中断信号，何时停止与停在哪一步由模块决定。`,
         stopped: true,
       };
     },

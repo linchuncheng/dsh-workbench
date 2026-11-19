@@ -51,7 +51,7 @@ export function createInstallRunner(deps: InstallRunDeps): InstallRunner {
   async function runAll(steps: readonly PluginPlanStep[]): Promise<void> {
     const { seam, supply } = deps;
     if (seam === undefined) {
-      throw new Error('没有执行缝（shell 服务不可用），装 / 卸做不了。');
+      throw new Error('本机没有 shell 服务，无法安装或卸载。');
     }
     const root = supply.modules.isolatedRoot();
     const attempt = (): Promise<void> =>

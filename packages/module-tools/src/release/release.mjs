@@ -209,7 +209,7 @@ function gitCommitOf(exec, info, version, capture, progress = {}, identity) {
   const tag = exec('git', ['-C', info.toplevel, 'tag', info.tagOf(version)], { capture, allowFailure: true });
   if (tag.status !== 0) throw new ReleaseError(`git tag 没过：${tailOf(`${tag.stdout}\n${tag.stderr}`)}`);
   const head = exec('git', ['-C', info.toplevel, 'rev-parse', 'HEAD'], { capture, allowFailure: true });
-  if (head.status !== 0) throw new ReleaseError('读不了刚提交的 commit');
+  if (head.status !== 0) throw new ReleaseError('无法读取刚提交的 commit');
   return head.stdout.trim();
 }
 

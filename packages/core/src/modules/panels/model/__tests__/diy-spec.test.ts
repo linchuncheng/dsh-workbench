@@ -52,7 +52,7 @@ describe('这把工具', () => {
     const built = rig.harness({ withTools: true, pact: false, probe: [{ stdout: SPEC }] });
 
     await expect(built.tool(DIY_SPEC_TOOL).execute({ command: 'inventory' }, rig.diyExec())).rejects.toThrow(
-      'site 与名字两个词',
+      '站点与命令名两个词',
     );
     expect(built.commands).toEqual([]);
   });

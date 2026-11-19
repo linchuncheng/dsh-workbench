@@ -109,7 +109,7 @@ describe('工作区结构未知：看 / 调不需要模块源码', () => {
     const { tool, specs } = rig.harness();
 
     await expect(tool(DIY_INSTALL_TOOL)?.execute({ unit: 'demo' }, rig.diyExec())).rejects.toThrow(
-      /没有单元 id 为「demo」/,
+      /没有模块标识为「demo」/,
     );
     expect(specs).toEqual([]);
   });

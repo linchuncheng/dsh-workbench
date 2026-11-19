@@ -35,22 +35,22 @@ export function pluginKeptOf(
 }
 
 export function pluginKeptText(kept: PluginKept): string {
-  if (kept.kind === 'held') return '文件留着：你自己装的那一份，模块放手不动它。';
-  if (kept.kind === 'unnamed') return '文件先留着：看不出这是哪个插件，说不准谁在用它。';
+  if (kept.kind === 'held') return '文件保留：用户自行安装的那一份，模块卸载时不删除。';
+  if (kept.kind === 'unnamed') return '文件暂时保留：无法判断是哪个插件，无法确认使用方。';
   if (kept.kind === 'unsure') {
     return kept.unreadable.length === 0
-      ? '文件先留着：说不准还有谁在用它。'
-      : `文件先留着：${kept.unreadable.join('、')} 读不出来用了什么，说不准它们在用它。`;
+      ? '文件暂时保留：无法确认其他使用方。'
+      : `文件暂时保留：${kept.unreadable.join('、')} 无法读取使用了什么，无法确认它们是否使用它。`;
   }
-  return `文件留着：${kept.by.join('、')} 还要用它。`;
+  return `文件保留：${kept.by.join('、')} 仍在使用它。`;
 }
 
 export function pluginRemovedText(pkg: string): string {
-  return `「${pkg}」卸载干净了：没人再用它，文件也删了。`;
+  return `「${pkg}」已卸载：没有其他使用者，文件已删除。`;
 }
 
 export function pluginSweptText(pkg: string): string {
-  return `清掉了 ${pkg}：先前要它的都放手了，也没别人在用，文件跟着删了。`;
+  return `已清理 ${pkg}：此前需要它的模块都已卸载，没有其他使用者，文件已删除。`;
 }
 
 export interface PluginActions {
@@ -79,7 +79,7 @@ export function createPluginActions(options: {
   };
 
   function requireLedger(): PluginLedger {
-    if (ledger === undefined) throw new Error('这个市场没有台账（插件记录），用户装的插件动不了。');
+    if (ledger === undefined) throw new Error('这个模块市场没有插件记录，无法操作已安装插件。');
     return ledger;
   }
 
@@ -91,7 +91,7 @@ export function createPluginActions(options: {
     if (named !== undefined) return { entry: named, key: named.package };
     const known = held.list().map((entry) => entry.name ?? entry.package);
     throw new Error(
-      `台账里没有「${pkg}」这一笔（包名与插件名都认）—— 你装的插件有：${known.join('、') || '（空）'}`,
+      `插件记录中没有「${pkg}」（包名与插件名均可）；已安装插件：${known.join('、') || '（空）'}`,
     );
   }
 
@@ -118,7 +118,7 @@ export function createPluginActions(options: {
   }
 
   async function removeFiles(plugin: string): Promise<void> {
-    if (seam === undefined) throw new Error('没有执行缝（shell 服务不可用），删不掉插件文件。');
+    if (seam === undefined) throw new Error('本机没有 shell 服务，无法删除插件文件。');
     await runAll([{ kind: 'run', line: `${quoteShellArg(command)} plugin uninstall ${quoteShellArg(plugin)}` }]);
   }
 
@@ -126,9 +126,9 @@ export function createPluginActions(options: {
     async update(pkg) {
       const { entry } = requireHeld(pkg);
       if (entry.local === true || entry.registry === undefined) {
-        throw new Error(`「${entry.package}」是从本地装的，没有地方查新版。`);
+        throw new Error(`「${entry.package}」从本地安装，没有可查询的新版本。`);
       }
-      if (seam === undefined) throw new Error('没有执行缝（shell 服务不可用），更新做不了。');
+      if (seam === undefined) throw new Error('本机没有 shell 服务，无法更新。');
       const latest = await supply.latestVersion({
         seam,
         name: entry.package,
@@ -136,7 +136,7 @@ export function createPluginActions(options: {
         force: true,
         includePrerelease: options.includePrerelease?.() === true,
       });
-      if (latest === undefined) throw new Error(`问不到「${entry.package}」的新版本。`);
+      if (latest === undefined) throw new Error(`读不到「${entry.package}」的新版本。`);
       const plan = supply.pluginInstallPlan({
         spec: `${entry.package}@${latest}`,
         command,
@@ -178,7 +178,7 @@ export function createPluginActions(options: {
         try {
           await removeFiles(decision.plugin);
         } catch (error) {
-          logger?.warn?.(`[dsh-workbench] 清 ${entry.package} 没成：${String(error)}`);
+          logger?.warn?.(`[dsh-workbench] 清理 ${entry.package} 失败：${String(error)}`);
           continue;
         }
         ledger.drop(entry.package);

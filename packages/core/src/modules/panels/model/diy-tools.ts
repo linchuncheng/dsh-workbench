@@ -19,7 +19,7 @@ async function unitsAt(
 
 const UNIT_PARAMETERS = {
   type: 'object',
-  properties: { unit: { type: 'string', description: '模块标识（workbench_diy_status 会给）。' } },
+  properties: { unit: { type: 'string', description: '模块标识（workbench_diy_status 会给出）。' } },
   required: ['unit'],
   additionalProperties: false,
 } as const;
@@ -78,10 +78,10 @@ export function registerDiyTools(
   const statusTool: DshToolDefinition = {
     name: DIY_STATUS_TOOL,
     description:
-      '先跑它：装了什么、这个工作区里有没有源码、面板认不认得、起得来没、下一步做什么（不填 unit = 全看）。',
+      '查看模块状态：安装、源码、面板识别、启动能力与下一步；不填 unit 则列出全部模块。',
     parameters: {
       type: 'object',
-      properties: { unit: { type: 'string', description: '模块标识（workbench_diy_status 会给）。' } },
+      properties: { unit: { type: 'string', description: '模块标识；不填则列出全部模块。' } },
       required: [],
       additionalProperties: false,
     },
@@ -94,8 +94,8 @@ export function registerDiyTools(
       const picked = wanted === '' ? units : units.filter((one) => one.unit === wanted);
       if (wanted !== '' && picked.length === 0) {
         throw new Error(
-          `这条会话里没有单元 id 为「${wanted}」的模块` +
-            `（装过的：${units.map((one) => one.unit).join(', ') || '（空）'}）`,
+          `当前会话没有模块标识为「${wanted}」的模块` +
+            `（已安装：${units.map((one) => one.unit).join(', ') || '（空）'}）`,
         );
       }
       const rows = picked.map(
@@ -124,10 +124,10 @@ export function registerDiyTools(
 
   const panelTool: DshToolDefinition = {
     name: DIY_PANEL_TOOL,
-    description: '面板此刻的真实样子（每张卡读到没 / 崩没崩）—— 用户说"卡片不对 / 一片空白"就先调它。',
+    description: '面板当前状态：每个模块界面是否读取成功、是否崩溃过。用户说「卡片不对」或「一片空白」时先调用。',
     parameters: {
       type: 'object',
-      properties: { unit: { type: 'string', description: '只看某一个模块（不填 = 全看）。' } },
+      properties: { unit: { type: 'string', description: '模块标识；不填则查看全部模块。' } },
       additionalProperties: false,
     },
     output: OUTPUT,
@@ -172,16 +172,16 @@ export function registerDiyTools(
     name: DIY_RECON_TOOL,
     description:
       surface === undefined
-        ? '这个运行时的命令面探测不了：直接走 workbench_diy_eval / _find 读一次。'
-        : `先查 ${surface.name} 有没有现成的（自带 adapter / 本机插件）—— ${surface.name} 是什么自己查，别问用户。`,
+        ? '这个运行时的命令面无法探测：直接调用 workbench_diy_eval / _find 读取一次。'
+        : `先查 ${surface.name} 是否已有现成能力（自带适配器或本机插件）；其用途自行查阅，不要询问用户。`,
     parameters: {
       type: 'object',
       properties: {
         keyword: {
           type: 'string',
-          description: '站点名 / 系统名 / 域名（英文名或域名最准，例：bilibili、arxiv.org、inventory）。',
+          description: '站点名 / 系统名 / 域名；英文名或域名最准确（例：bilibili、inventory）。',
         },
-        url: { type: 'string', description: '那套系统的地址（从它取域名）。' },
+        url: { type: 'string', description: '该系统地址（从中取域名）。' },
       },
       required: ['keyword'],
       additionalProperties: false,
@@ -192,28 +192,28 @@ export function registerDiyTools(
       const surface = surfaceOf(ctx);
       if (surface === undefined) {
         throw new Error(
-          '这个运行时没有可探测的命令面 —— recon 用不了；换 workbench_diy_eval / _find 直接读一次：' +
-            '带 read=<地址>，在 workbench-read 上跑，借用户已登录的那扇窗。',
+          '这个运行时没有可探测的命令面，recon 不可用。改用 workbench_diy_eval / _find 直接读取：' +
+            '带 read=<地址>，在 workbench-read 上运行，使用用户已登录的页面。',
         );
       }
       const keywords = keywordsOf(asText(args['keyword']), asText(args['url']));
       if (keywords.length === 0) {
         throw new Error(
-          `recon 要一个关键词（站点名 / 系统名 / 域名都行）：先拿它去 ${surface.name} 自带的那份目录里找有没有现成的能力，` +
-            '别一上来就自己写 adapter；用户不知道它有这条命令面，这一步别问用户。',
+          `recon 需要关键词（站点名 / 系统名 / 域名均可）。先在 ${surface.name} 自带的目录中查找现成能力，` +
+            '不要自行编写适配器；用户不知道有这条命令面，这一步不要询问用户。',
         );
       }
       const catalogPath = supply.cliCatalogPath?.();
       if (catalogPath === undefined) {
         throw new Error(
-          `这个运行时没有命令目录 —— ${surface.name} 那边只给命令面、不给目录；` +
-            '改用 workbench_diy_find 按站点问它能做什么。',
+          `这个运行时没有命令目录：${surface.name} 只提供命令面，不提供目录。` +
+            '改用 workbench_diy_find 按站点查询它能做什么。',
         );
       }
       const catalog = reconCatalogOf(catalogPath);
       if (catalog === undefined) {
         const hint = supply.runtimeInstallCommand?.() ?? '请先完成隔离运行时的安装';
-        throw new Error(`读不到 ${surface.name} 那份目录（${catalogPath}）—— 隔离运行时尚未安装完成；照做：${hint}`);
+        throw new Error(`读不到 ${surface.name} 的目录（${catalogPath}）；隔离运行时尚未安装完成。下一步：${hint}`);
       }
       const pluginsDir = supply.vendorPluginsDir?.();
       const installed = pluginsDir === undefined ? [] : installedPluginsOf(pluginsDir, surface.pluginPrefix);
@@ -226,11 +226,11 @@ export function registerDiyTools(
     const unit = asText(asRecord(raw)['unit']);
     const pool = units.map((one) => one.unit);
     if (unit === '') {
-      throw new Error(`${label} 要一个 unit（装过的：${pool.join(', ') || '（空）'}）`);
+      throw new Error(`${label} 缺少 unit（已安装：${pool.join(', ') || '（空）'}）`);
     }
     const found = units.find((one) => one.unit === unit);
     if (found === undefined) {
-      throw new Error(`这条会话里没有单元 id 为「${unit}」的模块（装过的：${pool.join(', ') || '（空）'}）`);
+      throw new Error(`当前会话没有模块标识为「${unit}」的模块（已安装：${pool.join(', ') || '（空）'}）`);
     }
     return found;
   }
@@ -239,24 +239,24 @@ export function registerDiyTools(
     const { modules } = modulesOf(ctx, root);
     const unit = asText(asRecord(raw)['unit']);
     if (unit === '') {
-      throw new Error(`${label} 要一个 unit（这个工作区里：${modules.map((one) => one.unit).join(', ') || '（空）'}）`);
+      throw new Error(`${label} 缺少 unit（当前工作区：${modules.map((one) => one.unit).join(', ') || '（空）'}）`);
     }
     const found = modules.find((one) => one.unit === unit);
     if (found === undefined) {
       throw new Error(
-        `这个工作区里没有单元 id 为「${unit}」的模块` +
-          `（可用的：${modules.map((one) => one.unit).join(', ') || '（空）'}）—— 先安装的前提是它在这个工作区里创建好了`,
+        `当前工作区没有模块标识为「${unit}」的模块` +
+          `（可用：${modules.map((one) => one.unit).join(', ') || '（空）'}）；安装的前提是该模块已在当前工作区创建。`,
       );
     }
     if (!insideRoot(root, found.dir)) {
-      throw new Error(`这个模块不在这个工作区里（${found.dir}）—— 只装 ${root} 之下的模块`);
+      throw new Error(`这个模块不在当前工作区（${found.dir}）；只能安装 ${root} 之下的模块。`);
     }
     return found;
   }
 
   const showTool: DshToolDefinition = {
     name: DIY_SHOW_TOOL,
-    description: '只显示在看板（不安装）：把一个已经安装完成的模块显示在当前工作区的面板上。',
+    description: '仅显示到看板（不安装）：把已安装的模块显示在当前工作区的面板上。',
     parameters: UNIT_PARAMETERS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -264,13 +264,13 @@ export function registerDiyTools(
       const found = unitAmong(units, raw, 'workbench_diy_show');
       if (!found.installed) {
         throw new Error(
-          `${found.unit} 还没安装 —— 只显示在看板的前提是它已安装过。先用 workbench_diy_install（第一次）`,
+          `${found.unit} 尚未安装；仅显示到看板的前提是已安装。首次安装用 workbench_diy_install。`,
         );
       }
       const panel = showOrReason(panels, found.unit, root);
       const text = panel.ok
-        ? `面板上已经打开它了（${root}）—— 验收就走这一张卡（你自己走一遍）`
-        : `面板上还没打开：${panel.reason}。这就是它的下一步（workbench_diy_status 会给出同样的判断）`;
+        ? `已在面板上打开（${root}）。验收使用这张模块界面，由 agent 亲自操作一遍。`
+        : `面板尚未打开：${panel.reason}。workbench_diy_status 会给出同样的判断。`;
       return plainJson({ workspace: root, unit: found.unit, path: found.dir, panel, text });
     },
   };
@@ -278,8 +278,8 @@ export function registerDiyTools(
   const installTool: DshToolDefinition = {
     name: DIY_INSTALL_TOOL,
     description:
-      '把这个工作区里创建好的模块安装并显示到当前工作区的面板。这是持久变更，一个模块只装一次：' +
-      '之后改源码只需 dsh-wb-module build（宿主侧秒级热换）。',
+      '把当前工作区中创建的模块安装并显示到面板。这是持久变更，每个模块只安装一次；' +
+      '之后改源码只需 dsh-wb-module build（宿主侧秒级热替换）。',
     parameters: UNIT_PARAMETERS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -289,10 +289,10 @@ export function registerDiyTools(
       if (found.installed) {
         const panel = showOrReason(panels, found.unit, root);
         const text = [
-          '它已经装过了（就是这个工作区里这一份）—— **不要再装**：改源码 + dsh-wb-module build（宿主侧与 client.js 都秒级热换 —— dsh-client-hmr 盯着每个 bundle 的 lib/client.js，重建了就换进已打开的页面）。',
+          '这个模块已经安装过（当前工作区中的这一份）。不要再安装：修改源码后执行 dsh-wb-module build，宿主侧与 client.js 都会热替换（dsh-client-hmr 监听每个 bundle 的 lib/client.js，重建后替换进已打开的页面）。',
           panel.ok
-            ? `面板上已经打开它了（${root}）—— 验收就走这一张卡（你自己走一遍）`
-            : `面板上还没打开：${panel.reason}。调 workbench_diy_show（unit=${found.unit}）`,
+            ? `已在面板上打开（${root}）。验收使用这张模块界面，由 agent 亲自操作一遍。`
+            : `面板尚未打开：${panel.reason}。调用 workbench_diy_show（unit=${found.unit}）。`,
         ].join('\n');
         return plainJson({
           workspace: root,
@@ -319,21 +319,21 @@ export function registerDiyTools(
       const panel =
         outcome.change.application === 'applied'
           ? showOrReason(panels, found.unit, root)
-          : { ok: false, reason: `安装结果是 ${outcome.change.application}，还没生效` };
+          : { ok: false, reason: `安装结果是 ${outcome.change.application}，尚未生效` };
 
       const panelText = panel.ok
-        ? `面板上已经打开它了（${root}）—— 验收就走这一张卡（你自己走一遍）`
+        ? `已在面板上打开（${root}）。验收使用这张模块界面，由 agent 亲自操作一遍。`
         : outcome.change.application === 'applied'
-          ? `面板上还没打开：${panel.reason}。调 workbench_diy_show（unit=${found.unit}）试试。`
+          ? `面板尚未打开：${panel.reason}。调用 workbench_diy_show（unit=${found.unit}）重试。`
           : restartRequired
-            ? `面板上还没打开（${panel.reason}）：模块要**重启一次工作台**才注册进面板 —— 把这句话转给用户，` +
-              `重启后再调 workbench_diy_show（unit=${found.unit}）。`
-            : `面板上还没打开：${panel.reason}。先把上面那句"没装成"处理掉，再谈显示在看板。`;
+            ? `面板尚未打开（${panel.reason}）：模块需要**重启一次工作台**才会注册进面板。把这句话转告用户，` +
+              `重启后再调用 workbench_diy_show（unit=${found.unit}）。`
+            : `面板尚未打开：${panel.reason}。先处理上面的安装失败，再显示到看板。`;
 
       const text = [
         `${verdict}：${found.unit}（${found.name}）`,
         panelText,
-        '之后只改源码 + dsh-wb-module build（宿主侧与 client.js 都秒级热换 —— dsh-client-hmr 盯着每个 bundle 的 lib/client.js，重建了就换进已打开的页面）：不要再装一遍。',
+        '此后只需修改源码并执行 dsh-wb-module build，宿主侧与 client.js 都会热替换（dsh-client-hmr 监听每个 bundle 的 lib/client.js，重建后替换进已打开的页面）：不要再安装一遍。',
       ].join('\n');
 
       return plainJson({

@@ -14,7 +14,7 @@ const OUTPUT = textOutput();
 const TARGETS_PARAM = {
   type: 'array',
   items: { type: 'string' },
-  description: '工具包 id：manage / diy / unit:<模块或插件 id> / mcp:<server>',
+  description: '工具包 id；可多个。',
 };
 
 function targetsOf(raw: unknown): readonly string[] {
@@ -49,7 +49,7 @@ function catalogText(
 }
 
 function unavailableText(): string {
-  return '这个 dsh 版本无法获取会话 id。工作台的工具包已全部可用，直接调用所需工具即可，无需先启用工具包。';
+  return '这个 dsh 版本读不到会话 id。工作台工具包全部可用，直接调用所需工具，无需先开启。';
 }
 
 interface TargetPlan {
@@ -75,8 +75,8 @@ function targetPlan(
   if (preset === DIY_PRESET_ID && packs.includes('manage')) {
     return {
       error:
-        'DIY 模式下不提供 manage 工具包：装 / 卸 / 显示 / 隐藏 / 排序 / 市场 / 长任务都已经在 diy 包里，' +
-        '直接调 diy 那一族即可，不用再开包。',
+        'DIY 模式下不提供 manage 工具包：装 / 卸 / 显示 / 隐藏 / 排序 / 市场 / 长任务都在 diy 包里，' +
+        '直接调用即可，无需开包。',
     };
   }
   return { session, packs };
@@ -85,11 +85,11 @@ function targetPlan(
 function errorText(toolbox: Toolbox, workspace: string | null, unknown: readonly string[]): string {
   const available = toolbox.catalog(workspace).map((pack) => pack.id);
   const named = unknown.length === 0 ? '' : `没有这些工具包：${unknown.join('、')}。`;
-  return `${named}可用：${available.join(' / ')}（先调用 workbench_toolbox_list 查看每个工具包的用途）`;
+  return `${named}可用：${available.join(' / ')}；先调用 workbench_toolbox_list 查看用途。`;
 }
 
 function hiddenText(hidden: readonly string[]): string {
-  return `未在面板上：${hidden.join('、')}。请先把模块启用到面板上（workbench_panels_show），再启用它的工具包。`;
+  return `未在面板上：${hidden.join('、')}。先用 workbench_panels_show 把模块启用到面板，再开启它的工具包。`;
 }
 
 function openedText(toolbox: Toolbox, session: string, preset: string | null, newly: readonly PackId[]): string {
@@ -98,7 +98,7 @@ function openedText(toolbox: Toolbox, session: string, preset: string | null, ne
   const parts = [
     newly.length === 0 ? '这些工具包原本已启用。' : `已开启：${newly.join('、')}`,
     already.length === 0 ? '' : `原本已启用：${already.join('、')}`,
-    '下一次工具调用即可使用，无需等待用户再次发送消息。相关事项完成后，或后续不再需要时，请调用 workbench_toolbox_close 关闭。',
+    '下一次调用即可使用。相关事项完成或后续不再需要时，调用 workbench_toolbox_close 关闭。',
   ];
   return parts.filter((line) => line !== '').join('\n');
 }
@@ -119,8 +119,8 @@ export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Arr
   const listTool: DshToolDefinition = {
     name: TOOLBOX_LIST_TOOL,
     description:
-      '列出工作台的工具包目录。默认仅挂载三个控制工具，其余能力收在工具包内；' +
-      '不确定调用哪个工具、或现有工具不满足所需能力时，请先调用它。',
+      '列出工作台工具包：每个包的 id、名称、一句用途，以及当前已启用的包。' +
+      '不确定该调用哪把工具、或现有工具无法完成时先调用。',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     output: OUTPUT,
     async execute(_raw: unknown, exec: DshToolRunContext) {
@@ -153,9 +153,9 @@ export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Arr
 
   const openTool = targetTool(
     TOOLBOX_OPEN_TOOL,
-    '开启工作台工具包，将工具解锁到本次会话。' +
-      '面板 / 模块界面 / 模块市场 启用 manage（DIY 模式下不提供，diy 已含这一族）；调试 / 录制 / 日志 / 页面 启用 diy；' +
-      'MCP server 启用 mcp:<server>；模块或插件自己的工具启用 unit:<模块或插件 id>。',
+    '开启工作台工具包，把其中的工具加入本次会话。' +
+      '面板 / 模块界面 / 模块市场用 manage（DIY 模式不提供，diy 已含这一族）；调试 / 录制 / 日志 / 页面用 diy；' +
+      'MCP server 用 mcp:<server>；模块或插件自己的工具用 unit:<模块或插件 id>。',
     false,
     (plan, exec) => {
       const newly = toolbox.open(plan.session, plan.packs, presetOf(ctx, exec));
@@ -169,8 +169,7 @@ export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Arr
 
   const closeTool = targetTool(
     TOOLBOX_CLOSE_TOOL,
-    '关闭已开启的工作台工具包，将这些工具从本次会话的上下文中移除。' +
-      '相关事项完成后或后续不再需要时请关闭。',
+    '关闭工作台工具包，把其中的工具移出本次会话上下文。相关事项完成或后续不再需要时关闭。',
     true,
     (plan, exec) => {
       const closed = toolbox.close(plan.session, plan.packs, presetOf(ctx, exec));

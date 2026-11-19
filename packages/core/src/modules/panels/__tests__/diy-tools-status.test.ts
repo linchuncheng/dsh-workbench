@@ -122,7 +122,7 @@ describe('workbench_diy · status', () => {
 
   it('工坊里没有这个 unit：报清楚可用的有哪些', async () => {
     rig.scaffold('demo');
-    await expect(statusOf('nope')).rejects.toThrow('没有单元 id 为「nope」');
+    await expect(statusOf('nope')).rejects.toThrow('没有模块标识为「nope」');
   });
 });
 
@@ -134,13 +134,13 @@ describe('workbench_diy · open', () => {
     const out = (await tool(DIY_SHOW_TOOL)?.execute({ unit: 'demo' }, rig.diyExec())) as { text: string };
     expect(specs).toEqual([]);
     expect(panels.isEnabled('demo', rig.WORKSHOP())).toBe(true);
-    expect(out.text).toContain('已经打开');
+    expect(out.text).toContain('已在面板上打开');
   });
 
   it('没装：报清楚 open 只负责上板', async () => {
     rig.scaffold('demo');
     const { tool } = rig.harness();
-    await expect(tool(DIY_SHOW_TOOL)?.execute({ unit: 'demo' }, rig.diyExec())).rejects.toThrow('还没安装');
+    await expect(tool(DIY_SHOW_TOOL)?.execute({ unit: 'demo' }, rig.diyExec())).rejects.toThrow('尚未安装');
   });
 });
 
@@ -198,11 +198,11 @@ describe('workbench_diy · recon（先看有没有现成的）', () => {
     vi.unstubAllEnvs();
   });
 
-  it('没给关键词：说清这是 agent 自己的活，并点明别问用户', async () => {
+  it('没给关键词：说清这是 agent 自己的活，并点明不要询问用户', async () => {
     const { tool } = rig.harness({});
     await expect(
       tool(DIY_RECON_TOOL)?.execute({}, rig.diyExec()),
-    ).rejects.toThrow('别问用户');
+    ).rejects.toThrow('不要询问用户');
   });
 
   it('★ 这个运行时没有可探测的命令面：直接说走 eval/find，不吐别人的命令行', async () => {

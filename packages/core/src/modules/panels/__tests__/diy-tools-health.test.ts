@@ -109,6 +109,6 @@ describe('★ 计划里被摘掉的套件，必须一路走到 status（少一�
 
     expect(noted.map((one) => one[0])).toEqual(['a', 'b']);
     expect(warned).toHaveLength(2);
-    expect(warned[0]).toContain('a 套件起不来');
+    expect(warned[0]).toContain('a 模块启动失败');
   });
 });

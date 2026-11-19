@@ -134,7 +134,7 @@ describe('工作台待办动作：迁移和收起提醒', () => {
       workbench: () => ({ pkg: '@dsh-workbench/core', version: '1.0.1' }),
     });
 
-    await expect(actions.migrateWorkbench()).rejects.toThrow(/执行缝/);
+    await expect(actions.migrateWorkbench()).rejects.toThrow(/shell 服务/);
   });
 
   it('不再提醒：把 follow-up id 写进当前 profile 的 follow-ups.json', async () => {

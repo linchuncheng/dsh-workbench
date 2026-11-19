@@ -198,7 +198,7 @@ async function applyStep(
       return { ok: false, detail: `装这一版没成（退出码 ${first.code === null ? '拿不到' : String(first.code)}）：${tailLines(first.output, 8)}` };
     }
     const missing = versionMissingOf({ versionDir: plan.versionDir, version: plan.version, packages: plan.packages });
-    if (missing.length === 0) return { ok: true, detail: `装好了：${plan.version}` };
+    if (missing.length === 0) return { ok: true, detail: `安装完成：${plan.version}` };
     log(`装完少了 ${String(missing.length)} 个包（${missing.join('、')}），清掉 node_modules 重装一遍`);
     removePath(join(plan.versionDir, 'node_modules'));
     const second = await runSelfUpdateCommand(step, deps);
@@ -325,10 +325,10 @@ async function applyStep(
           const pending = readReinstallRecord(file);
           if (pending === undefined || pending.version === plan.version) clearReinstallRecord(file);
         } catch (clearError) {
-          log(`待重装记录没清掉（${messageOf(clearError)}），下次启动可能多跑一次 install`);
+          log(`重新安装记录未清除（${messageOf(clearError)}），下次启动可能多执行一次 install`);
         }
       }
-      return { ok: false, detail: `清单没写成（${messageOf(error)}）；${restored.detail}` };
+      return { ok: false, detail: `清单写入失败（${messageOf(error)}）；${restored.detail}` };
     }
     writeCommittedMarker(plan, now, log);
     ensureReleaseAge({ dir: step.profileDir, packages: plan.packages });
@@ -336,7 +336,7 @@ async function applyStep(
       ok: true,
       detail: `${
         flipped.waited
-          ? `已经指到 ${plan.versionDir}（等你退出后换上的，重启生效）`
+          ? `已经指到 ${plan.versionDir}（退出当前进程后切换，重启后生效）`
           : `已经指到 ${plan.versionDir}（重启后生效）`
       }`,
       marks: 'flip',
@@ -449,11 +449,11 @@ async function waitOutInUse(
       run();
       return { ok: true, waited };
     } catch (error) {
-      if (!inUse(error)) return { ok: false, detail: `翻链没成：${messageOf(error)}` };
+      if (!inUse(error)) return { ok: false, detail: `切换失败：${messageOf(error)}` };
       if (Date.parse(now()) >= deadline) {
         return {
           ok: false,
-          detail: '换上这一版要先退出正在用的那个（Desktop 关掉就行），等到现在还没退出；退出后再点一次更新就好',
+          detail: '升级需要先退出正在运行的 Desktop；等待超时仍未退出。请退出后再次点击「升级」。',
         };
       }
       waited = true;

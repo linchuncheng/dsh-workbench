@@ -120,12 +120,12 @@ function successPayloadOf(
       : payload['refresh'] === true
         ? [
             payload['refreshed'] === true
-              ? `已刷新 ${name} 的市集元数据（版本 ${released} 不变）`
-              : `${name} 的市集元数据本来就是这样，没动`,
+              ? `已刷新 ${name} 的市场元数据（版本 ${released} 不变）`
+              : `${name} 的市场元数据本来就是这样，未改动`,
             `市场索引：${asText(asRecord(payload['market'])['url'])}`,
           ].join('\n')
         : targetOfPayload === 'tarball'
-          ? [`安装包在 ${file}`, `本机装：${install}`, '这个安装包可以带走，在别处装。'].join('\n')
+          ? [`安装包在 ${file}`, `本机安装：${install}`, '这个安装包可以在别处安装。'].join('\n')
           : targetOfPayload === 'git'
             ? [
                 `已推到 ${asText(git['url'])}（tag ${asText(git['tag'])}）`,
@@ -198,11 +198,11 @@ export function registerPublishTool(
     description:
       '用户说“发布”后使用：把模块发到 target 指定的出口（不填按环境默认）。' +
       '缺更新日志时带上 changelogNote，发布时写入 CHANGELOG.md。' +
-      '缺市集分类时带上 category（一个短词）；labels 可选（最多两个）。',
+      '缺市场分类时带上 category（一个短词）；labels 可选（最多两个）。',
     parameters: {
       type: 'object',
       properties: {
-        unit: { type: 'string', description: '模块标识（workbench_diy_status 会给）。' },
+        unit: { type: 'string', description: '模块标识（workbench_diy_status 会给出）。' },
         changelogNote: {
           type: 'string',
           description: '这一版改了什么，一行一条；缺更新日志时必填（会先建文件）。',
@@ -210,25 +210,25 @@ export function registerPublishTool(
         changelogType: {
           type: 'string',
           enum: [...CHANGELOG_KINDS],
-          description: '分类，不填按 changed。',
+          description: '变更类型；不填按 changed。',
         },
         labels: {
           type: 'array',
           items: { type: 'string' },
           description:
-            '市集标签，可选，最多两个短词；会替换原有标签。',
+            '市场标签，可选，最多两个短词；会替换原有标签。',
         },
         category: {
           type: 'string',
           description:
-            '市集分类，一个短词（如「任务与协作」）。发市场且条目无分类时必填；' +
+            '市场分类，一个短词（如「任务与协作」）。发市场且条目无分类时必填；' +
             '会替换原有分类。',
         },
         target: {
           type: 'string',
           enum: [...RELEASE_TARGETS],
           description:
-            '发到哪：团队源 / 公共 npm / 安装包 / git / 模块市场索引；不填按环境默认。',
+            '发布出口：团队源 / 公共 npm / 安装包 / git / 模块市场索引；不填按环境默认。',
         },
         version: {
           type: 'string',
@@ -240,11 +240,11 @@ export function registerPublishTool(
         },
         verify: {
           type: 'boolean',
-          description: '只核已发布的包（交接验证码后用），不再发；不用审批。',
+          description: '只核验已发布的包（交接验证码后使用），不再发布；无需批准。',
         },
         resume: {
           type: 'boolean',
-          description: '中断后接着发（用记录里的出口与版本）。',
+          description: '中断后继续发布（沿用记录中的出口与版本）。',
         },
         license: {
           type: 'string',
@@ -256,7 +256,7 @@ export function registerPublishTool(
         },
         refresh: {
           type: 'boolean',
-          description: '只刷市集元数据（标题/作者/说明/标签），不升版本、不重发产物。',
+          description: '只刷新市场元数据（标题 / 作者 / 说明 / 标签），不升版本、不重发产物。',
         },
       },
       required: ['unit'],
@@ -267,11 +267,11 @@ export function registerPublishTool(
       const { root } = await workspaceOf(ctx, exec);
       const found = deps.resolve(root, raw);
       const seam = seamOf(ctx);
-      if (seam === undefined) throw new Error('这台机器上没有 shell 服务，发布跑不起来');
+      if (seam === undefined) throw new Error('本机没有 shell 服务，无法发布');
       const bin = toolchainBinOf(root) ?? toolchainBinOf(found.dir);
       if (bin === null) {
         throw new Error(
-          `这个工作区里没有 dsh-wb-module（${join(root, 'node_modules')} 下没有）—— 先 pnpm install`,
+          `当前工作区没有 dsh-wb-module（${join(root, 'node_modules')} 下不存在）。先执行 pnpm install。`,
         );
       }
       const args = asRecord(raw);
@@ -355,11 +355,11 @@ function labelsOf(value: unknown): readonly string[] {
   if (!Array.isArray(value) || value.length === 0) return [];
   const labels = value.flatMap((one) => (typeof one === 'string' ? [one.trim()] : []));
   if (labels.length !== value.length || labels.some((one) => one === '' || /[\r\n]/u.test(one))) {
-    throw new Error('标签是 1–2 个短词：每个都得是一行非空文字');
+    throw new Error('标签是 1–2 个短词：每项一行非空文字');
   }
   const unique = [...new Set(labels)];
   if (unique.length > 2) {
-    throw new Error(`标签最多两个（收到 ${String(unique.length)} 个）—— 挑最能说明这个模块干什么的`);
+    throw new Error(`标签最多两个（收到 ${String(unique.length)} 个）；挑选最能说明模块用途的`);
   }
   return unique;
 }

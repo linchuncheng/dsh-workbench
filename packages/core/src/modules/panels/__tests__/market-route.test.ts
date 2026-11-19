@@ -331,7 +331,7 @@ describe('插件那条路失败：回结构化失败（不抛），诊断信息�
       errorCode: 'operation-error',
     });
     const detail = outcome.change.errorDetail ?? '';
-    expect(detail).toMatch(/没有写入权限|被系统拦住了/u);
+    expect(detail).toMatch(/没有写入权限|被系统拦截/u);
     expect(detail).toContain('npm ERR! line-10');
     expect(detail).toContain(COMMAND);
     expect(detail).toContain('npm ERR! code EACCES');

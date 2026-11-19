@@ -1,6 +1,6 @@
 import type { Dictionaries } from './index.js';
 
-/** 一个套件交上来的词表：`unit` 是套件 id（也是键前缀），`messages` 缺省表示这次不参与合并。 */
+/** 一个模块交上来的词表：`unit` 是模块 id（也是键前缀），`messages` 缺省表示这次不参与合并。 */
 export interface MessagesContribution {
   readonly unit: string;
   readonly messages?: Dictionaries | undefined;
@@ -11,7 +11,7 @@ function assertSelfConsistent(unit: string, messages: Dictionaries): void {
   const enKeys = Object.keys(messages.en).sort();
   if (zhKeys.length !== enKeys.length || zhKeys.some((key, index) => key !== enKeys[index])) {
     throw new Error(
-      `套件 ${unit} 的文案两语言不同构：zh ${zhKeys.length} 键 / en ${enKeys.length} 键`,
+      `模块 ${unit} 的文案两语言不同构：zh ${zhKeys.length} 键 / en ${enKeys.length} 键`,
     );
   }
   for (const [language, dictionary] of [
@@ -19,12 +19,12 @@ function assertSelfConsistent(unit: string, messages: Dictionaries): void {
     ['en', messages.en],
   ] as const) {
     for (const [key, value] of Object.entries(dictionary)) {
-      if (value.trim() === '') throw new Error(`套件 ${unit} 的文案 ${language}.${key} 是空的`);
+      if (value.trim() === '') throw new Error(`模块 ${unit} 的文案 ${language}.${key} 是空的`);
     }
   }
 }
 
-/** 把各套件的词表合到外壳底座上：键必须以 `<unit>.` 开头、不许撞已有键，违规当场抛错。 */
+/** 把各模块的词表合到外壳底座上：键必须以 `<unit>.` 开头、不许撞已有键，违规当场抛错。 */
 export function mergeMessages(
   base: Dictionaries,
   contributions: readonly MessagesContribution[],
@@ -40,7 +40,7 @@ export function mergeMessages(
 
     for (const [key, value] of Object.entries(messages.zh)) {
       if (!key.startsWith(`${item.unit}.`)) {
-        throw new Error(`套件 ${item.unit} 的文案键必须以 "${item.unit}." 开头：${key}`);
+        throw new Error(`模块 ${item.unit} 的文案键必须以 "${item.unit}." 开头：${key}`);
       }
       const previous = owner.get(key);
       if (previous !== undefined) {
@@ -55,7 +55,7 @@ export function mergeMessages(
   return { zh, en };
 }
 
-/** 一条没合进去的贡献：哪个套件 + 为什么被拒（人话原因）。 */
+/** 一条没合进去的贡献：哪个模块 + 为什么被拒（人话原因）。 */
 export interface MessagesProblem {
   readonly unit: string;
   readonly reason: string;
@@ -72,7 +72,7 @@ function reasonOf(error: unknown): string {
   return typeof error === 'string' ? error : String(error);
 }
 
-/** 逐份试合、坏的跳过：一份贡献不合规只记进 `problems`，不影响其余套件与已有词表。 */
+/** 逐份试合、坏的跳过：一份贡献不合规只记进 `problems`，不影响其余模块与已有词表。 */
 export function mergeMessagesSkipping(
   base: Dictionaries,
   contributions: readonly MessagesContribution[],

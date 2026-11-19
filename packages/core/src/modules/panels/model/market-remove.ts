@@ -60,7 +60,7 @@ async function removeOnce(options: RemoveBundleOptions): Promise<BundleChange> {
   }
   const put = await manager.setEnabled?.(pkg, true);
   logger?.warn?.(
-    `[dsh-workbench] ${pkg} 没卸成（${settled.errorCode ?? settled.application}）—— 已把它那一行放回名单，别让一次失败留在"装着但关着"`,
+    `[dsh-workbench] ${pkg} 卸载失败（${settled.errorCode ?? settled.application}）：已把对应行放回名单，避免留下「已安装但未启用」的状态`,
   );
   return put ?? settled;
 }

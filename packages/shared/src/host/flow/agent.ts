@@ -22,7 +22,7 @@ export function agentStopReasonText(stopReason: string): string {
   if (stopReason === 'error') return 'agent 出错了';
   if (stopReason === 'max-tokens') return 'agent 到输出上限还没给结论';
   if (stopReason === 'refusal') return 'agent 拒绝了这个任务';
-  return `agent 没跑完（${stopReason}）`;
+  return `agent 未完成（${stopReason}）`;
 }
 
 /**

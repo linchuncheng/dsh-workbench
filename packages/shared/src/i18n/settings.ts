@@ -1,7 +1,7 @@
 /** 「工作台设置」这一组的词条：配置同步 / 新建工作台。 */
 export const zhSettings = {
   'profileCreate.nav': '新建工作台',
-  'profileCreate.lead': '以现有配置复制出一个独立工作台。',
+  'profileCreate.lead': '用现有配置复制一份独立的工作台配置。',
   'profileCreate.name': '新工作台的名字',
   'profileCreate.nameHint': '例如 wb2（只用字母、数字、点、下划线或短横线）',
   'profileCreate.source': '来源工作台配置',
@@ -22,7 +22,7 @@ export const zhSettings = {
   'profileCreate.failed': '创建失败，请查看下面的输出。',
 
   'configSync.nav': '配置同步',
-  'configSync.lead': '只同步修改已有插件设置的行，挂载新插件的行不同步。',
+  'configSync.lead': '只同步修改已有插件设置的行；挂载新插件的行不会同步。',
   'configSync.source': '来源',
   'configSync.sourceBroken': '无法读取它的配置',
   'configSync.sourceRows': '{name} 中有 {count} 行可以同步',
@@ -68,7 +68,7 @@ export const zhSettings = {
 /** 上面那组的中文对照。 */
 export const enSettings: Record<keyof typeof zhSettings, string> = {
   'profileCreate.nav': 'New workbench',
-  'profileCreate.lead': 'Copy the existing configuration into a separate new workbench.',
+  'profileCreate.lead': 'Copy the existing configuration into a separate workbench configuration.',
   'profileCreate.name': 'New workbench name',
   'profileCreate.nameHint': 'e.g. wb2 (letters, digits, dot, underscore or dash)',
   'profileCreate.source': 'Source configuration',

@@ -112,8 +112,8 @@ defineOptions({
     <section class="problems">
       <div class="section-header">
         <span class="section-eyebrow">WHY</span>
-        <h2>不是你不专注。是平台太分散。</h2>
-        <p>每一次切换，都在重建上下文。</p>
+        <h2>不是你不专注，而是平台太分散。</h2>
+        <p>每一次切换，都要重新找回状态。</p>
       </div>
 
       <div class="p-grid">
@@ -152,7 +152,7 @@ defineOptions({
           <p>接口不开放，数据留在页面里，执行停在最后一步。</p>
           <div class="p-fix">
             <span class="p-fix-tag">让 AI 进来</span>
-            <span class="p-fix-text">借登录态读取，写入留痕。</span>
+            <span class="p-fix-text">借登录状态读取，写入留痕。</span>
           </div>
         </div>
       </div>
@@ -168,7 +168,7 @@ defineOptions({
       <div class="section-header">
         <span class="section-eyebrow">CUSTOMIZE</span>
         <h2>看板，由你定义。</h2>
-        <p>安装、打开、排序、配置、创建。一张随工作生长的看板。</p>
+        <p>安装、启用、排序、配置、创建。一张按需增减的看板。</p>
       </div>
 
       <div class="feature-grid">
@@ -226,8 +226,8 @@ defineOptions({
               />
             </svg>
           </div>
-          <h3>开与排。一项目一板。</h3>
-          <p>模块、顺序，都由你定。拖动，即调整。</p>
+          <h3>启用与排序。一项目一板。</h3>
+          <p>模块与顺序都由你定；拖动可以调整。</p>
         </div>
         <div class="f-card">
           <div
@@ -298,8 +298,8 @@ defineOptions({
               />
             </svg>
           </div>
-          <h3>配置与创建。从配置到创造。</h3>
-          <p>每块模块，都有它的设置。缺少什么，让 agent 创建。</p>
+          <h3>配置与创建。</h3>
+          <p>每个模块都有它的设置。缺少什么，让 agent 创建。</p>
         </div>
       </div>
     </section>
@@ -354,7 +354,7 @@ defineOptions({
             </svg>
           </div>
           <h3>同事实。</h3>
-          <p>agent 读得到看板数据，也清楚哪张卡会变。</p>
+          <p>agent 读得到看板数据，也清楚哪个模块会变。</p>
         </div>
         <div class="f-card">
           <div
@@ -383,7 +383,7 @@ defineOptions({
       <div class="section-header">
         <span class="section-eyebrow">GET STARTED</span>
         <h2>开始使用。</h2>
-        <p>几步即可完成。遇到问题，也有答案。</p>
+        <p>安装工作台、首次打开、安装第一个模块。遇到问题，也有答案。</p>
       </div>
 
       <div class="qs-entry">
@@ -405,7 +405,7 @@ defineOptions({
             </svg>
           </div>
           <h3>快速开始</h3>
-          <p>在 Desktop 中安装，重新打开窗口。首次安装 OpenCLI 扩展，数据才会出现。</p>
+          <p>在 Desktop 中安装并重新打开窗口；安装 OpenCLI 扩展后，面板才能读到数据。</p>
           <PagodaDocLinkToView
             view="guide/quickstart"
             class="qs-link"
@@ -430,7 +430,7 @@ defineOptions({
             </svg>
           </div>
           <h3>看板如何定义</h3>
-          <p>安装模块，打开看板，拖动顺序。缺少什么，让 agent 创建。</p>
+          <p>安装模块，在看板中启用，拖动排序。缺少什么，让 agent 创建。</p>
           <PagodaDocLinkToView
             view="guide/modules"
             class="qs-link"
@@ -485,7 +485,7 @@ defineOptions({
     <section class="footer-cta">
       <div class="footer-cta-inner">
         <h2>从一张看板开始。</h2>
-        <p>安装在 Desktop 中，会话与项目沿用现有的那一份。账号与权限，留在原处。不需要时，从插件页移除即可复原。</p>
+        <p>安装在 Desktop 中，会话与项目沿用现有的那一份。账号与权限，留在原处。不需要时，从插件页移除工作台，界面恢复原样。</p>
         <a
           href="#/guide/quickstart"
           class="btn-primary"

@@ -1,5 +1,5 @@
-export const UNIT_PROP = { type: 'string', description: '工作区里的 unit（不填 = 这里只有一个就用它）。' };
-export const SESSION_PROP = { type: 'string', description: '会话名（默认 workbench，一般不用填）。' };
+export const UNIT_PROP = { type: 'string', description: '模块标识；不填时使用当前工作区中唯一的模块。' };
+export const SESSION_PROP = { type: 'string', description: '会话名；默认 workbench，一般不用填。' };
 
 export function pageSchema(
   extra: Record<string, unknown> = {},

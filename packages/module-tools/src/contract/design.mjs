@@ -566,7 +566,7 @@ export function renderUserReadme(source) {
     ...shotLines,
     ...sectionOf('你会看到什么', source?.see),
     ...sectionOf('你能做什么', source?.do),
-    ...sectionOf('agent 能替你做什么', source?.agent),
+    ...sectionOf('agent 能做什么', source?.agent),
     ...sectionOf('数据从哪来', source?.data),
     ...sectionOf('装和卸', install),
     ...sectionOf('出问题先看', source?.trouble),

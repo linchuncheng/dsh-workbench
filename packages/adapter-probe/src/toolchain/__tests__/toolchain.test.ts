@@ -376,7 +376,7 @@ describe('种子工具链：store 位置与既有 node_modules 对不上时清�
     });
 
     expect(result.ok).toBe(false);
-    expect(result.detail).toContain('清掉 node_modules 重装后还是没装上');
+    expect(result.detail).toContain('删除 node_modules 并重新安装后仍然失败');
     expect(result.detail).toContain(STORE_ERROR);
   });
 

@@ -95,10 +95,10 @@ export function registerRecordTools(
   const prepareTool: DshToolDefinition = {
     name: DIY_RECORD_PREPARE_TOOL,
     description:
-      '打开一个浏览器窗口并置于前台，让用户录制一次真实写入（打开窗口需批准）。' +
+      '打开浏览器窗口并置于前台，让用户录制一次真实写入；打开窗口需要用户批准。' +
       `同一时刻只允许一场录制；再次调用会开始下一段（收起上一个窗口，打开新窗口），不要先调用 ${DIY_RECORD_STOP_TOOL}。` +
-      `开始或结束后用 ${DIY_RECORD_READ_TOOL} 读取该段；结束整场才用 ${DIY_RECORD_STOP_TOOL}（只在流程「完成」那一步）。` +
-      '录制条上的「截图」无需另行批准（打开窗口已授权）。',
+      `开始或结束后用 ${DIY_RECORD_READ_TOOL} 读取该段；结束整场才用 ${DIY_RECORD_STOP_TOOL}，且只在流程「完成」那一步。` +
+      '录制条上的「截图」无需另行批准。',
     parameters: RECORD_PREPARE_PARAMS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -112,7 +112,7 @@ export function registerRecordTools(
       }
       const used = segments.get(sessionId) ?? 0;
       if (atStep !== null && used >= RECORD_SEGMENT_CAP) {
-        throw new Error(`本场已录制 ${String(RECORD_SEGMENT_CAP)} 段，达到上限。结束整场，并把缺口写进交代。`);
+        throw new Error(`本场已录制 ${String(RECORD_SEGMENT_CAP)} 段，达到上限。结束整场，并把缺口写入交代。`);
       }
       const { root } = await workspaceOf(ctx, exec);
       const artifactsDir = artifactsDirOf(root);
@@ -237,7 +237,7 @@ export function registerRecordTools(
   const readTool: DshToolDefinition = {
     name: DIY_RECORD_READ_TOOL,
     description:
-      '读取本段录制到的请求（用户按「结束录制」后使用）。尚未开始或钩子未安装时会说明原因，不会误报为没有请求。',
+      '读取本段录制到的请求（用户按「结束录制」后使用）。尚未开始或钩子未安装时说明原因，不误报为没有请求。',
     parameters: RECORD_READ_PARAMS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -381,7 +381,7 @@ export function registerRecordTools(
     name: DIY_RECORD_STOP_TOOL,
     description:
       '结束整场：移除录制条、停止捕获、关闭标签页、清除状态。只在流程「完成」那一步可用。' +
-      '写请求缺入参或出参时不会结束，会返回缺什么；无法补齐才传 force + forceWhy。',
+      '写请求缺少入参或出参时不会结束，并在返回中列出缺口；无法补齐才传 force 与 forceWhy。',
     parameters: RECORD_STOP_PARAMS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -405,7 +405,7 @@ export function registerRecordTools(
           code: 'gaps-open',
           text:
             `本场还有未补齐的缺口：${openGaps.join(' / ')}。要补录就调用 ${DIY_RECORD_PREPARE_TOOL}；` +
-            '无法补齐才传 force + forceWhy，并把缺口如实写进交代。',
+            '无法补齐才传 force 与 forceWhy，并把缺口如实写入交代。',
         });
       }
       const { seam, wire, sessionId, held, command } = doorOf(ctx, store, exec, '本机没有 shell 服务，无法结束录制');
@@ -424,9 +424,9 @@ export function registerRecordTools(
           code: 'materials-missing',
           missing: materials.missing,
           text: [
-            `暂不结束：这一段还缺 ${materials.missing.join(' / ')}。`,
+            `暂不结束：本段还缺 ${materials.missing.join(' / ')}。`,
             ...materialsTextOf(materials),
-            '用户补齐这些后再调用；确实无法补齐时，才传 force: true + forceWhy（写清原因，会留痕）。',
+            '用户补齐这些后再调用；确实无法补齐时，才传 force: true 与 forceWhy（写清原因，会留痕）。',
           ].join('\n'),
         });
       }
@@ -481,7 +481,7 @@ export function registerRecordTools(
           force ? `强制结束（${forceWhy}）。` : '',
           snapFile === '' ? '' : `表单原始 HTML 已保存到 ${snapFile}。`,
           kept
-            ? `原文保留在 ${lastFile}（下一次 prepare 会清除）。要查看某一条，调用 ${DIY_RECORD_DETAIL_TOOL}：提供 unit + key；同一 key 跨轮会重名，同时带上清单中该行的 at 才能准确定位。`
+            ? `原文保留在 ${lastFile}（下一次 prepare 会清除）。要查看某一条，调用 ${DIY_RECORD_DETAIL_TOOL}：提供 unit 与 key；同一 key 跨轮会重名，同时带上清单中该行的 at 才能准确定位。`
             : '未保留原文（本场捕获文件为空，或捕获未启动）。需要某一条时，让用户从 DevTools 复制 curl。',
           bundle.capture.round === 'fail'
             ? '（会话捕获最近一轮未成功，本场可能只有页面钩子。）'
@@ -492,7 +492,7 @@ export function registerRecordTools(
           probeCommand !== ''
             ? '本段原文可以直接写入 design.json 的 writes[].probeCommand。'
             : noBody
-              ? '只有方法 / URL，无法获取请求体。先补全请求体，再写入 writes[].probeCommand。需要请求体时，让用户从 DevTools 复制 curl，或在用户页面上用 _eval 中的 fetch 发送一条同形请求（先征得用户同意）。'
+              ? '只有方法 / URL，无法获取请求体。先补全请求体，再写入 writes[].probeCommand。需要请求体时，让用户从 DevTools 复制 curl，或在用户页面上用 _eval 中的 fetch 发送一条同构请求（先征得用户同意）。'
               : '本段原文为空，不要写入 design.json。',
           '不要重放这段请求：没有预览模式时，写入一次即为真实写入。',
         ]

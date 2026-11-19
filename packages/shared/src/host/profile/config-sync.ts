@@ -193,7 +193,7 @@ export function configSyncSnapshot(deps: ConfigSyncDeps, asked?: string): Config
       profiles: [],
       rows: [],
       emptyProviders: false,
-      reason: '拿不到当前 profile 目录',
+      reason: '无法读取当前工作台配置目录',
     };
   }
   const own = readPatchBlocks(join(deps.profileDir, 'cordis.patch.yml'));
@@ -246,7 +246,7 @@ export async function configSyncApply(
   deps: ConfigSyncDeps,
   payload: unknown,
 ): Promise<{ ok: true; written: string[]; skipped: string[]; verified: boolean } | { ok: false; text: string }> {
-  if (deps.profileDir === null) return { ok: false, text: '拿不到当前 profile 目录，这次没写任何东西' };
+  if (deps.profileDir === null) return { ok: false, text: '无法读取当前工作台配置目录，本次未做任何写入' };
   const body = typeof payload === 'object' && payload !== null ? (payload as Record<string, unknown>) : {};
   const source = textOf(body['source']);
   const keys = new Set(

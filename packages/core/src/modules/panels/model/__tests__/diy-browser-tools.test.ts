@@ -285,7 +285,7 @@ describe('只读线档：同一族、另一条会话', () => {
     const out = await run(rig, DIY_EVAL_TOOL, { read: 'https://site.example/a', args: ['return 1'] });
 
     expect(out.stdout).toContain('not-logged-in');
-    expect(out.stdout).toContain('请先在 https://site.example/a 登录');
+    expect(out.stdout).toContain('先在 https://site.example/a 登录');
     expect(out.exitCode).toBe(3);
   });
 
@@ -298,10 +298,10 @@ describe('只读线档：同一族、另一条会话', () => {
       { read: 'https://site.example/a', in: 'card', args: ['return 1'] },
       { read: 'https://site.example/a', args: ['$card .wb-cardOpen'] },
     ]) {
-      await expect(run(rig, DIY_FIND_TOOL, raw)).rejects.toThrow(/只读线没有/);
+      await expect(run(rig, DIY_FIND_TOOL, raw)).rejects.toThrow(/只读模式没有/);
     }
     await expect(run(rig, DIY_EVAL_TOOL, { read: 'https://site.example/a', args: ['$card'] })).rejects.toThrow(
-      /只读线没有/,
+      /只读模式没有/,
     );
     expect(rig.commands).toHaveLength(0);
   });

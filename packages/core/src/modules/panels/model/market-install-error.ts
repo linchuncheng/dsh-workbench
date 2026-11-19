@@ -3,8 +3,8 @@ import { WorkbenchDataError, tailLines } from '@dsh-workbench/shared/host';
 
 const INSTALL_PROBLEM = {
   permission: '没有写入权限',
-  'disk-full': '磁盘满了',
-  sandbox: '被系统拦住了',
+  'disk-full': '磁盘空间不足',
+  sandbox: '被系统拦截',
   unknown: '命令失败',
 } as const;
 

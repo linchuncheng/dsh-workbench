@@ -68,7 +68,7 @@ describe('添加模块浮层那两屏（插件态）', () => {
         state: { ...state, preview: { ...preview, origins: ['https://oa.example.com'] } },
       }),
     ).join('|');
-    expect(shown).toContain('会读取这些站：https://oa.example.com');
+    expect(shown).toContain('将访问以下站点：https://oa.example.com');
   });
 
   it('★ 装完的插件那一屏只说已安装，不劝人重启（插件不需要重启）', () => {

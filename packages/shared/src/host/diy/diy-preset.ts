@@ -9,7 +9,7 @@ export const DIY_PRESET_NAME = '工作台 DIY 模式';
 
 /** DIY preset 在模式菜单里的说明。 */
 export const DIY_PRESET_DESCRIPTION =
-  '看 / 调这个工作区的面板，或者给它造一块新内容 —— 用大白话说就行。任何工作区都能用（空项目也算）；agent 会看面板、抓请求，必要时把模块造出来装上。不用写代码。';
+  '查看或调整这个工作区的面板，也可以为它新建一块内容。任何工作区都能使用（空项目也可以）；agent 会查看面板、抓取请求，必要时创建模块并安装。不需要写代码。';
 
 /** DIY preset 在模式菜单里的排序（排在 dsh 出厂的几个模式之后）。 */
 export const DIY_PRESET_ORDER = 9;

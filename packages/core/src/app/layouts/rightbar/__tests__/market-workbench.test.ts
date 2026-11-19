@@ -385,7 +385,7 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
       undefined,
     );
     expect(pending?.note).toBeUndefined();
-    expect(dictionaries.zh['panels.market.selfUpdateReinstallFailed']).toContain('重装');
+    expect(dictionaries.zh['panels.market.selfUpdateReinstallFailed']).toContain('重新安装');
   });
 
   it('★ 同一条 marker 已经告知过 → 下次打开那一行只报版本，不再打扰', () => {
@@ -577,7 +577,7 @@ describe('工作台那一行上的人话', () => {
       expect(withCommand, `${language}:withCommand`).toContain('{command}');
       expect(noFix, `${language}:noFix`).not.toContain('{command}');
     }
-    expect(dictionaries.zh['panels.market.workbenchBroken']).toContain('无法读取工作台的这份安装（安装已损坏）');
+    expect(dictionaries.zh['panels.market.workbenchBroken']).toContain('无法读取工作台的安装信息（安装已损坏）');
   });
 
   it('★ 自更新那几档的话两种语言都有：不混排、不出内部词', () => {

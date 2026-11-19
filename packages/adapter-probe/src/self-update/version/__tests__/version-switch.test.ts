@@ -136,7 +136,7 @@ describe('版本目录：自检与安装', () => {
     expect(result.ok).toBe(true);
     expect(result.reinstalled).toBe(true);
     expect(result.detail).toContain('工作台包 装了两遍');
-    expect(result.detail).toContain('清掉 node_modules 重装后装好了');
+    expect(result.detail).toContain('清掉 node_modules 重装后安装完成');
     expect(result.detail).toContain('第一遍的输出');
     expect(result.detail).toContain('第二遍的输出');
   });
@@ -154,7 +154,7 @@ describe('版本目录：自检与安装', () => {
     expect(calls).toBe(2);
     expect(result.ok).toBe(false);
     expect(result.reinstalled).toBe(true);
-    expect(result.detail).toContain('还是没装上');
+    expect(result.detail).toContain('重新安装仍然失败');
     expect(result.detail).toContain('still wrong');
   });
 

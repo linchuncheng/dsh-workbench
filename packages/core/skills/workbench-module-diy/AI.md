@@ -34,8 +34,8 @@ await deps.ai.askJson({
 三种写法都可以：绝对路径、data URL、`Uint8Array`。宿主会通过 `saveImage` 将其保存为持久附件，再送入模型；
 模块**不会接触**附件引用这类内核类型。
 
-⚠️ 不要按 OpenAI 的 `image_url` 自行拼内容块——dsh 的适配器只认 `{ type: 'image', attachment }`，
-其余内容块会被**静默丢弃**，模型会回答“无法查看图片”，看起来像模型能力不足。
+⚠️ 不要按 OpenAI 的 `image_url` 自行组合内容块——dsh 的适配器只认 `{ type: 'image', attachment }`，
+其余内容块会被**静默丢弃**，模型会回答“无法查看图片”，表现为模型能力不足。
 
 先问能力再降级：
 

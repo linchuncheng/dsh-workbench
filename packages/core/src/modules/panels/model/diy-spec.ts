@@ -23,11 +23,11 @@ export function specTool(ctx: DshHostContext): DshToolDefinition {
   const surface = surfaceOf(ctx);
   return {
     name: DIY_SPEC_TOOL,
-    description: `问一条${surface?.name ?? '运行时'}命令的形状（入参 / 出参列 / access / 预览档）：\`--help -f json\` 原样回，插件与内置都能问。`,
+    description: `查询${surface?.name ?? '运行时'}命令规格（入参 / 出参列 / access / 预览档）：返回 \`--help -f json\` 的原始输出，插件与内置命令都可查询。`,
     parameters: {
       type: 'object',
       properties: {
-        command: { type: 'string', description: 'site 与名字两个词，例 `inventory publish`（`inventory/publish` 也认）。' },
+        command: { type: 'string', description: '站点与命令名两个词，例 `inventory publish`（`inventory/publish` 也可）。' },
         timeoutMs: { type: 'number', description: '超时毫秒（默认 20000）。' },
       },
       required: ['command'],
@@ -38,10 +38,10 @@ export function specTool(ctx: DshHostContext): DshToolDefinition {
       const args = asRecord(raw);
       const argv = specArgvOf(asText(args['command']));
       if (argv.length === 0) {
-        throw new Error('给一条命令，site 与名字两个词 —— 例 `inventory publish`（`inventory/publish` 也认）。');
+        throw new Error('需要一条命令：站点与命令名两个词，例 `inventory publish`（`inventory/publish` 也接受）。');
       }
       const seam = seamOf(ctx);
-      if (seam === undefined) throw new Error('这台机器上没有 shell 服务，问不了命令的形状');
+      if (seam === undefined) throw new Error('本机没有 shell 服务，无法查询命令规格');
       const asked = asNumber(args['timeoutMs']);
       const timeoutMs = asked !== undefined && asked > 0 ? asked : SPEC_TIMEOUT_MS;
       const result = await seam.run({

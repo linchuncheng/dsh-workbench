@@ -115,7 +115,7 @@ describe('installIsolatedRuntime（旧树先挪成 prev → 直接装进 live �
     expect(isOpencliReadyAt(live)).toBe(false);
   });
 
-  it('★ store mismatch 只清 live 里装了一半的 node_modules，旧树在 prev 里', async () => {
+  it('★ store mismatch 只清 live 里安装未完成的 node_modules，旧树在 prev 里', async () => {
     const live = liveDir();
     mkdirSync(join(live, 'node_modules'), { recursive: true });
     writeFileSync(join(live, 'node_modules', 'live.txt'), 'live');
@@ -128,7 +128,7 @@ describe('installIsolatedRuntime（旧树先挪成 prev → 直接装进 live �
 
     expect(result.ok).toBe(true);
     expect(result.reinstalled).toBe(true);
-    expect(result.detail).toContain('装了一半的 node_modules');
+    expect(result.detail).toContain('安装未完成的 node_modules');
     const previous = readdirSync(dirname(live)).filter((entry) => entry.startsWith('toolchain.prev-'));
     expect(existsSync(join(dirname(live), previous[0] ?? '', 'node_modules', 'live.txt'))).toBe(true);
     expect(isOpencliReadyAt(live)).toBe(true);

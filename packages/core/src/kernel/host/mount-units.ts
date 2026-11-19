@@ -134,7 +134,7 @@ export interface PlanFailureSinks {
 export function applyPlanFailures(failures: readonly UnitFailure[], sinks: PlanFailureSinks): void {
   for (const failure of failures) {
     sinks.note(failure.id, failure.reason);
-    sinks.warn(`[dsh-workbench] ${failure.id} 套件起不来，已摘掉它这一份：${failure.reason}`);
+    sinks.warn(`[dsh-workbench] ${failure.id} 模块启动失败，已移除这一份：${failure.reason}`);
   }
 }
 
@@ -164,7 +164,7 @@ function collectRoutes(
       }
       const previous = owner.get(key);
       if (previous !== undefined) {
-        problem = `路由名冲突：${key} 由套件 ${previous} 与 ${unit} 同时声明`;
+        problem = `路由名冲突：${key} 由模块 ${previous} 与 ${unit} 同时声明`;
         break;
       }
       accepted.push([key, handler]);
@@ -199,7 +199,7 @@ function collectNamed(
     if (entries.length === 0) continue;
     const clash = entries.find((entry) => owner.has(entry.resource));
     if (clash !== undefined) {
-      fail(ledger, item, `${label}名冲突：${clash.resource} 由套件 ${owner.get(clash.resource)} 与 ${unit} 同时声明`);
+      fail(ledger, item, `${label}名冲突：${clash.resource} 由模块 ${owner.get(clash.resource)} 与 ${unit} 同时声明`);
       continue;
     }
     for (const entry of entries) {
@@ -223,7 +223,7 @@ function collectContextRenderers(
     if (context === undefined) continue;
     const clash = context.kinds.find((kind) => owner.has(kind));
     if (clash !== undefined) {
-      fail(ledger, item, `对话引用的 kind 冲突：${clash} 由套件 ${owner.get(clash)} 与 ${unit} 同时认领`);
+      fail(ledger, item, `对话引用的 kind 冲突：${clash} 由模块 ${owner.get(clash)} 与 ${unit} 同时认领`);
       continue;
     }
     for (const kind of context.kinds) {

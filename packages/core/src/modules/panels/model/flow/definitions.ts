@@ -54,7 +54,7 @@ const openTools = {} as const;
 
 export const DIY_BOARD_FLOW: DiyFlow = {
   id: 'diy-board',
-  title: '做一张看板卡片',
+  title: '创建看板模块',
   steps: [
     { id: 'probe', title: '查看数据来源', when: isBuild, tools: lockedTools, schema: PROBE_SCHEMA },
     { id: 'plan', title: '确认方案', when: isBuild, tools: lockedTools, schema: PLAN_SCHEMA },
@@ -67,12 +67,12 @@ export const DIY_BOARD_FLOW: DiyFlow = {
 
 export const DIY_TWEAK_FLOW: DiyFlow = {
   id: 'diy-tweak',
-  title: '改一格',
+  title: '修改模块',
   steps: [
-    { id: 'plan', title: '补一下方案', tools: lockedTools, schema: PLAN_SCHEMA },
-    { id: 'build', title: '改模块', tools: openTools, schema: BUILD_SCHEMA },
-    { id: 'install', title: '热换', tools: lockedTools, schema: INSTALL_SCHEMA },
-    { id: 'verify', title: '只验那格', tools: lockedTools, schema: VERIFY_SCHEMA },
+    { id: 'plan', title: '补充方案', tools: lockedTools, schema: PLAN_SCHEMA },
+    { id: 'build', title: '修改模块', tools: openTools, schema: BUILD_SCHEMA },
+    { id: 'install', title: '替换模块', tools: lockedTools, schema: INSTALL_SCHEMA },
+    { id: 'verify', title: '只检查该模块', tools: lockedTools, schema: VERIFY_SCHEMA },
     { id: 'ledger', title: '保存这次的设计', tools: openTools, schema: LEDGER_SCHEMA },
   ],
 };

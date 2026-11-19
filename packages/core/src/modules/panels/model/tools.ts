@@ -95,7 +95,7 @@ export function registerPanelTools(
   const listTool: DshToolDefinition = {
     name: PANELS_LIST_TOOL,
     description:
-      '查看面板配置：已启用哪些模块、顺序如何。当前工作区的配置优先；未单独配置过的项使用机器级默认值。' +
+      '查看面板配置：已启用哪些模块、顺序如何。当前工作区优先，未单独配置的项跟随机器级默认值；' +
       '机器级默认值只影响尚未配置过的工作区。',
     parameters: {
       type: 'object',
@@ -117,7 +117,7 @@ export function registerPanelTools(
 
   const showTool: DshToolDefinition = {
     name: PANELS_SHOW_TOOL,
-    description: '为当前工作区启用该模块：恢复此前隐藏的项，同时启用模块界面与 agent 工具，并清除机器级默认值中的禁用记录。',
+    description: '在当前工作区启用该模块：恢复此前隐藏的项，启用模块界面与 agent 工具，并清除机器级默认值中的禁用记录。',
     parameters: {
       type: 'object',
       properties: { id: ID_PARAM, scope: SCOPE_PARAM },
@@ -131,7 +131,7 @@ export function registerPanelTools(
       const workspace = sessionWorkspace(exec);
       if (id === undefined || id === '') {
         throw new Error(
-          `workbench_panels_show 需要一个 id，例如 issues。当前配置中的模块：${panels
+          `workbench_panels_show 缺少 id（例如 issues）。当前配置中的模块：${panels
             .list(workspace, scope)
             .map((entry) => entry.id)
             .join(', ')}`,
@@ -140,7 +140,7 @@ export function registerPanelTools(
       const units = panels.show(id, workspace, scope);
       const text =
         scope === 'machine'
-          ? `已把 ${id} 写入机器级默认值：尚未配置过的工作区会包含它，模块界面与工具同时启用。若默认值中曾将它标记为"不要"，本次操作已清除该标记。${MACHINE_CAVEAT}\n${render(units, workspace, scope)}`
+          ? `已把 ${id} 写入机器级默认值：尚未配置过的工作区会包含它，模块界面与工具同时启用。默认值中曾将它标记为「不要」的，本次操作已清除该标记。${MACHINE_CAVEAT}\n${render(units, workspace, scope)}`
           : `已启用 ${id}：当前工作区需要它。此前隐藏的项已恢复，模块界面与工具同时启用。\n${render(units, workspace, scope)}`;
       return { units, text };
     },
@@ -150,7 +150,7 @@ export function registerPanelTools(
     name: PANELS_HIDE_TOOL,
     description:
       '当前工作区明确不要该模块：模块界面与 agent 工具同时停用，机器级默认值中已启用的模块也同样停用。' +
-      '其他项目不受影响，要恢复请用 workbench_panels_show。在机器级默认值上执行 hide 会写入"不要"标记，优先级高于名单。',
+      '其他项目不受影响，恢复用 workbench_panels_show。机器级默认值上的 hide 会写入「不要」标记，优先级高于名单。',
     parameters: {
       type: 'object',
       properties: { id: ID_PARAM, scope: SCOPE_PARAM },
@@ -164,7 +164,7 @@ export function registerPanelTools(
       const workspace = sessionWorkspace(exec);
       if (id === undefined || id === '') {
         throw new Error(
-          `workbench_panels_hide 需要一个 id，例如 issues。当前配置中的模块：${panels
+          `workbench_panels_hide 缺少 id（例如 issues）。当前配置中的模块：${panels
             .list(workspace, scope)
             .map((entry) => entry.id)
             .join(', ')}`,
@@ -173,15 +173,15 @@ export function registerPanelTools(
       const units = panels.hide(id, workspace, scope);
       const text =
         scope === 'machine'
-          ? `已把 ${id} 从机器级默认值中清除，并在默认值中标记"不要它"：尚未配置过的工作区从此不再显示它，模块界面与工具同时停用；名单中仍列着它也无效，要恢复请用 workbench_panels_show。${MACHINE_CAVEAT}\n${render(units, workspace, scope)}`
-          : `已停用 ${id}：当前工作区明确不要它，模块界面与工具同时停用；机器级默认值中已启用的模块也同样停用。其他项目不受影响，要恢复请用 workbench_panels_show。\n${render(units, workspace, scope)}`;
+          ? `已把 ${id} 从机器级默认值中清除，并在默认值中标记「不要它」：尚未配置过的工作区从此不再显示它，模块界面与工具同时停用；名单中仍列着它也无效，恢复用 workbench_panels_show。${MACHINE_CAVEAT}\n${render(units, workspace, scope)}`
+          : `已停用 ${id}：当前工作区明确不要它，模块界面与工具同时停用；机器级默认值中已启用的模块也同样停用。其他项目不受影响，恢复用 workbench_panels_show。\n${render(units, workspace, scope)}`;
       return { units, text };
     },
   };
 
   const moveTool: DshToolDefinition = {
     name: PANELS_MOVE_TOOL,
-    description: '调整顺序：将模块移到指定位置（默认最前），新启用的行排在最后。顺序仅属于工作区；机器级默认值没有顺序。',
+    description: '调整顺序：把模块移到指定位置（默认最前），新启用的行排在最后；顺序仅属于工作区，机器级默认值没有顺序。',
     parameters: {
       type: 'object',
       properties: {
@@ -199,7 +199,7 @@ export function registerPanelTools(
       const workspace = sessionWorkspace(exec);
       if (id === undefined || id === '') {
         throw new Error(
-          `workbench_panels_move 需要一个 id，例如 issues。当前配置中的模块：${panels
+          `workbench_panels_move 缺少 id（例如 issues）。当前配置中的模块：${panels
             .list(workspace, scope)
             .map((entry) => entry.id)
             .join(', ')}`,
@@ -252,7 +252,7 @@ export function registerPanelTools(
       const scope = scopeOf(raw);
       const workspace = sessionWorkspace(exec);
       if (scope === 'machine') {
-        throw new Error('机器级默认值没有"恢复跟随"这一操作：它本身就是默认值，请直接使用 show / hide 写入。');
+        throw new Error('机器级默认值没有"恢复跟随"这一操作；它本身就是默认值，直接用 show / hide 写入。');
       }
       const units = panels.follow(workspace, id);
       return {

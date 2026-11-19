@@ -332,6 +332,6 @@ describe('createMarketService：uninstall', () => {
     await market.uninstall('issues');
 
     expect(fake.commands()).toEqual([]);
-    expect(logs.join('\n')).toContain('文件先留着');
+    expect(logs.join('\n')).toContain('文件暂时保留');
   });
 });

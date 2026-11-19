@@ -23,7 +23,7 @@ export const SYNC_STALE_MINUTES = 15;
 export const SYNC_STALE_MS = SYNC_STALE_MINUTES * 60_000;
 
 function fixText(): string {
-  return `   修复方法：在工坊目录中运行一次 pnpm install（${join(workbenchRoot(), 'diy')}）。若仍失败，请删除该目录后重启工作台（骨架会自动重建；\`packages/\` 下你创建的模块请先保留或另存）。`;
+  return `   修复方法：在工坊目录中运行一次 pnpm install（${join(workbenchRoot(), 'diy')}）。若仍失败，删除该目录后重启工作台（骨架会自动重建；\`packages/\` 下已创建的模块需先保留或另存）。`;
 }
 
 function syncingStillRunning(at: string, now: number, windowMs: number): boolean {
@@ -78,7 +78,7 @@ export function syncNotice(input: {
   if (gap === undefined) return undefined;
   return (
     `⏳ 工坊工具链仍为上一代（工坊中 ${gap}，工作台 ${shellVersion}）。` +
-    `下一轮工作台启动时会同步到 ${shellVersion}；若持续如此，请查看工坊的 seed.log（${join(workbenchRoot(), 'seed.log')}）。`
+    `下一轮工作台启动时会同步到 ${shellVersion}；若持续如此，查看工坊的 seed.log（${join(workbenchRoot(), 'seed.log')}）。`
   );
 }
 
@@ -156,7 +156,7 @@ export function renderPanel(options: {
   const head = `工作区：${root}`;
   const note =
     at === 0
-      ? '\n还没有面板运行态上报。面板上从未发生取数或渲染：可能是当前工作区的面板未启用模块界面，也可能是用户页面仍为刷新前的旧版本（上报需要刷新一次页面才会带上）。'
+      ? '\n还没有面板运行态上报。面板没有取数或渲染记录：可能当前工作区的面板未启用模块界面，也可能用户页面仍是刷新前的旧版本（上报需要刷新一次页面才会带上）。'
       : `\n面板上有 ${String(board.length)} 个模块界面；运行态来自用户页面（最后一次上报 ${stampOf(at)}，${ageText(at, now)}）`;
   const body = rows.map((row) => {
     const title = `—— ${row.unit}${row.name === '' ? '' : `（${row.name}）`} · ${healthText(row.health)}`;
@@ -210,12 +210,12 @@ export function statusOf(options: {
 
   const next =
     health.state === 'failed'
-      ? `它启动失败：${health.reason ?? '(未提供原因)'}。请先修复该问题（修改模块源码后执行 build；` +
+      ? `它启动失败：${health.reason ?? '(未提供原因)'}。先修复该问题（修改模块源码后执行 build；` +
       '若修改了 package.json / cordis.patch.yml，需要重启工作台）。不要重新安装'
       : !installed
         ? '安装：workbench_diy_install（首次）'
         : !known
-          ? '面板尚未识别该模块。请重启一次工作台（新安装的模块需要重启后才注册到面板），然后再调用 workbench_diy_show'
+          ? '面板尚未识别该模块。重启一次工作台（新安装的模块需要重启后才注册到面板），然后再调用 workbench_diy_show'
           : !open
             ? '显示在看板：workbench_diy_show（仅显示，不重新安装）'
             : !facts.builtAll
@@ -223,7 +223,7 @@ export function statusOf(options: {
               : facts.stale
                 ? '源码比产物新：pnpm exec dsh-wb-module build（宿主侧秒级热替换；修改 client.js 后刷新页面）'
                 : newerThanRun
-                  ? '产物比运行中的实例新：热替换没有生效（模块加载失败时最常见）。请重新执行 pnpm exec dsh-wb-module build；如果仍然失败，请重启工作台'
+                  ? '产物比运行中的实例新：热替换没有生效（模块加载失败时最常见）。重新执行 pnpm exec dsh-wb-module build；如果仍然失败，重启工作台'
                   : '均已生效：修改源码后执行 build（宿主侧秒级热替换；修改 client.js 后刷新页面），无需再次安装';
 
   return {
@@ -289,13 +289,13 @@ export function publishStatusOf(preview: PublishPreview | null): string {
     preview.market === undefined
       ? undefined
       : preview.labels === undefined || preview.labels.length === 0
-        ? '标签：尚未设置。发布到市场时请提供 1–2 个（labels）'
+        ? '标签尚未设置；发布到市场时提供 1–2 个（labels）'
         : `标签：${preview.labels.join(' · ')}`;
   const changelog =
     preview.changelog === undefined
       ? undefined
       : preview.changelog.missing
-        ? `发布前置：CHANGELOG 中缺少 ${preview.changelog.version} 版本。发布时请提供 changelogNote（会先创建文件）`
+        ? `发布前置：CHANGELOG 缺少 ${preview.changelog.version} 版本；发布时提供 changelogNote（会先创建文件）`
         : `发布前置：CHANGELOG 中已有 ${preview.changelog.version}`;
   return [exit, labels, changelog].filter((one) => one !== undefined).join('\n');
 }

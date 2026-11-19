@@ -95,7 +95,7 @@ describe('流程递交工具', () => {
 
     expect(out.done).toBe(true);
     expect(out.step).toBe('');
-    expect(out.text).toContain('走完了');
+    expect(out.text).toContain('已完成');
   });
 
   it('★ 终止不给原因就拒', async () => {

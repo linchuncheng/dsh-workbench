@@ -24,14 +24,14 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
   return {
     name: DIY_SURFACE_TOOL,
     description:
-      '外壳可用面：kit / 原语 / 令牌 / 宿主能力 / deps。',
+      '查询外壳提供的能力：kit、原语、令牌、宿主能力与 deps。',
     parameters: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: '要看的那件（Card；--dsw-… 连值回）。' },
-        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform', 'deps'], description: 'kit=组件；primitives=原语；tokens=令牌；platform=宿主能力；deps=宿主依赖；不填=kit+primitives。' },
-        bucket: { type: 'string', description: '只看某一桶并列全（例 components）。' },
-        all: { type: 'boolean', description: '列全表（默认每组前 12 个）。' },
+        name: { type: 'string', description: '要查询的名称（如 Card；以 --dsw- 开头时连同取值返回）。' },
+        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform', 'deps'], description: 'kit=组件 / primitives=原语 / tokens=令牌 / platform=宿主能力 / deps=宿主依赖；默认 kit 与 primitives。' },
+        bucket: { type: 'string', description: '只列某一分组并展开全部（例 components）。' },
+        all: { type: 'boolean', description: '列出全表；默认每组前 12 个。' },
       },
       additionalProperties: false,
     },
@@ -107,12 +107,12 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
       const bin = local?.bin ?? shellBin;
       if (bin === null) {
         throw new Error(
-          `这个工作区（和它各模块）里还没有 dsh-wb-module（${join(root, 'node_modules')} 下没有）—— ` +
-            '在它根目录跑一次 pnpm install 就有了；workbench_diy_status 会告诉你停在哪一步',
+          `当前工作区及其模块中都没有 dsh-wb-module（${join(root, 'node_modules')} 下不存在）。` +
+            '在该目录执行一次 pnpm install 即可；workbench_diy_status 会说明停在哪一步',
         );
       }
       const seam = seamOf(ctx);
-      if (seam === undefined) throw new Error('这台机器没给 shell 服务，读不了组件清单');
+      if (seam === undefined) throw new Error('本机没有 shell 服务，无法读取组件清单');
 
       const workdir = local?.dir ?? shellRoot ?? root;
       const fallbackBin = local !== null && shellBin !== null && shellBin !== bin ? shellBin : undefined;

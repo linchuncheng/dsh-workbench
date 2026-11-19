@@ -38,7 +38,7 @@ window.__ModuleLoader__.load({
       zh: {
         "hello.cardTitle": "\u793A\u4F8B\u6A21\u5757",
         "hello.heading": "hello, workbench",
-        "hello.body": "\u8FD9\u5F20\u5361\u7247\u6765\u81EA\u4E00\u4E2A\u72EC\u7ACB\u7684\u5DE5\u4F5C\u53F0\u6A21\u5757\u3002"
+        "hello.body": "\u8FD9\u4E2A\u6A21\u5757\u7531\u4E00\u4EFD\u72EC\u7ACB\u5B89\u88C5\u7684\u5DE5\u4F5C\u53F0\u6A21\u5757\u63D0\u4F9B\u3002"
       },
       en: {
         "hello.cardTitle": "Sample module",

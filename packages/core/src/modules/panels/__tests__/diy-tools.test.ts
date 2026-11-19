@@ -126,7 +126,7 @@ describe('workbench_diy · install（装 + 上板一次做完）', () => {
     expect(result.panel.ok).toBe(true);
     expect(panels.isEnabled('demo', rig.WORKSHOP())).toBe(true);
     expect(panels.isEnabled('demo', '/w/b')).toBe(false);
-    expect(result.text).toContain('面板上已经打开它了');
+    expect(result.text).toContain('已在面板上打开');
     expect(structuredClone(result)).toStrictEqual(result);
   });
 
@@ -197,7 +197,7 @@ describe('workbench_diy · install（装 + 上板一次做完）', () => {
     expect(result.alreadyInstalled).toBe(true);
     expect(result.panel.ok).toBe(true);
     expect(panels.isEnabled('demo', rig.WORKSHOP())).toBe(true);
-    expect(result.text).toContain('已经装过了');
+    expect(result.text).toContain('已经安装过');
     expect(structuredClone(result)).toStrictEqual(result);
   });
 
@@ -249,7 +249,7 @@ describe('workbench_diy · 那道更窄的门', () => {
 
     const { tool, specs } = rig.harness();
 
-    await expect(tool(DIY_INSTALL_TOOL)?.execute({ unit: 'demo' }, rig.diyExec())).rejects.toThrow(/不在这个工作区里/);
+    await expect(tool(DIY_INSTALL_TOOL)?.execute({ unit: 'demo' }, rig.diyExec())).rejects.toThrow(/不在当前工作区/);
     expect(specs).toEqual([]);
   });
 
@@ -266,7 +266,7 @@ describe('workbench_diy · 那道更窄的门', () => {
 
     const { tool } = rig.harness();
 
-    await expect(tool(DIY_INSTALL_TOOL)?.execute({}, rig.diyExec())).rejects.toThrow(/install 要一个 unit/);
+    await expect(tool(DIY_INSTALL_TOOL)?.execute({}, rig.diyExec())).rejects.toThrow(/install 缺少 unit/);
   });
 
   it('★ 名字即动作：注册出来的每一把都是一个动词，没有带 action 的那种多路复用', () => {

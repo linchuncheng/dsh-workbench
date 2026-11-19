@@ -22,7 +22,7 @@
 - 字段名用人和 agent 都懂的话，不用平台内部名。
 - 默认值、取值范围、给错时的修法都写明。
 - 上限写清；要多少给多少，不悄悄截；截断写清截了什么、完整版在哪。
-- 有前置依赖就在描述里指路（"先调 X"）。
+- 有前置依赖就在描述里说明调用顺序（"先调 X"）。
 - 保留会改变行为的信息：默认只预览、需要批准、不可连续发起、中断后可以继续。
 
 ## 3 返回
@@ -40,17 +40,17 @@
 | 没有 | 说"没有"并给依据（不是报错）+ 下一步 |
 | 分不清是哪一份 | 列出候选让用户选；不猜、不退回默认 |
 | 参数错 / 超上限 | 指名字段与合法值 / 拒绝并给上限 |
-| 能力未安装完成 | 缺哪件 + 去哪更新 |
+| 能力未安装完成 | 缺哪件 + 去哪安装 |
 | 要登录 / 超时 | 分开报 + 重试或去登录 |
 | 下一批 / 截断 | 本页内容 + 续取方式 / 截了什么、多少、完整版在哪 |
 | 没有当前项目 | 说明按哪个项目取数 |
 
-## 5 写操作：两拍
+## 5 写操作：两步
 
 1. 预览：说清对象、值、去向，等用户确认。
 2. 执行：确认后动平台，回报结果。
 
-拍一在对话里这样展示：（拍二由审批屏答「允许吗」，见 [DESIGN.md](DESIGN.md) §3）：
+第一步在对话里这样展示（第二步由审批屏回答「允许吗」，见 [DESIGN.md](DESIGN.md) §3）：
 
 ```
 ┌─ 将要提交 ─────────────────────────────────┐
@@ -64,12 +64,12 @@
 - 值现读；读不到写「读不到」并说明还差什么，不猜、不写 0。
 - 只说这次发生什么，不写「这个操作会改数据」。
 
-一个动作一条链路：用户按按钮与 agent 调用是同一件事；重复发起要幂等（先查是否已有，进行中则续看）。
-用户自行触发的入口无需审批：显示确认条（做什么 + 取消 / 执行），按下后显示「正在做…」，失败原因留在条内。
+一个动作一条链路：用户点击按钮与 agent 调用是同一件事；重复发起要幂等（先查是否已有，进行中则续看）。
+用户自行触发的入口无需审批：显示确认条（做什么 + 取消 / 执行），按下后显示「正在执行…」，失败原因留在条内。
 
 ## 6 审批范围
 
-命中任一就审批：① 改平台；② 改本机（装 / 卸 / 更新）；③ 改面板（加 / 收 / 排序 / 清空）。
+命中任一就审批：① 改平台；② 改本机（安装 / 卸载 / 升级）；③ 改面板（添加 / 收起 / 排序 / 清空）。
 
 审批内容必须是本次具体后果：对象、值 / 版本、环境、影响数量；不写"会写数据"。
 说不出后果就不发起审批：停止，把原因交给 agent。
@@ -103,7 +103,7 @@
 
 ## 8 外部供给
 
-`needs` 声明能力依赖，外壳按 `kind` 去探、去装，状态见 `workbench_modules_list`。
+`needs` 声明能力依赖，外壳按 `kind` 探测、安装，状态见 `workbench_modules_list`。
 
 四种 `kind`：`bin`（本机命令）/ `extension`（运行时插件）/ `lib`（共用 npm 依赖）/ `env`（环境变量）。
 每条必写 `purpose`（给用户看的那半句）；`required: false` 只降级、不挡卡片。
@@ -154,7 +154,7 @@
 - 未安装完成的文案由模块写：`deps.libInstallCommand({ need, source })` 拼好源与缓存目录，
   原样输出；放进失败态。
 - `contracts` 判据：`apiVersion` 必须是 3；`needs` 走同一份 `NEED_KINDS` 注册表校验（`purpose` 必填、
-  `bin`/`env` 不许带 `sources`（`bin` 要代装就写 `install`）、`lib` 只认 npm 源）；
+  `bin`/`env` 不许带 `sources`（`bin` 需要代为安装就写 `install`）、`lib` 只认 npm 源）；
   声明了 `lib` 必须用 `deps.libInstallCommand`。
   未知 `runtime` 不判红：探针会给「这个运行时工作台还不认识」的 `unchecked`，等运行时 provider 补上。
 
@@ -165,7 +165,7 @@
 `longTasks.create({ key, run, view, recheck?, answer? })`；`run({ payload, onStep, signal })` 里用
 `onStep({ kind: 'start', text })` 报步骤、return 结果。
 
-- 来源：工具里 `runs.start({ …, session: deps.sessionIdOf(exec) ?? undefined })`。不记 = 用户按的 → 停止需审批。
+- 来源：工具里 `runs.start({ …, session: deps.sessionIdOf(exec) ?? undefined })`。未记录 = 用户手动启动的 → 停止需审批。
 - 流程事件默认用 `longTaskStepOf(event)`。
 - **要人处理的节点**：给这一步带 `intervention`（类型从 `@dsh-workbench/shared` 取）：
   `{ title, hint?, actions?: ({kind:'open-url',url,label?} | {kind:'copy',text,label?})[], fields?, submitLabel? }`；
@@ -188,14 +188,14 @@
 
 - 行尾是链接；失败才展开「步骤」「原文」。
 
-- 停止：`run` 收到 `signal` 被 abort = 有人按停止；在循环点与每条子命令前后查 `signal.aborted`。
-  不认 signal 就不要画停止钮。画钮传 `stop`（`onStop: () => feed.stop(run.id)`、`busy`、`failed`、
-  `label: 停止任务 {label}`、`askLabel: '确认停止'`）；失败文案画行下；两按确认归组件。
-- 外壳自带 `workbench_long_tasks_list`（读）与 `workbench_long_tasks_stop`（写）。自己起的免审批；
-  别人的 / 用户按的 / 没记来源的要审批；跨工作区直接拒。
+- 停止：`run` 收到 `signal` 被 abort = 有人点击停止；在循环点与每条子命令前后查 `signal.aborted`。
+  不响应 signal 就不要画停止按钮。画钮传 `stop`（`onStop: () => feed.stop(run.id)`、`busy`、`failed`、
+  `label: 停止任务 {label}`、`askLabel: '确认停止'`）；失败文案画行下；两步确认归组件。
+- 外壳自带 `workbench_long_tasks_list`（读）与 `workbench_long_tasks_stop`（写）。自己发起的长任务无需审批；
+  他人的 / 用户手动启动的 / 未记录来源的需要审批；跨工作区直接拒绝。
 - `contracts` 查形状：注册表九个方法（含 `stop` / `live` / `answer`）、`create` 的 `key` / `run` / `view`、
-  产物含 `useLongTask` / `LongTaskRow` 之一。是否真响应 signal 不在射程内。
-- 左栏那颗点由外壳按 `live()` 驱动；等人时升成「等你处理」的 warning，模块不做。
+  产物含 `useLongTask` / `LongTaskRow` 之一。是否实际响应 signal 不在检查范围内。
+- 左栏的状态点由外壳按 `live()` 驱动；等待人工处理时升级为「等你处理」的 warning，模块不做。
 - 用 `stop` / `session` / 长任务工具需把 `@dsh-workbench/core` peer 下限抬到含它们的版本（`check --only kit` 查）。
 
 `registerTools()` 调用时才注册、返回清理函数；工具名与 `dsh.workbench.tools` 一字不差，没有就 `() => []`。
@@ -203,16 +203,16 @@
 
 ## 9.1 多步流程（workflow）
 
-多步、要等、要重试、要取消、以后还要跑 → 先按 [FLOW.md](FLOW.md) 问用户是否固化。
+多步、需要等待、需要重试、需要取消、以后还要运行 → 先按 [FLOW.md](FLOW.md) 询问用户是否固化。
 
 - 固化 = 宿主半侧的 `FlowDefinition`（类型从 `@dsh-workbench/core/contract` 取）+ `deps.flow.run` + §9 的长任务 + `registerTools`。
-- 一次性 = 直接用现有工具 / 命令跑，不建模块。
-- 写平台的 flow 工具在清单里 `writes: true` + `needsApproval`；跑前给对象 / 环境 / 影响。
+- 一次性 = 直接使用现有工具 / 命令执行，不建模块。
+- 写平台的 flow 工具在清单里 `writes: true` + `needsApproval`；运行前给出对象 / 环境 / 影响。
 - `deps.flow.check(flow, actions)` 先过；动作里用 `ctx.need(intervention)` 报人工干预节点（旧的 `ctx.login(url)` 仍可用），`ctx.log` 报进度。
-- **agent 节点**：子 agent 读与判断，不写平台；结果进 `steps.<id>`；按钮起会带你当前会话。见 [FLOW.md](FLOW.md) §4。
+- **agent 节点**：子 agent 读与判断，不写平台；结果进 `steps.<id>`；由看板按钮发起时会附带用户当前会话。见 [FLOW.md](FLOW.md) §4。
 - flow 的运行时只走 `deps.flow`，类型只走 `@dsh-workbench/core/contract`；不要为 flow 直接 import `@dsh-workbench/shared/host`。
 - 不要在 flow 里存凭据；不要把一次性任务静默固化。
-- 工具描述写「跑已固化的 <标题> 流程」；不要用它新建 flow，新需求先问用户。
+- 工具描述写「运行已固化的 <标题> 流程」；不要用它新建 flow，新需求先询问用户。
 
 ## 12 按工作区 / 模式收窄工具
 
@@ -222,7 +222,7 @@
 - `deniedTools({ workspace, preset })` 返回该会话不存在的工具名（与 `registerTools()` 一致；二者可为 `null`）。
   `subscribe` 在状态变化时通知外壳重算；不接则等重启。
 - 两个轴：`workspace` = 用户在看哪个项目；`preset` = 该会话被授权做什么。外壳两者都用。
-  模块工具按工作区是否有这张卡收窄；DIY 族按模式收窄。
+  模块工具按工作区是否有这个模块收窄；DIY 族按模式收窄。
 - 外壳双重执行：清单不出现 + 调用时拒。
 
 "哪些工作区出现"由用户用 `workbench_panels_show` / `_hide` 控制，卡片与全部工具同判；`deniedTools` 可选。

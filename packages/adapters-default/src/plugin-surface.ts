@@ -16,7 +16,7 @@ export function createPluginSurface(options: {
 
     createUnits(input) {
       const seam = options.seam;
-      if (seam === undefined) throw new Error('没有执行缝，插件的命令面起不来。');
+      if (seam === undefined) throw new Error('没有执行缝，无法启动插件的命令面。');
       const catalog = createPluginCatalog({ seam, command: options.command });
       return createPluginUnits({
         registry: input.registry as never,

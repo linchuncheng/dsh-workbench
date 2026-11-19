@@ -70,7 +70,7 @@ export function createToolScope(options: ToolScopeOptions): ToolScope {
   function sync(handle: ToolScopeAgent): void {
     const tools = toolsOf(handle);
     if (tools === undefined) {
-      options.logger?.warn?.('[dsh-workbench] 拿不到 agent 作用域的工具面：本次不限制（下次再试）');
+      options.logger?.warn?.('[dsh-workbench] 无法获取 agent 作用域的工具面：本次不限制（下次再试）');
       return;
     }
 

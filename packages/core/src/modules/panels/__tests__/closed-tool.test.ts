@@ -61,7 +61,7 @@ describe('收起的工具：理由要能让模型说出下一次调什么', () =
     const reason = diyManageAbsentReason('workbench_panels_list');
 
     expect(reason).toContain('DIY 会话里不提供');
-    expect(reason).toContain('别试着开');
+    expect(reason).toContain('不要尝试开启');
     expect(reason).not.toContain('workbench_toolbox_open');
   });
 

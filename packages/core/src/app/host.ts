@@ -415,14 +415,14 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
         warn(ctx, `探插件命令面时抛了错：${String(error)}`);
       });
       return () => pluginTools.dispose();
-    }, `${PLUGIN_ID}: 已装且上板的插件各合成一个单元（工具面照旧由面板那道闸收窄）`);
+    }, `${PLUGIN_ID}: 已安装且显示在面板上的插件各合成一个单元（工具面照旧由面板那道闸收窄）`);
     ctx.effect(() => {
       const panels = ctx.get(PANELS_SERVICE) as
         | (PluginRowsSource & { subscribe?(listener: () => void): () => void })
         | undefined;
       const off = panels?.subscribe?.(() => pluginTools.touch());
       return () => off?.();
-    }, `${PLUGIN_ID}: 面板配置一动就重探插件命令面（装上 / 收起都在那一条链上）`);
+    }, `${PLUGIN_ID}: 面板配置变化后重新探测插件命令面（安装 / 收起都在同一条链上）`);
   }
 
   ctx.effect(() => () => {
@@ -430,7 +430,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     postChannels.dispose();
   }, `${PLUGIN_ID}: 卸载时把单元摘干净`);
   ctx.effect(() => units.subscribe(sync), `${PLUGIN_ID}: 注册表变了就增删（装/卸一个模块 = 挂/卸它的面）`);
-  ctx.effect(() => holdHostLock((message) => warn(ctx, message)), `${PLUGIN_ID}: 宿主在跑就留一枚锁，自更新等它退了才换包`);
+  ctx.effect(() => holdHostLock((message) => warn(ctx, message)), `${PLUGIN_ID}: 宿主运行时保留一把锁，自更新等它退出后才替换安装包`);
   ctx.effect(() => bindRosterFacts({ units, bump: (names) => facts.bump(names) }), `${PLUGIN_ID}: 花名册变了就把清单那条事实记一笔（浏览器据此重读，不用刷新页面）`);
 
   ctx.effect(() => {

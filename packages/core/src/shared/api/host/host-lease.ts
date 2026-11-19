@@ -58,7 +58,7 @@ export function holdHostLease(input: HostLeaseInput): () => void {
     try {
       release?.();
     } catch (error) {
-      input.onProblem(`宿主租约没删掉（下次更新会当它还在跑）：${String(error)}`);
+      input.onProblem(`宿主租约未清除（下次更新会认为它仍在运行）：${String(error)}`);
     }
   };
 }

@@ -96,7 +96,7 @@ export function withEdition(text: string, edition: SidebarEdition): string {
 
 function readText(deps: SidebarEditionDeps): { readonly path: string; readonly text: string } | { readonly error: string } {
   const path = patchPathOf(deps);
-  if (path === null) return { error: '拿不到当前 profile 目录' };
+  if (path === null) return { error: '无法读取当前工作台配置目录' };
   try {
     return { path, text: lf(readFileSync(path, 'utf8')) };
   } catch (error) {

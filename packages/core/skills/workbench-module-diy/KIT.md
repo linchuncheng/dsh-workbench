@@ -1,6 +1,6 @@
 # kit：选型、组合、最小写法
 
-`check --only kit` 列**当前安装的外壳真实有的**成员；逐件用法在 `.d.ts` 的 JSDoc（`workbench_diy_surface name=<名>`）。
+`check --only kit` 列出**当前安装的外壳实际提供的**成员；逐件用法在 `.d.ts` 的 JSDoc（`workbench_diy_surface name=<名>`）。
 本文件只给跨件规则与最小示例。全部从 `kit.components` / `kit.hooks` / `kit.lib` / `kit.api`
 （`@dsh-workbench/core/client`）取；示例中 `h = createElement`（从 `react` 引）。
 
@@ -21,14 +21,14 @@ h(Card, { t: props.t, title: t('myunit.cardTitle'),
 
 ## 2 状态
 
-五态：待机 / 在读 / 就绪 / 就绪但空 / 读不到。
+五态：待机 / 加载中 / 就绪 / 就绪但空 / 读不到。
 
 | 场景 | 用 |
 |---|---|
 | 有内容 | `StateBlock`（标题 + `hint` + 正文） |
-| 需先选 / 在读 / 读不到 | `CenteredState` |
+| 需要先选择 / 加载中 / 读不到 | `CenteredState` |
 | 就绪但空 | `EmptyState` |
-| 在读且有形状 | `SkeletonRows` |
+| 加载中且结构已知 | `SkeletonRows` |
 | 一句说明 / 报错 | `Note`（`tone: 'problem'`） |
 
 ```tsx
@@ -42,13 +42,13 @@ h(StateBlock, { title: rows.title, hint: `3 条 · ${when}`, resolving: t('myuni
 
 要先自己判断有没有阻断（比如卡片里不能直接整块换屏），用 `kit.lib.blockerOf({ error, capability, t })`：能力闸优先，两者都干净时回 `undefined`。
 
-卡片正文里的动作统一放**右下角**：`StateBlock.actions`、`FormActions`、`BlockerState` 的 notice / inline 都这么排；`重试` 用 outline，一颗 primary 只给推进动作（安装 / 登录 / 打开）。卡片标题栏只留刷新 / 设置这类图标钮，整卡替换的阻断屏（图标 + 话 + 按钮）居中，是例外。
+卡片正文里的动作统一放**右下角**：`StateBlock.actions`、`FormActions`、`BlockerState` 的 notice / inline 都这么排；`重试` 用 outline，一个 primary 只给推进动作（安装 / 登录 / 打开）。卡片标题栏只留刷新 / 设置这类图标钮，整张卡片替换的阻断屏（图标 + 话 + 按钮）居中，是例外。
 
 `EmptyState` 默认带空态插画；要纯文字给 `icon: null`，要换图标给 `icon: h(Icon*, { size })`。
 
-### 2.1 卡住（登录 / 权限 / 能力未装）
+### 2.1 阻断（登录 / 权限 / 能力未安装）
 
-`UnitBlocker` 把读口错误或能力读数直接翻成统一阻断屏：登录、权限、缺插件、版本旧都由它出文案与动作，
+`UnitBlocker` 把读口错误或能力读数直接转换为统一阻断屏：登录、权限、缺插件、版本旧都由它出文案与动作，
 不要再自己拼 `blockerOfError` + `BlockerState`，也不要自己写登录按钮。
 
 ```tsx
@@ -98,7 +98,7 @@ h(Form<{ branch: string }>, {
 })
 ```
 
-规则：`Form<Values>` 钉键与值类型；值与 `onChange` 同格；`visible: false` 的键在 `Values` 中可选；
+规则：`Form<Values>` 固定键与值类型；值与 `onChange` 同格；`visible: false` 的键在 `Values` 中可选；
 `validate` 同步纯函数、第二参为整张值表；控件只经 `control` 提供。
 
 控件：`Field`（未进 `FormRow` 时包标签与说明）· `TextField`（`invalid`）· `ChoiceGroup`（`multi`）·
@@ -118,7 +118,7 @@ h(Form<{ branch: string }>, {
 | 卡片一次读（同 key 合流 / 事实订阅 / 上报） | `useApiResource`（非 hook 为 `requestResource`，用后必须 `release`） |
 | 写后重取 / 听事实变化 | `useFactInvalidate` · `useFactRevision` · `subscribeFactRevision`（非 hook 要退订） |
 | 最短忙态 | `useVisibleBusy`（`busyView` / `heldPhase`） |
-| 整卡起步（gate + 忙 + 探针 + 上报 + blocker） | `useUnitBoard`（`read(gated)` 内调 `useApiResource`） |
+| 整张卡片起步（gate + 忙 + 探针 + 上报 + blocker） | `useUnitBoard`（`read(gated)` 内调 `useApiResource`） |
 | 单点 / 整表能力门 | `useCapabilityGate` / `useCapabilityMap` |
 | 写（组件内不 fetch）/ 长任务轮询 | `useHostWrite` / `useLongTask`（`LongTaskRow`；`longTaskIsLive`；写后 `refresh()`） |
 | 平台事实 | `usePlatform`：client 有 primaryModifier；host 有 fileManager（finder / explorer / none） |
@@ -164,14 +164,14 @@ h(SetupShell, {
 ```
 
 - 步骤是**动态**的：`canLeave` 决定能不能走，`next(values)` 返回下一步 id（`null` 表示完成）；不给 `next` 就按数组顺序走。
-- 每步想存就挂 `submit`；最后一步 `next` 返回 `null` 时相位到 `ready`，壳把 `renderHome()` 换进来。
+- 每步想存就挂 `submit`；最后一步 `next` 返回 `null` 时相位到 `ready`，外壳把 `renderHome()` 替换为当前页。
 - `edit` 模式把同一组步骤摊成一页，底部 `SaveBar` 走 `write(values)`；保存成功回调 `onSaved`。
 - 读失败时壳只给一句失败文案；需要登录/权限的阻断在卡里用 `UnitBlocker` 判（壳不认错误码）。
 - `values` 是 `Record<string, unknown>`，字段强转留在模块自己的 type guard 里。
 
 ## 5 表单三层：面 → 行 → 控件
 
-一张表单一个 `Form`；不要另摆操作区（`Form` 组 `[...extra, ...cancel, submit(primary)]`）。
+一张表单一个 `Form`；不要另外设置操作区（`Form` 组 `[...extra, ...cancel, submit(primary)]`）。
 
 `FormRows` + `FormRow` + `FormActions` 仅用于非整表场景：单行嵌入、工具栏、卡头按钮。
 
@@ -200,13 +200,13 @@ h(FormRows, null,
 - `Link`：唯一外链（`h(Link, { href, children })`）；不去箭头、文案不带 `→`、不手写 `<a>`。
 - `SettingsSection` / `Stack` / `BlockerState` / `Tip`：设置节 / 竖排 / 阻断屏 / Tooltip（纯图必须有它或 `aria-label`）。
 - 图标：`IconPanelScreen` / `IconModuleMark` / `IconNpm` / `IconOpencli`；其余从 dsh `Icon*Regular` 取，不自绘。
-- 真机造不出的状态：`src/components/__tests__/OverviewCard.test.ts` 覆盖五态。
+- 真机上无法构造的状态：`src/components/__tests__/OverviewCard.test.ts` 覆盖五态。
 
 ## 7 规则
 
 1. 调用点只给数据与语义；外观类名只允许布局槽（通栏、外边距、网格位置）。
 2. 字号与颜色走 kit 与令牌。重点数字用 `--dsw-font-xl-24` + `tabular-nums`；
-   令牌名现查不猜：`workbench_diy_surface` 给 `scope: 'tokens'`（现读装着的 dsh 与外壳；`name=--dsw-…` 连浅/深值）。
+   令牌名现查不猜：`workbench_diy_surface` 给 `scope: 'tokens'`（现读已安装的 dsh 与外壳；`name=--dsw-…` 连浅/深值）。
    刻度外字面值在模块 `DEVELOPING.md` 说明（[PANEL.md](PANEL.md) §6）。
 3. 自写 CSS 只写布局（flex / grid / gap / 对齐）。
 

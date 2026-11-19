@@ -25,11 +25,11 @@ export function longTaskStopNotice(unit: string, change: LongTaskChange<LongTask
   if (session === undefined || session === '') return null;
   if (change.by === session) return null;
   const target = snapshot.target;
-  const summary = `长任务：${unit} 的「${target}」被停了`;
+  const summary = `长任务：${unit} 的「${target}」已停止`;
   const who = change.by === undefined ? '用户' : '别的会话';
   const text =
-    `［长任务 · ${unit}］「${target}」那一趟被${who}停了 —— 别再把它当"还在跑"；` +
-    '要接着做就重新起一趟（workbench_long_tasks_list 看当前这几趟）。';
+    `［长任务 · ${unit}］「${target}」已由${who}停止，不要再按运行中处理；` +
+    '如需继续，重新发起一次（用 workbench_long_tasks_list 查看当前任务）。';
   return { session, summary, message: noticeMessage(text, summary, LONG_TASK_NOTICE_KIND) };
 }
 

@@ -116,7 +116,7 @@ export async function profileCreateApply(
     }
   } catch (error) {
     cleanup();
-    return { ok: false, text: `profile 建好了，但读不了清单：${error instanceof Error ? error.message : String(error)}` };
+    return { ok: false, text: `工作台配置已创建，但无法读取清单：${error instanceof Error ? error.message : String(error)}` };
   }
   const copied = Object.entries(flags)
     .filter(([, on]) => on)

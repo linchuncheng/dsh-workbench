@@ -63,7 +63,7 @@ export function selfUpdateRequestProblem(request: SelfUpdateRequest): string | u
   }
   if (request.running !== undefined && request.running !== from) {
     const same = to === '' || to === from;
-    if (same) return '这个版本已经装好了，先重启工作台再更新。';
+    if (same) return '这个版本已经安装，请先重启工作台再升级。';
   }
   return undefined;
 }

@@ -664,7 +664,7 @@ export async function run() {
     } else if (units.has(unit)) {
       problems.push(
         `${name}: 单元 id ${JSON.stringify(unit)} 与 ${units.get(unit)} 撞了 —— ` +
-          `两个包都声明同一个单元，装上去注册表当场抛（id 会进持久化配置）`,
+          `两个包声明了同一个单元；安装后注册表会立即抛出错误（id 会写入持久化配置）`,
       );
     } else {
       units.set(unit, name);
@@ -672,7 +672,7 @@ export async function run() {
       if (shellPkg !== undefined && existsSync(join(shellPkg.dir, 'src/modules', unit, 'unit.ts'))) {
         problems.push(
           `${name}: 单元 ${JSON.stringify(unit)} 在外壳里还有一份（${SHELL}/src/modules/${unit}/）—— ` +
-            `同一个单元不许两边都住：两份真相，装上模块注册表当场抛`,
+            `同一个单元不能同时存在于两边：两份事实来源，安装模块时注册表会立即抛出错误`,
         );
       }
     }
@@ -825,7 +825,7 @@ export async function run() {
                   `${name}: ${relative(pkg.dir, file)}:${index + 1} 里的插件名「${literal}」不在清单的 ` +
                     `needs（kind=extension）里（清单里是 ${[...declaredPlugins].join(' / ')}）—— 改了清单没改代码` +
                     '（或反过来）会让外壳按错的名字去装 / 去探那个插件。插件名只有一处真相：' +
-                    '能拿到 deps.manifest 的地方就用它，拿不到的地方至少与清单保持一致',
+                    '能获取 deps.manifest 的地方就使用它；无法获取的地方至少与清单保持一致',
                 );
               }
             });

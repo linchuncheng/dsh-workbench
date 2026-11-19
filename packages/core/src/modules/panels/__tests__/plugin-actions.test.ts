@@ -109,13 +109,13 @@ describe('用户持有的 opencli 插件：更新与卸载（台账那一笔说�
       supply: supplyAt(dirOf('supply')),
     });
 
-    await expect(actions.update('/Users/me/my-plugin')).rejects.toThrow('没有地方查新版');
+    await expect(actions.update('/Users/me/my-plugin')).rejects.toThrow('没有可查询的新版本');
   });
 
   it('台账里没有的那一笔更新不了（不猜一个包名去装）', async () => {
     const actions = createPluginActions({ ledger: ledgerAt(dirOf('store')), command: 'opencli', runAll: async () => {} });
 
-    await expect(actions.update('opencli-plugin-nope')).rejects.toThrow('台账里没有');
+    await expect(actions.update('opencli-plugin-nope')).rejects.toThrow('插件记录中');
   });
 
   it('问不到新版就不动手（不拿一个猜的版本去装）', async () => {
@@ -130,7 +130,7 @@ describe('用户持有的 opencli 插件：更新与卸载（台账那一笔说�
       supply: supplyAt(dirOf('supply')),
     });
 
-    await expect(actions.update(PKG)).rejects.toThrow('问不到');
+    await expect(actions.update(PKG)).rejects.toThrow('读不到');
     expect(fake.commands().filter((line) => line.includes('npm i --prefix'))).toEqual([]);
   });
 
@@ -174,8 +174,8 @@ describe('用户持有的 opencli 插件：更新与卸载（台账那一笔说�
   it('没有台账就没有这两件事可做（不假装成功）', async () => {
     const actions = createPluginActions({ command: 'opencli', runAll: async () => {} });
 
-    await expect(actions.update(PKG)).rejects.toThrow('没有台账');
-    await expect(actions.uninstall(PKG)).rejects.toThrow('没有台账');
+    await expect(actions.update(PKG)).rejects.toThrow('插件记录');
+    await expect(actions.uninstall(PKG)).rejects.toThrow('插件记录');
   });
 });
 
@@ -233,7 +233,7 @@ describe('物理去留：谁主张谁说话（动作永远可用，删不删看�
       name: 'inventory',
       kept: { kind: 'claimed', by: ['issues', 'inventory'] },
     });
-    expect(logs[0]).toContain('issues、inventory 还要用它');
+    expect(logs[0]).toContain('issues、inventory 仍在使用它');
     expect(ledger.read(PKG)).toBeUndefined();
     expect(ledger.all()).toHaveLength(1);
   });
@@ -259,7 +259,7 @@ describe('物理去留：谁主张谁说话（动作永远可用，删不删看�
     expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([]);
     expect(outcome).toEqual({ removed: false, name: 'inventory', kept: { kind: 'unsure', unreadable: ['@a/mod'] } });
     expect(logs[0]).toContain('@a/mod');
-    expect(logs[0]).toContain('文件先留着');
+    expect(logs[0]).toContain('文件暂时保留');
     expect(ledger.read(PKG)).toBeUndefined();
   });
 
@@ -472,7 +472,7 @@ describe('插件名：台账没记上就现读一次（名字也是主张的键�
 
     expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([]);
     expect(outcome).toEqual({ removed: false, kept: { kind: 'unnamed' } });
-    expect(logs[0]).toContain('看不出这是哪个插件');
+    expect(logs[0]).toContain('无法判断是哪个插件');
   });
 
   it('★ 自动清同样不敢删没名字的那一份（同一条判据，不是两套）', async () => {

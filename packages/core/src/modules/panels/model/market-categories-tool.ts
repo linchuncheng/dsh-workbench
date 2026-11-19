@@ -13,11 +13,11 @@ export function marketCategoriesTool(
 ): DshToolDefinition {
   return {
     name: MARKET_CATEGORIES_TOOL,
-    description: '看当前索引里已经有哪些分类：发布模块时挑一个沿用，别每发一次创建一个新词。',
+    description: '查看当前模块市场中已有的分类；发布模块时沿用其中一个，避免每次发布新建分类。',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     output: OUTPUT,
     async execute() {
-      if (read === undefined) throw new Error('这台机器上没有索引服务，看不了分类');
+      if (read === undefined) throw new Error('本机没有模块市场索引服务，无法读取分类');
       const payload = await read();
       const counts = new Map<string, number>();
       for (const entry of payload.entries) {
@@ -28,9 +28,9 @@ export function marketCategoriesTool(
       const categories = [...counts].map(([id, count]) => ({ id, count }));
       const text =
         categories.length === 0
-          ? '当前索引里还没有分类 —— 发布时用 category 定一个（一个短词，比如「任务与协作」），之后这里就会出现。'
+          ? '当前模块市场还没有分类。发布时用 category 指定一个短词（如「任务与协作」），之后这里会显示。'
           : [
-              '当前索引里的分类：',
+              '当前模块市场的分类：',
               ...categories.map((one) => `- ${one.id}（${String(one.count)} 个模块）`),
             ].join('\n');
       return { categories, entries: payload.entries.length, text };

@@ -1,9 +1,9 @@
 # @dsh-workbench/module-tools
 
-工作台**模块**的工具箱：建骨架、构建、过门禁、管设计底稿、发货前核清单。
-模块作者只跟这几条命令打交道 —— 模块包里不再各带一份构建脚本。
+工作台**模块**的工具箱：创建骨架、构建、运行门禁、管理设计底稿、发布前核对清单。
+模块作者只需要用这几条命令，模块包里不再各带一份构建脚本。
 
-## 六条命令走一遍
+## 六条常用命令
 
 ```bash
 pnpm exec dsh-wb-module init my-unit                    # 建骨架（唯一模板，已默认）
@@ -12,24 +12,24 @@ pnpm check        # 十四条判据
 pnpm design check # 设计底稿有没有空格；README 有没有覆盖能力 / 配置 / 状态 / 审批；两份文档有没有落后
 ```
 
-要发货再加一步 `pnpm exec dsh-wb-module publish`：跑门禁、核 `files` 与 `npm pack` 清单，默认 **只 dry run，不真发**。
-维护者确认要真发时跑 `pnpm exec dsh-wb-module release`：全门禁（build / check / design / typecheck / test / selfcheck）、
+要发布时再加一步 `pnpm exec dsh-wb-module publish`：运行门禁、核对 `files` 与 `npm pack` 清单，默认 **只 dry run，不真发**。
+维护者确认要真发时运行 `pnpm exec dsh-wb-module release`：全门禁（build / check / design / typecheck / test / selfcheck）、
 验收必须全勾、预检（登录 / license / git 远端）、按 `--target` 发到团队源 / 公网 npm / 安装包 / git，
-最后从出口侧核包（`--dry-run` 只预览，`--verify` 只核已发布的包）。配了可写 git 索引源时，
+最后从出口侧核包（`--dry-run` 只预览，`--verify` 只核已发布的包）。配了可写 git 模块来源时，
 发完还会写索引条目（`--index auto|none|<目录|git 地址>`，`artifacts-in-repo` 连产物一起入库，
-`catalog-only` 只更索引）；索引没更上不影响包已发布这件事，结果里会如实写。
-发布可选 `--index-source <id>` 指定发到哪个索引源；不指定时用唯一可发布的源，有多个可发布源会要求指定。
-空仓库先跑 `dsh-wb-module market-init <git 地址>`：生成索引目录 `market/` 与 README 并推首个 commit
-（用仓库声明的默认分支，读不到时用 `--ref` 指定）。在工作台里配了可写索引源之后，
+`catalog-only` 只更索引）；索引没有更新不影响包已发布这件事，结果里会如实写。
+发布可选 `--index-source <id>` 指定发到哪个模块来源；不指定时使用唯一可发布的来源，有多个可发布来源时会要求指定。
+空仓库先运行 `dsh-wb-module market-init <git 地址>`：生成索引目录 `market/` 与 README 并推首个 commit
+（用仓库声明的默认分支，读不到时用 `--ref` 指定）。在工作台里配了可写模块来源之后，
 `release` 默认出口就是 `market`：产物与索引一起进那个仓库。
-发布过程中每一步都写进 `$DSH_WORKBENCH_HOME/releases/<unit>.json`（默认 `~/.dsh/workbench`）；中断后带 `--resume` 接着发
-（沿用记录里的出口、版本与索引计划，产物没变就不重跑门禁）。
+发布过程中每一步都写进 `$DSH_WORKBENCH_HOME/releases/<unit>.json`（默认 `~/.dsh/workbench`）；中断后带 `--resume` 继续发布
+（沿用记录里的出口、版本与索引计划，产物没变就不重新运行门禁）。
 这一版在 `CHANGELOG.md` 里没有记录时，带 `--changelog-note "这一版改了什么"`
 （`--changelog-type` 选分类，缺省 changed）发一次就写进去，文件不在会先建骨架；
-没带 note 又没记录时 `release` 在跑任何门禁之前就拦下。
-日志写在确认之后，发失败不回滚：这一版已经记下了，下一次发布直接用。
-`package.json` 缺 `files` 里的 `CHANGELOG.md` 一样拦下；`author` 没写时从本机 `git config` 补进 manifest，索引与产物都带上。
-标签只住在市集条目上（`metadata.labels`），**不写进 `package.json`**：清单的键是协议定死的
+没带 note 又没记录时，`release` 会在运行任何门禁之前停止。
+日志写在确认之后，发布失败不回滚：这一版已经记下了，下一次发布直接使用。
+`package.json` 缺 `files` 里的 `CHANGELOG.md` 同样会阻止发布；`author` 没写时从本机 `git config` 补进 manifest，索引与产物都带上。
+标签只写在模块市场条目上（`metadata.labels`），**不写进 `package.json`**：清单的键是协议定死的
 （`apiVersion` / `unit` / `title` / `card` / `tools` / `host` / `needs`），往里塞私货 check 会判红。
 标签可选：`--label <短词>`（可重复，最多两个）并进索引条目的 `metadata.labels`；
 不传就沿用老清单里已经写过的（`dsh.workbench.market.labels`，只在读那一侧认）。
@@ -37,7 +37,7 @@ pnpm design check # 设计底稿有没有空格；README 有没有覆盖能力 /
 已有分类可以不带；它写进 `metadata.category`，发现页的分类 chip 就是按它汇总的，新模块带一个新分类，页面自动多一个。
 标题 / 署名 / 说明仍保持索引里现有的那份不动。
 要换署名时带 `--author "姓名 <邮箱>"`（或只给姓名）：它写回 `package.json`，索引、产物与提交都用它，
-`--refresh` 时也一样。**发布本身不改市集里的标题 / 署名 / 说明**：这些元数据只由 `--refresh`（或显式 `--author`）写，
+`--refresh` 时也一样。**发布本身不改模块市场里的标题 / 署名 / 说明**：这些元数据只由 `--refresh`（或显式 `--author`）写，
 避免一台还没更新的机器发新版时把别人刚改的元数据盖回去。一个包名归第一次发布的人（条目文件里的 `owner`）：换署名发同名会被拒，
 `--refresh` 也一样 —— 真要换人，先改那一条的 `owner`。
 同一个市场里，一个模块 id（`dsh.workbench.unit`）只能被一个条目使用；产物目录按包名走
@@ -52,7 +52,7 @@ pnpm design check # 设计底稿有没有空格；README 有没有覆盖能力 /
 | `dsh-wb-module init <unit> [--dir <目录>] [--template diy] [--description "一句话"]` | 建模块骨架（只有 `diy` 一个模板，也是默认） |
 | `dsh-wb-module market-init <git 地址\|目录> [--ref <分支>] [--path <索引路径>]` | 初始化市场索引仓库：写 `market/` + README，推首个 commit |
 | `dsh-wb-module build` | 出 `dist/host.js`（单文件 ESM）与 `client.js`（套 loader 壳） |
-| `dsh-wb-module check [--only <判据>] [--package <包名或 unit>]` | 十四条判据；`--only` 单跑，也当查询口用；`--package` 只报这个模块的问题（见下）；`--list [--json\|--markdown]` 只列判据元数据 |
+| `dsh-wb-module check [--only <判据>] [--package <包名或 unit>]` | 十四条判据；`--only` 单独运行，也当查询口用；`--package` 只报这个模块的问题（见下）；`--list [--json\|--markdown]` 只列判据元数据 |
 | `dsh-wb-module lint [--fix]` | 用模块自己那份 `eslint.config.mjs`；`--fix` 写回文件 |
 | `dsh-wb-module sync` | 按清单生成 `src/declared-tools.ts` 与 `src/sites.ts`（清单有站点表时），按 `design.json` 的 `key + recipe` 生成 `src/datasource.ts` |
 | `dsh-wb-module design <init\|migrate\|check\|render\|accept>` | 设计底稿：填、拆旧 README、查空格、生成 README 与 DEVELOPING、验收打勾 |
@@ -72,7 +72,7 @@ pnpm design check # 设计底稿有没有空格；README 有没有覆盖能力 /
 
 ## 十四条判据
 
-`dsh-wb-module check` 一次跑完，三态输出：`✔ 通过` / `○ 不适用` / `✖ 不过`；有任何不过就退出 1。
+`dsh-wb-module check` 一次运行完成，三态输出：`✔ 通过` / `○ 不适用` / `✖ 不过`；有任何不过就退出 1。
 
 表由 `dsh-wb-module check --list --markdown` 生成；`层` 是 manifest / source / build / render / meta。
 
@@ -122,8 +122,8 @@ pnpm design check # 设计底稿有没有空格；README 有没有覆盖能力 /
 
 ### `arch`：模块包的分层方言
 
-卡片一复杂就往 `src/client.tsx` 里堆，宿主侧顺手 import 一个组件（`dist/host.js` 在 Node 里
-根本起不来）—— 边界判据拦不住这些，`arch` 补这一层。模板里的配置只有一行：
+卡片变复杂后，代码容易堆进 `src/client.tsx`，宿主侧还会顺手 import 一个组件（`dist/host.js` 在 Node 里
+无法加载）。边界判据拦不住这些，`arch` 补这一层。模板里的配置只有一行：
 
 ```js
 import { moduleArch } from '@dsh-workbench/module-tools/arch';
@@ -176,11 +176,11 @@ import { moduleLint } from '@dsh-workbench/module-tools/lint';
 export default moduleLint({ rootDir: import.meta.dirname });
 ```
 
-`moduleLint()` 返回一份**标准 flat config**：它同时是判据跑的那份与编辑器 / `eslint` 认的那份，
+`moduleLint()` 返回一份**标准 flat config**：它同时是判据运行的那份与编辑器 / `eslint` 认的那份，
 没有第二份真相。依赖（`eslint`、`typescript-eslint`、两个 react 插件、`globals`）装在 module-tools 一家，
 模块清单一个字都不用改（依赖由 module-tools 自己带）。
 
-要开口子从命令参数进：`moduleLint({ rootDir, ignores, rules })`，或者展开它再追自己的一块：
+要开口子，从命令参数进 `moduleLint({ rootDir, ignores, rules })`；也可以展开它再追加自己的一块：
 
 ```js
 export default [
@@ -193,10 +193,10 @@ export default [
 删一条规则或改一个值都红。只写一个同名块、`export default []`、语法错的配置都会红。
 `scripts/**` 与 `*.config.*` 不判 `no-console`（脚本打印是本职工作）。
 
-`dsh-wb-module lint --fix` 先写回再跑一遍看还剩什么。**`check` 永远不动手改文件** ——
+`dsh-wb-module lint --fix` 先写回再运行一遍，看还剩什么问题。**`check` 从不修改文件**：
 门禁是判据，不是修复器。
 
-模板生成三份文档：`readme.json` 是终端用户文案源（标题、简介、卡片布局草图 `shots[]`、会看到什么、能做什么、agent 能做什么、数据从哪来、排障、FAQ，后五段是短条目），`README.md` 只由它生成；`DEVELOPING.md` 是作者文档（实现、路由、判据、数据源与三张表），由 `design.json` 生成。`design render` 刷新这两份；`design check` 拦住空文案、占位符、技术词、缺绑定、缺审批图与标题不一致，全部按错误处理。`agent[]` 绑 `capabilities[].name`、`do[]` 绑 `config[].key`、`trouble[]` 绑 `states[]`，`shots[]` 用 `kind` 标卡片与审批；有写工具就必须有审批图。`release` 在 `check` 之后直接跑 `design check`。旧模块先跑 `design migrate`，它把旧 `README.md` 原样保存为 `DEVELOPING.md`，再生成 `readme.json` 与用户 README；已有 `readme.json` 的模块按上面的绑定补齐。
+模板生成三份文档：`readme.json` 是终端用户文案源（标题、简介、卡片布局草图 `shots[]`、会看到什么、能做什么、agent 能做什么、数据从哪来、排障、FAQ，后五段是短条目），`README.md` 只由它生成；`DEVELOPING.md` 是作者文档（实现、路由、判据、数据源与三张表），由 `design.json` 生成。`design render` 刷新这两份；`design check` 拦住空文案、占位符、技术词、缺绑定、缺审批图与标题不一致，全部按错误处理。`agent[]` 绑 `capabilities[].name`、`do[]` 绑 `config[].key`、`trouble[]` 绑 `states[]`，`shots[]` 用 `kind` 标卡片与审批；有写工具就必须有审批图。`release` 在 `check` 之后直接运行 `design check`。旧模块先运行 `design migrate`，它把旧 `README.md` 原样保存为 `DEVELOPING.md`，再生成 `readme.json` 与用户 README；已有 `readme.json` 的模块按上面的绑定补齐。
 
 ## `design.json`：三张表
 
@@ -205,7 +205,7 @@ export default [
 
 它是**设计底稿**：三张表与探明记录装人话（`oneLine` / `shape` / `approvalText` / 三张表的文字）；
 读源那一条可以多带 `key` 与 `recipe` 两个机器字段 —— 它们只用于生成 `src/datasource.ts`，
-不改变"人话那一份"（`read` / `params` / `credentials` / `notLoggedIn` / `timeout`）照写。「这条能力在哪些工作区出现」不在底稿、也不在清单 —— 那是用户的面板板说了算。
+不改变"人话那一份"（`read` / `params` / `credentials` / `notLoggedIn` / `timeout`）照写。「这条能力在哪些工作区出现」不在底稿、也不在清单：那由用户的面板配置决定。
 `contracts` 会把底稿的能力名与清单的工具名做键集合对账（不重不漏，只对名字）；没有
 `design.json` 的模块不查。
 
@@ -260,7 +260,7 @@ export default [
   `design check` 记 warn，脚本留在代码里。
 - `design check` 校验配方与批量：枚举、`origin` / `path`、`request.headers` 里不许写凭据头、
   `maxBytes`、`GET` 不带 body；`calls` 非空、≤ 8 条、逐格同一套校验，且必须配 `recipe`。
-  生成物过期会被 `contracts` 点名，跑 `sync` 刷新。
+  生成物过期会被 `contracts` 点名，运行 `sync` 刷新。
 - 形状与六种配方见模块 DIY 的 [`DATASOURCE.md`](../core/skills/workbench-module-diy/DATASOURCE.md)。
 
 ```bash
@@ -274,7 +274,7 @@ dsh-wb-module design accept   # 在真卡片上逐条验证后勾选
 | 段 | 是什么 | 谁读 |
 |---|---|---|
 | `dsh.bundle.patch` | 把自己插进 profile 组合图的 cordis 补丁 | dsh 的组合器（装载） |
-| `dsh.client{platform,inject,external}` | 浏览器侧接线 | dsh 的客户端组合器（dsh 不校验，错的声明要等浏览器 `require` 才炸 —— 所以 `contracts` 替你查） |
+| `dsh.client{platform,inject,external}` | 浏览器侧接线 | dsh 的客户端组合器（dsh 不校验，错误的声明要等到浏览器 `require` 时才报错，因此由 `contracts` 检查） |
 | `dsh.workbench` | **模块声明协议** | 门禁 · 市场 · 外壳 |
 | `dsh.workbenchFaces{host,client}` | **工具链元数据**（不在协议里）：两个面的源码入口 | 门禁：`source` 拿它算可达性、`contracts` 查它在位；运行期不读 |
 | `peerDependencies['@dsh-workbench/core']` | 服务面：外壳 provide 的服务在不在 | dsh 的兼容性预检 |
@@ -317,8 +317,8 @@ dsh-wb-module design accept   # 在真卡片上逐条验证后勾选
 
 ## 模板
 
-只有**一个**模板（`diy`，也是默认）：一份真能跑的样板 —— 宿主侧三条只读路由真读盘、卡片五态与写失败提示、
-开箱（`（待填）`）的 `design.json`（填完 `design check` 才绿），外加一条可跑的长任务 / 两把工具（一只读一读写）/ 动作通道 / prefs。维护两份模板的成本
+只有**一个**模板（`diy`，也是默认）：一份可直接运行的样板 —— 宿主侧三条只读路由真读盘、卡片五态与写失败提示、
+开箱（`（待填）`）的 `design.json`（填完 `design check` 才绿），外加一条可运行的长任务 / 两把工具（一只读一读写）/ 动作通道 / prefs。维护两份模板的成本
 没人付，所以不再有 `minimal` 空壳；要空骨架就从 `diy` 删掉数据源那几段。
 
 它是**分层多文件**骨架：纯逻辑住 `src/model/**`、视图件与同目录样式住 `src/components/**`、
@@ -337,7 +337,7 @@ dsh-wb-module design accept   # 在真卡片上逐条验证后勾选
 node scripts/selfcheck/index.mjs
 ```
 
-工具箱的回归网：模板 `init` 一遍、跑全套；判据的正例与负例都要对；打包清单不含
+工具箱的回归网：模板 `init` 一遍、运行全套；判据的正例与负例都要对；打包清单不含
 `.tpl` 残留；`design` 的空格、README / DEVELOPING 同步、`accept`；`publish` 的清单；`release` 的验收闸、
 dry-run、真发后的元数据与发布失败回滚。
 

@@ -37,7 +37,7 @@ describe('createInstallRunner', () => {
 
   it('★ 没有执行缝就直说：装 / 卸做不了（不是静默成功）', async () => {
     const runner = createInstallRunner({ supply: SUPPLY });
-    await expect(runner.run(`pnpm add --dir ${TARGET} x`)).rejects.toThrow(/没有执行缝/);
+    await expect(runner.run(`pnpm add --dir ${TARGET} x`)).rejects.toThrow(/没有 shell 服务/);
   });
 
   it('★ 非零退出转成安装诊断：退出码与输出都带出来', async () => {

@@ -63,8 +63,8 @@ describe('workbench_modules_*：一个动词一把工具', () => {
 
     const payload = await call(h, MODULES_LIST_TOOL, {});
 
-    expect(String(payload.text)).toContain('issues · 已装，可用 · 插件 demo');
-    expect(String(payload.text)).toContain('builds · 未装 · 插件 build');
+    expect(String(payload.text)).toContain('issues · 已安装，可用 · 插件 demo');
+    expect(String(payload.text)).toContain('builds · 未安装 · 插件 build');
   });
 
   it('★ 列表结果必须是 lossless JSON：显式 undefined 会让整个工具判失败', async () => {
@@ -89,7 +89,7 @@ describe('workbench_modules_*：一个动词一把工具', () => {
   it('缺 id → 抛，并列出可安装的模块（报错要能照做）', async () => {
     const h = harness({ manifests: [unit('issues', 'demo')] });
 
-    await expect(call(h, MODULES_INSTALL_TOOL, {})).rejects.toThrow(/需要一个 id.*可安装的模块：issues/);
+    await expect(call(h, MODULES_INSTALL_TOOL, {})).rejects.toThrow(/缺少 id.*可安装的模块：issues/);
   });
 
   it('install 成功 → 跑了命令，并回一句"已安装"', async () => {
@@ -175,14 +175,14 @@ describe('workbench_modules_*：一个动词一把工具', () => {
 
     expect(String(payload.text)).toContain('issues');
     expect(String(payload.text)).toContain('builds');
-    expect(String(payload.text)).toContain('重探');
+    expect(String(payload.text)).toContain('重新探测');
   });
 
   it('不给 plugin → 抛一句能照做的（不是"缺 id"）', async () => {
     const h = harness({ manifests: [unit('issues', 'demo')] });
 
-    await expect(call(h, MODULES_UPDATE_PLUGIN_TOOL, {})).rejects.toThrow(/需要一个 plugin/);
-    await expect(call(h, MODULES_UNINSTALL_PLUGIN_TOOL, {})).rejects.toThrow(/需要一个 plugin/);
+    await expect(call(h, MODULES_UPDATE_PLUGIN_TOOL, {})).rejects.toThrow(/缺少 plugin/);
+    await expect(call(h, MODULES_UNINSTALL_PLUGIN_TOOL, {})).rejects.toThrow(/缺少 plugin/);
   });
 
   it('★ 卸掉没人用的那份 → 话里说"文件也删了"', async () => {
@@ -197,7 +197,7 @@ describe('workbench_modules_*：一个动词一把工具', () => {
 
     expect(h.fake.commands()).toEqual(["'opencli' plugin uninstall 'inventory'"]);
     expect(payload['removed']).toBe(true);
-    expect(String(payload.text)).toContain('文件也删了');
+    expect(String(payload.text)).toContain('文件已删除');
   });
 
   it('★ 文件留着的那种，要把理由带出来（agent 才知道"没删干净"是故意的）', async () => {
@@ -213,7 +213,7 @@ describe('workbench_modules_*：一个动词一把工具', () => {
     expect(h.fake.commands()).toEqual([]);
     expect(payload['removed']).toBe(false);
     expect(String(payload.text)).toContain('issues');
-    expect(String(payload.text)).toContain('还要用它');
+    expect(String(payload.text)).toContain('仍在使用它');
   });
 
   it('★ 没有 tools 服务 → 不注册也不抛（降级）', async () => {
@@ -233,7 +233,7 @@ describe('workbench_modules_*：一个动词一把工具', () => {
     const listed = await call(h, MODULES_LIST_TOOL, {});
     expect(String(listed.text)).toContain('issues');
 
-    await expect(call(h, MODULES_INSTALL_TOOL, { id: 'issues' })).rejects.toThrow(/没有执行缝/);
+    await expect(call(h, MODULES_INSTALL_TOOL, { id: 'issues' })).rejects.toThrow(/没有 shell 服务/);
   });
 });
 
@@ -247,8 +247,8 @@ describe('workbench_modules · install-bundle（按 spec 装模块包）', () =>
 
   it('不给 spec → 明确告诉他 spec 长什么样（不是"缺 id"）', async () => {
     const h = harness({ manifests: [], bundles: fakeBundles(), installed: () => installedModule });
-    await expect(call(h, MODULES_INSTALL_BUNDLE_TOOL, {})).rejects.toThrow(/需要一个 spec/);
-    await expect(call(h, MODULES_INSTALL_BUNDLE_TOOL, { spec: '  ' })).rejects.toThrow(/需要一个 spec/);
+    await expect(call(h, MODULES_INSTALL_BUNDLE_TOOL, {})).rejects.toThrow(/缺少 spec/);
+    await expect(call(h, MODULES_INSTALL_BUNDLE_TOOL, { spec: '  ' })).rejects.toThrow(/缺少 spec/);
   });
 
   it('★ 装成功 → 话里说清"装好了"、模块 unit、以及它要的插件也装上了', async () => {
@@ -315,7 +315,7 @@ describe('workbench_modules · install-bundle（按 spec 装模块包）', () =>
     const payload = await call(h, MODULES_INSTALL_BUNDLE_TOOL, { spec: '@a/b' });
     const text = String(payload.text);
 
-    expect(text).toContain('没成功');
+    expect(text).toContain('安装失败');
     expect(text).toContain('没有写入权限');
     expect(text).not.toContain('operation-error');
   });
@@ -370,7 +370,7 @@ describe('workbench_market_enable：把索引源设为可发布', () => {
     expect(init).toHaveBeenCalledWith({ id: 'team', stampOnly: true });
     expect(payload['changed']).toBe(true);
     expect(String(payload['text'])).toContain('已把');
-    expect(String(payload['text'])).toContain('仓库本身没动');
+    expect(String(payload['text'])).toContain('仓库本身未改动');
   });
 
   it('已经是可发布：不再调初始化，重复调用是幂等的', async () => {
@@ -474,7 +474,7 @@ describe('workbench_market_disable：把索引源改回只读', () => {
       },
     });
 
-    await expect(call(h, MARKET_DISABLE_TOOL, {})).rejects.toThrow(/本来就是只读/);
+    await expect(call(h, MARKET_DISABLE_TOOL, {})).rejects.toThrow(/只能读取/);
     expect(readOnly).not.toHaveBeenCalled();
   });
 

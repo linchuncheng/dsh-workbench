@@ -38,6 +38,6 @@ describe('installError（失败往上抛时带什么）', () => {
   it('盘满说有盘满，不说没权限', () => {
     const error = installError(failure({ kind: 'disk-full', fix: { kind: 'space', path: '/x' } }));
 
-    expect(error.message).toContain('磁盘满了');
+    expect(error.message).toContain('磁盘空间不足');
   });
 });

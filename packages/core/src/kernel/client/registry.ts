@@ -91,7 +91,7 @@ export function createClientUnitRegistry(
       try {
         listener();
       } catch (error) {
-        console.warn(`[dsh-workbench] 套件注册的订阅者报错（不影响其它订阅者与这次注册）：${String(error)}`);
+        console.warn(`[dsh-workbench] 模块注册的订阅者报错（不影响其它订阅者与这次注册）：${String(error)}`);
       }
     }
   }
@@ -136,7 +136,7 @@ export function createClientUnitRegistry(
         return () => {};
       }
       if (registrations.some((entry) => entry.unit === unit)) {
-        throw new Error(`套件 id 重复：${unit}（id 会进持久化配置，不能撞）`);
+        throw new Error(`模块标识重复：${unit}（id 会写入持久化配置，不能重复）`);
       }
 
       const entry: Registration = { face, unit, mounted: null };

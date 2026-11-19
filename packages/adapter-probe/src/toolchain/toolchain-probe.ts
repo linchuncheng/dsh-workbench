@@ -142,7 +142,7 @@ export async function probeDesktopToolchain(seam: Seam): Promise<ToolchainReport
         });
         control.push(`control ${label}: exit=${String(out.exitCode)} out=${(out.stdout || out.stderr).slice(0, 80)}`);
       } catch (error) {
-        control.push(`control ${label}: 起不来 ${String(error).slice(0, 120)}`);
+        control.push(`control ${label}: 无法启动 ${String(error).slice(0, 120)}`);
       }
     }
     for (const [label, workdir] of [

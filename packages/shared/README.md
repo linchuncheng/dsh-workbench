@@ -1,8 +1,8 @@
 # @dsh-workbench/shared
 
 工作台与模块共用的**契约与纯代码**：类型、纯函数、哑组件、i18n、宿主侧工具。
-它不持有状态、不依赖外壳运行时、不产生全局副作用 —— 所以外壳和每个模块都可以各自打一份，
-不会打架。
+它不持有状态、不依赖外壳运行时、不产生全局副作用，因此外壳和每个模块都可以各自打一份，
+互不冲突。
 
 对模块作者来说，这里是「不用自己重画」的那一层：卡片壳、行、表单、链接、加载态都在
 `components/`，契约类型都在 `contract/`。**dsh 有的原语走 kit，工作台自己的视觉用这里的组件**，
@@ -23,7 +23,7 @@
 - **模块源码对根入口只许 `import type`**：取运行值会在浏览器里打进第二份实例，也会让
   `dist/host.js` 在 Node 里 import 不进来。这条由 module-tools 的 `source` 判据盯着。
 
-组件样式与组件同目录（`X.css` / `X.module.css`），构建时原样搬到 `dist/` —— 消费方不用另配
+组件样式与组件同目录（`X.css` / `X.module.css`），构建时原样复制到 `dist/`，消费方不需要另外配置
 CSS 处理。
 
 ## 收录判据
@@ -31,11 +31,11 @@ CSS 处理。
 进这个包的东西要同时满足三条，缺一条就留在外壳里：
 
 1. **无模块级可变状态**：顶层 `let` / `var`、被写入的顶层 `Map` / `Set` 都不行。共享包会被每个
-   消费者各打一份，带状态就是各说各话。`scripts/check-state.mjs` 守这一条。
+   消费者各打一份，带状态就会各份不一致。`scripts/check-state.mjs` 守这一条。
 2. **不依赖外壳运行时**：不 import 外壳的代码、不假设自己在哪一列里渲染。
 3. **不产生全局副作用**：import 即注册、改全局、读环境都不行；要环境就从参数或 `/host` 进。
 
-判断不了就问一句：**这份东西被复制成两份，会有什么坏结果？** 答案不是「没有」就别放进来。
+判断不了就问一句：**这份东西被复制成两份，会有什么坏结果？** 答案不是「没有」就不要放进来。
 
 ## 目录
 
@@ -50,7 +50,7 @@ CSS 处理。
 | `src/host/` | 宿主侧内核与领域，按域分目录：`adapters/`（端口与 AdapterSet）、`supply/`（供给 / 安装 / registry / release）、`profile/`（profile 与配置同步）、`data/`（数据面与 recipe）、`unit/`（单元面、工具与面板状态）、`runtime/`（文件写、租约、http、路径、版本）、`shell/`、`patch/`、`git/`、`diy/`，外加 `ai/`、`flow/`、`seam/` |
 | `src/testing/` | 测试假件与声明读取 |
 
-`src/index.ts` 与 `src/host.ts` 是**生成的 barrel**：新增文件后跑 `pnpm run barrels`，别手抄。
+`src/index.ts` 与 `src/host.ts` 是**生成的 barrel**：新增文件后运行 `pnpm run barrels`，别手抄。
 它会拦重名导出（`export *` 会静默丢掉其中一个）。
 
 ## 怎么用
@@ -69,9 +69,9 @@ import { kit } from '@dsh-workbench/core/client';
 
 - **外壳自己**从根入口取运行值（组件、`apiGet`…），它是这份代码的主人。
 - **模块**的组件从 kit 取：`import { kit } from '@dsh-workbench/core/client'`，根入口只许
-  `import type`。宿主侧要运行值走 `/host`，浏览器侧要纯函数走 kit —— 两侧都不该从根入口取，
+  `import type`。宿主侧要运行值走 `/host`，浏览器侧要纯函数走 kit；两侧都不该从根入口取，
   否则浏览器会打进第二份实例、宿主侧会让 `dist/host.js` 在 Node 里 import 不进来。
-- 模块里只取类型时写成单独一行 `import type { … }`，别和运行值混在一条语句里 ——
+- 模块里只取类型时写成单独一行 `import type { … }`，不要和运行值混在一条语句里；
   `source` 判据按语句判「是不是只取类型」。
 
 组件是**哑的**：props 进、界面出，不取数、不读宿主、不自己决定什么时候刷新。取数在外壳的
@@ -85,7 +85,7 @@ pnpm --filter @dsh-workbench/shared run test
 pnpm --filter @dsh-workbench/shared run selfcheck  # check-state：无模块级可变状态
 ```
 
-两个 barrel 用 `pnpm run barrels` 重生成；`pnpm run arch` 跑这个包自己的分层配置。
+两个 barrel 用 `pnpm run barrels` 重生成；`pnpm run arch` 运行这个包自己的分层配置。
 代码零注释，只有公开成员的导出 JSDoc 例外（它会进 `.d.ts`，是给消费方看的）。
 
 ## 官方 dsh 包只在编译期
@@ -101,7 +101,7 @@ kit；它不引用 dsh。官方 `Dsh*` 别名只留给工作台内部（宿主�
 模块不需要它们。如果模块作者自己要直接引某个 `Dsh*` 别名，就把对应的官方包放进**自己的**
 `devDependencies`，编译期拿真类型，装进 profile 仍然不带 dsh。
 
-`selfcheck` 会拒绝 `dependencies` 里出现 `@deepseek-ai/dsh*` —— 这条一红，装进 profile 的就是
+`selfcheck` 会拒绝 `dependencies` 里出现 `@deepseek-ai/dsh*`。这条一旦判红，profile 里就会多出
 第二份 dsh 插件层。
 
 ## 相关文档

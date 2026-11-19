@@ -43,7 +43,7 @@ export class PlanStepError extends Error {
   readonly output: string;
 
   constructor(step: PluginPlanStep, exitCode: number | null, output: string) {
-    super(`计划里这一步没跑成（退出码 ${exitCode === null ? '拿不到' : String(exitCode)}）：${planStepText(step)}`);
+    super(`计划中的这一步未成功（退出码 ${exitCode === null ? '拿不到' : String(exitCode)}）：${planStepText(step)}`);
     this.name = 'PlanStepError';
     this.step = step;
     this.exitCode = exitCode;

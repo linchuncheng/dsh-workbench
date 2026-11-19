@@ -218,7 +218,7 @@ describe('市场动作分发（HTTP 通道与 agent 工具共用同一套动作�
     });
 
     await expect(dispatchMarket(market, { action: 'update-workbench', name: 'left-pad' })).rejects.toThrow(
-      /只更新工作台自己那一份/,
+      /只更新工作台自身/,
     );
     expect(await dispatchMarket(market, { action: 'update-workbench', name: '' })).toMatchObject({
       ok: true,

@@ -17,7 +17,7 @@ function patternsOf(root) {
   if (parsed.declared && parsed.patterns.length === 0 && parsed.empty !== true) {
     throw new Error(
       `pnpm-workspace.yaml 里有 packages 但没有解析出任何条目：${join(root, 'pnpm-workspace.yaml')} —— ` +
-        '支持块列表、行内数组、花括号与 ! 排除；读不了的写法会在这一步报出来',
+        '支持块列表、行内数组、花括号与 ! 排除；无法读取的写法会在这一步报出',
     );
   }
   return parsed;

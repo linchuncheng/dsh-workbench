@@ -102,7 +102,7 @@ export function createMarketSourceInitializer(options: MarketSourceInitOptions):
     }
 
     const status = await git(['status', '--porcelain', '--untracked-files=all'], workdir);
-    if (status.exitCode !== 0) throw new Error(`读不了本地副本状态：${tailLines(status.stderr, 4)}`);
+    if (status.exitCode !== 0) throw new Error(`无法读取本地副本状态：${tailLines(status.stderr, 4)}`);
     const dirty = status.stdout.trim();
     if (dirty !== '') {
       throw new Error(`本地副本还有未提交改动（${dirty.split('\n').slice(0, 3).join('、')}）—— 先处理再初始化`);

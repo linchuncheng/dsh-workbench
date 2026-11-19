@@ -39,19 +39,19 @@ function supplyNamesOf(entry: MarketEntry): readonly string[] {
 function stateOf(entry: MarketEntry): string {
   switch (entry.capability.status) {
     case 'ok':
-      return '已装，可用';
+      return '已安装，可用';
     case 'missing':
-      return '未装';
+      return '未安装';
     case 'outdated':
       return depOnlyOutdated(entry.capability)
-        ? `已装，可用（依赖可升级：${entry.capability.detail ?? ''}）`
-        : `已装但版本旧（${entry.capability.detail}）`;
+        ? `已安装，可用（依赖可升级：${entry.capability.detail ?? ''}）`
+        : `已安装，版本较旧（${entry.capability.detail}）`;
     case 'degraded':
-      return `可选依赖没装（${entry.capability.detail}）`;
+      return `可选依赖未安装（${entry.capability.detail}）`;
     case 'unsupported':
       return `需要更新的工作台（${entry.capability.detail}）`;
     default:
-      return `探不动：${entry.capability.detail}`;
+      return `无法探测：${entry.capability.detail}`;
   }
 }
 
@@ -60,13 +60,13 @@ function stateOfDependency(dep: SharedDependency): string {
     case 'ok':
       return '已就绪';
     case 'outdated':
-      return '有新版';
+      return '有新版本';
     case 'unsatisfied':
-      return '版本不对';
+      return '版本不符';
     case 'missing':
-      return '未装';
+      return '未安装';
     default:
-      return '探不动';
+      return '无法探测';
   }
 }
 
@@ -94,7 +94,7 @@ function render(entries: readonly MarketEntry[], shared: readonly SharedDependen
         (dep.usedBy.length === 0 ? '' : ` · 供 ${dep.usedBy.join('、')} 使用`),
     )
     .join('\n');
-  return `${modules}\n\n共用依赖（只有升级）：\n${deps}`;
+  return `${modules}\n\n共用依赖（只能升级）：\n${deps}`;
 }
 
 const REMOVE_BLOCKED = new Set(['not-removable', 'management-required', 'stop-profile', 'bundle-in-use']);
@@ -102,11 +102,11 @@ const REMOVE_BLOCKED = new Set(['not-removable', 'management-required', 'stop-pr
 function failureText(change: BundleChange): string {
   const code = change.errorCode ?? change.application;
   if (code === 'already-installed') {
-    return '它已经在这份 profile 里，而这次没能把它卸下来（这一版 dsh 不肯就地覆盖装，得先卸再装）';
+    return '它已在这份工作台配置中，本次未能卸载（这一版 dsh 不能就地覆盖安装，需要先卸载再安装）';
   }
   const surface = hostSurface();
   if (REMOVE_BLOCKED.has(code)) {
-    return `旧版卸不掉（dsh 不肯就地覆盖正在用的模块），自动从外部换也没成 —— 让用户从终端跑 dsh plugin --profile <名字> add <包>@<版本>，完成后${surface.restartHint}`;
+    return `旧版无法卸载（dsh 不能就地覆盖正在使用的模块），从外部替换也失败。下一步：让用户在终端执行 dsh plugin --profile <名字> add <包>@<版本>，完成后${surface.restartHint}`;
   }
   const detail = (change.errorDetail ?? '').trim();
   return code === 'operation-error' && detail !== '' ? detail : code;
@@ -124,13 +124,13 @@ function describeInstall(
       ? '安装完成，已生效'
       : change.application === 'restart-required'
         ? `安装完成，要${hostSurface().restartHint} 才生效`
-        : `没成功：${failureText(change)}`;
+        : `安装失败：${failureText(change)}`;
   const who = module.kind === 'module' ? `${module.unit}（${module.pkg}）` : module.pkg;
   const tail =
     supply.state === 'installed'
       ? `；它需要的${plugin}也已安装`
       : supply.state === 'pending-restart'
-        ? `；重启后再装它要的${plugin}`
+        ? `；重启后再安装它需要的${plugin}`
         : supply.state === 'not-a-module'
           ? '；但它不是工作台模块（没有 dsh.workbench 声明，不会出现在面板上）'
           : supply.state === 'failed'
@@ -153,17 +153,17 @@ function textArg(raw: unknown, key: string): string {
 }
 
 function describePluginUninstall(pkg: string, outcome: PluginUninstallOutcome, plugin: string): string {
-  if (outcome.removed) return `已卸载 ${plugin} ${pkg}：没人再用它，文件也删了。`;
-  return `已从「你装的插件」里去掉 ${pkg}。${outcome.kept === undefined ? '' : pluginKeptText(outcome.kept)}`;
+  if (outcome.removed) return `已卸载 ${plugin} ${pkg}：没有其他使用者，文件已删除。`;
+  return `已从已安装插件中移除 ${pkg}。${outcome.kept === undefined ? '' : pluginKeptText(outcome.kept)}`;
 }
 
 function describeWorkbenchUpdate(change: BundleChange): string {
   if (change.application === 'failed' || change.application === 'cancelled') {
-    return `没成功：${failureText(change)}`;
+    return `更新失败：${failureText(change)}`;
   }
   return change.application === 'restart-required'
-    ? `工作台更新到新版了 —— 这一版要${hostSurface().restartHint} 才生效（重启由用户来，别自己重启）。`
-    : '工作台更新到新版了 —— 客户端与宿主会自动更新生效，不用重启。';
+    ? `工作台已更新到新版本；这一版要${hostSurface().restartHint} 才生效，重启由用户执行，agent 不要自行重启。`
+    : '工作台已更新到新版本；客户端与宿主会自动更新生效，无需重启。';
 }
 
 function usersOf(shared: readonly SharedDependency[], names: readonly (string | undefined)[]): string {
@@ -171,7 +171,7 @@ function usersOf(shared: readonly SharedDependency[], names: readonly (string | 
     (item) => names.some((name) => name !== undefined && name !== '' && item.id === `extension:${name}`),
   );
   if (hit === undefined || hit.usedBy.length === 0) return '';
-  return `它被 ${hit.usedBy.join('、')} 用着（动的是它们的供给，它们的状态跟着重探了一遍）`;
+  return `它被 ${hit.usedBy.join('、')} 使用（本次改动的是它们的供给，状态已重新探测）`;
 }
 
 export interface MarketSourceGateway {
@@ -196,7 +196,7 @@ export function registerMarketTools(
     if (id !== '') return id;
     const { modules, shared } = await market.list();
     throw new Error(
-      `${label} 需要一个 id（例如 issues）。可安装的模块：` +
+      `${label} 缺少 id（例如 issues）。可安装的模块：` +
         `${modules.map((entry) => entry.unit).join(', ') || '（空）'}；` +
         `共用依赖：${shared.map((dep) => dep.id).join(', ') || '（空）'}`,
     );
@@ -228,7 +228,7 @@ export function registerMarketTools(
 
   const listTool: DshToolDefinition = {
     name: MODULES_LIST_TOOL,
-    description: `看模块市场与已装：每个模块装没装、可用不可用、要哪些${pluginTermOf(ctx)}；还有共用依赖（只有升级）。`,
+    description: `查看模块市场与已安装模块：每个模块是否安装、是否可用、需要哪些${pluginTermOf(ctx)}。`,
     parameters: noParams,
     output: OUTPUT,
     async execute() {
@@ -239,19 +239,19 @@ export function registerMarketTools(
 
   const installTool = moduleSupplyTool({
     name: MODULES_INSTALL_TOOL,
-    description: `按模块标识安装它声明的那份外部供给（${pluginTermOf(ctx)}与库），不换模块包本身。`,
+    description: `按模块标识安装模块声明的${pluginTermOf(ctx)}与库，不替换模块包本身。`,
     install: true,
   });
 
   const updateTool = moduleSupplyTool({
     name: MODULES_UPDATE_TOOL,
-    description: `按模块标识更新它声明的那份外部供给（${pluginTermOf(ctx)}与库），不换模块包本身。`,
+    description: `按模块标识更新模块声明的${pluginTermOf(ctx)}与库，不替换模块包本身。`,
     install: false,
   });
 
   const uninstallTool: DshToolDefinition = {
     name: MODULES_UNINSTALL_TOOL,
-    description: '卸模块：连模块包一起卸（只动工作台自己装的那一份）；要换一份实现先卸再装。',
+    description: '卸载模块：连同模块包一起卸载（只动工作台安装的那一份）；要更换实现先卸载再安装。',
     parameters: {
       type: 'object',
       properties: { id: { type: 'string', description: '模块标识（如 issues）。' } },
@@ -268,9 +268,9 @@ export function registerMarketTools(
         return {
           module: outcome.entry,
           text:
-            `没卸下来：${id} 还在这份 profile 里（${code}）—— 这一版 dsh 不肯卸正在加载的模块。` +
-            `让用户从终端跑 dsh plugin --profile <profile> remove ${id} 的包，完成后重启一次工作台；` +
-            '别再调这个工具重试。',
+            `卸载失败：${id} 仍在这份工作台配置中（${code}）；这一版 dsh 不能卸载正在加载的模块。` +
+            `下一步：让用户在终端执行 dsh plugin --profile <profile> remove ${id} 的包，完成后重启一次工作台；` +
+            '不要再次调用本工具重试。',
         };
       }
       const kept =
@@ -283,12 +283,12 @@ export function registerMarketTools(
 
   const installBundleTool: DshToolDefinition = {
     name: MODULES_INSTALL_BUNDLE_TOOL,
-    description: '按 spec 把模块包装进这份 profile（包名 / git 地址 / tarball / 本地路径）；装完它要的插件也一起装。',
+    description: '按 spec 把模块包安装到这份工作台配置（包名 / git 地址 / tarball / 本地路径），同时安装它需要的插件。',
     parameters: {
       type: 'object',
       properties: {
         spec: { type: 'string', description: '包名（可带 @版本）/ git 地址 / tarball / 本地路径。' },
-        registry: { type: 'string', description: '去哪个源装（不填用 profile 自己配的源）。' },
+        registry: { type: 'string', description: '安装使用的源；不填则用工作台配置中的源。' },
       },
       required: ['spec'],
       additionalProperties: false,
@@ -298,7 +298,7 @@ export function registerMarketTools(
       const spec = textArg(raw, 'spec');
       if (spec === '') {
         throw new Error(
-          'install-bundle 需要一个 spec：包名（可带版本，如 @scope/module@1.2.3），也可以是 git 地址 / tarball / 本地绝对路径。',
+          '缺少 spec（包名，可带版本，如 @scope/module@1.2.3）；也可以是 git 地址 / tarball / 本地绝对路径。',
         );
       }
       const registry = textArg(raw, 'registry');
@@ -314,7 +314,7 @@ export function registerMarketTools(
 
   const updateDependencyTool: DshToolDefinition = {
     name: MODULES_UPDATE_DEPENDENCY_TOOL,
-    description: '升共用依赖（工作台自己那份营生，如 plugin:demo）：只有升级，用依赖 id。',
+    description: '升级共用依赖（工作台自用的那份，如 plugin:demo）；只支持升级，按依赖 id 指定。',
     parameters: {
       type: 'object',
       properties: {
@@ -352,7 +352,7 @@ export function registerMarketTools(
         const plugin = textArg(raw, 'plugin');
         if (plugin === '') {
           throw new Error(
-            `${spec.name} 需要一个 plugin：${pluginTermOf(ctx)}的包名或插件名 —— 就是市场「已安装插件」那一段里的名字。`,
+            `${spec.name} 缺少 plugin（插件包名，如 inventory）；名字见模块市场「已安装插件」。`,
           );
         }
         if (spec.update) {
@@ -374,19 +374,19 @@ export function registerMarketTools(
 
   const updatePluginTool = pluginTool({
     name: MODULES_UPDATE_PLUGIN_TOOL,
-    description: `更新用户装的${pluginTermOf(ctx)}（按包名或插件名）；老插件跑不动了先试它。`,
+    description: `更新用户安装的${pluginTermOf(ctx)}（按包名或插件名）；插件无法运行时先试它。`,
     update: true,
   });
 
   const uninstallPluginTool = pluginTool({
     name: MODULES_UNINSTALL_PLUGIN_TOOL,
-    description: `卸用户装的${pluginTermOf(ctx)}：没人再用它时文件也删；还有模块用着就只从名单去掉。`,
+    description: `卸载用户安装的${pluginTermOf(ctx)}：没有使用者时一并删除文件；仍有模块使用则只从已安装列表移除。`,
     update: false,
   });
 
   const updateWorkbenchTool: DshToolDefinition = {
     name: MODULES_UPDATE_WORKBENCH_TOOL,
-    description: '把工作台自己更新到源上的新版（要重启时结果里会说；重启由用户来）。',
+    description: '把工作台更新到来源上的新版本；需要重启时结果会说明，重启由用户执行。',
     parameters: noParams,
     output: OUTPUT,
     async execute() {
@@ -397,15 +397,15 @@ export function registerMarketTools(
 
   const enableTool: DshToolDefinition = {
     name: MARKET_ENABLE_TOOL,
-    description: '把模块来源设为可发布（只改本机配置，不碰仓库）；要用户审批。',
+    description: '把模块来源设为可发布（只改本机配置，不修改仓库）；需要用户批准。',
     parameters: {
       type: 'object',
-      properties: { id: { type: 'string', description: '模块来源 id；不填=当前选中的那个。' } },
+      properties: { id: { type: 'string', description: '模块来源 id；不填则使用当前选中的来源。' } },
       additionalProperties: false,
     },
     output: OUTPUT,
     async execute(raw: unknown) {
-      if (sources === undefined) throw new Error('这台机器上没有模块来源服务，无法设为可发布');
+      if (sources === undefined) throw new Error('本机没有模块来源服务，无法设为可发布');
       const payload = sources.read();
       const asked = textArg(raw, 'id');
       const id = asked === '' ? payload.selected : asked;
@@ -413,7 +413,7 @@ export function registerMarketTools(
       if (source === undefined) {
         const known = payload.sources.map((one) => one.id).join('、') || '（空）';
         throw new Error(
-          `没有这个模块来源${asked === '' ? '' : `：${asked}`}。现有的：${known}；先在「模块市场 → 发现 → 模块来源」里加一个。`,
+          `没有这个模块来源${asked === '' ? '' : `：${asked}`}。现有的：${known}；先在「模块市场 → 发现 → 模块来源」中添加一个。`,
         );
       }
       if (source.kind !== 'git') throw new Error(`模块来源 ${source.id} 是 http 地址，只能读取，不能作为发布目的地`);
@@ -426,7 +426,7 @@ export function registerMarketTools(
         branch: result.branch,
         commit: result.commit,
         changed: true,
-        text: `已把「${source.label}」设为可发布（${source.url}，分支 ${result.branch}）—— 仓库本身没动。之后发布可以落到它的 ${source.path ?? 'market'}/。`,
+        text: `已把「${source.label}」设为可发布（${source.url}，分支 ${result.branch}）；仓库本身未改动。此后发布可写入它的 ${source.path ?? 'market'}/。`,
       };
     },
   };
@@ -436,12 +436,12 @@ export function registerMarketTools(
     description: '把模块来源改回只读（不再作为发布目的地；只改本机配置）。',
     parameters: {
       type: 'object',
-      properties: { id: { type: 'string', description: '模块来源 id；不填=当前选中的那个。' } },
+      properties: { id: { type: 'string', description: '模块来源 id；不填则使用当前选中的来源。' } },
       additionalProperties: false,
     },
     output: OUTPUT,
     async execute(raw: unknown) {
-      if (sources === undefined) throw new Error('这台机器上没有模块来源服务，无法修改');
+      if (sources === undefined) throw new Error('本机没有模块来源服务，无法修改');
       const payload = sources.read();
       const asked = textArg(raw, 'id');
       const id = asked === '' ? payload.selected : asked;
@@ -449,10 +449,10 @@ export function registerMarketTools(
       if (source === undefined) {
         const known = payload.sources.map((one) => one.id).join('、') || '（空）';
         throw new Error(
-          `没有这个模块来源${asked === '' ? '' : `：${asked}`}。现有的：${known}；先在「模块市场 → 发现 → 模块来源」里加一个。`,
+          `没有这个模块来源${asked === '' ? '' : `：${asked}`}。现有的：${known}；先在「模块市场 → 发现 → 模块来源」中添加一个。`,
         );
       }
-      if (source.kind !== 'git') throw new Error(`模块来源 ${source.id} 是 http 地址，本来就是只读`);
+      if (source.kind !== 'git') throw new Error(`模块来源 ${source.id} 是 http 地址，只能读取`);
       if (source.policy === 'catalog-only') {
         return { source, changed: false, text: `已经是只读：${source.label}（${source.url}）` };
       }
@@ -460,7 +460,7 @@ export function registerMarketTools(
       return {
         source: next,
         changed: true,
-        text: `已把「${source.label}」设为只读（${source.url}）—— 发布不会再落到它。`,
+        text: `已把「${source.label}」设为只读（${source.url}）；发布不会再写入它。`,
       };
     },
   };

@@ -40,7 +40,7 @@ export function capabilityBriefOf(packs: readonly PackEntry[]): ToolboxCapabilit
       `- 收包：相关的事做完、或接下来用不到，调 ${TOOLBOX_CLOSE_TOOL} 把上下文还回来。`,
       '- 四类包：manage（面板 / 模块 / 市场 / 长任务）· diy（工坊 / 页面调试 / 录制 / 日志 / 页面动作）·' +
         ' unit:<模块或插件 id>（每个在板单元一包）· mcp:<server>（dsh 挂的 MCP server）。',
-      '- 工作台 DIY 模式（preset workbench-diy）的会话里 manage 与 diy 默认已开：直接调，不用开包。',
+      '- 工作台 DIY 模式（preset workbench-diy）的会话里 manage 与 diy 默认已开：直接调用，无需开包。',
     ].join('\n'),
   };
 }

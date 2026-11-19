@@ -66,7 +66,7 @@ export function createRuntimePort(options: McpRuntimePortOptions = {}): RuntimeP
     }),
     seed: () => undefined,
     check: async () => {
-      if (options.seam === undefined) return { ok: false, detail: '宿主没给执行缝，MCP server 起不来' };
+      if (options.seam === undefined) return { ok: false, detail: '宿主未提供执行缝，MCP server 无法启动' };
       const client = createMcpClient({
         seam: options.seam,
         ...(options.server ?? { command: mcpServerCommand(), args: [], timeoutMs: 10_000 }),
@@ -83,7 +83,7 @@ export function createRuntimePort(options: McpRuntimePortOptions = {}): RuntimeP
       } catch (error) {
         return {
           ok: false,
-          detail: `MCP server 起不来：${error instanceof Error ? error.message : String(error)}。装它：${CHROME_MCP_INSTALL}`,
+          detail: `MCP server 无法启动：${error instanceof Error ? error.message : String(error)}。安装：${CHROME_MCP_INSTALL}`,
         };
       } finally {
         await client.close();

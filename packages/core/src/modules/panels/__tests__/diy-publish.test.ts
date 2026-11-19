@@ -893,7 +893,7 @@ describe('workbench_diy_publish · 真发', () => {
       rig.diyExec(),
     )) as { text: string };
 
-    expect(result.text).toContain('已刷新 @dsh-workbench/module-demo 的市集元数据');
+    expect(result.text).toContain('已刷新 @dsh-workbench/module-demo 的市场元数据');
     expect(result.text).toContain('版本 0.2.0 不变');
     expect(commands[0]).toContain("'--refresh'");
     expect(commands[0]).not.toContain("'--version'");
@@ -919,7 +919,7 @@ describe('workbench_diy_publish · 真发', () => {
     )) as { text: string };
 
     expect(result.text).toContain('安装包在 /tmp/module-demo-0.2.0.tgz');
-    expect(result.text).toContain('本机装：');
+    expect(result.text).toContain('本机安装：');
     expect(commands[0]).toContain("'--target' 'tarball'");
     expect(commands[0]).toContain("'--version' 'minor'");
   });

@@ -49,10 +49,10 @@ export const OPENCLI_CATALOG_ENV = "DSH_WB_OPENCLI_CATALOG";
 /** 想换源（内网镜像 / 离线）就设它，默认走官方源。 */
 export const OPENCLI_REGISTRY_ENV = "DSH_WB_OPENCLI_REGISTRY";
 
-/** 缺陷看板套件的 dsh 服务名（`workbenchIssues`）：套件照它登记自己那份服务。 */
+/** 缺陷看板模块的 dsh 服务名（`workbenchIssues`）：模块照它登记自己那份服务。 */
 export const ISSUES_SERVICE = "workbenchIssues";
 
-/** 面板套件的 dsh 服务名（`workbenchPanels`）：宿主经它取套件公布的清单与订阅。 */
+/** 面板模块的 dsh 服务名（`workbenchPanels`）：宿主经它取模块公布的清单与订阅。 */
 export const PANELS_SERVICE = "workbenchPanels";
 
 /** 单元花名册服务的 dsh 服务名（`workbenchUnits`）：模块经它认领自己的单元。 */

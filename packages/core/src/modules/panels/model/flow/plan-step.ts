@@ -23,12 +23,12 @@ export interface PlanInput {
 }
 
 const NEXT: Readonly<Record<string, string>> = {
-  probe: '做完站探，把读到的站点递上来',
-  plan: '把方案四段和字符画补上',
-  build: '动工写模块',
-  install: '装到面板上',
-  verify: '走一遍检查',
-  ledger: '留账',
+  probe: '站探完成后提交读取到的站点',
+  plan: '补上方案四段与字符画',
+  build: '开始编写模块',
+  install: '安装并显示到面板',
+  verify: '执行一遍检查',
+  ledger: '保存设计记录',
 };
 
 export interface PlanResult {
@@ -55,22 +55,22 @@ export async function planStep(
       runs.stop(session);
     } else if (at === 'plan') {
       const planned = await runs.advance(session, planValue(input));
-      if (!planned.ok) return refused(input, planned.problem ?? '方案没递上去');
+      if (!planned.ok) return refused(input, planned.problem ?? '方案未提交');
       return advanced(planned.step, input.destination);
     } else if (at !== null) {
       const position = positionOf(at, input.destination, runs.valuesOf(session));
       return refused(
         input,
-        `现在停在第 ${position.index}/${position.total} 步（${running.title ?? at}），这一步用 workbench_diy_step 递`,
+        `当前停在第 ${position.index}/${position.total} 步（${running.title ?? at}）；这一步用 workbench_diy_step 提交`,
       );
     }
   }
 
   if (!buildable) {
     const short: Record<string, string> = {
-      ready: '用现成的，直接给她看',
-      once: '一次性，做完就把结果说清楚',
-      reroute: '改道，告诉她这一步不走面板',
+      ready: '使用现成模块，直接展示给用户',
+      once: '一次性任务，完成后说明结果',
+      reroute: '改道，告知用户这一步不走面板',
     };
     return {
       ok: true,
@@ -79,7 +79,7 @@ export async function planStep(
       total: 0,
       remaining: 0,
       done: true,
-      text: `判成「${short[input.destination] ?? input.destination}」，流程到此为止：这一单不进面板。`,
+      text: `判定为「${short[input.destination] ?? input.destination}」，流程到此结束：本次不进入面板。`,
     };
   }
 
@@ -123,7 +123,7 @@ function advanced(step: FlowNodeStep | null, destination: Destination): PlanResu
       total: position.total,
       remaining: 0,
       done: true,
-      text: '流程走完了。',
+      text: '流程已完成。',
     };
   }
   const position = positionOf(step.id, destination);

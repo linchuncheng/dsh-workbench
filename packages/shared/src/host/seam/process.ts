@@ -37,7 +37,7 @@ export interface SyncProcessResult {
 /**
  * 同步跑一个一次性探针进程；需要异步/流式的走 `createNodeProcessHost`。
  * @param input 命令、参数、cwd、追加的 env 与超时。
- * @returns 退出码与输出；非零、超时或起不来都算 `failed`。
+ * @returns 退出码与输出；非零、超时或无法启动都算 `failed`。
  */
 export function runProcessSync(input: SyncProcessInput): SyncProcessResult {
   const result = execaSync(input.file, [...input.args], {

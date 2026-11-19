@@ -248,7 +248,7 @@ export function nextOf(answer: ReconAnswer, surface: ReconSurface): string {
       );
     }
     const call = pick.example === '' ? invocableOf(pick, surface) : pick.example;
-    return `直接复用：${call}（这台机器上就能跑，不用装、不用点头）`;
+    return `直接复用：${call}（本机可直接运行，无需安装、无需审批）`;
   }
   const plugin = answer.plugins[0];
   if (plugin !== undefined) {
@@ -279,7 +279,7 @@ function labelOf(command: ReconCommand): string {
 export function textOf(answer: ReconAnswer, surface: ReconSurface): string {
   const lines: string[] = [];
   if (answer.sites.length > 0) {
-    lines.push(`${surface.name} 自带这 ${String(answer.sites.length)} 组能力（不用装、不用点头）：`);
+    lines.push(`${surface.name} 自带这 ${String(answer.sites.length)} 组能力（无需安装、无需审批）：`);
     for (const site of answer.sites) {
       const where = site.domain === '' ? '' : `（${site.domain}）`;
       const chrome = site.browser ? '要用你的 Chrome 登录' : '不用浏览器';

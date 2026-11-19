@@ -134,11 +134,11 @@ export async function installVersionDir(input: {
     {
       what: '工作台包',
       dropLabel: 'node_modules',
-      mismatch: '第一遍没装上（下载缓存和已有的 node_modules 对不上）',
-      unresolved: '第一遍装完还是读不到',
-      settled: '装好了',
-      unresolvedAgain: '还是读不到',
-      failedAgain: '还是没装上',
+      mismatch: '首次安装失败（下载缓存与现有 node_modules 不一致）',
+      unresolved: '首次安装完成后仍无法读取',
+      settled: '安装完成',
+      unresolvedAgain: '仍无法读取',
+      failedAgain: '重新安装仍然失败',
     },
   );
 }

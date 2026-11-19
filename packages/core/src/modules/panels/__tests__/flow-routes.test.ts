@@ -63,7 +63,7 @@ describe('面板顶部那条进度行读的接口', () => {
     };
 
     expect(payload.steps.map((one) => one.id)).toEqual(['plan', 'build', 'install', 'verify', 'ledger']);
-    expect(payload.steps[0]?.title).toBe('补一下方案');
+    expect(payload.steps[0]?.title).toBe('补充方案');
   });
 
   it('★ 走到哪一步就说哪一步', () => {

@@ -231,7 +231,7 @@ describe('tool-scope', () => {
 
     expect(() => scope.apply({ ctx: {} })).not.toThrow();
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(String(warn.mock.calls[0]?.[0])).toContain('拿不到 agent 作用域的工具面');
+    expect(String(warn.mock.calls[0]?.[0])).toContain('无法获取 agent 作用域的工具面');
   });
 
   it('★ reapply：配置变了就**立刻**重算（不用等下一次 apply）', () => {

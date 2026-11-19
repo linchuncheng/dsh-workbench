@@ -32,7 +32,7 @@ function unreadable(origin: string): DataFailure {
     ok: false,
     error: {
       code: 'invalid-request',
-      message: `读不了 ${origin}：它不是一个能解析的地址（要带 http / https）`,
+      message: `无法读取 ${origin}：地址无法解析（需包含 http 或 https）。`,
       pageCode: 'origin-invalid',
     },
   };

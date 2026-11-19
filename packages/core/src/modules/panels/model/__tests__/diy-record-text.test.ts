@@ -275,7 +275,7 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
       note: '',
     });
     expect(cut).toContain('这里截到 10');
-    expect(cut).toContain('字符（没给 body_full_size');
+    expect(cut).toContain('字符（未提供 body_full_size');
     expect(cut).toContain('出参（response body）：无');
 
     const miss = renderRecordDetail({

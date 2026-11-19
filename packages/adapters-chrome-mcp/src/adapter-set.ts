@@ -40,7 +40,7 @@ export function createAdapterSet(ctx: DshHostContext, options: McpAdapterSetOpti
     data: createMcpDataReader({
       call: (name, args) =>
         client === undefined
-          ? Promise.reject(new Error('宿主没给执行缝，MCP 客户端起不来'))
+          ? Promise.reject(new Error('宿主未提供执行缝，MCP 客户端无法启动'))
           : client.callTool(name, args),
     }),
     supply,

@@ -68,7 +68,7 @@ export function FlowProgress({
           <span className={styles.title}>{label}</span>
           <span className={styles.progress}>{progress}</span>
           <span className={styles.chevron} aria-hidden="true">
-            {open ? <IconChevronUpOutlineRegular /> : <IconChevronDownOutlineRegular />}
+            {open ? <IconChevronDownOutlineRegular /> : <IconChevronUpOutlineRegular />}
           </span>
         </button>
         {open ? (

@@ -114,7 +114,7 @@ async function runWithStoreHeal(
     return { ok: false, detail: `${first.detail}；清 ${nodeModules} 没清掉：${String(error)}` };
   }
   const second = await run(command);
-  return second.ok ? second : { ok: false, detail: `清掉 node_modules 重装后还是没装上：${second.detail}` };
+  return second.ok ? second : { ok: false, detail: `删除 node_modules 并重新安装后仍然失败：${second.detail}` };
 }
 
 export async function provisionLocalNpm(options: {
@@ -147,7 +147,7 @@ export async function provisionLocalNpm(options: {
   if (!result.ok) return { ok: false, detail: result.detail };
   const platform = options.platform ?? process.platform;
   const installed = options.installed?.() ?? existsSync(localNpmCommand(options.root, platform));
-  if (!installed) return { ok: false, detail: 'pnpm 跑完但本地 npm 不在' };
+  if (!installed) return { ok: false, detail: 'pnpm 运行完成，但本地 npm 不存在' };
   return {
     ok: true,
     binDir: localNpmBin(options.root),
@@ -240,7 +240,7 @@ export async function provisionLocalPnpm(options: {
           detail: `pnpm@${LOCAL_PNPM_VERSION} 装到 ${localPnpmRoot(options.root)}`,
         };
       }
-      detail = 'pnpm 跑完但本地 pnpm 10 不在';
+      detail = 'pnpm 运行完成，但本地 pnpm 10 不存在';
     } else {
       detail = result.detail;
     }

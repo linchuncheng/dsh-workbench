@@ -96,7 +96,7 @@ export async function run() {
     status: 'pass',
     notes: [
       `${declared.length}/${modulePackages.length} 个模块包带 ${CONFIG_FILE} · ${files} 个源文件 · ` +
-        `${ranRules.size} 条规则在跑` +
+        `${ranRules.size} 条规则已执行` +
         (warnings === 0 ? '' : ` · ${warnings} 条 warn（不挡门禁）`) +
         (declared.length === modulePackages.length ? '' : `；其余 ${modulePackages.length - declared.length} 个没声明（不适用）`),
     ],

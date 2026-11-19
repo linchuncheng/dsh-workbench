@@ -67,7 +67,7 @@ export function declaredWritesProblemsOf(name, workbench) {
     `${name}: dsh.workbench.host.writes 里有不认的写入域 ` +
       `${outside.map((scope) => JSON.stringify(scope)).join(' / ')} —— ` +
       '只认 "unit"（模块自己的数据目录，<运行时根>/units/<unit>）与 "workspace"（当前会话工作区）两档；' +
-      '模块拿不到产品域与任意路径，别写别的名字（不写 = 不给执行缝门面）',
+      '模块无法获取产品域与任意路径；不要写其他名字（不写 = 不提供执行缝门面）',
   ];
 }
 

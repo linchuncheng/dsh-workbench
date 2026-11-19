@@ -8,7 +8,7 @@
 
 1. **找现成写命令** —— `workbench_diy_recon`（`keyword=…`）标注每条命令的读写：
    `读` · `写（可预览）` · `写（无预览档，一次就是真的）`，并给入参签名（`--id --yes=false`）。
-   命中即复用（自造会绕过登录、XSRF、错误码处理）。
+   命中即复用（自行实现会绕过登录、XSRF、错误码处理）。
    只命中写命令时，末句提示：先 `--help` 看入参；带 `--dryRun` / `--yes` 的先走预览；**无预览档不许试写**。
    边界：recon 只覆盖 opencli 自带目录；`inventory` / `demo` 等插件只回命令名，参数走第 2 步。
 
@@ -26,7 +26,7 @@
    - `workbench_diy_record_prepare({ unit, url, doing })`：打开窗口并置于前台（**需要审批一次**：站点、录制内容、保存位置），
      显示录制条。录制条出现即开始记录；用户执行一次动作后按「结束录制」。不要让用户操作第二次。
      `url` 必须与模块读源同域（`design.json` 声明过读源时跨域当场拒）。
-   - 表格填好、提交前，请用户按录制条上的「截图」：不额外审批；产出整页图与页面快照（控件 `name` / `id`、
+   - 表格填好、提交前，请用户点击录制条上的「截图」：不额外审批；产出整页图与页面快照（控件 `name` / `id`、
      标签、必填痕迹、填值、是否为空、是否改过）。提交时会自动再采集一份。
    - `workbench_diy_record_read`：取清单 `rows`（`index` / `key` / `method` / `url` / `status` / `ct` /
      `size` / `source` / `hasRequest` / `hasResponse` / `likelyWrite` / `marked`），不删行、不回体；
@@ -36,18 +36,18 @@
      prepare 会当场拒（不弹审批）。
    - `workbench_diy_record_stop`：停捕获、收标签、清状态，原文另存 `shots/rec-<unit>.jsonl.last`。
      **先 read / detail，再 stop**。左栏键只发消息；录完无键。
-   - 抓不到时，可能是原生 `<form>` 提交、WebSocket、service worker 或其他标签。页面钩子只识别 `fetch` 与 XHR，
-     上限 50 条、单条请求体 16 KB。兜底：`opencli browser <会话> bind`（当前聚焦窗活动标签）或
+   - 无法捕获时，可能是原生 `<form>` 提交、WebSocket、service worker 或其他标签。页面钩子只识别 `fetch` 与 XHR，
+     上限 50 条、单条请求体 16 KB。备选方案：`opencli browser <会话> bind`（当前聚焦窗活动标签）或
      `open … --window foreground`，先 `network --follow` 再让用户操作；取 body 用 `network --raw`
      （同一调用内）；仍无则请用户从 DevTools 复制 curl。
    - 参数与返回细则见 [FAMILY.md](FAMILY.md) §4。
-   - 仅测试环境 / 可撤销目标可让 agent 自己点。
+   - 仅测试环境 / 可撤销目标可由 agent 自行操作。
 
    取证结果落成模块的写能力：`writes: true` + `needsApproval` + `approvalDetail`（[TOOLS.md](TOOLS.md) §6）。
 
-4. **文档 / 问用户** —— 接口文档、curl 样例都可用于确认需求；问法照 [STEPS.md](STEPS.md)，不问技术细节。
+4. **文档 / 问用户** —— 接口文档、curl 样例都可用于确认需求；问法按 [STEPS.md](STEPS.md)，不问技术细节。
 
-## 执行体（写工具里那一下）
+## 执行体（写工具中的实际写入）
 
 写工具获得批准之后，按以下顺序选择：
 
@@ -64,7 +64,7 @@
 第 2 条走的是哪条传输由壳决定（页面脚本 / 宿主侧的公共通道），模块看不见也不该依赖 ——
 `submit` 的返回形状、错误码、审批、回读全都一样。
 
-**录制 → 配方**：`_record_detail` 的原文是取证。method / path / body / contentType 抄进配方；
+**录制 → 配方**：`_record_detail` 的原文是取证。method / path / body / contentType 写入配方；
 `authorization` / `cookie` / `x-csrf-*` 这些头**丢掉**，改写成 `auth.source` + `auth.place`；
 一次性 token / 签名 / 多步 → `custom`。"授权观察一次 ≠ 授权重放"：每次 `submit` 都重新审批。
 
@@ -84,7 +84,7 @@
 
 ## 回读
 
-写后用同族读或卡片投影读回该格。不以"命令没报错"判成功。`writes[].readback` 记录哪条读 / 哪个字段。
+写后用同族读或卡片数据读回该格。不以"命令没报错"判成功。`writes[].readback` 记录哪条读 / 哪个字段。
 
 ## 边界
 

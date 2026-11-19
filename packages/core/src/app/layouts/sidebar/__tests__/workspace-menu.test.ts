@@ -170,7 +170,7 @@ describe('右键工作区那一项：跟 dsh 官方同一套（指针位置开�
   });
 });
 
-describe('菜单里的三项：设置别名 / 在 Finder 中显示 / 删除工作区', () => {
+describe('菜单里的三项：设置别名 / 在 Finder 中显示 / 删除项目', () => {
   it('★ 顺序固定，删除那一项是危险色，且与上面两项之间有线', () => {
     const alias = MENU.indexOf("id: 'alias'");
     const reveal = MENU.indexOf("id: 'reveal'");
@@ -191,7 +191,7 @@ describe('菜单里的三项：设置别名 / 在 Finder 中显示 / 删除工�
     expect(MENU).toContain("'project.menu.reveal.finder'");
     expect(MENU).toContain("'project.menu.reveal.folder'");
     expect(dictionaries.zh['project.menu.reveal.finder']).toBe('在 Finder 中显示');
-    expect(dictionaries.zh['project.menu.reveal.folder']).toBe('在文件夹显示');
+    expect(dictionaries.zh['project.menu.reveal.folder']).toBe('在文件夹中显示');
     expect(dictionaries.en['project.menu.reveal.finder']).toBe('Show in Finder');
   });
 
@@ -205,7 +205,7 @@ describe('菜单里的三项：设置别名 / 在 Finder 中显示 / 删除工�
   });
 });
 
-describe('删除工作区：点菜单不删，二次确认之后才删', () => {
+describe('删除项目：点菜单不删，二次确认之后才删', () => {
   it('★ 菜单那一项只把目标交给开关，绝不直接删', () => {
     const branch = MENU.slice(MENU.indexOf("if (id === 'delete')"), MENU.indexOf('onReveal(workspace.path)'));
 
@@ -245,6 +245,6 @@ describe('写口接线：删除走 dsh 的 workspaces.delete，打开位置走�
     expect(WRITES).toContain("openWorkspacePath({ path, action: 'reveal' })");
     expect(WRITES).toContain("ctx.get('contextMenus')");
     expect(WRITES).toContain("notify(t('project.reveal.failed'), false)");
-    expect(dictionaries.zh['project.reveal.failed']).toBe('无法打开文件夹位置，请重试。');
+    expect(dictionaries.zh['project.reveal.failed']).toBe('无法显示文件夹位置，请重试。');
   });
 });

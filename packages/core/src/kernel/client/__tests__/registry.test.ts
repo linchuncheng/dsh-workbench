@@ -59,12 +59,12 @@ describe('createClientUnitRegistry', () => {
     warn.mockRestore();
   });
 
-  it('★ 套件 id 撞名当场抛（id 会进持久化配置，不能撞）', () => {
+  it('★ 模块标识撞名当场抛（id 会写入持久化配置，不能重复）', () => {
     const registry = createClientUnitRegistry();
     registry.setManifests([manifest('inventory')]);
     registry.register(face('inventory'));
 
-    expect(() => registry.register(face('inventory'))).toThrow(/套件 id 重复：inventory/);
+    expect(() => registry.register(face('inventory'))).toThrow(/模块标识重复：inventory/);
     expect(registry.all()).toHaveLength(1);
   });
 

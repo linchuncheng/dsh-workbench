@@ -75,7 +75,7 @@ export function createUnitRegistry(options: {
     const taken = byUnit.get(host.unit);
     if (taken !== undefined) {
       throw new Error(
-        `套件 id 重复：${host.unit}（id 会进持久化配置，不能撞）—— 已被 ${sourceLabel(taken.source)} 占着`,
+        `模块标识重复：${host.unit}（id 会进持久化配置，不能撞）；已被 ${sourceLabel(taken.source)} 占用`,
       );
     }
     byUnit.set(host.unit, host);

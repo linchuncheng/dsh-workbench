@@ -79,7 +79,7 @@ describe('工坊工具那一层共用的小东西', () => {
 
     expect(verdictOf(change({}))).toContain('已生效');
     expect(verdictOf(change({ application: 'restart-required' }))).toContain('要重启一次');
-    expect(verdictOf(change({ application: 'overridden' }))).toContain('盖住');
+    expect(verdictOf(change({ application: 'overridden' }))).toContain('覆盖');
     expect(verdictOf(change({ application: 'cancelled' }))).toContain('取消');
     expect(verdictOf(change({ application: 'failed', errorCode: 'boom' }))).toContain('安装失败（boom）');
   });
@@ -133,6 +133,6 @@ describe('DIY 落在这条会话登记的工作区上（不猜、不回落到工
   it('★ 登记表里没有这条会话的根就如实拒，话说清要先选一个工作区', async () => {
     const ctx = ctxOf(undefined);
 
-    await expect(workspaceOf(ctx, execAt('/Users/x/项目/没登记'))).rejects.toThrow(/登记工作区[\s\S]*选一个工作区/);
+    await expect(workspaceOf(ctx, execAt('/Users/x/项目/没登记'))).rejects.toThrow(/登记工作区[\s\S]*选择一个工作区/);
   });
 });

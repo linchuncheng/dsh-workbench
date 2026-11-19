@@ -122,7 +122,7 @@ describe('模块放手（卸掉一个模块）时，它带来的那份安装谁�
 
     expect(fake.commands()).toEqual([]);
     expect(logs[0]).toContain('@a/mod');
-    expect(logs[0]).toContain('文件先留着');
+    expect(logs[0]).toContain('文件暂时保留');
   });
 
   it('★ 用户自己还持着这一份 → 模块放手不碰它（模块放手与用户持有是两件事）', async () => {
@@ -149,7 +149,7 @@ describe('模块放手（卸掉一个模块）时，它带来的那份安装谁�
     await market.uninstall('issues');
 
     expect(fake.commands()).toEqual([]);
-    expect(logs[0]).toContain('你自己装的那一份');
+    expect(logs[0]).toContain('用户自行安装的那一份');
     expect(ledger.read('opencli-plugin-demo')).toBeDefined();
     fs.rmSync(root, { recursive: true, force: true });
   });
@@ -240,7 +240,7 @@ describe('放手那一格自己：谁在用、引用可不可信，两件事一�
     await dropper.drop('issues', [DEMO], capability);
 
     expect(runs).toEqual([]);
-    expect(logs[0]).toContain('文件先留着');
+    expect(logs[0]).toContain('文件暂时保留');
   });
 
   it('别的模块（哪怕它已经放手过）还要 → 插件那侧不碰，并把主张者报出来', async () => {

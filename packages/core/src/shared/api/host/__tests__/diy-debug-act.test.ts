@@ -53,7 +53,7 @@ describe('用户自己按的三个键：改状态 + 给 agent 一条 notice（�
     expect(message.source.kind).toBe('workbench-diy');
     expect(message.source.form).toBe('notice');
     expect(message.source.summary).toContain('用户按了暂停');
-    expect(message.content[0]?.text).toContain('别再把那一屏当目标');
+    expect(message.content[0]?.text).toContain('现在不要再看该页面');
     expect(takeHeldNotices('s1')).toHaveLength(0);
   });
 
@@ -166,9 +166,9 @@ describe('用户自己按的三个键：改状态 + 给 agent 一条 notice（�
     if (!move.ok) return;
     const state = move.state;
 
-    expect(debugNoticeText('pause', state)).toContain('等用户按「继续」');
-    expect(debugNoticeText('resume', state)).toContain('重新开始');
-    expect(debugNoticeText('stop', state)).toContain('收工');
+    expect(debugNoticeText('pause', state)).toContain('等待用户选择「继续」');
+    expect(debugNoticeText('resume', state)).toContain('本次调试已恢复');
+    expect(debugNoticeText('stop', state)).toContain('本次调试已结束');
     for (const text of [
       debugNoticeText('pause', state),
       debugNoticeText('resume', state),

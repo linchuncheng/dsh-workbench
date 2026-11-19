@@ -55,7 +55,7 @@ describe('底部那一格：一行状态 + 一句指引', () => {
     expect(view.trouble).toBe('none');
     expect(view.label).toBe('「工坊」调试中');
     expect(view.title).toBe('正在调试「工坊」');
-    expect(view.note).toBe('请勿切换工作区和操作面板');
+    expect(view.note).toBe('请勿切换工作区或操作面板');
   });
 
   it('★★ 你不在这一场调试那条工作区 ⇒ 那一行改说"异常"，指引是"切回去"', () => {

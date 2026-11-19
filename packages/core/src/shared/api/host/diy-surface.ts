@@ -451,7 +451,7 @@ export function renderNameText(
       primitives === 'unreadable'
         ? `${installSnippetOf(query)}，才敢说它在不在。`
         : kit === 'unreadable'
-          ? '把这份外壳装上（让 client.js 读得到）再问。'
+          ? '需要先安装这份外壳（使 client.js 可读取），再重试。'
           : '不给 scope 就都查。';
     const lines = [
       ...(listed

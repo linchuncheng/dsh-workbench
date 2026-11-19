@@ -148,7 +148,7 @@ export function recordRefusalText(code: RecordRefusal, held?: RecordState): stri
     case 'held-by-other':
       return `另一场录制尚未结束（${held === undefined ? '另一个会话' : held.sessionId}）。一台机器同时只允许一场录制：让该会话先调用 ${DIY_RECORD_STOP_TOOL} 结束，或等待它结束。`;
     case 'already-held':
-      return `本会话已有一场录制（${held === undefined ? '' : `${held.unit}，${PHASE_WORD[held.phase]}`}）。一台机器同时只允许一场录制：要换目标或再录一段，先调用 ${DIY_RECORD_STOP_TOOL}，再调用 ${DIY_RECORD_PREPARE_TOOL}；新的一场会再次询问用户。`;
+      return `本会话已有一场录制（${held === undefined ? '' : `${held.unit}，${PHASE_WORD[held.phase]}`}）。一台机器同时只允许一场录制：要更换目标或再录一段，先调用 ${DIY_RECORD_STOP_TOOL}，再调用 ${DIY_RECORD_PREPARE_TOOL}；新的一场会再次请求用户批准。`;
     case 'not-owner':
       return '这一场录制不属于本会话。只有开始录制的会话才能结束它。';
     case 'none':
@@ -265,7 +265,7 @@ export function renderRecordRead(input: RecordReadFacts): string {
   const sep = shots > 0 ? ` · 用户已截图 ${String(shots)} 次（rec-shot-*.png）` : '';
   const faults: readonly string[] = [];
   if (!input.armed) {
-    return `该页面上没有录制条（${DIY_RECORD_PREPARE_TOOL} 开始的那一场可能因页面导航失效）。先调用 ${DIY_RECORD_PREPARE_TOOL}，或让用户回到该页面后再调用 ${DIY_RECORD_READ_TOOL}。`;
+      return `该页面没有录制条（${DIY_RECORD_PREPARE_TOOL} 开始的那一场可能因页面导航失效）。先调用 ${DIY_RECORD_PREPARE_TOOL}，或让用户回到该页面后再调用 ${DIY_RECORD_READ_TOOL}。`;
   }
   if (input.phase === 'armed') return '页面尚未开始录制。等页面加载完成后再读取。';
   if (input.phase === 'recording') {
@@ -338,7 +338,7 @@ function clip(text: string, maxBytes: number): { readonly text: string; readonly
 }
 
 function sizeLabel(size: number, exact: boolean): string {
-  return exact ? `${String(size)} 字节` : `${String(size)} 字符（没给 body_full_size，按字符数算）`;
+  return exact ? `${String(size)} 字节` : `${String(size)} 字符（未提供 body_full_size，按字符数计算）`;
 }
 
 export function renderRecordDetail(input: RecordDetailFacts): string {

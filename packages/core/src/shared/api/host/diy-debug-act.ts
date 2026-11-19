@@ -76,17 +76,17 @@ export function debugNoticeText(intent: DebugIntent, state: DebugState): string 
   const head = `［调试 · ${state.title === '' ? '工作区' : state.title}］用户按了「${INTENT_WORD[intent]}」：`;
   if (intent === 'pause') {
     return (
-      `${head}${state.unit} 这场调试暂停了 —— 现在别再把那一屏当目标（看屏、动屏、网络、日志的工具都用不了）。` +
-      '要接着看屏就等用户按「继续」；在那之前照常改源码 / build / 跑门禁。'
+      `${head}${state.unit} 本次调试已暂停。现在不要再看该页面：看屏、操作页面、网络与日志工具均不可用。` +
+      '需要继续时等待用户选择「继续」；在此之前照常修改源码 / 构建 / 运行门禁。'
     );
   }
   if (intent === 'resume') {
     return (
-      `${head}${state.unit} 这场调试重新开始了 —— 那一屏又归你看。` +
-      '屏 / 板不对的话照旧会被拒，拒了就照实说清是哪种不对。'
+      `${head}${state.unit} 本次调试已恢复，页面操作重新归属本次调试。` +
+      '页面或看板不符时仍会被拒绝；被拒时说明具体是哪一种不符。'
     );
   }
-  return `${head}${state.unit} 这场调试收工了（占用解除）。要再调试就重新 start 一场。`;
+  return `${head}${state.unit} 本次调试已结束（占用已解除）。需要再次调试时重新 start。`;
 }
 
 export function debugNoticeSummary(intent: DebugIntent, state: DebugState): string {

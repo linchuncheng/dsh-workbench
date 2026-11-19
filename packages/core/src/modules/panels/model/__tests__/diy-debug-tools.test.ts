@@ -123,7 +123,7 @@ describe('调试约定：说出口的四把动词', () => {
 
     expect(stopped.text).toContain('调试已结束');
     expect(built.debug.live(Date.now())).toBeNull();
-    await expect(built.tool(DIY_DEBUG_STOP_TOOL).execute({}, rig.diyExec())).rejects.toThrow('当前没有调试态');
+    await expect(built.tool(DIY_DEBUG_STOP_TOOL).execute({}, rig.diyExec())).rejects.toThrow('当前没有调试状态');
   });
 
   it('★★ 收工那一拍把网络捕获与日志钩子一起收了（不用再回头调 net_stop / logs_stop）', async () => {
@@ -145,7 +145,7 @@ describe('调试约定：说出口的四把动词', () => {
   it('★ 没开始就暂停 ⇒ 一句人话（不是崩）', async () => {
     const built = rig.harness({ withTools: true, pact: false });
 
-    await expect(built.tool(DIY_DEBUG_PAUSE_TOOL).execute({}, rig.diyExec())).rejects.toThrow('当前没有调试态');
+    await expect(built.tool(DIY_DEBUG_PAUSE_TOOL).execute({}, rig.diyExec())).rejects.toThrow('当前没有调试状态');
   });
 
   it('★★ 收工之后约定就没了：看 / 动又被拒（约定是这一族唯一的入口）', async () => {
@@ -167,7 +167,7 @@ describe('调试态的每一句拒绝都要能照做', () => {
 
     expect(new Set(text).size).toBe(REFUSALS.length);
     for (const one of text) expect(one).not.toContain('undefined');
-    expect(debugRefusalText('none')).toContain('没有调试态');
+    expect(debugRefusalText('none')).toContain('没有调试状态');
     expect(debugRefusalText('held-by-other')).toContain('只允许一场');
     expect(debugRefusalText('already-held')).toContain('workbench_diy_debug_stop');
     expect(debugRefusalText('not-owner')).toContain('发起调试的会话');

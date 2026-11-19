@@ -537,7 +537,7 @@ function worktreeOf(plan, exec, home) {
 
 function assertClean(exec, workdir) {
   const status = runGit(exec, workdir, ['status', '--porcelain', '--untracked-files=all']);
-  if (status.status !== 0) throw new MarketIndexError(`读不了索引仓库状态：${tailOf(status.stderr)}`, 'index-write');
+  if (status.status !== 0) throw new MarketIndexError(`无法读取索引仓库状态：${tailOf(status.stderr)}`, 'index-write');
   const dirty = status.stdout.trim();
   if (dirty !== '') {
     throw new MarketIndexError(
@@ -987,7 +987,7 @@ export function verifyMarketArtifact({ plan, exec, home, name, path, commit }) {
   }
   const tree = runGit(exec, workdir, ['ls-tree', '-r', '--name-only', commit], { allowFailure: true });
   if (tree.status !== 0) {
-    throw new MarketIndexError(`读不了 commit ${commit} 的内容：${tailOf(tree.stderr)}`, 'market-verify');
+    throw new MarketIndexError(`无法读取 commit ${commit} 的内容：${tailOf(tree.stderr)}`, 'market-verify');
   }
   const artifactPath = typeof path === 'string' && path !== '' ? path : marketArtifactPath(name);
   const prefix = `${artifactPath}/`;

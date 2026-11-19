@@ -60,7 +60,7 @@ export const checks = [
 
         const readme = read(probe, 'README.md');
         const developing = read(probe, 'DEVELOPING.md');
-        for (const heading of ['## 你会看到什么', '## 你能做什么', '## agent 能替你做什么', '## 数据从哪来', '## 装和卸', '## 出问题先看']) {
+        for (const heading of ['## 你会看到什么', '## 你能做什么', '## agent 能做什么', '## 数据从哪来', '## 装和卸', '## 出问题先看']) {
           if (!readme.includes(heading)) problems.push(`README 缺「${heading}」`);
         }
         for (const token of ['src/', 'dsh-wb-module', 'design.json', '路由']) {

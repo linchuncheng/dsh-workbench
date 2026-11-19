@@ -57,7 +57,7 @@ function envOf(env: NodeJS.ProcessEnv | undefined): Record<string, string> | und
 }
 
 function exitReasonOf(event: { readonly code: number | null; readonly signal: string | null }): string {
-  return event.code === null && event.signal === null ? 'MCP server 起不来' : 'MCP server 退出了';
+  return event.code === null && event.signal === null ? 'MCP server 无法启动' : 'MCP server 已退出';
 }
 
 export function createMcpClient(options: McpClientOptions): McpClient {
@@ -138,7 +138,7 @@ export function createMcpClient(options: McpClientOptions): McpClient {
       for (const line of lines) onLine(line);
     });
     running.onError((error) => {
-      if (!closed) fail(`MCP server 起不来：${error.message}`);
+      if (!closed) fail(`MCP server 无法启动：${error.message}`);
     });
     running.onExit((event) => {
       if (!closed) fail(exitReasonOf(event));

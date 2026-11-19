@@ -116,8 +116,8 @@ export function logsReadOf(payload: Record<string, unknown> | undefined): LogsRe
 export function renderLogs(read: LogsRead): string {
   if (!read.ok) {
     return (
-      '这一页上还没有钩子（看不到控制台）—— 先安装 workbench_diy_logs_watch，' +
-      '做完你要看的那件事，再 workbench_diy_logs_read。'
+      '这一页还没有安装钩子，无法读取控制台。先调用 workbench_diy_logs_watch，' +
+      '执行要观察的操作，再调用 workbench_diy_logs_read。'
     );
   }
   if (read.lines.length === 0) {
@@ -125,7 +125,7 @@ export function renderLogs(read: LogsRead): string {
   }
   const shown = read.lines.slice(-LOGS_SHOW);
   const more =
-    read.seen > shown.length ? `（攒了 ${String(read.seen)} 条，这里只列最近 ${String(shown.length)} 条）` : '';
+    read.seen > shown.length ? `（共 ${String(read.seen)} 条，这里只列最近 ${String(shown.length)} 条）` : '';
   return [
     `这一页最近 ${String(shown.length)} 条控制台${more}：`,
     ...shown.map((one) => `[${one.level}] ${one.text}`),
@@ -133,7 +133,7 @@ export function renderLogs(read: LogsRead): string {
 }
 
 export function registerLogTools(ctx: DshHostContext, tools: DshToolRegistry): readonly (() => void)[] {
-  const sessionProp = { type: 'string', description: '会话名（默认 workbench，一般不用填）。' };
+  const sessionProp = { type: 'string', description: '会话名；默认 workbench，一般不用填。' };
   const schema = {
     type: 'object',
     properties: { session: sessionProp },
@@ -148,7 +148,7 @@ export function registerLogTools(ctx: DshHostContext, tools: DshToolRegistry): r
 
   const watchTool: DshToolDefinition = {
     name: DIY_LOGS_WATCH_TOOL,
-    description: '把这一页的控制台听上（每页最多 200 条、单条截 400 字，随页面刷新消失）。',
+    description: '监听本页控制台（最多 200 条，单条截 400 字，刷新后消失）。',
     parameters: schema,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -158,18 +158,18 @@ export function registerLogTools(ctx: DshHostContext, tools: DshToolRegistry): r
       const size = typeof step.payload?.['size'] === 'number' ? step.payload['size'] : 0;
       const text =
         error !== ''
-          ? `没听上：${error}`
+          ? `监听失败：${error}`
           : hooked === 0
-            ? `已经在听了（钩子还在，攒着 ${String(size)} 条）。做完那件事用 ${DIY_LOGS_READ_TOOL} 读。`
-            : `听上了（装了 ${String(hooked)} 个钩子，最多 ${String(LOGS_CAP)} 条）：去做你要看的那件事，` +
-              `回头用 ${DIY_LOGS_READ_TOOL} 读；读完用 ${DIY_LOGS_STOP_TOOL} 卸载。`;
+            ? `钩子已在监听（已收集 ${String(size)} 条）。执行要观察的操作后用 ${DIY_LOGS_READ_TOOL} 读取。`
+            : `已开始监听（安装 ${String(hooked)} 个钩子，最多 ${String(LOGS_CAP)} 条）：执行要观察的操作，` +
+              `然后用 ${DIY_LOGS_READ_TOOL} 读取；读完用 ${DIY_LOGS_STOP_TOOL} 卸载。`;
       return plainJson({ workspace: page.root, ok: step.ok && error === '', hooked, cap: LOGS_CAP, text });
     },
   };
 
   const readTool: DshToolDefinition = {
     name: DIY_LOGS_READ_TOOL,
-    description: '读刚才听下来的控制台（最近 50 条；没装钩子会说清，不假装是"没有报错"）。',
+    description: '读取已收集的控制台记录（最近 50 条）；未安装钩子时明确说明，不算作没有报错。',
     parameters: schema,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -189,7 +189,7 @@ export function registerLogTools(ctx: DshHostContext, tools: DshToolRegistry): r
 
   const stopTool: DshToolDefinition = {
     name: DIY_LOGS_STOP_TOOL,
-    description: '控制台收听结束：卸载钩子、清空已收集的记录。',
+    description: '停止控制台监听：卸载钩子、清空已收集的记录。',
     parameters: schema,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -199,7 +199,7 @@ export function registerLogTools(ctx: DshHostContext, tools: DshToolRegistry): r
       const dropped = typeof step.payload?.['dropped'] === 'number' ? step.payload['dropped'] : 0;
       const text =
         error !== ''
-          ? `没卸干净：${error}`
+          ? `卸载失败：${error}`
           : `已结束：卸载 ${String(unhooked)} 个钩子、清空 ${String(dropped)} 条记录。`;
       return plainJson({ workspace: page.root, ok: step.ok && error === '', unhooked, dropped, text });
     },

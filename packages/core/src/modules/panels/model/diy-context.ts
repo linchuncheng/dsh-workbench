@@ -43,10 +43,10 @@ export function plainJson<T>(value: T): T {
 export function verdictOf(change: BundleChange): string {
   if (change.application === 'applied') return '安装完成，已生效';
   if (change.application === 'restart-required') {
-    return `安装完成，要${hostSurface().restartHint} 才生效（装新模块、同名重装、替换已有包都走这一支）`;
+    return `安装完成，要${hostSurface().restartHint} 才生效（安装新模块、同名重装、替换已有包都会如此）`;
   }
-  if (change.application === 'overridden') return '被更高层的声明盖住了，这次没生效';
-  if (change.application === 'cancelled') return '安装被取消，没有生效';
+  if (change.application === 'overridden') return '被更高层的声明覆盖，本次未生效';
+  if (change.application === 'cancelled') return '安装已取消，未生效';
   const tail = (change.packageResult?.output ?? change.errorDetail ?? '').trim().split('\n').slice(-3).join(' | ');
   return `安装失败（${change.errorCode ?? 'failed'}）${tail === '' ? '' : `：${tail}`}`;
 }
@@ -72,8 +72,8 @@ export async function workspaceOf(
   const found = await sessionWorkspaceOf(ctx, session);
   if (found === null) {
     throw new Error(
-      `读不到这条会话的登记工作区（会话 cwd：${session ?? '(不知道)'}）` +
-        '—— 先在左栏选一个工作区；DIY 的模块、面板与调试都落在那一条工作区上',
+      `读不到当前会话的登记工作区（会话 cwd：${session ?? '(不知道)'}）。` +
+        '先在左栏选择一个工作区；DIY 的模块、面板与调试都归属于该工作区',
     );
   }
   return found;

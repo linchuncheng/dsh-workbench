@@ -34,7 +34,7 @@ describe('读出来怎么说（没装钩子 ≠ 没有报错）', () => {
     expect(LOGS_READ_SCRIPT).toContain("'not-armed'");
     const text = renderLogs({ ok: false, code: 'not-armed', seen: 0, lines: [] });
 
-    expect(text).toContain('还没有钩子');
+    expect(text).toContain('还没有安装钩子');
     expect(text).toContain('workbench_diy_logs_watch');
     expect(text).not.toContain('没有报错');
   });
@@ -52,7 +52,7 @@ describe('读出来怎么说（没装钩子 ≠ 没有报错）', () => {
     const text = renderLogs({ ok: true, code: '', seen: 60, lines });
 
     expect(text).toContain('最近 50 条');
-    expect(text).toContain('攒了 60 条');
+    expect(text).toContain('共 60 条');
     expect(text).toContain('[error] 第 59 条');
     expect(text).not.toContain('第 9 条\n');
   });
@@ -92,7 +92,7 @@ describe('★ 三把真的注册进工坊，而且是一动词一把（没有 ac
 
     const answer = (await built.tool(DIY_LOGS_WATCH_TOOL).execute({}, rig.diyExec())) as { text: string };
 
-    expect(answer.text).toContain('听上了');
+    expect(answer.text).toContain('已开始监听');
     expect(answer.text).toContain('workbench_diy_logs_read');
     expect(built.commands[1]).toContain("'eval'");
     expect(built.commands[1]).toContain('__dshDiyLogs');
@@ -106,7 +106,7 @@ describe('★ 三把真的注册进工坊，而且是一动词一把（没有 ac
 
     const answer = (await built.tool(DIY_LOGS_WATCH_TOOL).execute({}, rig.diyExec())) as { text: string };
 
-    expect(answer.text).toContain('已经在听了');
+    expect(answer.text).toContain('钩子已在监听');
   });
 
   it('读：把页面里那几条列出来', async () => {

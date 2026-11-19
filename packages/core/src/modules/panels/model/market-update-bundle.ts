@@ -101,7 +101,7 @@ async function reEnableBundle(pkg: string, deps: BundleUpdateDeps): Promise<bool
   deps.logger?.warn?.(
     back
       ? `[dsh-workbench] ${pkg} 更新后从 profile 名单里掉了 —— 已把它那一行放回去，重启后生效`
-      : `[dsh-workbench] ${pkg} 更新后从 profile 名单里掉了 —— 放回去也没成（${change?.errorCode ?? '原因未识别'}）`,
+      : `[dsh-workbench] ${pkg} 更新后从工作台配置的名单中移除；恢复失败（${change?.errorCode ?? '原因未识别'}）`,
   );
   return back;
 }

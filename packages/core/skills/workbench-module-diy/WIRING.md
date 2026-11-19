@@ -8,7 +8,7 @@
 |---|---|
 | 宿主侧纯函数 / 常量 | 优先工具 / 挂载里的 `deps`（`HostKit`）；清单用 `workbench_diy_surface scope=deps` 现查；模块顶层常量仍从 `@dsh-workbench/shared/host` 取（`dependencies`） |
 | 宿主平台事实（deployment / 能力 / 宿主机工具链） | `mount(deps)` 里的 `deps.surface`（`HostSurface`）：工具（`registerTools`）在闭包里用它；不要自己读 `process.platform` |
-| 让模型看一眼 / 抽结论 / 起子 agent | `mount(deps)` 里的 `deps.ai`（`AiPort`）：[AI.md](AI.md)；不要自己 `ctx.get('llm')`，也不自己存图片 |
+| 让模型查看 / 提炼结论 / 启动子 agent | `mount(deps)` 里的 `deps.ai`（`AiPort`）：[AI.md](AI.md)；不要自己 `ctx.get('llm')`，也不自己存图片 |
 | 读站点数据 | `deps.data`：单跳用 `request(recipe)`，多跳（后一跳要用前一跳的结果）用 `plan({ steps })`，二进制 / DOM 才写脚本：[DATASOURCE.md](DATASOURCE.md) |
 | 浏览器平台事实（Desktop / web、hostOs、能力） | `kit.hooks.usePlatform()`：`client` 现算（`primaryModifier`）、`host` 来自 health（`fileManager`；没读到按未知处理） |
 | 浏览器侧 hooks / 组件 / 图标 / 文案工具 | `@dsh-workbench/core/client` 的 `kit` |
@@ -16,7 +16,7 @@
 | 类型 | `import type` |
 | 外壳 | `@dsh-workbench/core`（peer，安装时比版本） |
 
-成员清单用命令取，不手抄：`check --only kit`（当前安装的外壳真实产物）、`check --only primitives`
+成员清单用命令取，不手工复制：`check --only kit`（当前安装的外壳真实产物）、`check --only primitives`
 （dsh 原语导出、与 kit 求交、需写入 `package.json` 的两行）。
 
 ⚠️ 共享包入口按运行时分离（`source` 判据）：
@@ -44,10 +44,10 @@
 
 `workbench_diy_install`（`unit=<id>`）：只识别当前工作区创建的模块；安装后会在当前工作区面板中打开，不弹审批。
 
-- 只需安装一次。包名已在 profile 中时，再次调用会返回「已装过」；迭代开发请用 `dsh-wb-module build`。
+- 只需安装一次。包名已在工作台配置中时，再次调用会提示已经安装过；迭代开发请用 `dsh-wb-module build`。
 - 安装不等于添加到看板。如果返回提示尚未打开，等它生效后再调用 `workbench_diy_show`（它只做添加到看板这一步）。
 - 状态不明确时询问 `workbench_diy_status`（`unit=…`）：是否已安装 / 面板是否已识别 / 项目内是否已打开 / 产物是否齐全 /
-  源码是否新于产物 / 下一步。不要自行拼合 panels、profile、目录三处信息。
+  源码是否新于产物 / 下一步。不要自行拼合面板、工作台配置、目录三处信息。
 - 用户选「完全权限」时，需审批的调用直接过；未认领的写与 `{blocked}` 仍拒。
 
 DIY 族仅在选了 DIY 模式的会话出现（按模式，不按工作区）；全表 [FAMILY.md](FAMILY.md)。
@@ -73,14 +73,14 @@ DIY 族仅在选了 DIY 模式的会话出现（按模式，不按工作区）�
    模块来源跟当前选中无关：只有一个可发布源就用它；有多个时传 `source=<id>`（`workbench_market_sources` 会给）。
    用户要更换署名（或在审批屏上说作者不对）时，传 `author="姓名 <邮箱>"`（也可以只给姓名）；不要手动修改 `package.json`，也不要自行编造。
    没有写作者时，审批屏会显示推断的署名；用户拒绝后说明要换成谁，再用 `author` 重新发布。
-   市场里一个包名归第一次发布的人（`market/<包名>/` 条目里的 `owner`）：换署名发同名会被拒，审批也放不过去；
-   用户真是接手的人，让他先找模块来源的维护者改那一条的 `owner`，别自己改成对方的署名去绕。
-   一个模块 id（`dsh.workbench.unit`）在同一个市场里只能有一个条目：更换包名时沿用旧 unit 会被拒绝，
+   模块市场中一个包名归第一次发布的人（`market/<包名>/` 条目里的 `owner`）：换署名发同名会被拒，审批也无法通过；
+   用户确实是接手的人，请用户先找模块来源的维护者修改那一条的 `owner`，不要修改成对方的署名来绕过检查。
+   一个模块标识（`dsh.workbench.unit`）在同一个模块市场中只能有一个条目：更换包名时沿用旧 unit 会被拒绝，
    所以换包名时要把 unit 一起换掉，不要为了保留 id 去修改别人的条目。
-   分类用 `category`（一个短词，例如「任务与协作」），发布到市场时必填：条目还没有分类时必须提供一个，
-   已有分类则不必传；拿不准时先调用 `workbench_market_categories` 查看当前模块来源用过的那批，尽量沿用，不要每次发布都新增一个词。
-   标签 `labels` 可选（最多两个短词，比如「发布编排」「构建状态」）：有就传，传了会替换原来的；没有不用编。
+   分类用 `category`（一个短词，例如「任务与协作」），发布到模块市场时必填：条目还没有分类时必须提供一个，
+   已有分类则不必传；无法判断时先调用 `workbench_market_categories` 查看当前模块来源用过的那批，尽量沿用，不要每次发布都新增一个词。
+   标签 `labels` 可选（最多两个短词，比如「发布编排」「构建状态」）：有则传入，传入后会替换原来的标签；没有则不必填写。
    分类会出现在发现页的 chip 行，新模块带一个新分类，页面自动多一个。
-2. 工具回 `needsUser` 时照 `text` 转述，不在对话里要 token / OTP；`otp` 交接后 `verify=true` 只核不发。
-3. 只改市集元数据（标题 / 作者 / 说明 / 标签）不升版本：`refresh=true`（换作者时同时传 `author`，仍要过 `owner` 检查）。
-   发布新版本不会改这些元数据（工具沿用远端条目当前的值），别指望发一版顺手把标题改掉；标签是例外 —— 发布总会照模块里的标签并一次。
+2. 工具回 `needsUser` 时按 `text` 转述，不在对话里索要 token / OTP；`otp` 交接后 `verify=true` 只核不发。
+3. 只修改模块市场元数据（标题 / 作者 / 说明 / 标签）不升版本：`refresh=true`（换作者时同时传 `author`，仍要过 `owner` 检查）。
+   发布新版本不会改这些元数据（工具沿用远端条目当前的值），不要期望发布一个版本时顺带修改标题；标签是例外 —— 发布总会按模块里的标签覆盖一次。

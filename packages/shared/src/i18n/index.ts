@@ -1,7 +1,7 @@
 import { en } from './en.js';
 import { zh, type WorkbenchMessages } from './zh.js';
 
-/** 外壳自带的两份词表（`zh` 为基准、`en` 同构）：`client.tsx` 拿它当合并各套件词表的底座。 */
+/** 外壳自带的两份词表（`zh` 为基准、`en` 同构）：`client.tsx` 拿它当合并各模块词表的底座。 */
 export const dictionaries = { zh, en };
 
 /** 中文词表的键类型（从 `zh.ts` 转出）：`en` 与模块词表都得覆盖同一批键。 */

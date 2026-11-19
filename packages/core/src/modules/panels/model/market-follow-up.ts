@@ -28,7 +28,7 @@ export function createWorkbenchFollowUps(deps: WorkbenchFollowUpDeps): Workbench
     deps.runMigration ??
     (async (input: MigrationRunInput): Promise<MigrationRunResult> => {
       const seam = deps.seam;
-      if (seam === undefined) throw new Error('没有执行缝（shell 服务不可用），迁移跑不起来。');
+      if (seam === undefined) throw new Error('本机没有 shell 服务，无法执行迁移。');
       const outcome = await seam.run({
         argv: [process.execPath, input.script, '--migrate', '--force'],
         intent: { kind: 'host' },
@@ -40,11 +40,11 @@ export function createWorkbenchFollowUps(deps: WorkbenchFollowUpDeps): Workbench
 
   function homeAndProfile(): { readonly home: string; readonly profile: string } {
     if (deps.dshHome === undefined || deps.profileName === undefined) {
-      throw new Error('拿不到 DSH_HOME 或 profile 名字 —— 这一步做不了。');
+      throw new Error('读不到 DSH_HOME 或工作台配置名称，无法执行这一步。');
     }
     const home = deps.dshHome();
     const profile = deps.profileName();
-    if (profile === null || profile === '') throw new Error('拿不到 profile 名字 —— 这一步做不了。');
+    if (profile === null || profile === '') throw new Error('读不到工作台配置名称，无法执行这一步。');
     return { home, profile };
   }
 
@@ -52,7 +52,7 @@ export function createWorkbenchFollowUps(deps: WorkbenchFollowUpDeps): Workbench
     async migrateWorkbench() {
       const { home, profile } = homeAndProfile();
       const read = deps.workbench?.(PLUGIN_ID);
-      if (read === undefined) throw new Error(`读不到 profile 里装的 ${PLUGIN_ID} —— 迁移做不了。`);
+      if (read === undefined) throw new Error(`读不到这份工作台配置中安装的 ${PLUGIN_ID}，无法迁移。`);
       return migrateWorkbench({ home, profile, pkg: read.pkg, run: runMigration });
     },
 

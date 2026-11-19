@@ -11,7 +11,7 @@ export function holdHostLock(onProblem: (message: string) => void): () => void {
     try {
       removePath(lock);
     } catch (error: unknown) {
-      onProblem(`宿主锁没删掉（下次更新会当它还在跑）：${String(error)}`);
+      onProblem(`宿主锁未清除（下次更新会认为它仍在运行）：${String(error)}`);
     }
   };
 }

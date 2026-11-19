@@ -285,7 +285,7 @@ function recoverLocked(input: UpdateJournalRecoveryInput): UpdateJournalRecovery
     try {
       clearUpdateJournal(input.file);
     } catch (error) {
-      input.log?.(`新版已经在跑，但换版日志没清掉：${messageOf(error)}`);
+      input.log?.(`新版本已运行，但换版日志未清除：${messageOf(error)}`);
       markCommitted(input, record);
       return { kind: 'cleared', from: record.from, to: record.to, dirty: true };
     }

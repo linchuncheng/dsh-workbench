@@ -68,7 +68,7 @@ export function bootChores(input: BootChoresInput): string | undefined {
   try {
     resumeQueuedSelfUpdate(input.ctx, { supply: input.supply, home: input.home, profileDir: input.profileDir });
   } catch (error) {
-    input.log?.(`没跑完的更新没接上：${textOf(error)}`);
+    input.log?.(`未完成的更新未能接续：${textOf(error)}`);
   }
   return version;
 }

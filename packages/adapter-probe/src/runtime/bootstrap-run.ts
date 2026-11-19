@@ -61,7 +61,7 @@ async function seamSpawn(
   env: Readonly<Record<string, string>>,
   timeoutMs: number,
 ): Promise<BootstrapSpawnResult> {
-  if (seam === undefined) throw new Error('没有执行缝，自举命令起不来');
+  if (seam === undefined) throw new Error('没有执行缝，自举命令无法启动');
   const result = await seam.run({
     command: line,
     shellKind,

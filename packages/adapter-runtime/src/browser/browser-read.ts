@@ -174,7 +174,7 @@ async function evalOnce(
         result: {
           ok: false,
           code: 'cli-exec-failed',
-          message: '读不了：后台服务起不来',
+          message: '无法读取：后台服务未启动',
           hint: '确认后台服务能跑起来，再重试',
           detail: error instanceof Error ? error.message : String(error),
         },

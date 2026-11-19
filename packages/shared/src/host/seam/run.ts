@@ -88,7 +88,7 @@ function denialMessageOf(scope: DenialScope, path: string | undefined, output: s
   const marker = DENIAL_MARKER.test(output) ? '' : '（输出里没有沙箱标记，按拒绝处理）';
   const next =
     scope === 'external'
-      ? '要写工作区外的路径得先让用户点头：把目标改到工作区，或让工具补上审批后再试'
+      ? '写入工作区外的路径需要用户批准。下一步：把目标改到工作区，或让工具补充审批后重试。'
       : '这是工作台自己的声明问题，不是用户的配置问题：把命令、域与路径一起记下来交给维护者';
   return `被沙箱挡住了（${scopeText(scope)}${where}）${marker}。${next}`;
 }
@@ -166,7 +166,7 @@ export function createSeam(ports: SeamPorts): Seam {
     if (intent.kind !== 'host') {
       throw new SeamError('scope-not-declared', '这条调用要走宿主进程执行，但写入域不是 host');
     }
-    if (!allowHost) throw new SeamError('scope-not-declared', '宿主域只给宿主侧接线开出来；模块与普通调用点拿不到');
+    if (!allowHost) throw new SeamError('scope-not-declared', '宿主域只对宿主侧接线开放；模块与普通调用点无法获取');
   }
 
   async function attempt(request: SeamRequest, policy: SeamPolicy, line: string): Promise<ShellResult> {

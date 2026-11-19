@@ -4,7 +4,7 @@
 
 | 判据 | 检查 | 修法 |
 |---|---|---|
-| `contracts` | 清单 ↔ 代码 ↔ `design.json` 漂移；dsh 组合期不校验清单；站点引用 / 未用站点 / origins / 信封 | 按报错改：`unit` 重名换名；`dsh.workbenchFaces` 两个源码入口；至少保留 `build` / `typecheck` / `test` / `selfcheck` 四个脚本（模板共 10 个）；`private: true`。`dsh.workbench.tools` 与 `registerTools()` 一致；`design.json` 对键名；生成物过期跑 `sync`。站点：配方只写 `site`，站点表不多不少；`host.origins` 由站点推导；信封路径跑 `sync` 展开 |
+| `contracts` | 清单 ↔ 代码 ↔ `design.json` 漂移；dsh 组合期不校验清单；站点引用 / 未用站点 / origins / 信封 | 按报错改：`unit` 重名换名；`dsh.workbenchFaces` 两个源码入口；至少保留 `build` / `typecheck` / `test` / `selfcheck` 四个脚本（模板共 10 个）；`private: true`。`dsh.workbench.tools` 与 `registerTools()` 一致；`design.json` 对键名；生成物过期时运行 `sync`。站点：配方只写 `site`，站点表不多不少；`host.origins` 由站点推导；信封路径运行 `sync` 展开 |
 | `protocol` | `dsh.workbench` 版本 / 形状 / 多余键（外壳静默忽略生字段） | 补 `"apiVersion": 3`；`unit` / `title` / `card` / `tools` / `host` 写全（名字是 `{ zh, en }` 字面量；无卡片 `null`、无工具 `[]`）；删协议外键（`faces` 在 `dsh.workbenchFaces`；不写 `scope`） |
 | `bundles` | 运行时互串：浏览器产物含 node 内置 / 宿主产物含 DOM、react | 不 import 对方那侧 |
 | `source` | 非种子 `@deepseek-ai/*`；宿主碰 dsh 浏览器包；`@/` 指外壳；根入口取运行值；客户端引 `/host`；**手写进程 / PATH / 文件锁 / 状态原子写**（import 首选库放行） | 宿主只用 Node 侧；种子词仅在 client 可达文件；`@/` 只指自己 `src/`；运行值：浏览器 `kit`、宿主 `shared/host`；进程/锁/状态写交给外壳 |
@@ -26,7 +26,7 @@
 
 ## 第十二条 `arch`
 
-只跑带 `arch.config.mjs` 的模块；无文件 = 不适用（skip），不是红。
+只检查带 `arch.config.mjs` 的模块；无文件 = 不适用（skip），不是红。
 
 ```js
 import { moduleArch } from '@dsh-workbench/module-tools/arch';
@@ -47,7 +47,7 @@ export default moduleArch();
 | `D09` `!important` | 只允许 `src/components/vendor/` | 改选择器 / 层级 |
 | `D17` 未使用类 | `*.module.css` 定义未使用 | 删除 |
 
-放宽从参数进：`moduleArch({ fileLines, deps, layers, roles, structure, exceptions })`；`exceptions` 每条需 `reason`：
+放宽项通过参数传入：`moduleArch({ fileLines, deps, layers, roles, structure, exceptions })`；`exceptions` 每条需 `reason`：
 
 ```js
 export default moduleArch({
@@ -61,17 +61,17 @@ export default moduleArch({
 
 ## 第十三条 `lint`
 
-`arch` 管文件间，`lint` 管文件内。只跑带 `eslint.config.mjs` 的模块；无文件 = 不适用，不是红。
+`arch` 管文件间，`lint` 管文件内。只检查带 `eslint.config.mjs` 的模块；无文件 = 不适用，不是红。
 
 ```js
 import { moduleLint } from '@dsh-workbench/module-tools/lint';
 export default moduleLint({ rootDir: import.meta.dirname });
 ```
 
-`rootDir` 钉 typescript-eslint 的 `tsconfigRootDir`（工作区可能有其他 eslint 配置；不传会报
+`rootDir` 固定 typescript-eslint 的 `tsconfigRootDir`（工作区可能有其他 eslint 配置；不传会报
 `No tsconfigRootDir was set…`）。
 
-仅 `error` 算红；`warn` 计数。聚合最多 40 条，`--only lint` 全列；配置跑不起来也红。
+仅 `error` 算红；`warn` 计数。聚合最多 40 条，`--only lint` 全列；配置无法加载也红。
 
 | 规则 | 含义 | 修法 |
 |---|---|---|
@@ -93,7 +93,7 @@ export default [
 ```
 
 不改方言：判据将 `moduleLint()` 的整份 8 块与配置逐块比（名字 / `files` / `rules`；`/overrides`、`/root` 不比），
-全局 ignores 按超集比。少块、重名、改规则值、只抄名字、`export default []`、`.filter(…)` 均红。
+全局 ignores 按超集比。少块、重名、改规则值、只复制名字、`export default []`、`.filter(…)` 均红。
 
 `dsh-wb-module lint --fix` 写回可自动修项；`check` 不改文件。
 
@@ -108,12 +108,12 @@ export default [
 **默认只读取证**：第 1、3、4 步与 `read=<地址>` 都不需要审批，先走这一圈。多数问题到这里就有结论，
 不需要动用户的屏幕。
 
-1. `workbench_diy_panel`：每卡的读取状态（宿主码与原文）、是否崩过（原因、次数）。有结论即止。
+1. `workbench_diy_panel`：每个模块的读取状态（宿主码与原文）、是否崩溃过（原因、次数）。有结论即止。
 2. 看卡片（**需要真实交互才做**）：`workbench_diy_screenshot` / `_html` / `_find` / `_eval`，作用于用户
    当前页的该卡（`unit=…`）。这一族（14 把 + `logs_*`）需要先调用 `workbench_diy_debug_start`（`unit=…`，
    审批一次），否则会被拒绝；`_panel` / `_status` / `read=` 这几档不需要。申请时说清占用范围与大概多久
-   （占用会持续到你喊停或自动暂停）。用完后调用 `_debug_pause`，结束时调用 `_debug_stop`。
-3. `workbench_diy_status`（`unit=…`）：查看「起得来」一行（初始化错误 / 声明被拒原文）。
+   （占用会持续到你主动停止或自动暂停）。用完后调用 `_debug_pause`，结束时调用 `_debug_stop`。
+3. `workbench_diy_status`（`unit=…`）：查看启动状态一行（初始化错误 / 声明被拒原文）。
 4. 直接请求路由：`curl '<工作台地址>/workbench/api/<unit>/<route>'`（默认 `http://127.0.0.1:3081`）。
    接口对 → 渲染侧；接口错 → 宿主侧（按 [DATASOURCE.md](DATASOURCE.md) 重探）。需要在页面内请求时用
    `_eval`（`read=<站点>`）。控制台：`_logs_watch` → 操作 → `_logs_read`（每页 200 条 / 单条 400 字，

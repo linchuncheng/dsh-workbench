@@ -17,7 +17,7 @@ describe('工坊工具的参数表：unit / session 是每把都有的那两格'
   });
 
   it('★ 两格的说明只住这一份（改一处，二十几把工具一起变）', () => {
-    expect(UNIT_PROP.description).toContain('工作区里的 unit');
+    expect(UNIT_PROP.description).toContain('模块标识');
     expect(SESSION_PROP.description).toContain('会话名');
   });
 });

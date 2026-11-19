@@ -471,7 +471,7 @@ describe('换上这一版时目录还被占着（真目录那一次）：等它�
     expect(result.state).toBe('pending');
     expect(calls).toHaveLength(3);
     expect(result.ran).toContain('switch');
-    expect(lines.join('\n')).toContain('等你退出后换上');
+    expect(lines.join('\n')).toContain('退出当前进程后切换');
   });
 
   it('★ 一直没退出（等到窗口尽头）→ 落 failed，并给一条能照抄的救法', async () => {
@@ -515,7 +515,7 @@ describe('换上这一版时目录还被占着（真目录那一次）：等它�
 
     expect(attempts).toBe(1);
     expect(result.state).toBe('failed');
-    expect(result.detail).toContain('翻链没成');
+    expect(result.detail).toContain('切换失败');
   });
 });
 
@@ -667,7 +667,7 @@ describe('换版事务：失败不留半成品，提交后不再改判失败', (
     });
 
     expect(result.state).toBe('failed');
-    expect(result.detail).toContain('清单没写成');
+    expect(result.detail).toContain('清单写入失败');
     expect(linkedVersion(profileDir)).toBe(FROM);
     expect(readFileSync(join(profileDir, 'package.json'), 'utf8')).toBe(manifestBefore);
     expect(existsSync(journalPath)).toBe(false);

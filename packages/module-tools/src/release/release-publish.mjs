@@ -39,7 +39,7 @@ export function localFiles(exec, root) {
 
 export function checkPublished(files) {
   const missing = REQUIRED_FILES.filter((one) => !files.includes(one));
-  if (missing.length > 0) throw new ReleaseError(`包里少了 ${missing.join(' / ')} —— 装上会起不来`);
+  if (missing.length > 0) throw new ReleaseError(`包中缺少 ${missing.join(' / ')} ；安装后无法启动`);
   const leaked = files.filter(
     (one) => one.startsWith('src/') || one.endsWith('.npmrc') || one.startsWith('template') || one.includes('.env'),
   );
@@ -48,7 +48,7 @@ export function checkPublished(files) {
 
 export function checkGitFiles(files) {
   const missing = REQUIRED_FILES.filter((one) => !files.includes(one));
-  if (missing.length > 0) throw new ReleaseError(`tag 里少了 ${missing.join(' / ')} —— 装上会起不来`);
+  if (missing.length > 0) throw new ReleaseError(`tag 中缺少 ${missing.join(' / ')} ；安装后无法启动`);
   const leaked = files.filter((one) => one.endsWith('.npmrc') || one.includes('.env'));
   if (leaked.length > 0) throw new ReleaseError(`tag 里混进了凭据文件：${leaked.slice(0, 3).join('、')}`);
 }

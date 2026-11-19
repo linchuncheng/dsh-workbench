@@ -77,7 +77,7 @@ describe('卸载时把按包记的来源一起清掉', () => {
     expect(result).toEqual(failed);
     expect(packageSourceOf(dir, '@a/mod')?.registry).toBe('https://r.example/');
     expect(enabled).toEqual([true]);
-    expect(warned.join(' ')).toContain('没卸成');
+    expect(warned.join(' ')).toContain('卸载失败');
   });
 
   it('没有 profile 目录 → 卸载照走，不抛', async () => {

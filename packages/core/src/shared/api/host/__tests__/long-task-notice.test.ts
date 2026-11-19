@@ -89,16 +89,16 @@ describe('longTaskStopNotice：被停了要不要回流给发起它的那个会�
     const notice = longTaskStopNotice('inventory', change({ session: 's-1' }));
 
     expect(notice?.session).toBe('s-1');
-    expect(notice?.summary).toBe('长任务：inventory 的「env-prod」被停了');
+    expect(notice?.summary).toBe('长任务：inventory 的「env-prod」已停止');
     expect(notice?.message.content[0]?.text).toBe(
-      '［长任务 · inventory］「env-prod」那一趟被用户停了 —— 别再把它当"还在跑"；要接着做就重新起一趟（workbench_long_tasks_list 看当前这几趟）。',
+      '［长任务 · inventory］「env-prod」已由用户停止，不要再按运行中处理；如需继续，重新发起一次（用 workbench_long_tasks_list 查看当前任务）。',
     );
   });
 
   it('★ 别的会话按的（`by` 有值且不等于发起方）：文案里是「别的会话」', () => {
     const notice = longTaskStopNotice('inventory', change({ session: 's-1', by: 's-2' }));
 
-    expect(notice?.message.content[0]?.text).toContain('那一趟被别的会话停了');
+    expect(notice?.message.content[0]?.text).toContain('已由别的会话停止');
   });
 
   it('★ 自己停自己不发（`by === snapshot.session`）', () => {

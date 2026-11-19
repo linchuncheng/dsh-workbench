@@ -94,7 +94,7 @@ export async function openRecordPage(input: OpenRecordInput): Promise<{
       reused: reuse,
       why:
         `无法打开录制窗口：${opened.stderr || opened.stdout || '运行时返回错误'}。` +
-        '先让用户把工作台切回前台（第一次打开需要如此），或运行运行时自检（doctor），确认扩展是否已连接。',
+        '先让用户把工作台切回前台（首次打开必须如此），或运行运行时自检（doctor），确认扩展是否已连接。',
     };
   }
   const openedBox = opened === undefined ? undefined : payloadOf(opened.stdout, input.wire?.read);
@@ -115,7 +115,7 @@ export async function openRecordPage(input: OpenRecordInput): Promise<{
   }
   if (!samePageOf(seen.href, input.url)) {
     const where = seen.href === '' ? '空白页' : seen.href;
-    const reason = seen.why === '' ? '' : `，页面的回话是 ${seen.why}`;
+    const reason = seen.why === '' ? '' : `；页面返回：${seen.why}`;
     return {
       ok: false,
       at: seen.href,

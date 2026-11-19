@@ -40,7 +40,7 @@ pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description 
 `<目录>` 是模块的创建位置：在某个工作区里时，选择它 glob 覆盖的目录（`packages/`、`apps/`、`modules/` 等均可）；
 也可以使用独立目录，此时这个包自己就是根。
 生成的骨架默认能通过 `check`；`selfcheck` 还包含 `design check`，要等设计底稿填写完成才会通过（共 10 个脚本）。**只有一个模板**：`--template diy`（默认），
-包含真实数据源、五态卡片，以及可运行的长任务 / 工具 / 动作通道样板；维护两份模板的成本无人承担。
+包含真实数据源、五态卡片，以及可运行的长任务 / 工具 / 动作通道样板；两份模板的维护成本过高。
 
 骨架分层：`src/model/**`（纯逻辑）、`src/components/**`（视图 + 同目录 `*.module.css`）、
 `src/messages.ts`、`src/host.ts`（宿主面）+ `src/host/**`（宿主侧内部实现，
@@ -49,12 +49,12 @@ pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description 
 
 宿主面注册部分（`name` / `inject` / `apply`）使用 `@dsh-workbench/shared/host` 的
 `defineUnitHostPlugin`；写工具的审批口径用 `writeApprovalOf`；`recordOf` / `textOf` 也从那里获取，
-不要在每个宿主文件里各抄一份。浏览器侧注册仍然是十几行样板（kit 还没有对应的封装）。
+不要在每个宿主文件里各复制一份。浏览器侧注册仍然是十几行样板（kit 还没有对应的封装）。
 
 | 文件 | 要点 |
 |---|---|
 | `arch.config.mjs` | `moduleArch()`（`@dsh-workbench/module-tools/arch`）；层序、运行时、阈值随工具链 |
-| `eslint.config.mjs` | 两行 `moduleLint({ rootDir: import.meta.dirname })`；`rootDir` 钉 tsconfig 根 |
+| `eslint.config.mjs` | 两行 `moduleLint({ rootDir: import.meta.dirname })`；`rootDir` 固定 tsconfig 根 |
 | `types/styles.d.ts` | 用 `X.module.css` 必须有；`globals.d.ts` 是模块，其 `declare module` 不算环境声明 |
 | `design.json` | 三张表 / 矩阵 / 数据源 / 验收；DEVELOPING.md 段由它生成 |
 
@@ -63,13 +63,13 @@ pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description 
 
 ## 3 命令
 
-用 `pnpm exec dsh-wb-module …`；命令、`--only` 判据名与模板参数看 `--help` / `check --list`，不在指引里抄。
+用 `pnpm exec dsh-wb-module …`；命令、`--only` 判据名与模板参数看 `--help` / `check --list`，不在指引里重复。
 `package.json` 至少保留 `build` / `typecheck` / `test` / `selfcheck` 四个脚本，`contracts` 点名缺失；
 模板自带 10 个（另含 `check` / `check:duplication` / `duplication:report` / `lint` / `design` / `prepack`）。
 
 - `check` 不会运行 `pnpm test`；状态、换算与边界测试需要自行运行。
 - `check:duplication` 用 jscpd 扫 `src` / `scripts`（阈值与忽略面在 `.jscpd.json`），有克隆就红；
-  `duplication:report` 把 HTML / JSON 报告出到 `coverage/duplication/`。它不在 `check` 链里，改完源码要单独跑。
+  `duplication:report` 把 HTML / JSON 报告出到 `coverage/duplication/`。它不在 `check` 链里，修改源码后要单独运行。
 - 「不适用」不等于「通过」：`standalone` 需要外壳源码在场，`markers` 只扫描公开包（DIY 模块 `private`）。
   汇总行会列出未检查项。
 
@@ -102,7 +102,7 @@ export const apply = plugin.apply;
 键必须在 `<unit>` 或 `<unit>/…` 之下（否则装配抛错）。错误返回
 `{ ok: false, error: { code, message, hint? } }`（HTTP 200，外壳转发）。`registerTools` 提供模块工具。
 
-浏览器面：`units.registerUnit({ unit, messages, card })`；清单由外壳从已装清单读，不在面里重复。`card` 收到
+浏览器面：`units.registerUnit({ unit, messages, card })`；清单由外壳从已安装清单读取，不在面里重复。`card` 收到
 `{ t, world, refreshToken, onRefresh, onSummary }`（`world.current.workspace` 为当前项目），返回元素。
 三态用 kit：加载 `kit.components.SkeletonRows`；空 `kit.components.EmptyState`（无按钮）；
 错误 `kit.components.BlockerState` + `kit.lib.blockerOfError(error, t)`。
@@ -112,7 +112,7 @@ export const apply = plugin.apply;
 
 ## 5 起子进程：走执行缝门面
 
-模块要在宿主侧跑命令（构建、git、打包……）时，用外壳放进 `mount(deps)` 的执行缝门面 `deps.seam`。
+模块需要在宿主侧运行命令（构建、git、打包……）时，用外壳放进 `mount(deps)` 的执行缝门面 `deps.seam`。
 `ctx.get('shell')` / `ctx.get('workbenchShell')` / `ctx.get('seam')`、`runShell` / `shellOf`、裸
 `child_process` 都不给模块用，`check --only seam` 会判红。
 
@@ -172,7 +172,7 @@ const result = await deps.seam?.run({
   timeoutMs: 10_000,
 });
 if (result === undefined || result.exitCode !== 0) {
-  return { ok: false, text: '这条命令没跑通' };
+  return { ok: false, text: '这条命令未成功执行' };
 }
 ```
 
@@ -180,6 +180,6 @@ if (result === undefined || result.exitCode !== 0) {
   路由 / 动作这些没有会话的调用点不要请求这一档。
 - 一条命令只声明一个写入域；要写两棵树就在步骤边界拆成两次调用。
 - `retry: 'safe'` 只给幂等 / 只读命令（查询、列清单）；写命令用默认的 `'never'`。
-- 请求没声明的档在起进程前就失败（`SeamError` 的 `scope-not-declared` / `workspace-unknown`），别吞掉。
+- 请求没声明的档在启动进程前就失败（`SeamError` 的 `scope-not-declared` / `workspace-unknown`），不要吞掉。
 - 这层门面是**约定 + 门禁 + 归因**，不是进程隔离：模块宿主代码与外壳同进程。真正的安全边界仍是
-  「装不装模块 + 审批」。
+  「是否安装模块 + 审批」。

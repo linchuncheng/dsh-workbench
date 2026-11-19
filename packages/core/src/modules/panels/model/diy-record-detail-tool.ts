@@ -28,20 +28,20 @@ export function recordDetailToolOf(ctx: DshHostContext, store: RecordStore): Dsh
 return {
   name: DIY_RECORD_DETAIL_TOOL,
   description:
-    `读取本段录制中某条请求的原文（请求体 / 响应体）。先用 ${DIY_RECORD_READ_TOOL} 取清单（每条带 key），再选一条；清单不会删除条目。`,
+    `读取本段录制中某条请求的原文。先用 ${DIY_RECORD_READ_TOOL} 取清单（每条带 key），再选一条；清单不会删除条目。`,
   parameters: {
     type: 'object',
     properties: {
-      key: { type: 'string', description: '清单中该条的 key（原样传入，含 #2 后缀）。' },
+      key: { type: 'string', description: '清单中该条的 key；原样传入，含 #2 后缀。' },
       index: { type: 'integer', description: '清单序号（从 0 开始）；仅在录制进行时可用。' },
       at: {
         type: 'integer',
-        description: '清单中该行的 at（毫秒时间戳）；同一 key 跨轮会重名，带上即可定位。',
+        description: '清单中该行的 at（毫秒时间戳）；同一 key 跨轮会重名，带上 at 才能定位。',
       },
       unit: { type: 'string', description: '录制已结束、只能读取 rec-<unit>.jsonl.last 时提供。' },
       maxBody: {
         type: 'integer',
-        description: `入参 / 出参各自最多返回多少字符（默认 ${String(DETAIL_MAX_BYTES)}，0 = 不限）。`,
+        description: `入参 / 出参各自最多返回多少字符（默认 ${String(DETAIL_MAX_BYTES)}，0 表示不限）。`,
       },
     },
     additionalProperties: false,
@@ -77,7 +77,7 @@ return {
     let key = askedKey;
     let page: RecordPageRead | null = null;
     if (key === '') {
-      if (index === null) throw new Error('提供 key（清单中该条的 key）或 index（清单中的序号）。');
+      if (index === null) throw new Error('缺少定位参数：提供 key（清单中该条的 key）或 index（清单中的序号）。');
       if (held === null) {
         throw new Error('录制结束后只能使用 key：index 是该场清单中的序号，本场清单已清除。');
       }

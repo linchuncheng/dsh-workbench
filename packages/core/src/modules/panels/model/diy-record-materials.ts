@@ -150,7 +150,7 @@ export function materialsOf(
 export function materialsTextOf(read: MaterialsRead): readonly string[] {
   const lines: string[] = [];
   if (read.writes.length === 0) {
-    lines.push('材料：未识别到写请求。若本场有保存操作，指明是哪一条（prepare 时提供 urlContains 最可靠）。');
+    lines.push('材料：未识别到写请求。若本场有保存操作，指明是哪一条；prepare 时提供 urlContains 最可靠。');
   } else {
     const head = read.writes
       .slice(0, 3)

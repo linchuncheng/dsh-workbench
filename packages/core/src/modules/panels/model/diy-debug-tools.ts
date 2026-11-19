@@ -17,19 +17,19 @@ export function debugRefusalText(code: DebugRefusal, held?: DebugState): string 
     case 'held-by-other':
       return (
         `另一场调试仍占用该页面（${held === undefined ? '另一个会话' : held.sessionId}）。` +
-        '一台机器同时只允许一场，请让它先 workbench_diy_debug_stop，或等待它结束。'
+        '一台机器同时只允许一场调试：让该会话先调用 workbench_diy_debug_stop，或等待它结束。'
       );
     case 'already-held':
       return (
         `当前会话已持有一场调试（${held === undefined ? '' : `${held.unit}，${held.phase}`}）。` +
-        '要更换目标请先 workbench_diy_debug_stop；处于暂停状态时，要继续查看请使用 workbench_diy_debug_resume。'
+        '要更换目标请先调用 workbench_diy_debug_stop；处于暂停状态时，要继续查看请调用 workbench_diy_debug_resume。'
       );
     case 'not-owner':
-      return '该调试态不属于当前会话，请由发起调试的会话结束。';
+      return '该调试状态不属于当前会话，由发起调试的会话结束。';
     case 'none':
-      return '当前没有调试态。';
+      return '当前没有调试状态。';
     case 'already-paused':
-      return '调试已暂停。要继续查看请使用 workbench_diy_debug_resume，会再次请求用户批准。';
+      return '调试已暂停。要继续查看请调用 workbench_diy_debug_resume，会再次请求用户批准。';
     case 'already-debugging':
       return '正在调试中，无需再次开启。';
   }
@@ -37,23 +37,23 @@ export function debugRefusalText(code: DebugRefusal, held?: DebugState): string 
 
 export function renderDebugStart(state: DebugState): string {
   return [
-    `开始调试 ${state.unit}（声明目标：${state.board === '' ? '用户当前页面' : state.board}）。`,
-    '页面工具现在才会放行；没有该约定时，它们一律直接拒绝。',
-    '不查看页面时请先 workbench_diy_debug_pause；结束时请调用 workbench_diy_debug_stop。',
+    `开始调试 ${state.unit}（目标：${state.board === '' ? '用户当前页面' : state.board}）。`,
+    '页面工具在调试期间才可用；没有该状态时一律直接拒绝。',
+    '不查看页面时先调用 workbench_diy_debug_pause；结束时调用 workbench_diy_debug_stop。',
   ].join('\n');
 }
 
 export function renderDebugPause(state: DebugState): string {
   return [
     `调试已暂停（${state.unit}）。页面工具已停用，不再以页面为目标。`,
-    '修改源码、执行 build 与运行门禁照常；要查看页面请再调用 workbench_diy_debug_resume，会再次请求用户批准。',
+    '修改源码、执行 build 与运行门禁不受影响；要查看页面需再次调用 workbench_diy_debug_resume，会再次请求用户批准。',
   ].join('\n');
 }
 
 export function renderDebugResume(state: DebugState): string {
   return [
     `继续调试 ${state.unit}。请用户回到「${state.title}」页面。`,
-    '模块界面不在页面上时我会直接拒绝，不会以其他面板为目标。',
+    '模块界面不在该页面上时直接拒绝，不会以其他面板为目标。',
   ].join('\n');
 }
 
@@ -73,10 +73,10 @@ export function registerDebugTools(
 ): readonly (() => void)[] {
   const startTool: DshToolDefinition = {
     name: DIY_DEBUG_START_TOOL,
-    description: '开始调试：占用用户当前页面（需批准一次）。没有该约定时，页面工具一律直接拒绝。',
+    description: '开始调试：占用用户当前页面，需要用户批准一次。没有该状态时，页面工具一律直接拒绝。',
     parameters: {
       type: 'object',
-      properties: { unit: { type: 'string', description: '已安装的 unit（不填 = 仅有一个已安装时使用它）。' } },
+      properties: { unit: { type: 'string', description: '模块标识；不填时仅在只有一个已安装模块时可用。' } },
       required: [],
       additionalProperties: false,
     },
@@ -114,7 +114,7 @@ export function registerDebugTools(
 
   const pauseTool: DshToolDefinition = {
     name: DIY_DEBUG_PAUSE_TOOL,
-    description: '暂停调试（无需审批）：页面工具停用，不再以页面为目标。要继续查看请使用 debug_resume。',
+    description: '暂停调试（无需批准）：页面工具停用，不再以页面为目标。继续查看用 debug_resume。',
     parameters: EMPTY,
     output: OUTPUT,
     async execute(_raw: unknown, exec: DshToolRunContext) {
@@ -133,7 +133,7 @@ export function registerDebugTools(
 
   const resumeTool: DshToolDefinition = {
     name: DIY_DEBUG_RESUME_TOOL,
-    description: '继续调试（需批准一次）：请用户回到该场调试所在的当前页面。',
+    description: '继续调试（需要批准一次）：让用户回到该场调试所在的当前页面。',
     parameters: EMPTY,
     output: OUTPUT,
     async execute(_raw: unknown, exec: DshToolRunContext) {
@@ -158,7 +158,7 @@ export function registerDebugTools(
 
   const stopTool: DshToolDefinition = {
     name: DIY_DEBUG_STOP_TOOL,
-    description: '结束调试（无需审批）：清除"占用用户当前页面"的状态。结束时调用它。',
+    description: '结束调试（无需批准）：清除「占用用户当前页面」的状态。结束调试时调用它。',
     parameters: EMPTY,
     output: OUTPUT,
     async execute(_raw: unknown, exec: DshToolRunContext) {
@@ -170,7 +170,7 @@ export function registerDebugTools(
         workspace: root,
         unit: state.unit,
         phase: 'idle',
-        text: `${renderDebugStop(state)}同时收尾该场调试的观察（网络捕获 / 日志钩子；未启用的无需处理）。`,
+        text: `${renderDebugStop(state)}同时收尾该场调试的观察项（网络捕获 / 日志钩子；未启用的无需处理）。`,
       });
     },
   };

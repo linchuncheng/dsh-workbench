@@ -200,14 +200,14 @@ describe('侦察结果', () => {
     expect(answer.next).toContain('opencli bilibili search -f yaml');
     expect(answer.text).toContain('opencli bilibili search -f yaml');
     expect(answer.text).toContain('要用你的 Chrome');
-    expect(answer.text).toContain('不用装、不用点头');
+    expect(answer.text).toContain('无需安装、无需审批');
   });
 
   it('用域名当关键词也能认出来（用户给的可能是个网址）', () => {
     const answer = reconOf(commands, [], keywordsOf('', 'https://www.arxiv.org/abs/1'), SURFACE);
     expect(answer.sites.map((one) => one.site)).toEqual(['arxiv']);
     expect(answer.sites[0]?.browser).toBe(false);
-    expect(answer.next).toContain('不用装');
+    expect(answer.next).toContain('无需安装');
   });
 
   it('自带里没有、但本机装了插件 → 指向已装的插件', () => {

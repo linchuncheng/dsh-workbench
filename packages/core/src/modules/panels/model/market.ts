@@ -188,7 +188,7 @@ export function createMarketService(options: {
   }
 
   function requireBundles(): BundleManager {
-    if (bundles === undefined) throw new Error('这个 profile 里没有插件管理器，装不了模块包。');
+    if (bundles === undefined) throw new Error('这份工作台配置中没有插件管理器，无法安装模块包。');
     return bundles;
   }
 

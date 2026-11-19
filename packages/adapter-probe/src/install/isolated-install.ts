@@ -108,12 +108,12 @@ export async function installIsolatedRuntime(
       deps.command(deps.liveDir),
       {
         what: 'opencli',
-        dropLabel: '装了一半的 node_modules',
-        mismatch: '第一遍没装上（下载缓存和已有的 node_modules 对不上）',
-        unresolved: '第一遍装完还是读不到',
-        settled: '装好了',
-        unresolvedAgain: '还是读不到',
-        failedAgain: '还是没装上',
+        dropLabel: '安装未完成的 node_modules',
+        mismatch: '首次安装失败（下载缓存与现有 node_modules 不一致）',
+        unresolved: '首次安装完成后仍无法读取',
+        settled: '安装完成',
+        unresolvedAgain: '仍无法读取',
+        failedAgain: '重新安装仍然失败',
       },
     );
     if (!result.ok) {
@@ -122,7 +122,7 @@ export async function installIsolatedRuntime(
     }
     if (!deps.ready(deps.liveDir)) {
       restore();
-      return { ...result, ok: false, detail: `${result.detail}；装完复检不过` };
+      return { ...result, ok: false, detail: `${result.detail}；安装完成后检查未通过` };
     }
     const pin = runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV);
     const at = new Date(now()).toISOString();

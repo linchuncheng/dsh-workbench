@@ -28,11 +28,11 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
   const asked = deps.asked.trim();
   const target = asked === '' ? PLUGIN_ID : asked;
   if (target !== PLUGIN_ID) {
-    throw new Error(`这条路只更新工作台自己那一份（${PLUGIN_ID}）：${target}`);
+    throw new Error(`这里只更新工作台自身（${PLUGIN_ID}），不支持 ${target}`);
   }
   const read = deps.workbench?.(target);
   if (read === undefined) {
-    throw new Error(`读不到 profile 里装的 ${target} —— 没法判断装的是哪一份，更新做不了。`);
+    throw new Error(`读不到这份工作台配置中安装的 ${target}，无法判断安装的是哪一份，更新无法进行。`);
   }
   if (read.local === true) {
     throw new Error('这份工作台是从源码目录装进来的（开发副本），不从源上更新。');
@@ -58,7 +58,7 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
         .map(([name, range]) => `${name} ${range}`)
         .join('、');
       throw new Error(
-        `源上 ${read.pkg}@${askedLatest} 要的是 ${need === '' ? '更高的 dsh' : need}，这一台是 dsh ${entry.incompatible.runtimeVersion} —— 先升级 dsh，再更新工作台。`,
+        `源上 ${read.pkg}@${askedLatest} 要求 ${need === '' ? '更高的 dsh' : need}，当前运行的是 dsh ${entry.incompatible.runtimeVersion}。先升级 dsh，再更新工作台。`,
       );
     }
   }
@@ -72,14 +72,14 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
     });
     if (missing.length > 0) {
       throw new Error(
-        `源上已经有 ${read.pkg}@${askedLatest}，但这一份发布还没铺齐：${missing.join('、')} 在这一版上还拉不到。安装后会缺依赖，稍等再试 —— 市场页那颗「重新检查」会重新探一次。`,
+        `源上已有 ${read.pkg}@${askedLatest}，但这次发布尚未铺齐：${missing.join('、')} 在这一版上仍然拉不到。安装后会缺少依赖，稍后重试；模块市场页的「重新检查」会重新探测。`,
       );
     }
   }
   const home = deps.dshHome?.();
   const profile = deps.profileName?.();
   if (home === undefined || profile === undefined || profile === null) {
-    throw new Error('拿不到 DSH_HOME 或 profile 名字 —— 自更新要多一个进程在外头跑，这一步做不了。');
+    throw new Error('读不到 DSH_HOME 或工作台配置名称；自更新需要在外部进程运行，无法继续。');
   }
   const targetVersion = askedLatest ?? read.version;
   if (targetVersion === read.version && deps.running !== undefined && deps.running !== read.version) {
@@ -87,7 +87,7 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
   }
   const spec =
     askedLatest === undefined ? `${read.pkg}@latest` : `${read.pkg}@${askedLatest}`;
-  const run = deps.selfUpdate ?? deps.supply?.startSelfUpdate ?? (() => { throw new Error('self-update 适配器未提供'); });
+  const run = deps.selfUpdate ?? deps.supply?.startSelfUpdate ?? (() => { throw new Error('自动更新组件未提供'); });
   let failure = '';
   const dshVersion = deps.dshVersion?.();
   const started = run(
@@ -107,7 +107,7 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
     },
   );
   if (!started.started) {
-    throw new Error(failure === '' ? '工作台更新没有开始，请稍后再试。' : failure);
+    throw new Error(failure === '' ? '工作台更新没有开始；稍后重试。' : failure);
   }
   deps.logger?.info?.(
     `[dsh-workbench] 自更新交给外部执行器（${started.paths.planFile}）：${read.version} → ${askedLatest ?? '最新版'}，本次操作不删除自己那一行`,

@@ -175,7 +175,7 @@ describe('mountUnits', () => {
     expect(Object.keys(plan.routes)).toEqual(['a/list']);
     expect(plan.mounted).toHaveLength(1);
     expect(plan.failed).toEqual([
-      { id: 'a', reason: expect.stringMatching(/路由名冲突：a\/list 由套件 a 与 a/) },
+      { id: 'a', reason: expect.stringMatching(/路由名冲突：a\/list 由模块 a 与 a/) },
     ]);
   });
 
@@ -209,7 +209,7 @@ describe('mountUnits', () => {
     expect(Object.keys(good.routes)).toEqual(['a/list']);
   });
 
-  it('★ 两个套件都提供闸门 → 先挂的那个胜出，后来那个废掉并记下原因', () => {
+  it('★ 两个模块都提供闸门 → 先挂的那个胜出，后来那个废掉并记下原因', () => {
     const gate = { deniedTools: () => ['workbench_x'], subscribe: () => () => {} };
     const plan = mountUnits(
       [face(manifest('a', { inject: [] }), { gate }), face(manifest('b', { inject: [] }), { gate })],
@@ -222,7 +222,7 @@ describe('mountUnits', () => {
     ]);
   });
 
-  it('★ 两个套件声明同一个偏好资源名 → 先挂的那个胜出，后来那个废掉', () => {
+  it('★ 两个模块声明同一个偏好资源名 → 先挂的那个胜出，后来那个废掉', () => {
     const plan = mountUnits(
       [
         face(manifest('a', { inject: [] }), { prefs: 'shared' }),
@@ -232,10 +232,10 @@ describe('mountUnits', () => {
     );
 
     expect(plan.prefs.map((item) => item.unit)).toEqual(['a']);
-    expect(plan.failed[0]?.reason).toMatch(/偏好资源名冲突：shared 由套件 a 与 b/);
+    expect(plan.failed[0]?.reason).toMatch(/偏好资源名冲突：shared 由模块 a 与 b/);
   });
 
-  it('★ 两个套件认领同一个引用 kind → 先挂的那个胜出，后来那个废掉', () => {
+  it('★ 两个模块认领同一个引用 kind → 先挂的那个胜出，后来那个废掉', () => {
     const plan = mountUnits(
       [
         face(manifest('a', { inject: [] }), { context: ['issue'] }),
@@ -245,7 +245,7 @@ describe('mountUnits', () => {
     );
 
     expect([...plan.contextRenderers.keys()]).toEqual(['issue']);
-    expect(plan.failed[0]?.reason).toMatch(/对话引用的 kind 冲突：issue 由套件 a 与 b/);
+    expect(plan.failed[0]?.reason).toMatch(/对话引用的 kind 冲突：issue 由模块 a 与 b/);
   });
 
   it('认领关系按 kind 建表：各归各家，与挂载顺序无关', () => {
@@ -260,7 +260,7 @@ describe('mountUnits', () => {
     expect([...plan.contextRenderers.keys()].sort()).toEqual(['commit', 'issue']);
   });
 
-  it('★ 两个套件都提供机器供给 → 先挂的那个胜出，后来那个废掉（两套"命令怎么拼"不许都在）', () => {
+  it('★ 两个模块都提供机器供给 → 先挂的那个胜出，后来那个废掉（两套"命令怎么拼"不许都在）', () => {
     const plan = mountUnits(
       [
         face(manifest('a', { inject: [] }), { provision: true }),
@@ -290,7 +290,7 @@ describe('mountUnits', () => {
     expect(typeof plan.provision?.handle).toBe('function');
   });
 
-  it('宿主已建好的能力探测**原样下发**给套件（同一进程，不必绕 HTTP 拿同一份事实）', () => {
+  it('宿主已建好的能力探测**原样下发**给模块（同一进程，不必绕 HTTP 拿同一份事实）', () => {
     const probe = vi.fn(async () => undefined);
     const received: Array<UnitMountDeps['probe']> = [];
     const spy = hostOf(manifest('a', { inject: [] }), (deps) => {
@@ -303,7 +303,7 @@ describe('mountUnits', () => {
     expect(received).toEqual([probe]);
   });
 
-  it('外壳没有探测能力时就不给这个字段（套件按 undefined 自己降级，而不是拿到一个假的）', () => {
+  it('外壳没有探测能力时就不给这个字段（模块按 undefined 自己降级，而不是拿到一个假的）', () => {
     const received: Array<UnitMountDeps['probe']> = [];
     const spy = hostOf(manifest('a', { inject: [] }), (deps) => {
       received.push(deps.probe);
@@ -418,7 +418,7 @@ describe('mountUnits：长任务（外壳自动挂那条投影 + 变了就推）
     expect(body.runs.map((row) => row.env)).toEqual(['innestest', 'test']);
   });
 
-  it('没交长任务表 → 不挂那条投影（套件按"没接编排"降级）', () => {
+  it('没交长任务表 → 不挂那条投影（模块按"没接编排"降级）', () => {
     const plan = mountUnits([face(manifest('demo', { inject: [] }))], { ctx: ctxWith([]), manifests: () => [] });
 
     expect(Object.keys(plan.routes)).toEqual([]);
@@ -443,7 +443,7 @@ describe('mountUnits：长任务（外壳自动挂那条投影 + 变了就推）
   });
 });
 
-describe('★ 注册期抛了：已经注册进去的那些要撤回（不留"套件判失败、工具还挂着"的半状态）', () => {
+describe('★ 注册期抛了：已经注册进去的那些要撤回（不留"模块判失败、工具还挂着"的半状态）', () => {
   function journalRegistry() {
     const live = new Set<string>();
     const registry = {

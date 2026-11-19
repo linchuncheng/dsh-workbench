@@ -52,7 +52,7 @@ describe('workbench_modules_update_workbench（工作台自己那一份）', () 
 
     expect((payload.change as { application?: string }).application).toBe('restart-required');
     expect(String(payload.text)).toContain('要重启一次 dsh 才生效');
-    expect(String(payload.text)).toContain('别自己重启');
+    expect(String(payload.text)).toContain('不要自行重启');
   });
 
   it('★ 工作台那一行一条卸载都不发、管理器也不碰 —— 谁都不许把自己那一行摘掉', async () => {
@@ -119,7 +119,7 @@ describe('workbench_modules_update_workbench（工作台自己那一份）', () 
     expect(h.selfUpdates).toEqual([]);
   });
 
-  it('★ 拿不到 DSH_HOME 或 profile 名字 → 不硬来，给一句能照做的人话', async () => {
+  it('★ 拿不到 DSH_HOME 或工作台配置名称 → 不硬来，给一句能照做的人话', async () => {
     const h = harness({
       manifests: [],
       bundles: fakeBundles(),
@@ -127,7 +127,7 @@ describe('workbench_modules_update_workbench（工作台自己那一份）', () 
       profileName: null,
     });
 
-    await expect(call(h, MODULES_UPDATE_WORKBENCH_TOOL, {})).rejects.toThrow(/profile 名字/);
+    await expect(call(h, MODULES_UPDATE_WORKBENCH_TOOL, {})).rejects.toThrow(/工作台配置名称/);
     expect(h.selfUpdates).toEqual([]);
   });
 
@@ -225,7 +225,7 @@ describe('workbench_modules_update_workbench（工作台自己那一份）', () 
     const failed = await call(h, MODULES_UPDATE_WORKBENCH_TOOL, {}).catch((error: Error) => error.message);
 
     expect(tried).toEqual([]);
-    expect(String(failed)).toContain('还没铺齐');
+    expect(String(failed)).toContain('尚未铺齐');
     expect(String(failed)).toContain('@dsh-workbench/module-tools');
     expect(String(failed)).toContain('重新检查');
   });
@@ -248,7 +248,7 @@ describe('updateWorkbenchOnce：外面那个进程收到的现场', () => {
   };
 
   it('★ 不是工作台那个包名 → 当场拒（这条路只服务自己那一份）', async () => {
-    await expect(updateWorkbenchOnce({ asked: 'left-pad' })).rejects.toThrow(/只更新工作台自己那一份/);
+    await expect(updateWorkbenchOnce({ asked: 'left-pad' })).rejects.toThrow(/只更新工作台自身/);
   });
 
   it('★ profile 的 spec 里没写 registry → 拿兜底那个问（问到了就钉住那一版，不是 @latest）', async () => {
