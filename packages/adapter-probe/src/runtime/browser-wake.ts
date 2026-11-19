@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { BROWSER_SPECS, browserInstallCandidates, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
+import { BROWSER_SPECS, bridgeFixOf, browserInstallCandidates, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
 import type { DesktopBrowserId, WakeBrowserReply } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 
 const BROWSER_IDS = BROWSER_SPECS.map((one) => one.id);
@@ -219,11 +219,7 @@ export function createDesktopBrowser(options: {
 export function bridgeFixCommand(
   command: string,
   issues: readonly string[],
-  platform: NodeJS.Platform = process.platform,
+  platform?: NodeJS.Platform,
 ): string | undefined {
-  const token = quoteShellArgFor(command, platform);
-  if (issues.includes('stale')) return `${token} daemon stop && ${token} daemon restart`;
-  if (issues.includes('profile')) return `${token} profile list`;
-  if (issues.includes('daemon')) return `${token} daemon restart`;
-  return undefined;
+  return bridgeFixOf(command, issues, hostOsOf(platform));
 }
