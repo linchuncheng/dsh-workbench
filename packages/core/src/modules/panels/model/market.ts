@@ -440,6 +440,7 @@ export function createMarketService(options: {
         seam,
         manager,
         ...(profile === undefined ? {} : { profile, profileName: profile }),
+        ...(profileDir === undefined || profileDir === null ? {} : { profileDir }),
         ...(home === undefined ? {} : { dshHome: home }),
         ...(includePrerelease === undefined ? {} : { includePrerelease }),
         routeDeps: routeDeps(manager),

@@ -1,5 +1,6 @@
+import { join } from 'node:path';
 import type { BundleManager, Seam, SupplyPort } from '@dsh-workbench/shared/host';
-import { PLUGIN_ID, quoteShellArg, requireSupply } from '@dsh-workbench/shared/host';
+import { PLUGIN_ID, profileBundlesOf, quoteShellArg, requireSupply, storeMismatchIn } from '@dsh-workbench/shared/host';
 import type { InstalledModule, ProfileModule } from '@dsh-workbench/shared/host';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
 import { replaceDshBundle, type ReplaceBundleDeps } from './market-route';
@@ -18,6 +19,7 @@ export interface BundleUpdateDeps {
   readonly logger?: { warn?(message: string): void } | undefined;
   readonly supply?: SupplyPort | undefined;
   readonly profile?: string | undefined;
+  readonly profileDir?: string | null | undefined;
   readonly dshHome?: string | undefined;
   readonly profileName?: string | undefined;
   readonly includePrerelease?: (() => boolean) | undefined;
@@ -34,7 +36,7 @@ function stillStuck(change: BundleChange, after: InstalledModule, before: string
 
 function remedyOf(
   deps: BundleUpdateDeps,
-  change: { readonly application: string },
+  change: BundleChange,
   before: string | undefined,
   afterVersion: string | undefined,
   spec: string,
@@ -44,7 +46,13 @@ function remedyOf(
   const stuck = !SHIPPED_APPLICATIONS.has(change.application);
   const unchanged = before !== undefined && afterVersion === before;
   if (!stuck && !unchanged) return undefined;
-  return { command: `dsh plugin --profile ${name} add ${quoteShellArg(spec)}` };
+  const add = `dsh plugin --profile ${name} add ${quoteShellArg(spec)}`;
+  if (!storeMismatchIn(`${change.errorCode ?? ''} ${change.errorDetail ?? ''}`)) {
+    return { command: add };
+  }
+  const dir = deps.profileDir;
+  if (dir === undefined || dir === null) return { command: add };
+  return { command: `rm -rf ${quoteShellArg(join(dir, 'node_modules'))} && ${add}` };
 }
 
 async function restoreRemovedBundle(
@@ -73,6 +81,29 @@ async function restoreRemovedBundle(
     );
   }
   return undefined;
+}
+
+function bundleDropped(deps: BundleUpdateDeps, pkg: string): boolean {
+  const dir = deps.profileDir;
+  if (dir === undefined || dir === null) return false;
+  try {
+    return !profileBundlesOf(dir).includes(pkg);
+  } catch {
+    return false;
+  }
+}
+
+async function reEnableBundle(pkg: string, deps: BundleUpdateDeps): Promise<boolean> {
+  if (!bundleDropped(deps, pkg)) return false;
+  if (deps.manager.setEnabled === undefined) return false;
+  const change = await deps.manager.setEnabled(pkg, true).catch(() => null);
+  const back = !bundleDropped(deps, pkg);
+  deps.logger?.warn?.(
+    back
+      ? `[dsh-workbench] ${pkg} 更新后从 profile 名单里掉了 —— 已把它那一行放回去，重启后生效`
+      : `[dsh-workbench] ${pkg} 更新后从 profile 名单里掉了 —— 放回去也没成（${change?.errorCode ?? '原因未识别'}）`,
+  );
+  return back;
 }
 
 export async function updateModuleBundle(
@@ -136,6 +167,7 @@ export async function updateModuleBundle(
     readAfter.kind === 'module'
       ? base.restored
       : (base.restored ?? (await restoreRemovedBundle(pkg, before, registry, deps)));
+  if (readAfter.kind === 'module') await reEnableBundle(pkg, deps);
   let after = deps.installed?.(pkg) ?? { kind: 'unknown', pkg };
   const verified = verifyBundleUpdate({
     change: base.change,
