@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   byLocationOf,
+  DEPS_SURFACE,
   excerptOf,
   filesOf,
   findFileOf,
@@ -13,18 +14,28 @@ import {
   TWO_FACE_ALL,
   wantsKit,
   wantsPrimitives,
-} from '../diy-components';
-import { kit, primitives } from './diy-components-samples';
+} from '../diy-surface';
+import { kit, primitives } from './diy-surface-samples';
 
-describe('workbench_diy_components · 解析与落点', () => {
-  it('scope 只认三个值，别的都当 all', () => {
+describe('workbench_diy_surface · 解析与落点', () => {
+  it('scope 只认已知面，别的都当 all', () => {
     expect(scopeOf('kit')).toBe('kit');
     expect(scopeOf('primitives')).toBe('primitives');
+    expect(scopeOf('platform')).toBe('platform');
+    expect(scopeOf('deps')).toBe('deps');
     expect(scopeOf('')).toBe('all');
     expect(scopeOf('nonsense')).toBe('all');
     expect([wantsPrimitives('all'), wantsKit('all')]).toEqual([true, true]);
     expect([wantsPrimitives('kit'), wantsKit('kit')]).toEqual([false, true]);
     expect([wantsPrimitives('primitives'), wantsKit('primitives')]).toEqual([true, false]);
+    expect([wantsPrimitives('deps'), wantsKit('deps')]).toEqual([false, false]);
+  });
+
+  it('deps 面覆盖宿主 kit 与单元挂载口', () => {
+    const names = Object.keys(DEPS_SURFACE);
+    for (const name of ['surface', 'flow', 'commands', 'seam', 'data', 'store', 'longTasks']) {
+      expect(names).toContain(name);
+    }
   });
 
   it('files / roots / 装机版本从工具链的 JSON 里取出来（形状不对就是空表，不抛）', () => {
@@ -66,7 +77,7 @@ describe('workbench_diy_components · 解析与落点', () => {
   });
 });
 
-describe('workbench_diy_components · 人话', () => {
+describe('workbench_diy_surface · 人话', () => {
   it('清单档：两个面都在、按落点分组、"只有原语有"在、末尾是类型面根', () => {
     const text = renderSurfaceText({ primitives, kit }, { scope: 'all', all: false });
     expect(text).toContain('kit 2：组件 1 · shared/hooks 1');
@@ -151,7 +162,7 @@ describe('workbench_diy_components · 人话', () => {
   });
 });
 
-describe('workbench_diy_components · 清单按类型文件落点分（桶的计数会骗人）', () => {
+describe('workbench_diy_surface · 清单按类型文件落点分（桶的计数会骗人）', () => {
   const real = {
     roots: { shell: '/w/core/dist/types', shared: '/w/core/node_modules/@dsh-workbench/shared/dist' },
     buckets: { api: ['Card', 'CardHead'], components: ['Card', 'CardHead'], lib: ['Card'] },
@@ -190,7 +201,7 @@ describe('workbench_diy_components · 清单按类型文件落点分（桶的计
   });
 });
 
-describe('workbench_diy_components · 给 bucket 就把那一桶列全（一桶装得下，不必去 shell）', () => {
+describe('workbench_diy_surface · 给 bucket 就把那一桶列全（一桶装得下，不必去 shell）', () => {
   const many = Array.from({ length: 30 }, (_unused, index) => `Thing${String(index)}`);
   const wide = { ...primitives, onlyPrimitives: { ...primitives.onlyPrimitives, icons: many } };
 

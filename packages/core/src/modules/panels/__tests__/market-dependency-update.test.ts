@@ -40,7 +40,7 @@ describe('共用依赖那一跳：跑完要强探，仍落后就抛', () => {
   
       capabilityOf: async () => state(ran ? 'ok' : 'outdated'),
       runAll: async (commands) => {
-        expect(commands.map((one) => planStepText(one))).toEqual(["'opencli' plugin update 'demo'"]);
+        expect(commands.map((one) => planStepText(one).replace(/^& /u, ''))).toEqual(["'opencli' plugin update 'demo'"]);
         ran = true;
       },
       snapshot: async () => [],

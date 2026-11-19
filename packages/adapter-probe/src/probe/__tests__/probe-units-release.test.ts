@@ -64,7 +64,7 @@ describe('版本信号（源上有新版）', () => {
     expect(state?.installed).toBe('1.0.39');
     expect(state?.latest).toBe('1.0.40');
     expect(state?.command).toContain('pnpm add --dir');
-    expect(state?.command).toContain('ln -s');
+    expect(state?.command).toContain(process.platform === 'win32' ? '-ItemType Junction' : 'ln -s');
     expect(state?.detail).toContain('源上最新');
   });
 

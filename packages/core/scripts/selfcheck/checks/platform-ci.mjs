@@ -5,7 +5,7 @@ import ts from 'typescript';
 import { REPO, read, walk } from '../lib.mjs';
 
 const WORKFLOW_DIR = join(REPO, '.github', 'workflows');
-const MANIFEST = join(REPO, 'packages', 'core', 'scripts', 'selfcheck', 'platform-ci.json');
+const MANIFEST = join(REPO, 'packages', 'core', 'scripts', 'selfcheck', 'platform-landings.json');
 const PACKAGES_DIR = join(REPO, 'packages');
 const PLATFORM_TEST_RUNNER = 'scripts/ci/platform-tests.mjs';
 const SMOKE_INDEX = 'scripts/smoke/index.mjs';
@@ -17,7 +17,7 @@ const TEST_CANDIDATE = /process\.platform|\bUSERPROFILE\b|\bComSpec\b|\btaskkill
 const SKIP_STEM = /(?:-mock|\.d)\.ts$/;
 
 const TITLE =
-  '★ 每个跨平台调用点都有 CI 腿跑到：清单、平台分支、测试与 workflow 对得上（新加平台分支要登记）';
+  '★ 平台差异只在登记落点：落点外扫描、落点 × OS 测试与 CI 腿对得上（新加平台分支要登记）';
 
 function normal(path) {
   return path.split('\\').join('/');
@@ -141,13 +141,58 @@ function hostFactTestFiles() {
   return out.sort();
 }
 
-function declaredTestsOf(manifest) {
+export function testsOfEntry(entry) {
+  if (Array.isArray(entry.tests)) return entry.tests;
+  if (typeof entry.tests === 'object' && entry.tests !== null) return Object.values(entry.tests).flat();
+  return [];
+}
+
+export function testsForOs(entry, os) {
+  if (Array.isArray(entry.tests)) return entry.tests;
+  if (typeof entry.tests === 'object' && entry.tests !== null && Array.isArray(entry.tests[os])) {
+    return entry.tests[os];
+  }
+  return [];
+}
+
+export function testsOfManifest(manifest) {
   const out = new Set();
-  for (const entry of Object.values(manifest.sites ?? {})) {
-    for (const test of entry.tests ?? []) out.add(test);
+  for (const group of ['allow', 'landings', 'ports']) {
+    for (const entry of Object.values(manifest[group] ?? {})) {
+      for (const test of testsOfEntry(entry)) out.add(test);
+    }
   }
   for (const tests of Object.values(manifest.suites ?? {})) {
     for (const test of tests ?? []) out.add(test);
+  }
+  return [...out].sort();
+}
+
+function declaredTestsOf(manifest) {
+  return new Set(testsOfManifest(manifest));
+}
+
+function declaredPlatformsOf(entry) {
+  if (Array.isArray(entry.platforms)) return entry.platforms;
+  return Array.isArray(entry.os) ? entry.os : [];
+}
+
+function isRegisteredPlatformPath(rel, manifest) {
+  if (Object.hasOwn(manifest.allow ?? {}, rel)) return true;
+  for (const group of ['landings', 'ports']) {
+    for (const entry of Object.values(manifest[group] ?? {})) {
+      if (entry.path === rel) return true;
+    }
+  }
+  return false;
+}
+
+function declaredEntriesOf(manifest) {
+  const out = { ...(manifest.allow ?? {}) };
+  for (const group of ['landings', 'ports']) {
+    for (const [id, entry] of Object.entries(manifest[group] ?? {})) {
+      if (typeof entry.path === 'string' && entry.path.trim() !== '') out[entry.path] = { ...entry, id };
+    }
   }
   return out;
 }
@@ -191,11 +236,12 @@ function jobsOf(text) {
     if (line.trim() !== '' && indentOf(line) === 0) break;
     const header = /^ {2}([A-Za-z0-9_-]+):\s*$/u.exec(line);
     if (header !== null) {
-      current = { id: header[1], images: new Set(), commands: [] };
+      current = { id: header[1], images: new Set(), commands: [], advisory: false };
       jobs.push(current);
       continue;
     }
     if (current === undefined) continue;
+    if (/^ {4}continue-on-error:\s*true\s*$/u.test(line)) current.advisory = true;
     const run = /^\s+(?:-\s+)?run:\s*(.*)$/u.exec(line);
     if (run !== null) {
       const body = run[1].trim();
@@ -270,14 +316,16 @@ function coveringJobsOf(testRel, workflowsList) {
   const out = [];
   for (const workflow of workflowsList) {
     for (const job of workflow.jobs) {
-      if (jobCovers(job, testRel, pkgName)) out.push({ workflow: workflow.name, job: job.id, oses: job.images });
+      if (jobCovers(job, testRel, pkgName)) {
+        out.push({ workflow: workflow.name, job: job.id, oses: job.images, advisory: job.advisory });
+      }
     }
   }
   return out;
 }
 
 function missingCoverage(testRel, os, workflowsList) {
-  return !coveringJobsOf(testRel, workflowsList).some((one) => one.oses.has(os));
+  return !coveringJobsOf(testRel, workflowsList).some((one) => !one.advisory && one.oses.has(os));
 }
 
 function smokeScriptFindings(workflowsList) {
@@ -287,6 +335,7 @@ function smokeScriptFindings(workflowsList) {
   if (job === undefined) {
     return ['platform-smoke.yml 里没有 smoke job：平台冒烟不再被 CI 跑'];
   }
+  if (job.advisory) findings.push('platform-smoke 的 smoke job 是 advisory：平台腿不再阻塞');
   const missingOs = OS.filter((one) => !job.images.has(one));
   if (missingOs.length > 0) findings.push(`platform-smoke 少了 ${missingOs.join('、')} 腿`);
   const commands = job.commands.join('\n');
@@ -305,20 +354,24 @@ function manifestFindings(sites, workflowsList) {
   } catch (error) {
     return [`读不了清单 ${normal(relative(REPO, MANIFEST))}：${error instanceof Error ? error.message : String(error)}`];
   }
-  const declared = manifest.sites ?? {};
+  const declared = declaredEntriesOf(manifest);
   const declaredTests = declaredTestsOf(manifest);
   for (const [rel, os] of sites) {
+    if (Object.hasOwn(manifest.exempt ?? {}, rel)) continue;
     const entry = declared[rel];
-    if (entry === undefined) {
-      findings.push(`${rel} 是平台调用点，但清单里没有它`);
+    if (entry === undefined || !isRegisteredPlatformPath(rel, manifest)) {
+      findings.push(`${rel} 是平台调用点，但登记表里没有它（或只写了 id 没指到 path）`);
       continue;
     }
-    const declaredOs = Array.isArray(entry.os) ? [...entry.os].sort() : [];
+    if (Object.hasOwn(manifest.allow ?? {}, rel) && (entry.reason ?? '').trim() === '') {
+      findings.push(`${rel} 在 allow 里但没有 reason：迁移基线必须写清为什么先放行`);
+    }
+    const declaredOs = [...declaredPlatformsOf(entry)].sort();
     const found = [...os].sort();
     if (declaredOs.join(',') !== found.join(',')) {
-      findings.push(`${rel} 的平台分支变了：清单写 ${declaredOs.join('+') || '空'}，源码是 ${found.join('+')}`);
+      findings.push(`${rel} 的平台分支变了：登记写 ${declaredOs.join('+') || '空'}，源码是 ${found.join('+')}`);
     }
-    const tests = Array.isArray(entry.tests) ? entry.tests : [];
+    const tests = testsOfEntry(entry);
     if (tests.length === 0) {
       findings.push(`${rel} 没登记任何测试`);
       continue;
@@ -329,13 +382,18 @@ function manifestFindings(sites, workflowsList) {
       else findings.push(`${rel} 登记的测试不存在：${test}`);
     }
     for (const one of os) {
-      if (!present.some((test) => !missingCoverage(test, one, workflowsList))) {
-        findings.push(`${rel} 的 ${one} 分支没有任何测试在 ${one} 腿上跑（登记：${present.join('、') || '无'}）`);
+      const osTests = testsForOs(entry, one);
+      if (osTests.length === 0) {
+        findings.push(`${rel} 的 ${one} 分支没有登记按 OS 的测试`);
+        continue;
+      }
+      if (!osTests.some((test) => present.includes(test) && !missingCoverage(test, one, workflowsList))) {
+        findings.push(`${rel} 的 ${one} 分支没有任何测试在 ${one} 腿上跑（登记：${osTests.join('、') || '无'}）`);
       }
     }
   }
   for (const rel of Object.keys(declared)) {
-    if (!sites.has(rel)) findings.push(`${rel} 在清单里，但已经不算平台调用点（或文件没了）`);
+    if (!sites.has(rel)) findings.push(`${rel} 在登记表里，但已经不算平台调用点（或文件没了）`);
   }
   for (const [name, tests] of Object.entries(manifest.suites ?? {})) {
     if (!Array.isArray(tests) || tests.length === 0) {
@@ -379,7 +437,10 @@ export const checks = [
         scanSource("import { win32 } from 'node:path';\nexport const fine = win32.join('a', 'b');")?.join(',') ===
           'win32' &&
         scanSource('export const fine = 1;') === undefined &&
-        scanSource("export type Fine = 'darwin' | 'win32';") === undefined;
+        scanSource("export type Fine = 'darwin' | 'win32';") === undefined &&
+        isRegisteredPlatformPath('a.ts', { allow: { 'a.ts': {} } }) &&
+        !isRegisteredPlatformPath('b.ts', { allow: { 'a.ts': {} } }) &&
+        isRegisteredPlatformPath('landing.ts', { landings: { one: { path: 'landing.ts' } } });
       const testScanNegative =
         scanTestText("export const fine = process.platform === 'win32';") &&
         !scanTestText('export const fine = 1;') &&
@@ -427,19 +488,31 @@ export const checks = [
       const crlfNegative =
         crlfJob !== undefined &&
         jobCovers(crlfJob, 'packages/shared/src/host/shell/__tests__/shell-text.test.ts', '@dsh-workbench/shared');
+      const advisoryJob = {
+        id: 'advisory',
+        images: new Set(['win32']),
+        commands: [`node ${PLATFORM_TEST_RUNNER}`],
+        advisory: true,
+      };
+      const advisoryNegative = missingCoverage(
+        'packages/shared/src/host/shell/__tests__/shell-text.test.ts',
+        'win32',
+        [{ name: 'advisory.yml', jobs: [advisoryJob] }],
+      );
       const ok =
         findings.length === 0 &&
         negative &&
         testScanNegative &&
         workflowNegative &&
         runnerNegative &&
-        crlfNegative;
+        crlfNegative &&
+        advisoryNegative;
       report(
         TITLE,
         ok,
         ok
-          ? `${sites.size} 个平台调用点都在清单里；平台测试由 ${PLATFORM_TEST_RUNNER} 按清单跑在 ${OS.join('/')} 腿上；宿主事实测试由 suites 兜住；冒烟脚本由 ${SMOKE_INDEX} 目录发现（判据负例也过）`
-          : !negative || !testScanNegative || !workflowNegative || !runnerNegative || !crlfNegative
+          ? `${sites.size} 个平台调用点都在登记表里；平台测试由 ${PLATFORM_TEST_RUNNER} 按登记表跑在 ${OS.join('/')} 腿上；宿主事实测试由 suites 兜住；冒烟脚本由 ${SMOKE_INDEX} 目录发现（判据负例也过）`
+          : !negative || !testScanNegative || !workflowNegative || !runnerNegative || !crlfNegative || !advisoryNegative
             ? '判据自己的负例没过：扫描或 workflow 解析不可信'
             : findings.join(' · '),
       );

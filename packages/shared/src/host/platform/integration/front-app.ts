@@ -1,4 +1,5 @@
-import type { HostOs } from '../../contract/protocol/platform.js';
+import type { HostOs } from '../../../contract/protocol/platform.js';
+import { quoteShellArgFor } from '../ops/shell.js';
 
 export function frontAppCommand(platform: HostOs): string | undefined {
   if (platform === 'darwin') return 'lsappinfo info -only bundleID $(lsappinfo front)';
@@ -16,6 +17,17 @@ const WINDOWS_FRONT_APP = [
 ].join('; ');
 
 const BROWSER_APP = /chrome|chromium|edge|brave|vivaldi/i;
+
+const BROWSER_NAMES: Readonly<Record<HostOs, readonly string[]>> = {
+  darwin: ['Google Chrome', 'Chromium', 'Microsoft Edge', 'Brave Browser'],
+  win32: ['Google Chrome', 'Microsoft Edge'],
+  linux: ['google-chrome', 'chromium'],
+  other: [],
+};
+
+export function browserAppNamesOf(platform: HostOs): readonly string[] {
+  return BROWSER_NAMES[platform];
+}
 
 export function isBrowserAppName(app: string): boolean {
   return BROWSER_APP.test(app);
@@ -39,8 +51,8 @@ export function frontAppOf(stdout: string, platform: HostOs): string | undefined
 export function bringBackCommand(app: string, platform: HostOs): string | undefined {
   const name = app.trim();
   if (name === '') return undefined;
-  if (platform === 'darwin') return `open -b ${quoteFor(name, platform)}`;
-  if (platform === 'linux') return `xdotool windowactivate ${quoteFor(name, platform)}`;
+  if (platform === 'darwin') return `open -b ${quoteShellArgFor(name, platform)}`;
+  if (platform === 'linux') return `xdotool windowactivate ${quoteShellArgFor(name, platform)}`;
   if (platform === 'win32') return windowsBringBack(name);
   return undefined;
 }
@@ -48,19 +60,14 @@ export function bringBackCommand(app: string, platform: HostOs): string | undefi
 export function activateAppCommand(app: string, platform: HostOs): string | undefined {
   const name = app.trim();
   if (name === '') return undefined;
-  if (platform === 'darwin') return `open -a ${quoteFor(name, platform)}`;
+  if (platform === 'darwin') return `open -a ${quoteShellArgFor(name, platform)}`;
   if (platform === 'win32') return windowsBringBack(name);
-  if (platform === 'linux') return `xdotool search --name ${quoteFor(name, platform)} windowactivate`;
+  if (platform === 'linux') return `xdotool search --name ${quoteShellArgFor(name, platform)} windowactivate`;
   return undefined;
 }
 
 function windowsBringBack(app: string): string {
   const pid = app.trim();
-  if (!/^\d+$/.test(pid)) return `if ((New-Object -ComObject WScript.Shell).AppActivate('${app.replaceAll("'", "''")}')) { exit 0 } else { exit 1 }`;
+  if (!/^\d+$/.test(pid)) return `if ((New-Object -ComObject WScript.Shell).AppActivate(${quoteShellArgFor(app, 'win32')})) { exit 0 } else { exit 1 }`;
   return `if ((New-Object -ComObject WScript.Shell).AppActivate(${pid})) { exit 0 } else { exit 1 }`;
-}
-
-function quoteFor(value: string, platform: HostOs): string {
-  if (platform === 'win32') return `'${value.replaceAll("'", "''")}'`;
-  return `'${value.replaceAll("'", `'\\''`)}'`;
 }

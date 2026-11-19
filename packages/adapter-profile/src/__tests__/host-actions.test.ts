@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSeam } from '@dsh-workbench/shared/host';
 import { createFakeProcesses, createFakeShell } from '@dsh-workbench/shared/testing';
@@ -30,7 +31,7 @@ describe('建 profile 的 setup 脚本：走执行缝的宿主域', () => {
       expect(outcome).toEqual({ ok: true, log: '装好了\n一句提醒\n' });
       const call = calls[0];
       expect(call?.file).toBe('bash');
-      expect(call?.args).toEqual(['/pkg/bin/dsh-workbench', 'setup']);
+      expect(call?.args).toEqual([join('/pkg', 'bin', 'dsh-workbench'), 'setup']);
       expect(call?.cwd).toBe('/pkg');
       expect(call?.env['WB_SETUP_EXTRA']).toBe('1');
       expect(call?.env['WB_SETUP_MARK']).toBe('from-parent');
@@ -82,7 +83,7 @@ describe('建 profile 的 setup 脚本：走执行缝的宿主域', () => {
     const deps = profileCreateDepsOf(seam, { home: '/home', self: 'workbench', packageRoot: '/pkg' });
 
     await expect(deps.runSetup?.({ EXTRA: 'y' })).resolves.toEqual({ ok: true, log: 'ok\n' });
-    expect(calls[0]?.args).toEqual(['/pkg/bin/dsh-workbench', 'setup']);
+    expect(calls[0]?.args).toEqual([join('/pkg', 'bin', 'dsh-workbench'), 'setup']);
     expect(calls[0]?.env['EXTRA']).toBe('y');
   });
 });

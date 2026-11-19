@@ -1,6 +1,6 @@
 import type { Seam } from '@dsh-workbench/shared/host';
 import { opencliResultOf } from '@dsh-workbench/adapter-runtime';
-import { activateAppCommand, bringBackCommand, frontAppCommand, frontAppOf, isBrowserAppName, noWrite } from '@dsh-workbench/shared/host';
+import { activateAppCommand, bringBackCommand, browserAppNamesOf, frontAppCommand, frontAppOf, isBrowserAppName, noWrite } from '@dsh-workbench/shared/host';
 import { currentHostOs } from './platform.js';
 
 const TIMEOUT_MS = 5000;
@@ -22,14 +22,8 @@ export async function frontAppNow(seam: Seam, platform = currentHostOs()): Promi
   return run === undefined ? undefined : frontAppOf(run.stdout, platform);
 }
 
-const BROWSER_NAMES: Readonly<Record<string, readonly string[]>> = {
-  'darwin': ['Google Chrome', 'Chromium', 'Microsoft Edge', 'Brave Browser'],
-  'win32': ['Google Chrome', 'Microsoft Edge'],
-  'linux': ['google-chrome', 'chromium'],
-};
-
 export async function raiseBrowser(seam: Seam, platform = currentHostOs()): Promise<boolean> {
-  for (const name of BROWSER_NAMES[platform] ?? []) {
+  for (const name of browserAppNamesOf(platform)) {
     const command = activateAppCommand(name, platform);
     if (command === undefined) return false;
     const run = await runFrontApp(seam, command);

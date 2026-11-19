@@ -1,4 +1,7 @@
-import type { HostOs, HostSurface, ProfileName, SelfUpdateCli } from '../../contract/protocol/platform.js';
+import type { HostSurface, ProfileName, SelfUpdateCli } from '../../../contract/protocol/platform.js';
+import { hostOsOf } from '../facts.js';
+
+export { hostOsOf } from '../facts.js';
 
 export interface HostSurfaceInput {
   readonly proc?: { readonly versions: { readonly electron?: string | undefined; readonly node?: string | undefined } };
@@ -12,17 +15,12 @@ export function profileNameOf(raw: string | undefined): ProfileName {
   return 'other';
 }
 
-export function hostOsOf(platform: NodeJS.Platform): HostOs {
-  if (platform === 'darwin' || platform === 'win32' || platform === 'linux') return platform;
-  return 'other';
-}
-
 export function hostSurface(input: HostSurfaceInput = {}): HostSurface {
   const proc = input.proc ?? process;
   const runtime = proc.versions.electron === undefined ? 'node' : 'electron';
   const deployment = runtime === 'electron' ? 'desktop' : 'web';
   const profile = profileNameOf(input.profile);
-  const hostOs = hostOsOf(input.platform ?? process.platform);
+  const hostOs = hostOsOf(input.platform);
   const pageDebug = deployment !== 'desktop';
   const selfUpdateCli: SelfUpdateCli = profile === 'desktop' ? 'desktop-cli' : 'path-dsh';
   return {
@@ -37,6 +35,7 @@ export function hostSurface(input: HostSurfaceInput = {}): HostSurface {
       browserWake: deployment === 'desktop',
       selfUpdateCli,
       safeMode: deployment === 'desktop',
+      fileManager: hostOs === 'darwin' ? 'finder' : hostOs === 'win32' ? 'explorer' : 'none',
     },
     restartHint: deployment === 'desktop' ? '退出并重开 Desktop' : '重启一次 dsh',
     toolchain: {

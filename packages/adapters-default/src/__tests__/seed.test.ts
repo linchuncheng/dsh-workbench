@@ -45,8 +45,8 @@ describe('运行时自举走执行缝', () => {
 
     expect(seam.facts().filter((fact) => fact.verb === 'spawn')).toHaveLength(1);
     expect(processes.calls).toHaveLength(1);
-    expect(processes.calls[0]?.file).toBe('bash');
-    expect(processes.calls[0]?.args[0]).toContain('seed-workshop.sh');
+    expect(processes.calls[0]?.file).toBe(process.platform === 'win32' ? process.execPath : 'bash');
+    expect(processes.calls[0]?.args.join(' ')).toContain(process.platform === 'win32' ? 'seed-workshop-windows.mjs' : 'seed-workshop.sh');
     expect(processes.children[0]?.unrefed).toBe(true);
   });
 });

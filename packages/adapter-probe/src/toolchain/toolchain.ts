@@ -52,19 +52,47 @@ export function localNpmCommand(root: string, platform: NodeJS.Platform = proces
   return join(localNpmBin(root), platform === 'win32' ? 'npm.cmd' : 'npm');
 }
 
-export function localNpmInstallCommand(
+function localInstallCommand(
   root: string,
-  proc: PnpmProcess = process,
-  exists: (path: string) => boolean = existsSync,
-  platform: NodeJS.Platform = process.platform,
+  dir: string,
+  packageName: string,
+  version: string,
+  storeDir: string,
+  proc: PnpmProcess,
+  exists: (path: string) => boolean,
+  platform: NodeJS.Platform,
 ): string | undefined {
   const pnpm = desktopPnpmPath(proc, exists);
   if (pnpm === undefined) return undefined;
   return (
-    `node ${quoteShellArgFor(pnpm, platform)} add --dir ${quoteShellArgFor(localNpmRoot(root), platform)} ` +
-    `npm@${LOCAL_NPM_VERSION} --store-dir ${quoteShellArgFor(join(root, 'npm-store'), platform)}`
+    `node ${quoteShellArgFor(pnpm, platform)} add --dir ${quoteShellArgFor(join(root, dir), platform)} ` +
+    `${packageName}@${version} --store-dir ${quoteShellArgFor(join(root, storeDir), platform)}`
   );
 }
+
+interface LocalInstallTool {
+  readonly dir: string;
+  readonly packageName: string;
+  readonly version: string;
+  readonly storeDir: string;
+}
+
+function localInstallCommandOf(tool: LocalInstallTool) {
+  return (
+    root: string,
+    proc: PnpmProcess = process,
+    exists: (path: string) => boolean = existsSync,
+    platform: NodeJS.Platform = process.platform,
+  ): string | undefined =>
+    localInstallCommand(root, tool.dir, tool.packageName, tool.version, tool.storeDir, proc, exists, platform);
+}
+
+export const localNpmInstallCommand = localInstallCommandOf({
+  dir: 'npm',
+  packageName: 'npm',
+  version: LOCAL_NPM_VERSION,
+  storeDir: 'npm-store',
+});
 
 export interface LocalNpmProvision {
   readonly ok: boolean;
@@ -139,25 +167,14 @@ export function localPnpmCommand(root: string, platform: NodeJS.Platform = proce
   return join(localPnpmBin(root), platform === 'win32' ? 'pnpm.cmd' : 'pnpm');
 }
 
-export function localPnpmInstallCommand(
-  root: string,
-  proc: PnpmProcess = process,
-  exists: (path: string) => boolean = existsSync,
-  platform: NodeJS.Platform = process.platform,
-): string | undefined {
-  const pnpm = desktopPnpmPath(proc, exists);
-  if (pnpm === undefined) return undefined;
-  return (
-    `node ${quoteShellArgFor(pnpm, platform)} add --dir ${quoteShellArgFor(localPnpmRoot(root), platform)} ` +
-    `pnpm@${LOCAL_PNPM_VERSION} --store-dir ${quoteShellArgFor(join(root, 'pnpm-store'), platform)}`
-  );
-}
+export const localPnpmInstallCommand = localInstallCommandOf({
+  dir: 'pnpm-10',
+  packageName: 'pnpm',
+  version: LOCAL_PNPM_VERSION,
+  storeDir: 'pnpm-store',
+});
 
-export interface LocalPnpmProvision {
-  readonly ok: boolean;
-  readonly detail: string;
-  readonly binDir?: string | undefined;
-}
+export type LocalPnpmProvision = LocalNpmProvision;
 
 const LOCAL_PNPM_PROVISION_TIMEOUT_MS = 180_000;
 

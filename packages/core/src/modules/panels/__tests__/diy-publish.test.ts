@@ -870,7 +870,7 @@ describe('workbench_diy_publish · 真发', () => {
     expect(commands[0]).toContain('release');
     expect(commands[0]).toContain('--json');
     expect(commands[0]).toContain('--yes');
-    expect(commands[0]).toContain(dir);
+    expect(commands[0]).toContain(path.basename(dir));
   });
 
   it('refresh=true 只跑 --refresh，回来是「元数据刷新了 / 没动」', async () => {

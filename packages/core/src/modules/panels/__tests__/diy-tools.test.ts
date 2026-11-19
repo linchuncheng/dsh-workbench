@@ -5,9 +5,9 @@ import { createDebugStore, createWorkspaceStore } from '@dsh-workbench/shared/ho
 import { createPanelsService } from '../model/service';
 import { registerDiyTools } from '../model/diy-tools';
 import { createDiyRig, panelsUnit, demoUnit } from './diy-harness';
-import { TWO_FACE_ALL } from '@/shared/api/host/diy-components';
+import { TWO_FACE_ALL } from '@/shared/api/host/diy-surface';
 import {
-  DIY_COMPONENTS_TOOL,
+  DIY_SURFACE_TOOL,
   DIY_DEBUG_TOOLS,
   DIY_INSTALL_TOOL,
   DIY_RECORD_TOOLS,
@@ -119,8 +119,8 @@ describe('workbench_diy · install（装 + 上板一次做完）', () => {
       text: string;
     };
 
-    expect(specs).toEqual([dir]);
-    expect(result.path).toBe(dir);
+    expect(specs.map((one) => one.replaceAll('\\', '/'))).toEqual([dir.replaceAll('\\', '/')]);
+    expect(result.path.replaceAll('\\', '/')).toBe(dir.replaceAll('\\', '/'));
     expect(result.unit).toBe('demo');
     expect(result.install.application).toBe('applied');
     expect(result.panel.ok).toBe(true);
@@ -141,8 +141,8 @@ describe('workbench_diy · install（装 + 上板一次做完）', () => {
       { agent: { session: { id: 's1', header: { cwd: sub } } } },
     )) as { path: string; panel: { ok: boolean } };
 
-    expect(specs).toEqual([dir]);
-    expect(result.path).toBe(dir);
+    expect(specs.map((one) => one.replaceAll('\\', '/'))).toEqual([dir.replaceAll('\\', '/')]);
+    expect(result.path.replaceAll('\\', '/')).toBe(dir.replaceAll('\\', '/'));
     expect(result.panel.ok).toBe(true);
     expect(panels.isEnabled('demo', rig.WORKSHOP())).toBe(true);
   });
@@ -288,12 +288,12 @@ describe('workbench_diy · components', () => {
   it('★ 工坊里还没装工具链：报错把「在工坊根跑一次 pnpm install」说出来（不静默、不假装有清单）', async () => {
     const { tool } = rig.harness();
 
-    await expect(tool(DIY_COMPONENTS_TOOL)?.execute({}, rig.diyExec())).rejects.toThrow(/pnpm install/);
+    await expect(tool(DIY_SURFACE_TOOL)?.execute({}, rig.diyExec())).rejects.toThrow(/pnpm install/);
   });
 
   it('★ 不指名 scope 又要 all：当场回一句就完 —— 不查工具链、不发任何命令、不带目录数据', async () => {
     const { tool, commands } = rig.harness({ probe: [{}] });
-    const out = (await tool(DIY_COMPONENTS_TOOL)?.execute({ all: true }, rig.diyExec())) as {
+    const out = (await tool(DIY_SURFACE_TOOL)?.execute({ all: true }, rig.diyExec())) as {
       text: string;
       kit: unknown;
       primitives: unknown;
@@ -308,7 +308,7 @@ describe('workbench_diy · components', () => {
   it('★ 那一句只认那一格：指名 scope 的正当路径照旧（这里是照旧地报工具链没装）', async () => {
     const { tool } = rig.harness();
 
-    await expect(tool(DIY_COMPONENTS_TOOL)?.execute({ scope: 'kit', all: true }, rig.diyExec())).rejects.toThrow(
+    await expect(tool(DIY_SURFACE_TOOL)?.execute({ scope: 'kit', all: true }, rig.diyExec())).rejects.toThrow(
       /pnpm install/,
     );
   });
@@ -320,7 +320,7 @@ describe('workbench_diy · components', () => {
     fs.writeFileSync(bin, '#!/bin/sh\n');
     const { tool, commands } = rig.harness({ probe: [{ stdout: '{"kit":{}}' }] });
 
-    const out = (await tool(DIY_COMPONENTS_TOOL)?.execute({ scope: 'kit' }, rig.diyExec())) as { workspace: string };
+    const out = (await tool(DIY_SURFACE_TOOL)?.execute({ scope: 'kit' }, rig.diyExec())) as { workspace: string };
 
     expect(out.workspace).toBe(rig.WORKSHOP());
     expect(commands).toHaveLength(1);

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, realpathSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
-import { linkDir, removePath } from '@dsh-workbench/shared/host';
+import { linkDir, pathWithBinsOf, removePath } from '@dsh-workbench/shared/host';
 import {
   OPENCLI_NPM_PACKAGE,
   libsBinDir,
@@ -12,9 +12,8 @@ import {
 
 export function ensureLibsBinOnPath(env: NodeJS.ProcessEnv = process.env): boolean {
   const dir = libsBinDir();
-  const parts = (env.PATH ?? '').split(delimiter).filter((one) => one !== '');
-  if (parts.includes(dir)) return false;
-  env.PATH = [dir, ...parts].join(delimiter);
+  if ((env.PATH ?? '').split(delimiter).includes(dir)) return false;
+  env.PATH = pathWithBinsOf(env.PATH, [dir]);
   return true;
 }
 

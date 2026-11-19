@@ -70,7 +70,7 @@ jobs:
         if: runner.os != 'Linux'
         shell: bash
         run: node scripts/smoke/index.mjs
-      - name: 平台敏感单测（platform-ci.json 驱动，每个平台分支在本腿真跑）
+      - name: 平台敏感单测（platform-landings.json 驱动，每个平台分支在本腿真跑）
         shell: bash
         run: node scripts/ci/platform-tests.mjs
       - name: Selfcheck (core)

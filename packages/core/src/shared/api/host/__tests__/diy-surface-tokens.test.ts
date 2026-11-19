@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TokenEntry, TokenSet } from '@dsh-workbench/shared/host';
-import { PRUNE_CHARS } from '../diy-components';
+import { PRUNE_CHARS } from '../diy-surface';
 import { renderTokensText } from '../diy-tokens';
 
 function entry(name: string, light: string | null, dark: string | null = light): TokenEntry {
@@ -31,7 +31,7 @@ const set: TokenSet = {
 
 const searched = ['/dsh/profiles', '/w/core'];
 
-describe('workbench_diy_components · 令牌清单', () => {
+describe('workbench_diy_surface · 令牌清单', () => {
   it('默认只给来源、族与计数，外加下一次怎么问（不铺名字）', () => {
     const text = renderTokensText(set, { name: '', bucket: '', all: false, searched });
     expect(text).toContain('--dsw-* 6 个（dsh 主题 0.2.1-rc.2）');

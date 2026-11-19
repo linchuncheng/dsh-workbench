@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { delimiter, dirname, join, sep } from 'node:path';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
-import { pathWithBinsOf, quoteShellArg, quoteShellArgFor, workbenchRoot, writeTextFile } from '@dsh-workbench/shared/host';
+import { cmdNameOf, hostOsOf, pathWithBinsOf, quoteShellArg, quoteShellArgFor, workbenchRoot, writeTextFile } from '@dsh-workbench/shared/host';
 import type { Seam } from '@dsh-workbench/shared/host';
 import {
   desktopBundledBins,
@@ -39,11 +39,11 @@ export interface RuntimeSeedOptions {
   readonly log?: SeedLog;
 }
 
-export function opencliBinName(platform: NodeJS.Platform = process.platform): string {
-  return platform === 'win32' ? 'opencli.cmd' : 'opencli';
+export function opencliBinName(platform?: NodeJS.Platform): string {
+  return cmdNameOf('opencli', platform);
 }
 
-export function runtimeSeedPaths(root: string, platform: NodeJS.Platform = process.platform): RuntimeSeedPaths {
+export function runtimeSeedPaths(root: string, platform?: NodeJS.Platform): RuntimeSeedPaths {
   const opencliRoot = join(root, 'opencli');
   const opencliBinDir = join(opencliRoot, 'bin');
   const workshop = join(root, 'diy');
@@ -79,12 +79,12 @@ export function isInstalledCopy(packageRoot: string): boolean {
 export function opencliWrapperScript(
   packageRoot: string,
   home: string,
-  platform: NodeJS.Platform = process.platform,
+  platform?: NodeJS.Platform,
   nodeExecutable?: string | undefined,
 ): string {
   const script = join(wrapperRootOf(packageRoot), 'bin', 'opencli-isolated.mjs');
   const node = nodeExecutable === undefined || nodeExecutable === '' ? 'node' : nodeExecutable;
-  if (platform === 'win32') {
+  if (hostOsOf(platform) === 'win32') {
     return `@echo off\r\nset "DSH_HOME=${home}"\r\n"${node}" "${script}" %*\r\n`;
   }
   return `#!/bin/sh\nexport DSH_HOME=${quoteShellArg(home)}\nexec ${quoteShellArg(node)} ${quoteShellArg(script)} "$@"\n`;
@@ -103,12 +103,12 @@ export function workshopSeedPlan(
   packageRoot: string,
   home: string,
   root: string,
-  platform: NodeJS.Platform = process.platform,
+  platform?: NodeJS.Platform,
 ): { readonly entry: SeedCommand; readonly full: SeedCommand } {
   const script = join(packageRoot, 'scripts', 'seed-workshop.sh');
   const env = { DSH_HOME: home, DSH_WB_SHELL_ROOT: packageRoot };
   const log = join(root, 'seed.log');
-  if (platform === 'win32') {
+  if (hostOsOf(platform) === 'win32') {
     const launcher = join(packageRoot, 'bin', 'seed-workshop-windows.mjs');
     const windowsEnv = { ...env, ELECTRON_RUN_AS_NODE: '1' };
     return {
@@ -166,7 +166,7 @@ export async function seedWorkbenchToolchain(
   root: string,
   log: SeedLog,
   seam?: Seam | undefined,
-  platform: NodeJS.Platform = process.platform,
+  platform?: NodeJS.Platform,
 ): Promise<void> {
   for (const dir of desktopBundledBins()) {
     if (prependPath(dir)) log(`PATH 前插 Desktop 自带 ${dir}`);
@@ -209,7 +209,7 @@ export async function seedWorkbenchToolchain(
 }
 
 export function seedRuntimeFiles(options: RuntimeSeedOptions): readonly string[] {
-  const platform = options.platform ?? process.platform;
+  const platform = options.platform;
   const paths = runtimeSeedPaths(options.root, platform);
   const done: string[] = [];
   try {
@@ -227,7 +227,7 @@ export function seedRuntimeFiles(options: RuntimeSeedOptions): readonly string[]
       writeTextFile(npmrc, toolchainNpmrcOf());
       done.push(npmrc);
     }
-    const nodeShim = join(paths.opencliRoot, 'bin', 'desktop', platform === 'win32' ? 'node.cmd' : 'node');
+    const nodeShim = join(paths.opencliRoot, 'bin', 'desktop', cmdNameOf('node', platform));
     const wanted = opencliWrapperScript(
       options.packageRoot,
       options.home,

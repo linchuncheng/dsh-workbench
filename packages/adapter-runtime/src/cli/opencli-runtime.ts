@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { cmdNameOf } from '@dsh-workbench/shared/host';
 import {
   DEFAULT_NPM_REGISTRY,
   OPENCLI_CATALOG_ENV,
@@ -104,7 +105,7 @@ export function cliCatalogPath(): string {
 }
 
 export function isolatedCommand(): string {
-  const name = process.platform === 'win32' ? 'opencli.cmd' : 'opencli';
+  const name = cmdNameOf('opencli');
   return join(isolatedRoot(), 'bin', name);
 }
 

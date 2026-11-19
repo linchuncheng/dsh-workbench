@@ -203,7 +203,7 @@ describe('物理去留：谁主张谁说话（动作永远可用，删不删看�
 
     const outcome = await actions.uninstall(PKG);
 
-    expect(runs).toEqual([["'opencli' plugin uninstall 'inventory'"]]);
+    expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([["'opencli' plugin uninstall 'inventory'"]]);
     expect(outcome).toEqual({ removed: true, name: 'inventory' });
     expect(ledger.read(PKG)).toBeUndefined();
     expect(ledger.all()).toEqual([]);
@@ -227,7 +227,7 @@ describe('物理去留：谁主张谁说话（动作永远可用，删不删看�
 
     const outcome = await actions.uninstall(PKG);
 
-    expect(runs).toEqual([]);
+    expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([]);
     expect(outcome).toEqual({
       removed: false,
       name: 'inventory',
@@ -256,7 +256,7 @@ describe('物理去留：谁主张谁说话（动作永远可用，删不删看�
 
     const outcome = await actions.uninstall(PKG);
 
-    expect(runs).toEqual([]);
+    expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([]);
     expect(outcome).toEqual({ removed: false, name: 'inventory', kept: { kind: 'unsure', unreadable: ['@a/mod'] } });
     expect(logs[0]).toContain('@a/mod');
     expect(logs[0]).toContain('文件先留着');
@@ -277,7 +277,7 @@ describe('物理去留：谁主张谁说话（动作永远可用，删不删看�
 
     const outcome = await actions.uninstall(PKG);
 
-    expect(runs).toEqual([]);
+    expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([]);
     expect(outcome).toEqual({ removed: false, name: 'inventory', kept: { kind: 'unsure', unreadable: [] } });
   });
 });
@@ -309,7 +309,7 @@ describe('自动清：先前放手、现在没人要的那一份，跟着删掉'
 
     expect(await actions.sweep()).toEqual([PKG]);
 
-    expect(runs).toEqual([["'opencli' plugin uninstall 'inventory'"]]);
+    expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([["'opencli' plugin uninstall 'inventory'"]]);
     expect(ledger.all()).toEqual([]);
     expect(logs[0]).toContain(PKG);
   });
@@ -423,7 +423,7 @@ describe('插件名：台账没记上就现读一次（名字也是主张的键�
 
     const outcome = await actions.uninstall(PKG);
 
-    expect(runs).toEqual([]);
+    expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([]);
     expect(outcome).toEqual({
       removed: false,
       name: 'inventory',
@@ -448,7 +448,7 @@ describe('插件名：台账没记上就现读一次（名字也是主张的键�
     });
 
     expect(await actions.uninstall(PKG)).toEqual({ removed: true, name: 'inventory' });
-    expect(runs).toEqual([["'opencli' plugin uninstall 'inventory'"]]);
+    expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([["'opencli' plugin uninstall 'inventory'"]]);
   });
 
   it('★ 名字都读不出来（清单不在 / 解不开 / 没有命令文件）→ 一律不删，说清为什么', async () => {
@@ -470,7 +470,7 @@ describe('插件名：台账没记上就现读一次（名字也是主张的键�
 
     const outcome = await actions.uninstall(PKG);
 
-    expect(runs).toEqual([]);
+    expect(runs.map((run) => run.map((line) => line.replace(/^& /u, '')))).toEqual([]);
     expect(outcome).toEqual({ removed: false, kept: { kind: 'unnamed' } });
     expect(logs[0]).toContain('看不出这是哪个插件');
   });

@@ -17,7 +17,7 @@ export function backgroundLine(
   argv: readonly string[],
   options: BackgroundLineOptions = {},
 ): string {
-  const platform = options.platform ?? process.platform;
+  const platform = options.platform;
   return [
     quoteShellArgFor(command, platform),
     ...tabArgv(sessionArgv(argv, options.dialect ?? 'flag'), options.dialect ?? 'flag').map((arg) =>

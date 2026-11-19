@@ -14,7 +14,7 @@ const ENV_PREFIX_ALLOWED = new Map([
   ],
 ]);
 
-const SHELL_INVOCATION_OWN = 'packages/shared/src/host/shell/shell-render.ts';
+const SHELL_INVOCATION_OWN = 'packages/shared/src/host/platform/ops/shell-render.ts';
 const LINK_TYPE_OWN = 'packages/core/scripts/selfcheck/checks/platform.mjs';
 const PATH_SPLIT_OWN = 'packages/core/scripts/selfcheck/checks/platform.mjs';
 const SHELL_PROBE_OWN = 'packages/core/scripts/selfcheck/lib.mjs';
@@ -47,21 +47,25 @@ function packageSources() {
   return out;
 }
 
-const ADAPTERS = [
-  'adapters/probe/platform.ts',
-  'kernel/contract/platform.ts',
-  'contract/protocol/platform.ts',
-  'adapters/probe/self-update.ts',
-  'adapters/probe/toolchain.ts',
-  'adapters/probe/browser-wake.ts',
-  'adapters/probe/runtime-seed.ts',
-  'shared/api/platform/client.ts',
-  'shared/api/platform/contract.ts',
-  'host/adapters/platform.ts',
-  'host/shell/shell-text.ts',
-  'host/shell/shell-render.ts',
-  'host/git-exec.ts',
-];
+const LANDING_MANIFEST = join(REPO, 'packages', 'core', 'scripts', 'selfcheck', 'platform-landings.json');
+
+function platformPaths() {
+  try {
+    const manifest = JSON.parse(read(LANDING_MANIFEST));
+    const full = [
+      ...Object.keys(manifest.allow ?? {}),
+      ...Object.keys(manifest.exempt ?? {}),
+      ...Object.values(manifest.landings ?? {}).map((entry) => entry.path),
+      ...Object.values(manifest.ports ?? {}).map((entry) => entry.path),
+    ].filter((one) => typeof one === 'string' && one !== '');
+    const trimmed = full.map((one) => /^packages\/[^/]+\/src\/(.+)$/u.exec(one)?.[1]).filter(Boolean);
+    return [...full, ...trimmed];
+  } catch {
+    return [];
+  }
+}
+
+const ADAPTERS = platformPaths();
 
 function normal(name) {
   return name.replaceAll('\\', '/');

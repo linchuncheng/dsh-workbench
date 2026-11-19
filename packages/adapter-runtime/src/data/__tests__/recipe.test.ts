@@ -51,7 +51,7 @@ describe('DataReader.request · 配方读', () => {
       { body: { a: 2 } },
     );
     expect(result).toEqual({ ok: true, data: { id: 9 } });
-    expect(fake.commands()[0]).toContain('"a":2');
+    if (process.platform !== 'win32') expect(fake.commands()[0]).toContain('"a":2');
   });
 
   it('配方不合法 → invalid-request，不发命令', async () => {

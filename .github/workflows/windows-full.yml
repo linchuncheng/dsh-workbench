@@ -16,10 +16,9 @@ concurrency:
 
 jobs:
   test:
-    name: full tests / windows 2025 (advisory)
+    name: full tests / windows 2025
     runs-on: windows-2025
     timeout-minutes: 30
-    continue-on-error: true
     env:
       HUSKY: 0
       WB_TEST_CONCURRENCY: 2

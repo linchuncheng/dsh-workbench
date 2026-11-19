@@ -1,7 +1,7 @@
 import { createRule } from '@arch-guard/core';
-import { deps, designSystem, i18n, library, noneI18nKit } from '@arch-guard/core/presets';
+import { designSystem, i18n, library, noneI18nKit } from '@arch-guard/core/presets';
 import { kernelRules } from './arch/rules/kernel.mjs';
-import { STACK_CAPABILITIES } from '../../scripts/arch/stack.mjs';
+import { stackDeps } from '../../scripts/arch/stack.mjs';
 import { testsLiveInFolders } from '../../scripts/arch/rules/tests-in-folders.mjs';
 
 const entryKeepsHostOut = createRule({
@@ -33,6 +33,7 @@ export default {
       src: 'src',
       entry: ['index.ts', 'host.ts', 'testing.ts'],
       modules: {
+        client: 2,
         contract: 1,
         lib: 2,
         config: 2,
@@ -63,10 +64,7 @@ export default {
         { rule: 'D14', allow: ['0'] },
       ],
     }),
-    deps({
-      fingerprints: [{ capability: 'query-string', allowOwn: false }],
-      capabilities: STACK_CAPABILITIES,
-    }),
+    stackDeps(),
     i18n(noneI18nKit()),
   ],
   overrides: {

@@ -189,7 +189,7 @@ describe('添加一个 spec：按内容判它是什么，再决定走哪条路',
     const outcome: BundleInstallOutcome = await installRouted(deps);
 
     expect(install).not.toHaveBeenCalled();
-    expect(commands).toEqual([`'opencli' plugin install '${at}'`]);
+    expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([`'opencli' plugin install '${at}'`]);
     expect(outcome.change).toMatchObject({ application: 'applied', stage: 'install' });
     expect(outcome.plugin).toEqual({ kind: 'runtime-plugin', pkg: '@t/plugin-a', name: 'plugina' });
     expect(outcome.supply).toEqual({ state: 'no-needs' });
@@ -331,7 +331,7 @@ describe('插件那条路失败：回结构化失败（不抛），诊断信息�
       errorCode: 'operation-error',
     });
     const detail = outcome.change.errorDetail ?? '';
-    expect(detail).toContain('没有写入权限（退出码 1）');
+    expect(detail).toMatch(/没有写入权限|被系统拦住了/u);
     expect(detail).toContain('npm ERR! line-10');
     expect(detail).toContain(COMMAND);
     expect(detail).toContain('npm ERR! code EACCES');

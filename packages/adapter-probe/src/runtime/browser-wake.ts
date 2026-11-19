@@ -1,76 +1,31 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, win32 } from 'node:path';
+import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
+import { BROWSER_SPECS, bridgeFixOf, browserExecutableOf, browserInstallCandidates, browserLaunchOf, browserProcessOf, browserWakeSupportedOf, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
 import type { DesktopBrowserId, WakeBrowserReply } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
+import { currentHostOs } from './platform.js';
 
-const BROWSER_IDS = ['chrome', 'edge', 'brave', 'chromium', 'vivaldi'] as const;
+const BROWSER_IDS = BROWSER_SPECS.map((one) => one.id);
 
 export interface DesktopBrowser {
   observe(): Promise<void>;
   wake(): Promise<WakeBrowserReply>;
 }
 
-interface BrowserSpec {
-  readonly id: DesktopBrowserId;
-  readonly label: string;
-  readonly macProcess: string;
-  readonly linuxBinary: string;
-  readonly linuxProcess: string;
+function isBrowserId(value: unknown): value is DesktopBrowserId {
+  return typeof value === 'string' && (BROWSER_IDS as readonly string[]).includes(value);
 }
 
-const BROWSERS: readonly BrowserSpec[] = [
-  {
-    id: 'chrome',
-    label: 'Google Chrome',
-    macProcess: 'Google Chrome',
-    linuxBinary: '/usr/bin/google-chrome',
-    linuxProcess: 'chrome',
-  },
-  {
-    id: 'edge',
-    label: 'Microsoft Edge',
-    macProcess: 'Microsoft Edge',
-    linuxBinary: '/usr/bin/microsoft-edge',
-    linuxProcess: 'msedge',
-  },
-  {
-    id: 'brave',
-    label: 'Brave Browser',
-    macProcess: 'Brave Browser',
-    linuxBinary: '/usr/bin/brave-browser',
-    linuxProcess: 'brave',
-  },
-  {
-    id: 'chromium',
-    label: 'Chromium',
-    macProcess: 'Chromium',
-    linuxBinary: '/usr/bin/chromium',
-    linuxProcess: 'chromium',
-  },
-  {
-    id: 'vivaldi',
-    label: 'Vivaldi',
-    macProcess: 'Vivaldi',
-    linuxBinary: '/usr/bin/vivaldi',
-    linuxProcess: 'vivaldi-bin',
-  },
-];
+function specOf(id: DesktopBrowserId) {
+  return BROWSER_SPECS.find((item) => item.id === id) ?? BROWSER_SPECS[0]!;
+}
 
 const WAKE_WAIT_MS = 12_000;
 const SHORT_WAIT_MS = 3_000;
 const POLL_MS = 500;
 const STATUS_TIMEOUT_MS = 5_000;
 const LAUNCH_TIMEOUT_MS = 10_000;
-
-function isBrowserId(value: unknown): value is DesktopBrowserId {
-  return typeof value === 'string' && (BROWSER_IDS as readonly string[]).includes(value);
-}
-
-function specOf(id: DesktopBrowserId): BrowserSpec {
-  return BROWSERS.find((item) => item.id === id) ?? BROWSERS[0]!;
-}
 
 export function createDesktopBrowser(options: {
   seam: Seam;
@@ -85,7 +40,7 @@ export function createDesktopBrowser(options: {
   shortWaitMs?: number;
   pollMs?: number;
 }): DesktopBrowser {
-  const platform = options.platform ?? process.platform;
+  const platform = options.platform === undefined ? currentHostOs() : hostOsOf(options.platform);
   const home = options.home ?? homedir();
   const env = options.env ?? process.env;
   const exists = options.exists ?? existsSync;
@@ -101,40 +56,15 @@ export function createDesktopBrowser(options: {
     return { ok: result !== undefined && result.exitCode === 0 && !result.timedOut, stdout: result?.stdout ?? '' };
   }
 
-  function winCandidates(id: DesktopBrowserId): string[] {
-    const programFiles = env.ProgramFiles ?? env.PROGRAMFILES ?? 'C:\\Program Files';
-    const programFilesX86 = env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)';
-    const localAppData = env.LOCALAPPDATA ?? join(home, 'AppData', 'Local');
-    const relative: Readonly<Record<DesktopBrowserId, readonly string[]>> = {
-      chrome: ['Google', 'Chrome', 'Application', 'chrome.exe'],
-      edge: ['Microsoft', 'Edge', 'Application', 'msedge.exe'],
-      brave: ['BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'],
-      chromium: ['Chromium', 'Application', 'chrome.exe'],
-      vivaldi: ['Vivaldi', 'Application', 'vivaldi.exe'],
-    };
-    const bases =
-      id === 'edge' || id === 'chrome' || id === 'brave'
-        ? [programFiles, programFilesX86, localAppData]
-        : [localAppData, programFiles];
-    return bases.map((base) => win32.join(base, ...relative[id]));
-  }
-
-  function winExecutable(id: DesktopBrowserId): string | undefined {
-    return winCandidates(id).find((path) => exists(path));
+  function executableOf(id: DesktopBrowserId): string | undefined {
+    return browserExecutableOf(id, platform, { env, home, exists });
   }
 
   function installed(): DesktopBrowserId[] {
-    return BROWSERS.filter((spec) => {
-      if (platform === 'darwin') {
-        return (
-          exists(`/Applications/${spec.label}.app`) ||
-          exists(join(home, 'Applications', `${spec.label}.app`))
-        );
-      }
-      if (platform === 'linux') return exists(spec.linuxBinary);
-      if (platform === 'win32') return winExecutable(spec.id) !== undefined;
-      return false;
-    }).map((spec) => spec.id);
+    const os = hostOsOf(platform);
+    return BROWSER_SPECS.filter((spec) =>
+      browserInstallCandidates(spec.id, os, { env, home }).some((path) => exists(path)),
+    ).map((spec) => spec.id);
   }
 
   function readSaved(): DesktopBrowserId | undefined {
@@ -157,38 +87,10 @@ export function createDesktopBrowser(options: {
   }
 
   async function running(): Promise<DesktopBrowserId[]> {
-    if (platform === 'darwin' || platform === 'linux') {
-      const names = BROWSERS.map((spec) =>
-        quoteShellArgFor(platform === 'darwin' ? spec.macProcess : spec.linuxProcess, platform),
-      );
-      const result = await run(`pgrep -lx ${names.join(' ')}`, STATUS_TIMEOUT_MS);
-      const found: DesktopBrowserId[] = [];
-      for (const line of result.stdout.split('\n')) {
-        const match = /^\s*\d+\s+(.+?)\s*$/.exec(line);
-        const name = match?.[1];
-        if (name === undefined) continue;
-        const spec = BROWSERS.find(
-          (item) =>
-            item.macProcess === name || item.linuxProcess === name,
-        );
-        if (spec !== undefined && !found.includes(spec.id)) found.push(spec.id);
-      }
-      return found;
-    }
-    if (platform === 'win32') {
-      const result = await run('tasklist /FO CSV /NH', STATUS_TIMEOUT_MS);
-      const found: DesktopBrowserId[] = [];
-      for (const line of result.stdout.split('\n')) {
-        const name = /^"([^"]+)"/.exec(line)?.[1]?.toLowerCase();
-        if (name === 'chrome.exe') found.push('chrome');
-        if (name === 'msedge.exe') found.push('edge');
-        if (name === 'brave.exe') found.push('brave');
-        if (name === 'chromium.exe') found.push('chromium');
-        if (name === 'vivaldi.exe') found.push('vivaldi');
-      }
-      return [...new Set(found)];
-    }
-    return [];
+    const spec = browserProcessOf(hostOsOf(platform));
+    if (spec === undefined) return [];
+    const result = await run(spec.command, STATUS_TIMEOUT_MS);
+    return spec.idsOf(result.stdout);
   }
 
   async function daemonStatus(): Promise<'connected' | 'disconnected' | 'down' | 'unknown'> {
@@ -226,26 +128,15 @@ export function createDesktopBrowser(options: {
   }
 
   async function launch(id: DesktopBrowserId): Promise<boolean> {
-    if (platform === 'darwin') {
-      const result = await run(`open -g -j -a ${quoteShellArgFor(appPath(id), platform)}`, LAUNCH_TIMEOUT_MS);
-      return result.ok;
-    }
-    if (platform === 'linux') {
-      const binary = quoteShellArgFor(specOf(id).linuxBinary, platform);
-      if (!(await run(`command -v ${quoteShellArgFor('setsid', platform)}`, SHORT_WAIT_MS)).ok) return false;
-      const result = await run(
-        `setsid ${binary} --no-startup-window >/dev/null 2>&1 < /dev/null &`,
-        LAUNCH_TIMEOUT_MS,
-      );
-      return result.ok;
-    }
-    if (platform === 'win32') {
-      const exe = winExecutable(id);
-      if (exe === undefined) return false;
-      const result = await run(`cmd /d /s /c start "" ${quoteShellArgFor(exe, platform)}`, LAUNCH_TIMEOUT_MS);
-      return result.ok;
-    }
-    return false;
+    const spec = browserLaunchOf(id, hostOsOf(platform), {
+      appPath: appPath(id),
+      executable: executableOf(id),
+      linuxBinary: specOf(id).linuxBinary,
+    });
+    if (spec === undefined) return false;
+    if (spec.probe !== undefined && !(await run(spec.probe, SHORT_WAIT_MS)).ok) return false;
+    const result = await run(spec.command, LAUNCH_TIMEOUT_MS);
+    return result.ok;
   }
 
   async function observe(): Promise<void> {
@@ -261,7 +152,7 @@ export function createDesktopBrowser(options: {
   }
 
   async function wake(): Promise<WakeBrowserReply> {
-    if (platform !== 'darwin' && platform !== 'linux' && platform !== 'win32') return { status: 'unsupported' };
+    if (!browserWakeSupportedOf(platform)) return { status: 'unsupported' };
     const before = await daemonStatus();
     if (before === 'connected') {
       await observe();
@@ -290,11 +181,7 @@ export function createDesktopBrowser(options: {
 export function bridgeFixCommand(
   command: string,
   issues: readonly string[],
-  platform: NodeJS.Platform = process.platform,
+  platform?: NodeJS.Platform,
 ): string | undefined {
-  const token = quoteShellArgFor(command, platform);
-  if (issues.includes('stale')) return `${token} daemon stop && ${token} daemon restart`;
-  if (issues.includes('profile')) return `${token} profile list`;
-  if (issues.includes('daemon')) return `${token} daemon restart`;
-  return undefined;
+  return bridgeFixOf(command, issues, hostOsOf(platform));
 }

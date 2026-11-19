@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 2,
+  "landings": {
+    "host.facts": {
+      "path": "packages/shared/src/host/platform/facts.ts",
+      "platforms": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "tests": {
+        "darwin": [
+          "packages/shared/src/host/platform/__tests__/facts.test.ts"
+        ],
+        "linux": [
+          "packages/shared/src/host/platform/__tests__/facts.test.ts"
+        ],
+        "win32": [
+          "packages/shared/src/host/platform/__tests__/facts.test.ts"
+        ]
+      }
+    },
+    "host.integration.front-app": {
+      "path": "packages/shared/src/host/platform/integration/front-app.ts",
+      "platforms": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "tests": {
+        "darwin": [
+          "packages/shared/src/host/platform/integration/__tests__/front-app.test.ts"
+        ],
+        "linux": [
+          "packages/shared/src/host/platform/integration/__tests__/front-app.test.ts"
+        ],
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/front-app.test.ts"
+        ]
+      }
+    },
+    "host.integration.tool-lookup": {
+      "path": "packages/shared/src/host/platform/integration/tool-lookup.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": {
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/tool-lookup.test.ts"
+        ]
+      }
+    },
+    "host.integration.browsers": {
+      "path": "packages/shared/src/host/platform/integration/browsers.ts",
+      "platforms": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "tests": {
+        "darwin": [
+          "packages/shared/src/host/platform/integration/__tests__/browsers.test.ts"
+        ],
+        "linux": [
+          "packages/shared/src/host/platform/integration/__tests__/browsers.test.ts"
+        ],
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/browsers.test.ts"
+        ]
+      }
+    },
+    "host.integration.browser-process": {
+      "path": "packages/shared/src/host/platform/integration/browser-process.ts",
+      "platforms": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "tests": {
+        "darwin": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-process.test.ts"
+        ],
+        "linux": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-process.test.ts"
+        ],
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-process.test.ts"
+        ]
+      }
+    },
+    "host.integration.browser-launch": {
+      "path": "packages/shared/src/host/platform/integration/browser-launch.ts",
+      "platforms": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "tests": {
+        "darwin": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-launch.test.ts"
+        ],
+        "linux": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-launch.test.ts"
+        ],
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-launch.test.ts"
+        ]
+      }
+    },
+    "host.ops.shell-text": {
+      "path": "packages/shared/src/host/platform/ops/shell-text.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/shell/__tests__/shell-text.test.ts"
+      ]
+    },
+    "host.ops.shell-render": {
+      "path": "packages/shared/src/host/platform/ops/shell-render.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/shell/__tests__/shell-render.test.ts",
+        "packages/shared/src/host/shell/__tests__/windows-quote.test.ts"
+      ]
+    },
+    "host.integration.process": {
+      "path": "packages/shared/src/host/platform/integration/process.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/seam/__tests__/process.test.ts"
+      ]
+    },
+    "host.integration.env-policy": {
+      "path": "packages/shared/src/host/platform/integration/env-policy.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/runtime/__tests__/env-policy.test.ts"
+      ]
+    },
+    "host.integration.host-surface": {
+      "path": "packages/shared/src/host/platform/integration/host-surface.ts",
+      "platforms": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/shared/src/host/platform/integration/__tests__/host-surface.test.ts"
+      ]
+    },
+    "client.surface": {
+      "path": "packages/shared/src/client/platform/surface.ts",
+      "platforms": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/core/src/shared/api/platform/__tests__/client.test.ts"
+      ]
+    },
+    "host.integration.data": {
+      "path": "packages/shared/src/host/platform/integration/data.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/data/__tests__/index.test.ts"
+      ]
+    },
+    "host.integration.browser-read": {
+      "path": "packages/shared/src/host/platform/integration/browser-read.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/browser/__tests__/browser-read.test.ts"
+      ]
+    }
+  },
+  "ports": {
+    "adapter.toolchain.runtime-seed": {
+      "path": "packages/adapter-probe/src/toolchain/runtime-seed.ts",
+      "reason": "adapter-probe 的运行时自举端口：Windows 上要写 cmd 包装与 node launcher，专用模块，不是业务分支",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/toolchain/__tests__/runtime-seed.test.ts"
+      ]
+    },
+    "adapter.toolchain.toolchain": {
+      "path": "packages/adapter-probe/src/toolchain/toolchain.ts",
+      "reason": "adapter-probe 工具链端口：node/npm/pnpm 的 shim 与可执行名在 Windows 上是 cmd/exe，属专用适配器，不是业务分支",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-probe/src/toolchain/__tests__/toolchain.test.ts"
+      ]
+    }
+  },
+  "allow": {},
+  "suites": {
+    "self-update": [
+      "packages/adapter-probe/src/self-update/__tests__/self-update.test.ts",
+      "packages/adapter-probe/src/self-update/__tests__/self-update-steps.test.ts",
+      "packages/adapter-probe/src/self-update/__tests__/self-update-boot.test.ts",
+      "packages/adapter-probe/src/self-update/version/__tests__/version-dir.test.ts",
+      "packages/adapter-probe/src/self-update/version/__tests__/version-switch.test.ts",
+      "packages/adapter-probe/src/self-update/version/__tests__/version-migrate.test.ts",
+      "packages/adapter-probe/src/install/__tests__/isolated-install.test.ts"
+    ],
+    "capture": [
+      "packages/core/src/modules/panels/model/__tests__/diy-record-live.test.ts"
+    ],
+    "shell-quote": [
+      "packages/shared/src/host/shell/__tests__/windows-quote.test.ts"
+    ],
+    "host-facts": [
+      "packages/adapter-probe/src/install/__tests__/install.test.ts",
+      "packages/adapter-probe/src/runtime/__tests__/bootstrap-run.test.ts",
+      "packages/adapter-probe/src/toolchain/__tests__/toolchain-env.test.ts",
+      "packages/core/src/shared/api/host/__tests__/data-root.test.ts",
+      "packages/core/src/shared/api/host/__tests__/seed-workshop-windows.test.ts",
+      "packages/core/src/shared/api/host/__tests__/windows-launcher.test.ts",
+      "packages/shared/src/host/runtime/__tests__/fs-write.test.ts",
+      "packages/shared/src/host/seam/__tests__/seam.test.ts",
+      "packages/adapter-runtime/src/cli/__tests__/command.test.ts",
+      "packages/adapter-probe/src/probe/__tests__/probe-units.test.ts",
+      "packages/adapter-probe/src/probe/__tests__/probe-units-release.test.ts",
+      "packages/adapter-supply/src/__tests__/package-route.test.ts",
+      "packages/adapter-supply/src/__tests__/plugin-source.test.ts",
+      "packages/adapters-default/src/__tests__/seed.test.ts",
+      "packages/core/src/shared/api/host/__tests__/diy-form-file.test.ts",
+      "packages/core/src/shared/api/host/__tests__/recover-update-script.test.ts",
+      "packages/adapter-runtime/src/data/__tests__/recipe.test.ts",
+      "packages/adapter-runtime/src/data/__tests__/submit-plan.test.ts",
+      "packages/core/src/shared/api/host/__tests__/git-process.test.ts",
+      "packages/adapter-probe/src/preflight/__tests__/preflight-route.test.ts",
+      "packages/adapter-probe/src/preflight/__tests__/preflight.test.ts",
+      "packages/adapter-probe/src/install/__tests__/install-smoke.test.ts",
+      "packages/adapter-runtime/src/cli/__tests__/opencli-runtime.test.ts",
+      "packages/adapter-runtime/src/cli/__tests__/opencli.test.ts"
+    ]
+  },
+  "exempt": {
+    "packages/shared/src/contract/protocol/platform.ts": "HostOs / HostSurface 的类型声明，不是运行时平台判断",
+    "packages/core/src/kernel/contract/platform.ts": "内核侧平台类型转出口，不是运行时判断",
+    "packages/core/src/shared/api/platform/contract.ts": "浏览器侧平台类型转出口，不是运行时判断",
+    "packages/module-tools/src/checks/standalone.mjs": "module-tools 的独立构建 CLI 只在收尾时按宿主注册可捕获的信号；这是开发工具的信号表，不是产品运行时平台分支"
+  }
+}

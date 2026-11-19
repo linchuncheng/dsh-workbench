@@ -1,6 +1,6 @@
 import type { TokenEntry, TokenSet } from '@dsh-workbench/shared/host';
 import { nearestTokens, tokenFamilyOf } from '@dsh-workbench/shared/host';
-import { PRUNE_CHARS } from './diy-components';
+import { PRUNE_CHARS } from './diy-surface';
 
 export interface TokenRenderOptions {
   readonly name: string;

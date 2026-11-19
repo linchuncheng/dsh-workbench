@@ -8,7 +8,6 @@ import {
   IconTrashOutlineRegular,
   Menu,
 } from '@deepseek-ai/dsh-client-ui-primitives';
-import { clientSurface } from '@/shared/api/platform/client';
 import { shouldToggleWorkspaceMenu } from './workspace-menu-toggle';
 import styles from './WorkspaceRowMenu.module.css';
 
@@ -44,9 +43,10 @@ export interface WorkspaceRowMenuProps {
   readonly onAlias: (workspace: WorkspaceView) => void;
   readonly onDelete: (workspace: WorkspaceView) => void;
   readonly onReveal: (path: string) => void;
+  readonly fileManager: 'finder' | 'explorer' | 'none';
 }
 
-export function WorkspaceRowMenu({ target, t, onClose, onAlias, onDelete, onReveal }: WorkspaceRowMenuProps) {
+export function WorkspaceRowMenu({ target, t, onClose, onAlias, onDelete, onReveal, fileManager }: WorkspaceRowMenuProps) {
   const items = useMemo((): readonly MenuEntry[] => {
     if (target === null) return [];
     return [
@@ -57,9 +57,7 @@ export function WorkspaceRowMenu({ target, t, onClose, onAlias, onDelete, onReve
       },
       {
         id: 'reveal',
-        label: t(
-          clientSurface().capabilities.macFileManager ? 'project.menu.reveal.finder' : 'project.menu.reveal.folder',
-        ),
+        label: t(fileManager === 'finder' ? 'project.menu.reveal.finder' : 'project.menu.reveal.folder'),
         icon: <IconFolderOpenOutlineRegular size={14} />,
       },
       { type: 'separator', id: 'workspace-menu-separator' },
@@ -70,7 +68,7 @@ export function WorkspaceRowMenu({ target, t, onClose, onAlias, onDelete, onReve
         danger: true,
       },
     ];
-  }, [target, t]);
+  }, [target, t, fileManager]);
   const open = target !== null;
   const point = target?.point;
 

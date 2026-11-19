@@ -73,7 +73,7 @@ describe('registerDiyPreset（启动时现场注册）', () => {
     const skills = definition.plugins.find((row) => (row as { id?: string }).id === 'skill-filesystem') as {
       config?: { customSkillDirs?: string[] };
     };
-    expect(skills.config?.customSkillDirs?.[0]).toMatch(/\/skills$/);
+    expect(skills.config?.customSkillDirs?.[0]).toMatch(/[\\/]skills$/);
     expect(definition.plugins.some((row) => (row as { id?: string }).id === 'tool-cordis')).toBe(true);
     expect(info).toHaveBeenCalled();
   });

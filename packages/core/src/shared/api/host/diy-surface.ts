@@ -12,7 +12,7 @@ export const PRIMITIVES_PKG = '@deepseek-ai/dsh-client-ui-primitives';
 
 export const MANIFEST_TAIL = '//# sourceMappingURL=';
 
-export type SurfaceScope = 'all' | 'primitives' | 'kit' | 'tokens';
+export type SurfaceScope = 'all' | 'primitives' | 'kit' | 'tokens' | 'platform' | 'deps';
 
 export interface SurfacePayload {
   readonly [key: string]: unknown;
@@ -24,16 +24,16 @@ export interface SurfaceQuery {
 }
 
 export function scopeOf(raw: string): SurfaceScope {
-  if (raw === 'primitives' || raw === 'kit' || raw === 'tokens') return raw;
+  if (raw === 'primitives' || raw === 'kit' || raw === 'tokens' || raw === 'platform' || raw === 'deps') return raw;
   return 'all';
 }
 
 export function wantsPrimitives(scope: SurfaceScope): boolean {
-  return scope !== 'kit' && scope !== 'tokens';
+  return scope !== 'kit' && scope !== 'tokens' && scope !== 'platform' && scope !== 'deps';
 }
 
 export function wantsKit(scope: SurfaceScope): boolean {
-  return scope !== 'primitives' && scope !== 'tokens';
+  return scope !== 'primitives' && scope !== 'tokens' && scope !== 'platform' && scope !== 'deps';
 }
 
 export function toolchainBinOf(root: string): string | null {
@@ -283,8 +283,36 @@ export function bucketNamesOf(
   return out;
 }
 
+const DEPS_SURFACE_TEXT = `flow|流程宿主：createActions / check / run
+sessionIdOf|从工具执行上下文读会话 id
+sessionWorkspace|从工具执行上下文读工作区
+libInstallCommand|拼共用依赖的安装提示，只展示、不执行
+surface|宿主能力面：deployment / capabilities / toolchain
+seam|声明写入域后才有的受控执行缝
+ai|模型入口；运行时没有就是 undefined
+manifest|当前单元清单
+ctx|宿主上下文；工具注册与生命周期
+logger|可选的宿主日志口
+manifests|读当前安装的其它单元清单
+ownedUnits|读当前模块拥有的单元 id
+installable|可安装单元 id；没有就 undefined
+data|站点数据读取：request / plan / submitPlan
+env|宿主编排出的只读 env；不要直接改
+libs|共用依赖读取；可选
+git|受控 git 读取；可选
+commands|argv 命令执行；可选
+store|按工作区持久化状态
+values|值交接；可选
+probe|探测单元能力；可选
+longTasks|长任务宿主；可选
+longTaskRuns|读当前长任务运行表；可选`;
+
+export const DEPS_SURFACE: Readonly<Record<string, string>> = Object.fromEntries(
+  DEPS_SURFACE_TEXT.split('\n').map((line) => line.split('|') as [string, string]),
+);
+
 export const TWO_FACE_ALL =
-  '⚠️ 要全表就指名一面：scope=kit / primitives / tokens。';
+  '⚠️ 要全表就指名一面：scope=kit / primitives / tokens / platform / deps。';
 
 export function refusesEvery(scope: SurfaceScope, all: boolean, focused: boolean): boolean {
   return all && scope === 'all' && !focused;

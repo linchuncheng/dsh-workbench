@@ -6,6 +6,9 @@ import { asRecord, textOf } from './page-value.js';
 
 import { BROWSER_READ_SESSION, BROWSER_RECORD_SESSION, BROWSER_SCREEN_SESSION } from '@dsh-workbench/shared/host';
 import { opencliResultOf } from '../cli/opencli-wire.js';
+import { evalScriptArgOf } from '@dsh-workbench/shared/host';
+
+export { evalScriptArgOf };
 export { BROWSER_READ_SESSION, BROWSER_RECORD_SESSION, BROWSER_SCREEN_SESSION };
 
 const DEFAULT_TIMEOUT_MS = 25000;
@@ -116,20 +119,13 @@ type ShellOutcome =
   | { readonly kind: 'timeout'; readonly detail: string; readonly stderr: string }
   | { readonly kind: 'failed'; readonly detail: string; readonly stderr: string };
 
-export function evalScriptArgOf(script: string, platform: NodeJS.Platform = process.platform): string {
-  if (platform !== 'win32') return script;
-  const bytes = Buffer.from(script, 'utf8').toString('base64');
-  const decoded = `eval(new TextDecoder().decode(Uint8Array.from(atob('${bytes}'), (one) => one.charCodeAt(0))))`;
-  return `(async () => { const value = ${decoded}; return typeof value === 'function' ? value() : value; })()`;
-}
-
 async function shellRun(
   seam: Seam,
   command: string,
   argv: readonly string[],
   timeoutMs: number,
-  platform: NodeJS.Platform,
-  signal: AbortSignal | undefined,
+  platform?: NodeJS.Platform,
+  signal?: AbortSignal,
 ): Promise<ShellOutcome> {
   if (signal?.aborted === true) return { kind: 'aborted', detail: '已停止', stderr: '' };
   const result = await seam.run({
@@ -158,8 +154,8 @@ async function evalOnce(
   timeoutMs: number,
   retryMs: number,
   retry: boolean,
-  platform: NodeJS.Platform,
-  signal: AbortSignal | undefined,
+  platform?: NodeJS.Platform,
+  signal?: AbortSignal,
 ): Promise<Attempt> {
   const run = async (): Promise<Attempt> => {
     let attempt: Awaited<ReturnType<typeof shellRun>>;
@@ -241,8 +237,8 @@ async function openOnce(
   session: string,
   url: string,
   timeoutMs: number,
-  platform: NodeJS.Platform,
-  signal: AbortSignal | undefined,
+  platform?: NodeJS.Platform,
+  signal?: AbortSignal,
 ): Promise<Omit<BrowserReadResult, 'at'> | undefined> {
   let attempt: Awaited<ReturnType<typeof shellRun>>;
   try {
@@ -286,7 +282,7 @@ export async function browserRead(options: BrowserReadOptions): Promise<BrowserR
   const retryMs = options.retryMs ?? DEFAULT_RETRY_MS;
   const retry = options.retry ?? true;
   const settleMs = options.settleMs ?? DEFAULT_SETTLE_MS;
-  const platform = options.platform ?? process.platform;
+  const platform = options.platform;
   const at = now();
   if (signal?.aborted === true) {
     return { ok: false, code: 'aborted', pageCode: 'aborted', at, message: '已停止' };

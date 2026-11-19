@@ -12,7 +12,7 @@ import {
 } from '@dsh-workbench/shared/host';
 import type { PublishPreview } from '@dsh-workbench/shared/contract/protocol/market-index';
 import type { DiyModule } from '@/shared/api/host/diy-modules';
-import { toolchainArgvOf, toolchainBinOf } from '@/shared/api/host/diy-components';
+import { toolchainArgvOf, toolchainBinOf } from '@/shared/api/host/diy-surface';
 import { jsonOf } from './diy-browser';
 import {
   adoptTarballFile,

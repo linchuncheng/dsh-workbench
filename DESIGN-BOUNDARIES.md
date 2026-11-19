@@ -49,6 +49,7 @@
 | 工具链 ↔ 模块 | L5 ↔ L4 | 文件系统：`package.json`、清单、`design.json`、源码文本、产物 | 工具运行时被模块依赖（只做 devDependency）；工具读环境事实当模块事实 |
 | 工具链 ↔ 环境 | L5 ↔ L6 | 只读 cwd / 工作区声明来发现包；环境文档解释怎么装 | 工具文档写安装 / 目录 / EPERM；环境文档写判据实现 |
 | 浏览器 ↔ 宿主 | L1/L4 内部横切 | 公开入口：kit、`contract`、`shared` 根 / `/host` 拆分 | 两侧互引；浏览器从 `/host` 取运行值 |
+| 平台事实 ↔ 业务 | L1/L2/L3 内部横切 | [`PLATFORM-BOUNDARIES.md`](PLATFORM-BOUNDARIES.md) 的 `HostFacts` / `HostOps` / `HostIntegration` | 业务源码读 `process.platform`、写 OS 字面量、手拼平台命令 |
 | 发布 ↔ 运行时 | L7 ↔ L1/L4 | 已安装的包产物、清单、索引 | 运行时依赖发布脚本；发布脚本改运行时行为 |
 
 ## 3. 层的附属物
@@ -115,6 +116,7 @@
 | L5 | module-tools selfcheck（128 条：golden / scaffold / arch-gate / lint-gate / discover / migrate / meta …）、`check:docs` 的判据表一致性 |
 | L6 | `check-workshop-generation.sh`、seed / 入口自检、工坊生成探针 |
 | L7 | `check:release-artifacts`、release / publish 自检 |
+| 平台事实 | selfcheck 平台判据（`checks/platform-ci.mjs` + `platform-landings.json`：落点外扫描 + 落点 × OS 覆盖） |
 | 全部 | `pnpm -w run check` 一条链；文档链接与管理块由 `check:docs` 管；公开仓标记由 `check:markers` 管 |
 
 改到边界附近时跑对应的自检：`pnpm run check:module-tools`（模板 / 工具）、`pnpm run check:docs`、

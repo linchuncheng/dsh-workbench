@@ -170,7 +170,7 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 ## 查不到时
 
 1. `dsh-wb-module check --only <判据>` 的报错原文。
-2. kit、dsh 原语与 CSS 令牌：调用 `workbench_diy_components`（令牌用 `scope: 'tokens'`）；
+2. kit、dsh 原语、CSS 令牌、宿主能力与 deps：调用 `workbench_diy_surface`（令牌用 `scope: 'tokens'`，deps 用 `scope: 'deps'`）；
    工程域用 `check --only kit` / `--only primitives`。
 3. 模板：`node_modules/@dsh-workbench/module-tools/template-diy/`。
 4. 安装包的类型面：`node_modules/@dsh-workbench/core/dist/types/**`；本指引：

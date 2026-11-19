@@ -17,6 +17,7 @@ export interface HostCapabilities {
   readonly browserWake: boolean;
   readonly selfUpdateCli: SelfUpdateCli;
   readonly safeMode: boolean;
+  readonly fileManager: 'finder' | 'explorer' | 'none';
 }
 
 export interface ToolchainPlan {
@@ -38,6 +39,7 @@ export interface HostSurface {
 export interface ClientCapabilities {
   readonly debugFooter: boolean;
   readonly macFileManager: boolean;
+  readonly primaryModifier: 'meta' | 'ctrl';
 }
 
 export interface ClientSurface {
