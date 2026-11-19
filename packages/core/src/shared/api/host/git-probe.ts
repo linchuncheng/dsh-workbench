@@ -37,6 +37,7 @@ export async function probeGitAddress(url: string, options: GitProbeOptions = {}
 
 const PROBE_CACHE_MS = 60 * 1000;
 const probeCache = new Map<string, { readonly at: number; readonly payload: GitProbePayload }>();
+const inFlight = new Map<string, Promise<GitProbePayload>>();
 
 export async function probeGitAddressCached(
   url: string,
@@ -44,7 +45,16 @@ export async function probeGitAddressCached(
 ): Promise<GitProbePayload> {
   const hit = probeCache.get(url);
   if (hit !== undefined && now() - hit.at < PROBE_CACHE_MS) return hit.payload;
-  const payload = await probeGitAddress(url, options);
-  probeCache.set(url, { at: now(), payload });
-  return payload;
+  const running = inFlight.get(url);
+  if (running !== undefined) return running;
+  const promise = probeGitAddress(url, options)
+    .then((payload) => {
+      probeCache.set(url, { at: now(), payload });
+      return payload;
+    })
+    .finally(() => {
+      if (inFlight.get(url) === promise) inFlight.delete(url);
+    });
+  inFlight.set(url, promise);
+  return promise;
 }

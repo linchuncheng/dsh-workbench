@@ -6,6 +6,7 @@ import {
   requireSupply,
   runtimePinOf,
   param,
+  mapWithLimit,
   type RouteTable,
   type Seam,
   type SupplyPort,
@@ -14,6 +15,8 @@ import type { InstalledPlugin, InstalledPluginsPayload } from '@/shared/api/inst
 import { INSTALLED_PLUGINS_ROUTE } from '@/shared/api/installed-plugins';
 import type { PluginLedger } from './plugin-ledger';
 import { pluginDirOf, pluginOnDisk } from './plugin-name';
+
+const PLUGIN_PROBE_CONCURRENCY = 4;
 
 export async function installedPlugins(options: {
   readonly ledger: PluginLedger;
@@ -27,7 +30,6 @@ export async function installedPlugins(options: {
 }): Promise<readonly InstalledPlugin[]> {
   const { ledger, seam, force = false, check = true, includePrerelease = false } = options;
   const supply = options.supply ?? requireSupply();
-  const rows: InstalledPlugin[] = [];
   const runtime = runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV);
   const runtimeProblemOf = (entry: {
     readonly package: string;
@@ -44,7 +46,8 @@ export async function installedPlugins(options: {
       ? { label: options.runtimeLabel ?? '', need: range, have: runtime }
       : undefined;
   };
-  for (const entry of ledger.list()) {
+  const entries = ledger.list();
+  const rows = await mapWithLimit(entries, PLUGIN_PROBE_CONCURRENCY, async (entry) => {
     const runtimeProblem = runtimeProblemOf(entry);
     const release =
       seam === undefined || entry.local === true || entry.registry === undefined
@@ -57,7 +60,7 @@ export async function installedPlugins(options: {
             check,
             includePrerelease,
           });
-    rows.push({
+    return {
       pkg: entry.package,
       ...(entry.name === undefined ? {} : { name: entry.name }),
       ...(release === undefined
@@ -71,8 +74,8 @@ export async function installedPlugins(options: {
       ...(entry.installedAt === undefined ? {} : { installedAt: entry.installedAt }),
       ...(pluginOnDisk(entry, ledger.pluginFiles) ? {} : { broken: true }),
       ...(runtimeProblem === undefined ? {} : { runtimeProblem }),
-    });
-  }
+    } satisfies InstalledPlugin;
+  });
   return rows;
 }
 

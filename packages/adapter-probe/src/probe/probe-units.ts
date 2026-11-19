@@ -13,6 +13,7 @@ import {
   productWrite,
   quoteShellArgFor,
   toolLookupOf,
+  mapWithLimit,
   type Seam,
   type ExtensionNeed,
   type LibNeed,
@@ -37,6 +38,7 @@ export type {
 } from '@dsh-workbench/shared/host';
 
 const BINARY_PROBE_TIMEOUT_MS = 5_000;
+const PROBE_CONCURRENCY = 4;
 const KNOWN_RUNTIMES: readonly string[] = ['opencli'];
 
 export function parsePluginList(stdout: string): unknown[] | undefined {
@@ -116,21 +118,26 @@ async function releasesOf(
   index: SupplyIndex,
   options: { seam: Seam; force: boolean },
 ): Promise<ReadonlyMap<string, PluginRelease>> {
-  const found = new Map<string, PluginRelease>();
-  for (const entry of index.entries.values()) {
-    if (entry.kind !== 'extension' || entry.conflicted) continue;
+  const entries = [...index.entries.values()].filter(
+    (entry) => entry.kind === 'extension' && !entry.conflicted,
+  );
+  const signals = await mapWithLimit(entries, PROBE_CONCURRENCY, async (entry) => {
     const source = npmSourceOf(entry.sources);
-    if (source === undefined) continue;
+    if (source === undefined) return undefined;
     const registry = npmRegistryOf(source, process.env);
-    const signal = await probeRelease({
+    return probeRelease({
       seam: options.seam,
       package: entry.package,
       ...(registry.ok ? { registry: registry.value } : {}),
       force: options.force,
     });
-    if (signal === undefined) continue;
+  });
+  const found = new Map<string, PluginRelease>();
+  entries.forEach((entry, at) => {
+    const signal = signals[at];
+    if (signal === undefined) return;
     for (const name of entry.names) found.set(`${entry.runtime ?? 'opencli'}:${name}`, signal);
-  }
+  });
   return found;
 }
 
@@ -229,21 +236,24 @@ async function loadCapabilities(options: {
       ),
     ),
   ];
+  const extensionNeeds = units.flatMap((unit) =>
+    unit.needs.filter((need): need is ExtensionNeed => need.kind === 'extension'),
+  );
+  const runtimes = [...new Set(extensionNeeds.map((need) => need.runtime))];
+  const libNeeds = units.flatMap((unit) =>
+    unit.needs.filter((need): need is LibNeed => need.kind === 'lib'),
+  );
+
   const binaries = new Map<string, boolean>();
+  const lists = new Map<string, RuntimeProbe>();
   const runtimeNames = Object.values(runtimeCommands);
-  await Promise.all(
+  const binProbes = Promise.all(
     binNames.map(async (name) => {
       const known = runtimeNames.some((command) => commandNamesMatch(name, command));
       binaries.set(name, known ? true : await probeBinary(seam, name, platform));
     }),
   );
-
-  const extensionNeeds = units.flatMap((unit) =>
-    unit.needs.filter((need): need is ExtensionNeed => need.kind === 'extension'),
-  );
-  const runtimes = [...new Set(extensionNeeds.map((need) => need.runtime))];
-  const lists = new Map<string, RuntimeProbe>();
-  await Promise.all(
+  const runtimeProbes = Promise.all(
     runtimes.map(async (runtime) => {
       const command = runtimeCommands[runtime] ?? (KNOWN_RUNTIMES.includes(runtime) ? runtime : undefined);
       if (command === undefined) {
@@ -256,12 +266,9 @@ async function loadCapabilities(options: {
       lists.set(runtime, await runtimeList({ seam, command, needsPlugins, platform }));
     }),
   );
-
-  const libNeeds = units.flatMap((unit) =>
-    unit.needs.filter((need): need is LibNeed => need.kind === 'lib'),
-  );
-  const libStates = await probeLibs({ needs: libNeeds, seam, force, index });
-  const releases = await releasesOf(index, { seam, force });
+  const libProbes = probeLibs({ needs: libNeeds, seam, force, index });
+  const releaseProbes = releasesOf(index, { seam, force });
+  const [, , libStates, releases] = await Promise.all([binProbes, runtimeProbes, libProbes, releaseProbes]);
 
   const runtimeProblems = runtimeMismatchOf(options.runtimeReport);
   const statesOfUnit = (unit: NeedProbeInput): NeedState[] =>

@@ -1,4 +1,8 @@
-import { gitAddressOf, gitTransportCandidates } from '@dsh-workbench/shared/host';
+import {
+  gitAddressOf,
+  gitTransportCandidates,
+  mapWithLimit,
+} from '@dsh-workbench/shared/host';
 import type {
   GitTransportKind,
   MarketIndex,
@@ -44,41 +48,49 @@ async function transportOf(
   return { ...source, url: ordered[0]?.url ?? source.url };
 }
 
+const TRANSPORT_CONCURRENCY = 4;
+
+interface RowJob {
+  readonly row: MarketInstalledModule;
+  readonly wanted: string | undefined;
+  readonly preferred: GitTransportKind | undefined;
+}
+
 export async function installedFromIndexes(
   input: InstalledIndexInput,
 ): Promise<readonly MarketInstalledModule[]> {
   const modules = new Map(input.modules.map((module) => [module.pkg, module] as const));
-  const rows: MarketInstalledModule[] = [];
+  const jobs: RowJob[] = [];
   const seen = new Set<string>();
   for (const source of input.sources) {
     const index = input.cached(source);
     if (index === undefined) continue;
+    const host = gitAddressOf(source.url)?.host;
+    const preferred = host === undefined ? undefined : input.preferred?.(host);
     for (const entry of index.plugins) {
       const module = modules.get(entry.name);
       const newest = entry.versions[0];
       if (module === undefined || newest === undefined || seen.has(entry.name)) continue;
       if (!input.isNewer(newest.version, module.version)) continue;
       seen.add(entry.name);
-      rows.push({
-        pkg: entry.name,
-        unit: module.unit,
-        version: newest.version,
-        sourceId: source.id,
-        sourceLabel: source.label,
-        source: newest.source,
+      jobs.push({
+        row: {
+          pkg: entry.name,
+          unit: module.unit,
+          version: newest.version,
+          sourceId: source.id,
+          sourceLabel: source.label,
+          source: newest.source,
+        },
+        wanted: input.dependencyOf(entry.name),
+        preferred,
       });
-      const wanted = input.dependencyOf(entry.name);
-      const host = gitAddressOf(source.url)?.host;
-      const resolved = await transportOf(
-        newest.source,
-        wanted,
-        input.probe,
-        host === undefined ? undefined : input.preferred?.(host),
-      );
-      rows[rows.length - 1] = { ...(rows[rows.length - 1] as MarketInstalledModule), source: resolved };
     }
   }
-  return rows;
+  return mapWithLimit(jobs, TRANSPORT_CONCURRENCY, async (job) => ({
+    ...job.row,
+    source: await transportOf(job.row.source, job.wanted, input.probe, job.preferred),
+  }));
 }
 
 export function marketInstalledRoutes(

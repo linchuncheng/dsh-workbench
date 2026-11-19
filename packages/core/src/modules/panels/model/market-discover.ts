@@ -24,6 +24,7 @@ import {
   filterMarketIndex,
   marketEntryLabels,
   marketInstallTarget,
+  mapWithLimit,
   noWrite,
   quoteShellArg,
   runningVersionOf,
@@ -67,6 +68,8 @@ function explainProblem(problem: DiscoverProblem, profilePath: string | undefine
 
 const DEFAULT_PEER_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_TIMEOUT_MS = 15 * 1000;
+const ENTRY_CONCURRENCY = 2;
+const VERSION_CONCURRENCY = 4;
 const CORE_PEER = '@dsh-workbench/core';
 
 function normalizedRepo(value: string): string {
@@ -181,10 +184,9 @@ export function createMarketDiscover(options: MarketDiscoverOptions): MarketDisc
     installed: ProfileModule | undefined,
   ): Promise<readonly DiscoverVersionRow[]> {
     const latest = entry.versions[0]?.version ?? '';
-    const rows: DiscoverVersionRow[] = [];
-    for (const version of entry.versions) {
+    return mapWithLimit(entry.versions, VERSION_CONCURRENCY, async (version) => {
       const peer = await peerOf(source, entry.name, version);
-      rows.push({
+      return {
         version: version.version,
         ...(version.publishTimestamp === undefined ? {} : { publishTimestamp: version.publishTimestamp }),
         source: version.source,
@@ -192,9 +194,8 @@ export function createMarketDiscover(options: MarketDiscoverOptions): MarketDisc
         compat: compatOf(peer),
         ...(peer === undefined || peer === '' ? {} : { peer }),
         install: stateOf(installed, version.version, latest),
-      });
-    }
-    return rows;
+      };
+    });
   }
 
   async function payloadOf(
@@ -209,10 +210,9 @@ export function createMarketDiscover(options: MarketDiscoverOptions): MarketDisc
     const eligible = index.plugins.filter(isWorkbenchEntry);
     const filtered = filterMarketIndex({ ...index, plugins: eligible }, filter);
     const byPkg = new Map(options.modules().map((item) => [item.pkg, item] as const));
-    const entries: DiscoverEntry[] = [];
-    for (const entry of filtered) {
+    const entries = await mapWithLimit(filtered, ENTRY_CONCURRENCY, async (entry) => {
       const installed = byPkg.get(entry.name);
-      entries.push({
+      return {
         name: entry.name,
         ...(entry.title === undefined ? {} : { title: entry.title }),
         ...(entry.description === undefined ? {} : { description: entry.description }),
@@ -223,8 +223,8 @@ export function createMarketDiscover(options: MarketDiscoverOptions): MarketDisc
         labels: marketEntryLabels(entry),
         ...(installed === undefined ? {} : { installedVersion: installed.version }),
         versions: await rowsOf(entry, source, installed),
-      });
-    }
+      };
+    });
     return {
       state: 'ready',
       sources,

@@ -89,6 +89,7 @@ export * from './lib/blocker-action.js';
 export * from './lib/board-fact.js';
 export * from './lib/bundle-requirements.js';
 export * from './lib/busy.js';
+export * from './lib/concurrency.js';
 export * from './lib/dsh-client.js';
 export * from './lib/form-problem.js';
 export * from './lib/git-address.js';

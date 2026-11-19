@@ -71,6 +71,7 @@ const newestForceSeq: Record<VersionsPart, number> = { modules: -1, plugins: -1 
 const newestDataSeq: Record<VersionsPart, number> = { modules: -1, plugins: -1 };
 let epoch = 0;
 let checkAllSeq = 0;
+let marketInstalledInFlight: Promise<ApiResponse<MarketInstalledPayload>> | null = null;
 
 export function bumpModuleVersionsEpoch(): void {
   epoch += 1;
@@ -94,6 +95,7 @@ export function resetModuleVersions(): void {
   newestDataSeq.modules = -1;
   newestDataSeq.plugins = -1;
   epoch = 0;
+  marketInstalledInFlight = null;
 }
 
 export function subscribeModuleVersions(listener: () => void): () => void {
@@ -217,8 +219,18 @@ function released(seat: VersionsCheck, ticket: number, latest: number): Versions
 
 type ModulesResponse = readonly [ApiResponse<ModuleVersionsPayload>, ApiResponse<MarketInstalledPayload>];
 
+function readMarketInstalledShared(): Promise<ApiResponse<MarketInstalledPayload>> {
+  const running = marketInstalledInFlight;
+  if (running !== null) return running;
+  const promise = readMarketInstalled().finally(() => {
+    if (marketInstalledInFlight === promise) marketInstalledInFlight = null;
+  });
+  marketInstalledInFlight = promise;
+  return promise;
+}
+
 function readModulesOnce(force: boolean, check: boolean): Promise<ModulesResponse | null> {
-  return Promise.all([readModuleVersions(force, check), readMarketInstalled()]).catch(() => null);
+  return Promise.all([readModuleVersions(force, check), readMarketInstalledShared()]).catch(() => null);
 }
 
 function readPluginsOnce(force: boolean, check: boolean): Promise<ApiResponse<InstalledPluginsPayload> | null> {

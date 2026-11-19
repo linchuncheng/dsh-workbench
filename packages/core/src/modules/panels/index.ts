@@ -281,17 +281,20 @@ export const panelsHost: UnitOwnedFace = {
         ...diyRecordRoutes(record),
         ...marketDiscoverRoutes(discover),
         ...marketSourcesRoutes(marketSources),
-        ...marketInstalledRoutes(async () => ({
-          modules: await installedFromIndexes({
-            sources: marketSources.read().sources,
-            cached: (source) => marketIndex.cached(source)?.index,
-            modules: supply.profileModules(profileDir),
-            dependencyOf: dependencyReader(profileDir),
-            isNewer: supply.isNewerVersion,
-            preferred: (host) => marketSources.read().transports?.[host],
-            probe: (url: string) => probeGitAddressCached(url, { timeoutMs: 4000 }).then((one) => one.status),
-          }),
-        })),
+        ...marketInstalledRoutes(async () => {
+          const read = marketSources.read();
+          return {
+            modules: await installedFromIndexes({
+              sources: read.sources,
+              cached: (source) => marketIndex.cached(source)?.index,
+              modules: supply.profileModules(profileDir),
+              dependencyOf: dependencyReader(profileDir),
+              isNewer: supply.isNewerVersion,
+              preferred: (host) => read.transports?.[host],
+              probe: (url: string) => probeGitAddressCached(url, { timeoutMs: 4000 }).then((one) => one.status),
+            }),
+          };
+        }),
         ...installedPackageRoutes((pkg) => installedPackages.info(pkg)),
         ...publishPreviewRoutes(workshopPathOf(ctx), (unit) =>
           inferredAuthorOf(workshopPathOf(ctx), unit),

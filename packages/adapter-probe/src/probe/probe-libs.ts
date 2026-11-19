@@ -2,12 +2,14 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { LibNeed, NeedState, Seam, SupplyIndex } from '@dsh-workbench/shared/host';
 import { libInstallCommand } from '@dsh-workbench/adapter-runtime';
-import { needIdOf, npmSourceOf } from '@dsh-workbench/shared/host';
+import { needIdOf, npmSourceOf, mapWithLimit } from '@dsh-workbench/shared/host';
 import { libDir } from '@dsh-workbench/adapter-runtime';
 import { npmRegistryOf } from '@dsh-workbench/adapter-supply';
 import { isNewerVersion } from '@dsh-workbench/adapter-profile';
 import { latestVersion, resetReleaseCache } from './release-port.js';
 import { checkVersionRange } from '../self-update/version/version-range.js';
+
+const PROBE_CONCURRENCY = 4;
 
 export function installedLibVersion(name: string): string | undefined {
   try {
@@ -39,9 +41,14 @@ export async function probeLibs(options: {
   readonly index?: SupplyIndex | undefined;
 }): Promise<ReadonlyMap<string, NeedState>> {
   const { needs, seam, force, index } = options;
-  const found = new Map<string, NeedState>();
+  const unique: LibNeed[] = [];
+  const seen = new Set<string>();
   for (const need of needs) {
-    if (found.has(need.name)) continue;
+    if (seen.has(need.name)) continue;
+    seen.add(need.name);
+    unique.push(need);
+  }
+  const states = await mapWithLimit(unique, PROBE_CONCURRENCY, async (need) => {
     const source = npmSourceOf(index?.sourcesOf('lib', need.name) ?? need.sources);
     const install =
       source === undefined
@@ -49,18 +56,18 @@ export async function probeLibs(options: {
         : { command: libInstallCommand({ need, source, ...(need.version === undefined ? {} : { version: need.version }) }) };
     const installed = installedLibVersion(need.name);
     if (installed === undefined) {
-      found.set(need.name, stateOf(need, 'missing', `共用依赖 ${need.name} 没装`, install));
-      continue;
+      return stateOf(need, 'missing', `共用依赖 ${need.name} 没装`, install);
     }
     if (checkVersionRange(need.version, installed) !== 'satisfied') {
-      found.set(
-        need.name,
-        stateOf(need, 'unsatisfied', `装的是 ${installed}，声明要 ${need.version ?? '任意版本'}`, {
+      return stateOf(
+        need,
+        'unsatisfied',
+        `装的是 ${installed}，声明要 ${need.version ?? '任意版本'}`,
+        {
           installed,
           ...install,
-        }),
+        },
       );
-      continue;
     }
     const registry = source === undefined ? undefined : npmRegistryOf(source, process.env);
     const latest =
@@ -68,18 +75,20 @@ export async function probeLibs(options: {
         ? undefined
         : await latestVersion({ seam, name: need.name, registry: registry.value, force });
     const behind = latest !== undefined && isNewerVersion(latest, installed);
-    found.set(
-      need.name,
-      stateOf(need, behind ? 'outdated' : 'ok', behind ? `装的 ${installed}，源上最新 ${latest ?? ''}` : `${installed} 版本对`, {
+    return stateOf(
+      need,
+      behind ? 'outdated' : 'ok',
+      behind ? `装的 ${installed}，源上最新 ${latest ?? ''}` : `${installed} 版本对`,
+      {
         installed,
         ...(latest === undefined ? {} : { latest }),
         ...(behind && source !== undefined
           ? { command: libInstallCommand({ need, source, version: latest }) }
           : {}),
-      }),
+      },
     );
-  }
-  return found;
+  });
+  return new Map(unique.map((need, at) => [need.name, states[at]] as const));
 }
 
 export function resetLibCache(): void {
