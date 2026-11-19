@@ -114,15 +114,6 @@
         "packages/adapter-runtime/src/browser/__tests__/browser-read.test.ts"
       ]
     },
-    "packages/adapter-runtime/src/cli/command.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/adapter-runtime/src/cli/__tests__/command.test.ts"
-      ]
-    },
     "packages/adapter-runtime/src/cli/opencli-runtime.ts": {
       "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
       "platforms": [
@@ -277,7 +268,8 @@
       "packages/core/src/shared/api/host/__tests__/seed-workshop-windows.test.ts",
       "packages/core/src/shared/api/host/__tests__/windows-launcher.test.ts",
       "packages/shared/src/host/runtime/__tests__/fs-write.test.ts",
-      "packages/shared/src/host/seam/__tests__/seam.test.ts"
+      "packages/shared/src/host/seam/__tests__/seam.test.ts",
+      "packages/adapter-runtime/src/cli/__tests__/command.test.ts"
     ]
   },
   "exempt": {

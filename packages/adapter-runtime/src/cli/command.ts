@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { runtimeLayoutOf } from '@dsh-workbench/shared/host';
+import { cmdNameOf, runtimeLayoutOf } from '@dsh-workbench/shared/host';
 import { OPENCLI_RUNTIME_ID } from '../foundation/paths.js';
 
 export type OpencliSource = 'env' | 'isolated' | 'path';
@@ -17,8 +17,8 @@ export interface OpencliResolution {
 
 export const OPENCLI_PATH_FALLBACK = 'opencli';
 
-function binName(platform: NodeJS.Platform = process.platform): string {
-  return platform === 'win32' ? 'opencli.cmd' : 'opencli';
+function binName(platform?: NodeJS.Platform): string {
+  return cmdNameOf('opencli', platform);
 }
 
 export function isolatedOpencliPathOf(_ctx: HostContextLike): string | null {

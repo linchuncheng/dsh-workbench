@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { delimiter, dirname, join, sep } from 'node:path';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
-import { pathWithBinsOf, quoteShellArg, quoteShellArgFor, workbenchRoot, writeTextFile } from '@dsh-workbench/shared/host';
+import { cmdNameOf, pathWithBinsOf, quoteShellArg, quoteShellArgFor, workbenchRoot, writeTextFile } from '@dsh-workbench/shared/host';
 import type { Seam } from '@dsh-workbench/shared/host';
 import {
   desktopBundledBins,
@@ -39,8 +39,8 @@ export interface RuntimeSeedOptions {
   readonly log?: SeedLog;
 }
 
-export function opencliBinName(platform: NodeJS.Platform = process.platform): string {
-  return platform === 'win32' ? 'opencli.cmd' : 'opencli';
+export function opencliBinName(platform?: NodeJS.Platform): string {
+  return cmdNameOf('opencli', platform);
 }
 
 export function runtimeSeedPaths(root: string, platform: NodeJS.Platform = process.platform): RuntimeSeedPaths {
