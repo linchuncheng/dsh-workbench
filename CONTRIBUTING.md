@@ -99,7 +99,9 @@ after the release build, `packages/core/CHANGELOG.md` (shipped with
 `@dsh-workbench/core`) must contain the same version. Check one version directly with
 `pnpm run check:changelog -- --version <version>`.
 
-`pnpm release` 的 preflight 会跑 `pnpm run check:compat`：有未解决的 `compat` issue 就停。确需豁免时先跑 `pnpm run check:compat -- --waiver "原因"`，把理由记进发布记录。
+`pnpm release` 的 preflight 会跑 `pnpm run check:compat`：有未解决的 `compat` issue 就停。凭据先取
+`GH_TOKEN` / `GITHUB_TOKEN`，都没有就回落 `gh auth token`；再取不到时终端能交互就当场跑 `gh auth login`，
+非交互环境直接 fail-closed，不会静默放行。确需豁免时先跑 `pnpm run check:compat -- --waiver "原因"`，把理由记进发布记录。
 
 `compat-watch` 每 6 小时把 Desktop / Chrome for Testing / opencli 的 latest 与
 `scripts/desktop-smoke/fixture.json` 里的固定版本比较；漂了会开 `compat` issue。需要跑桌面 smoke 的

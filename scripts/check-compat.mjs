@@ -11,9 +11,52 @@ if (waiverAt !== -1 && waiver === '') {
   process.exit(1);
 }
 
-if ((process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? '') === '') {
-  console.error('✖ 没有 GH_TOKEN / GITHUB_TOKEN：兼容性检查必须 fail-closed');
+function failClosed(detail) {
+  console.error('✖ 拿不到 GitHub 凭据：兼容性检查必须 fail-closed');
+  console.error(`   ${detail}`);
   process.exit(1);
+}
+
+function cliToken() {
+  try {
+    const result = execaSync('gh', ['auth', 'token'], { encoding: 'utf8', reject: false });
+    return result.exitCode === 0 ? result.stdout.trim() : '';
+  } catch {
+    return '';
+  }
+}
+
+function ghRuns() {
+  try {
+    const result = execaSync('gh', ['--version'], { stdio: 'ignore', reject: false });
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
+function loginThenToken() {
+  if (!ghRuns()) {
+    failClosed('找不到 gh：先安装 GitHub CLI，或 export GH_TOKEN=<token>');
+  }
+  if (!process.stdin.isTTY) {
+    failClosed('这个终端不能交互登录：先 gh auth login，或 export GH_TOKEN=<token>，再重新运行');
+  }
+  console.log('⚠️  gh 未登录，启动登录流程…\n');
+  try {
+    const result = execaSync('gh', ['auth', 'login'], { stdio: 'inherit', reject: false });
+    if ((result.exitCode ?? 1) !== 0) failClosed('gh 登录失败');
+  } catch (error) {
+    failClosed(`gh auth login 执行失败：${error instanceof Error ? error.message : String(error)}`);
+  }
+  return cliToken();
+}
+
+const token =
+  (process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? '').trim() || cliToken() || loginThenToken();
+
+if (token === '') {
+  failClosed('gh auth login 成功了，但 gh auth token 仍然取不到：改用 export GH_TOKEN=<token>');
 }
 
 let issues;
@@ -21,7 +64,7 @@ try {
   const result = execaSync(
     'gh',
     ['issue', 'list', ...repoArgs, '--label', 'compat', '--state', 'open', '--json', 'number,title,url'],
-    { encoding: 'utf8' },
+    { encoding: 'utf8', env: { GH_TOKEN: token } },
   );
   issues = JSON.parse(result.stdout);
 } catch (error) {

@@ -326,6 +326,11 @@ function checkNpmLogin() {
     console.log("   即使未登录也不会留下半套发布：第一个包就会失败，此时本地版本号会自动回滚。");
     return;
   }
+  if (!process.stdin.isTTY) {
+    throw new ReleaseError(
+      "npm 未登录，而这个终端不能交互登录。先执行 `npm login --registry=https://registry.npmjs.org/`，再重新运行发布",
+    );
+  }
   console.log("⚠️  npm 未登录，启动登录流程…\n");
   const login = sh("npm", ["login", `--registry=${REGISTRY}`], { allowFailure: true });
   if (login.status !== 0) throw new ReleaseError("npm 登录失败");
@@ -378,7 +383,6 @@ function assertShippedChangelog(targetVersion, options) {
 function checkCompat() {
   console.log("\n🔒 上游兼容性（pnpm run check:compat）…");
   sh("pnpm", ["run", "check:compat"]);
-  console.log("   ✅ 没有未解决的 compat issue");
 }
 
 function preflight(options, { checkDirty, targetVersion }) {
