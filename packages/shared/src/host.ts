@@ -89,6 +89,7 @@ export * from './host/platform/integration/front-app.js';
 export * from './host/platform/integration/tool-lookup.js';
 export * from './host/platform/integration/browsers.js';
 export * from './host/platform/integration/bridge.js';
+export * from './host/platform/integration/browser-process.js';
 export * from './host/runtime/fs-write.js';
 export * from './host/runtime/http.js';
 export * from './host/runtime/lease.js';

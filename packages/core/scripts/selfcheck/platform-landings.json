@@ -68,6 +68,25 @@
           "packages/shared/src/host/platform/integration/__tests__/browsers.test.ts"
         ]
       }
+    },
+    "host.integration.browser-process": {
+      "path": "packages/shared/src/host/platform/integration/browser-process.ts",
+      "platforms": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "tests": {
+        "darwin": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-process.test.ts"
+        ],
+        "linux": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-process.test.ts"
+        ],
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/browser-process.test.ts"
+        ]
+      }
     }
   },
   "ports": {},

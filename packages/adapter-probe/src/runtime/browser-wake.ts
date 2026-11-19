@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { BROWSER_SPECS, bridgeFixOf, browserInstallCandidates, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
+import { BROWSER_SPECS, bridgeFixOf, browserInstallCandidates, browserProcessOf, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
 import type { DesktopBrowserId, WakeBrowserReply } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 
 const BROWSER_IDS = BROWSER_SPECS.map((one) => one.id);
@@ -86,38 +86,10 @@ export function createDesktopBrowser(options: {
   }
 
   async function running(): Promise<DesktopBrowserId[]> {
-    if (platform === 'darwin' || platform === 'linux') {
-      const names = BROWSER_SPECS.map((spec) =>
-        quoteShellArgFor(platform === 'darwin' ? spec.macProcess : spec.linuxProcess, platform),
-      );
-      const result = await run(`pgrep -lx ${names.join(' ')}`, STATUS_TIMEOUT_MS);
-      const found: DesktopBrowserId[] = [];
-      for (const line of result.stdout.split('\n')) {
-        const match = /^\s*\d+\s+(.+?)\s*$/.exec(line);
-        const name = match?.[1];
-        if (name === undefined) continue;
-        const spec = BROWSER_SPECS.find(
-          (item) =>
-            item.macProcess === name || item.linuxProcess === name,
-        );
-        if (spec !== undefined && !found.includes(spec.id)) found.push(spec.id);
-      }
-      return found;
-    }
-    if (platform === 'win32') {
-      const result = await run('tasklist /FO CSV /NH', STATUS_TIMEOUT_MS);
-      const found: DesktopBrowserId[] = [];
-      for (const line of result.stdout.split('\n')) {
-        const name = /^"([^"]+)"/.exec(line)?.[1]?.toLowerCase();
-        if (name === 'chrome.exe') found.push('chrome');
-        if (name === 'msedge.exe') found.push('edge');
-        if (name === 'brave.exe') found.push('brave');
-        if (name === 'chromium.exe') found.push('chromium');
-        if (name === 'vivaldi.exe') found.push('vivaldi');
-      }
-      return [...new Set(found)];
-    }
-    return [];
+    const spec = browserProcessOf(hostOsOf(platform));
+    if (spec === undefined) return [];
+    const result = await run(spec.command, STATUS_TIMEOUT_MS);
+    return spec.idsOf(result.stdout);
   }
 
   async function daemonStatus(): Promise<'connected' | 'disconnected' | 'down' | 'unknown'> {
