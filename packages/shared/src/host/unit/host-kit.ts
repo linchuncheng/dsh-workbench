@@ -4,6 +4,7 @@ import type { UnitSeam } from '../seam/unit-seam.js';
 import { createFlowHost, type FlowHost } from '../flow/kit.js';
 import type { FlowAgentPort, FlowDataPort } from '../flow/types.js';
 import type { AiPort } from '../ai/port.js';
+import type { DraftStore } from '../drafts/draft-store.js';
 import { sessionIdOf, sessionWorkspace } from './tool-kit.js';
 
 /**
@@ -17,6 +18,7 @@ export interface HostKit {
   readonly surface: HostSurface;
   readonly seam?: UnitSeam | undefined;
   readonly ai?: AiPort | undefined;
+  readonly drafts?: DraftStore | undefined;
 }
 
 /**
@@ -27,7 +29,8 @@ export interface HostKit {
  * @param parts.agents 宿主的 agent 端口；没有就不支持流程里的 agent 节点。
  * @param parts.ai 模块用的模型入口；没有就等于这份运行时没有模型。
  * @param parts.data 模块读数据的窄口；没有就不支持流程里的 data 节点。
- * @returns flow / sessionIdOf / sessionWorkspace / libInstallCommand / surface，有门面时带上 seam，有模型时带上 ai。
+ * @param parts.drafts 会话草稿库；没有就不支持「把远端文件挂到本地再提交」那条路。
+ * @returns flow / sessionIdOf / sessionWorkspace / libInstallCommand / surface，有门面时带上 seam，有模型时带上 ai，有草稿库时带上 drafts。
  */
 export function createHostKit(parts: {
   readonly libInstallCommand: EnvSupplyPort['libInstallCommand'];
@@ -36,7 +39,16 @@ export function createHostKit(parts: {
   readonly agents?: FlowAgentPort | undefined;
   readonly ai?: AiPort | undefined;
   readonly data?: FlowDataPort | undefined;
+  readonly drafts?: DraftStore | undefined;
 }): HostKit {
+  const optional: {
+    seam?: UnitSeam;
+    ai?: AiPort;
+    drafts?: DraftStore;
+  } = {};
+  if (parts.seam !== undefined) optional.seam = parts.seam;
+  if (parts.ai !== undefined) optional.ai = parts.ai;
+  if (parts.drafts !== undefined) optional.drafts = parts.drafts;
   return {
     flow: createFlowHost({
       ...(parts.agents === undefined ? {} : { agents: parts.agents }),
@@ -47,7 +59,6 @@ export function createHostKit(parts: {
     sessionWorkspace,
     libInstallCommand: parts.libInstallCommand,
     surface: parts.surface,
-    ...(parts.seam === undefined ? {} : { seam: parts.seam }),
-    ...(parts.ai === undefined ? {} : { ai: parts.ai }),
+    ...optional,
   };
 }

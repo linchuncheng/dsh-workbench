@@ -25,6 +25,7 @@ import type {
   UnitMountResult,
   UnitSeam,
   UnitCall,
+  DraftStore,
 } from '@dsh-workbench/shared/host';
 import type { DataReader } from '@dsh-workbench/shared/host';
 import type { HostUnit } from './unit-registry';
@@ -301,6 +302,7 @@ export function mountUnits(
     commands?: UnitMountDeps['commands'];
     probe?: UnitMountDeps['probe'];
     store?: UnitMountDeps['store'];
+    drafts?: DraftStore;
     values?: UnitMountDeps['values'];
     surface?: HostSurface | undefined;
     seam?: Seam | undefined;
@@ -366,6 +368,7 @@ export function mountUnits(
       ...(deps.agents === undefined ? {} : { agents: deps.agents }),
       ...(deps.ai === undefined ? {} : { ai: deps.ai }),
       ...(deps.data === undefined ? {} : { data: unitData }),
+      ...(deps.drafts === undefined ? {} : { drafts: deps.drafts }),
     });
     const tools = deps.ctx.get('tools');
     const toolJournal: Array<() => void> = [];

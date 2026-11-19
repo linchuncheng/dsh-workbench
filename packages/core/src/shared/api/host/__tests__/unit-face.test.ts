@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createDraftStore } from '@dsh-workbench/shared/host';
 import type { DshToolDefinition, DshToolRegistry } from '@dsh-workbench/shared/host';
 import { mountUnits } from '@/kernel/host/mount-units';
 import type { UnitMountDeps } from '@dsh-workbench/shared/host';
@@ -35,6 +36,22 @@ describe('mountUnits', () => {
       onStep: () => {},
     });
     expect(result.status).toBe('ok');
+  });
+
+  it('drafts 从装配点原样交给模块 kit', () => {
+    const drafts = createDraftStore();
+    let seen: UnitMountDeps | undefined;
+    const unit = hostOf(manifest('drafts', { inject: [] }), (deps) => {
+      seen = deps;
+      return { routes: {}, registerTools: () => [] };
+    });
+    mountUnits([unit], {
+      ctx: ctxWith([]),
+      manifests: () => [unit.manifest],
+      drafts,
+    });
+    expect(seen?.drafts).toBe(drafts);
+    drafts.dispose();
   });
 
   it('硬依赖缺 → 跳过并记下缺哪个（不半挂）', () => {

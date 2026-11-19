@@ -37,7 +37,7 @@ import {
   type HostUnit,
 } from '@/kernel/host/unit-registry';
 import { bindRosterFacts } from '@/shared/api/host/unit-roster-facts';
-import { createWorkspaceStore, withLibRunners } from '@dsh-workbench/shared/host';
+import { createDraftStore, createWorkspaceStore, withLibRunners } from '@dsh-workbench/shared/host';
 import { CONFIG_SYNC_ROUTE } from '@/kernel/contract/config-sync';
 import { PROFILE_CREATE_ROUTE } from '@/kernel/contract/profile-create';
 import { SIDEBAR_EDITION_ROUTE } from '@/kernel/contract/sidebar-edition';
@@ -180,6 +180,11 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     return found === undefined ? undefined : { ...found, released: releasedOf(unit) };
   };
   const store = createWorkspaceStore({ logger: ctx.logger });
+  const drafts = createDraftStore();
+  ctx.effect(
+    () => () => drafts.dispose(),
+    `${PLUGIN_ID}: 卸载时把会话草稿目录清掉`,
+  );
   const unitsOfTool = (): ReturnType<typeof toolUnits> => toolUnits(liveManifests());
   const settings = mountWorkbenchSettings({ ctx, routes, root: workbenchRoot() });
   mountModuleModels({ ctx, routes });
@@ -275,6 +280,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
         ownedUnits: () => units.owned(),
         installable: () => installableUnitsOf(units),
         store,
+        drafts,
         data: adapters.data,
         libs: libRunners,
         git: adapters.git,

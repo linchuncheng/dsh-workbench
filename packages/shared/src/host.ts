@@ -49,6 +49,7 @@ export * from './host/data/recipe-rules.js';
 export * from './host/data/recipe.js';
 export * from './host/data/site.js';
 export * from './host/data/spec.js';
+export * from './host/drafts/draft-store.js';
 export * from './host/diy/diy-debug.js';
 export * from './host/diy/diy-preset.js';
 export * from './host/diy/diy-record.js';
