@@ -16,7 +16,7 @@ export function opencliCommandLine(
   command: string,
   argv: readonly string[],
   session: OpencliSession = 'persistent',
-  platform: NodeJS.Platform = process.platform,
+  platform?: NodeJS.Platform,
 ): string {
   return [
     quoteShellArgFor(command, platform),

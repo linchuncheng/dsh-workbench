@@ -174,6 +174,15 @@
       "tests": [
         "packages/adapter-runtime/src/data/__tests__/index.test.ts"
       ]
+    },
+    "host.integration.browser-read": {
+      "path": "packages/shared/src/host/platform/integration/browser-read.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/browser/__tests__/browser-read.test.ts"
+      ]
     }
   },
   "ports": {
@@ -196,46 +205,6 @@
       ],
       "tests": [
         "packages/adapter-probe/src/toolchain/__tests__/toolchain.test.ts"
-      ]
-    },
-    "packages/adapter-runtime/src/browser/browser-read.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/adapter-runtime/src/browser/__tests__/browser-read.test.ts"
-      ]
-    },
-    "packages/adapter-runtime/src/cli/opencli-runtime.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/adapter-runtime/src/cli/__tests__/opencli-runtime.test.ts"
-      ]
-    },
-    "packages/adapter-runtime/src/cli/opencli-window.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/adapter-runtime/src/cli/__tests__/opencli-window.test.ts"
-      ]
-    },
-    "packages/adapter-runtime/src/cli/opencli.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/adapter-runtime/src/cli/__tests__/opencli.test.ts"
       ]
     }
   },
@@ -277,7 +246,9 @@
       "packages/core/src/shared/api/host/__tests__/git-process.test.ts",
       "packages/adapter-probe/src/preflight/__tests__/preflight-route.test.ts",
       "packages/adapter-probe/src/preflight/__tests__/preflight.test.ts",
-      "packages/adapter-probe/src/install/__tests__/install-smoke.test.ts"
+      "packages/adapter-probe/src/install/__tests__/install-smoke.test.ts",
+      "packages/adapter-runtime/src/cli/__tests__/opencli-runtime.test.ts",
+      "packages/adapter-runtime/src/cli/__tests__/opencli.test.ts"
     ]
   },
   "exempt": {
