@@ -133,7 +133,7 @@ export const zh = {
   'panels.dep.degraded': '⚠ 可选依赖未安装',
   'panels.dep.unsupported': '⚠ 版本不一致',
   'panels.tab.modules': '面板配置',
-  'panels.tab.market': '模块市场',
+  'panels.tab.market': '工作台模块市场',
   'panels.browseMarket': '浏览模块市场',
   'panels.noneInstalled': '这些模块所需的插件尚未安装',
   'panels.noneInstalledHint': '安装完成后，这些模块会重新出现在这里；可选择要添加到看板的模块。',

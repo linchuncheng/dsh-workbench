@@ -20,7 +20,8 @@ import { MarketView } from '../rightbar/MarketView';
 import { pluginMarketOf, useRuntimeCapabilities } from '@/shared/hooks/use-runtime-capabilities';
 import type { TitleResolve } from '../rightbar/market-names';
 import { DiscoverPanel } from './DiscoverPanel';
-import { MarketHeader, type MarketTab } from './market-header';
+import { MarketHeader } from './market-header';
+import { useMarketTab } from './market-tab';
 import { useEnabledUnits } from '../rightbar/use-panels';
 import { useSettlingModules } from './use-settling-modules';
 import { useModuleVersions } from './use-module-versions';
@@ -116,7 +117,7 @@ function MarketPanel({
 
   const [adding, setAdding] = useState(false);
   const [acting, setActing] = useState(false);
-  const [tab, setTab] = useState<MarketTab>('installed');
+  const { tab, setTab } = useMarketTab();
   const { installedDetailOpen, discoverDetailOpen, setInstalledDetailOpen, setDiscoverDetailOpen, installedPanel, discoverPanel, trackInstalledScroll, trackDiscoverScroll } = useMarketPanelScroll();
   const openAddModule = useCallback((): void => setAdding(true), []);
 
