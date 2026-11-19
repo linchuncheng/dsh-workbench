@@ -195,11 +195,10 @@
       "tests": [
         "packages/adapter-probe/src/toolchain/__tests__/runtime-seed.test.ts"
       ]
-    }
-  },
-  "allow": {
-    "packages/adapter-probe/src/toolchain/toolchain.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+    },
+    "adapter.toolchain.toolchain": {
+      "path": "packages/adapter-probe/src/toolchain/toolchain.ts",
+      "reason": "adapter-probe 工具链端口：node/npm/pnpm 的 shim 与可执行名在 Windows 上是 cmd/exe，属专用适配器，不是业务分支",
       "platforms": [
         "win32"
       ],
@@ -208,6 +207,7 @@
       ]
     }
   },
+  "allow": {},
   "suites": {
     "self-update": [
       "packages/adapter-probe/src/self-update/__tests__/self-update.test.ts",
