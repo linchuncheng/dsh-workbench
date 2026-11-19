@@ -38,6 +38,17 @@
           "packages/shared/src/host/platform/integration/__tests__/front-app.test.ts"
         ]
       }
+    },
+    "host.integration.tool-lookup": {
+      "path": "packages/shared/src/host/platform/integration/tool-lookup.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": {
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/tool-lookup.test.ts"
+        ]
+      }
     }
   },
   "ports": {},
@@ -73,15 +84,6 @@
       ],
       "tests": [
         "packages/adapter-probe/src/preflight/__tests__/preflight.test.ts"
-      ]
-    },
-    "packages/adapter-probe/src/probe/probe-units.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/adapter-probe/src/probe/__tests__/probe-units.test.ts"
       ]
     },
     "packages/adapter-probe/src/runtime/browser-wake.ts": {
@@ -277,7 +279,8 @@
       "packages/core/src/shared/api/host/__tests__/windows-launcher.test.ts",
       "packages/shared/src/host/runtime/__tests__/fs-write.test.ts",
       "packages/shared/src/host/seam/__tests__/seam.test.ts",
-      "packages/adapter-runtime/src/cli/__tests__/command.test.ts"
+      "packages/adapter-runtime/src/cli/__tests__/command.test.ts",
+      "packages/adapter-probe/src/probe/__tests__/probe-units.test.ts"
     ]
   },
   "exempt": {
