@@ -18,6 +18,17 @@ const WINDOWS_FRONT_APP = [
 
 const BROWSER_APP = /chrome|chromium|edge|brave|vivaldi/i;
 
+const BROWSER_NAMES: Readonly<Record<HostOs, readonly string[]>> = {
+  darwin: ['Google Chrome', 'Chromium', 'Microsoft Edge', 'Brave Browser'],
+  win32: ['Google Chrome', 'Microsoft Edge'],
+  linux: ['google-chrome', 'chromium'],
+  other: [],
+};
+
+export function browserAppNamesOf(platform: HostOs): readonly string[] {
+  return BROWSER_NAMES[platform];
+}
+
 export function isBrowserAppName(app: string): boolean {
   return BROWSER_APP.test(app);
 }
