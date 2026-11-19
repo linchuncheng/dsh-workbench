@@ -2,8 +2,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { BROWSER_SPECS, bridgeFixOf, browserInstallCandidates, browserLaunchOf, browserProcessOf, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
+import { BROWSER_SPECS, bridgeFixOf, browserExecutableOf, browserInstallCandidates, browserLaunchOf, browserProcessOf, browserWakeSupportedOf, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
 import type { DesktopBrowserId, WakeBrowserReply } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
+import { currentHostOs } from './platform.js';
 
 const BROWSER_IDS = BROWSER_SPECS.map((one) => one.id);
 
@@ -39,7 +40,7 @@ export function createDesktopBrowser(options: {
   shortWaitMs?: number;
   pollMs?: number;
 }): DesktopBrowser {
-  const platform = options.platform ?? process.platform;
+  const platform = options.platform === undefined ? currentHostOs() : hostOsOf(options.platform);
   const home = options.home ?? homedir();
   const env = options.env ?? process.env;
   const exists = options.exists ?? existsSync;
@@ -55,8 +56,8 @@ export function createDesktopBrowser(options: {
     return { ok: result !== undefined && result.exitCode === 0 && !result.timedOut, stdout: result?.stdout ?? '' };
   }
 
-  function winExecutable(id: DesktopBrowserId): string | undefined {
-    return browserInstallCandidates(id, 'win32', { env, home }).find((path) => exists(path));
+  function executableOf(id: DesktopBrowserId): string | undefined {
+    return browserExecutableOf(id, platform, { env, home, exists });
   }
 
   function installed(): DesktopBrowserId[] {
@@ -129,7 +130,7 @@ export function createDesktopBrowser(options: {
   async function launch(id: DesktopBrowserId): Promise<boolean> {
     const spec = browserLaunchOf(id, hostOsOf(platform), {
       appPath: appPath(id),
-      executable: winExecutable(id),
+      executable: executableOf(id),
       linuxBinary: specOf(id).linuxBinary,
     });
     if (spec === undefined) return false;
@@ -151,7 +152,7 @@ export function createDesktopBrowser(options: {
   }
 
   async function wake(): Promise<WakeBrowserReply> {
-    if (platform !== 'darwin' && platform !== 'linux' && platform !== 'win32') return { status: 'unsupported' };
+    if (!browserWakeSupportedOf(platform)) return { status: 'unsupported' };
     const before = await daemonStatus();
     if (before === 'connected') {
       await observe();

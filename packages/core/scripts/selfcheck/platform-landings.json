@@ -202,17 +202,6 @@
         "packages/adapter-probe/src/preflight/__tests__/preflight.test.ts"
       ]
     },
-    "packages/adapter-probe/src/runtime/browser-wake.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/adapter-probe/src/runtime/__tests__/browser-wake.test.ts"
-      ]
-    },
     "packages/adapter-probe/src/toolchain/runtime-seed.ts": {
       "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
       "platforms": [
