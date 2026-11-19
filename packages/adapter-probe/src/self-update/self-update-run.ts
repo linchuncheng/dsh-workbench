@@ -453,7 +453,7 @@ async function waitOutInUse(
       if (Date.parse(now()) >= deadline) {
         return {
           ok: false,
-          detail: '升级需要先退出正在运行的 Desktop；等待超时仍未退出。请退出后再次点击「升级」。',
+          detail: '更新需要先退出正在运行的 Desktop；等待超时仍未退出。请退出后再次点击「更新」。',
         };
       }
       waited = true;

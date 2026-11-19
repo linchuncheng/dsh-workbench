@@ -48,9 +48,9 @@ Desktop 里还提供一个「打开浏览器」按钮，点击后会打开上次
 需要创建模块时，开启 DIY 模式，让 agent 现场创建并安装，不需要先学一套框架。
 细节见 <PagodaDocLinkToView view="guide/modules">面板与模块</PagodaDocLinkToView>。
 
-## 升级
+## 更新
 
-在模块市场找到「工作台」那一行，选择「升级」；提示「重启后生效」后，退出并重新打开 Desktop。
+在模块市场找到「工作台」那一行，选择「更新」；提示「重启后生效」后，退出并重新打开 Desktop。
 
 ## 下一步
 

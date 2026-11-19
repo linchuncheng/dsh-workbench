@@ -88,7 +88,7 @@ export interface UnitHostNeeds {
 }
 
 /**
- * 已装插件与源上最新版那一对，用来判该不该提示升级；latest 缺省表示还没查到。
+ * 已装插件与源上最新版那一对，用来判该不该提示更新；latest 缺省表示还没查到。
  */
 export interface PluginRelease {
   readonly installed: string;

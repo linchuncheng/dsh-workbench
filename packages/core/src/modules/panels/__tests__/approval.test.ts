@@ -117,8 +117,8 @@ describe('改面板：show / move / reset / follow 要问，hide 不问（可逆
   });
 });
 
-describe('装 / 升 / 卸模块与插件：八把写工具，各自说清目标', () => {
-  it('安装 / 升降供给 / 卸载说清动词与目标，reason 里带工具名（审计那半）', async () => {
+describe('装 / 更新 / 卸模块与插件：八把写工具，各自说清目标', () => {
+  it('安装 / 更新供给 / 卸载说清动词与目标，reason 里带工具名（审计那半）', async () => {
     const install = await approvalFor(
       { name: MODULES_INSTALL_TOOL, arguments: { id: 'issues' } },
       { writes: true, policy: panelsApproval },
@@ -129,13 +129,13 @@ describe('装 / 升 / 卸模块与插件：八把写工具，各自说清目标'
     expect(install?.kind).toBe('ask');
     expect(install?.kind === 'ask' ? install.reason : '').toContain(MODULES_INSTALL_TOOL);
     expect(install?.kind === 'ask' ? install.reason : '').not.toContain(update);
-    expect(update).toContain('升');
+    expect(update).toContain('更新');
     expect(update).toContain('issues');
     expect(uninstall).toContain('卸载');
     expect(uninstall).toContain('issues');
   });
 
-  it('升级共用依赖是另一句话（改的是这台机器上装的东西）', async () => {
+  it('更新共用依赖是另一句话（改的是这台机器上装的东西）', async () => {
     const upgrade = await zhOf({ name: MODULES_UPDATE_DEPENDENCY_TOOL, arguments: { id: 'shared' } });
 
     expect(upgrade).toContain('共用依赖');
@@ -482,11 +482,11 @@ describe('文案口径：说清是工作台的动作、目标是哪个模块 / �
     expect(placed).not.toContain('to the front');
   });
 
-  it('★ 升级工具与安装工具的话不一样（升 ≠ 装）', () => {
+  it('★ 更新工具与安装工具的话不一样（更新 ≠ 安装）', () => {
     const install = panelsApproval({ name: MODULES_INSTALL_TOOL, arguments: { id: 'inventory' } });
     const update = panelsApproval({ name: MODULES_UPDATE_TOOL, arguments: { id: 'inventory' } });
 
     expect(install?.kind === 'ask' ? install.question.zh : '').toContain('装');
-    expect(update?.kind === 'ask' ? update.question.zh : '').toContain('升');
+    expect(update?.kind === 'ask' ? update.question.zh : '').toContain('更新');
   });
 });

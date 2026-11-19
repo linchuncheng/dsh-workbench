@@ -629,7 +629,7 @@ describe('workbench_diy_publish · 审批', () => {
     expect(verdict?.kind).toBe('ask');
     if (verdict?.kind !== 'ask') return;
     expect(verdict.question.zh).toContain('只刷新');
-    expect(verdict.question.zh).toContain('不升级版本');
+    expect(verdict.question.zh).toContain('不更新版本');
     expect(verdict.reason).toContain('（元数据）');
   });
 

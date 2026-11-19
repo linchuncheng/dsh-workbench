@@ -61,14 +61,16 @@ const legacyMarketOpenTexts = [
   'Browse modules',
   'Choose modules',
 ];
-const legacyUpdateTexts = ['Update', '更新'];
+const legacyUpdateTexts = ['Upgrade', 'Update', '升级', '更新'];
 const marketOpenTexts = [
-  ...copyOf('panels.tab.market'),
-  ...copyOf('panels.browseMarket'),
-  ...legacyMarketOpenTexts,
+  ...new Set([
+    ...copyOf('panels.tab.market'),
+    ...copyOf('panels.browseMarket'),
+    ...legacyMarketOpenTexts,
+  ]),
 ];
 const marketInstalledTexts = copyOf('panels.market.tabInstalled');
-const workbenchUpdateTexts = [...copyOf('panels.market.update'), ...legacyUpdateTexts];
+const workbenchUpdateTexts = [...new Set([...copyOf('panels.market.update'), ...legacyUpdateTexts])];
 const selfUpdateReadyRe = copyPattern(['panels.market.selfUpdatePendingRestart']);
 const selfUpdateFailedRe = copyPattern([
   'panels.market.selfUpdateRetry',

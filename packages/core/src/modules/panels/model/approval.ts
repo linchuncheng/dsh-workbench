@@ -96,6 +96,14 @@ function askOf(reason: string, question: ApprovalDetail, fallback: ApprovalDetai
   return { kind: 'ask', reason, question, fallback };
 }
 
+function updateAsk(tool: string, id: string | undefined, noun: string, target: Pair): ApprovalVerdict {
+  return askOf(
+    `${tool} ${id ?? ''} updates ${noun} on this machine`,
+    pair(`会更新${target.zh}，允许吗？`, `it updates ${target.en}. Allow?`),
+    pair(`agent 想更新${target.zh}，允许吗？`, `The agent wants to update ${target.en}. Allow?`),
+  );
+}
+
 function textOf(raw: Record<string, unknown>, key: string): string {
   const value = raw[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -215,7 +223,7 @@ function publishVerdict(
         : `${found.name}@${found.version} → ${target}${found.registry === undefined ? '' : ` (${found.registry})`}`;
   const question = refresh
     ? pair(
-        `只刷新${label}在市集里的元数据（标题 / 作者 / 说明 / 标签 / 分类），不升级版本、不重新发布产物，允许吗？`,
+        `只刷新${label}在市集里的元数据（标题 / 作者 / 说明 / 标签 / 分类），不更新版本、不重新发布产物，允许吗？`,
         `Only refresh ${labelEn}'s market metadata (title, author, description, labels, category); no version bump, no artifacts. Allow?`,
       )
     : pair(copy.zh, copy.en);
@@ -380,8 +388,8 @@ export function approvalVerdict(
     case MODULES_INSTALL_TOOL:
     case MODULES_UPDATE_TOOL: {
       const install = call.name === MODULES_INSTALL_TOOL;
-      const verb = install ? '安装' : '升级';
-      const verbEn = install ? 'installs' : 'upgrades';
+      const verb = install ? '安装' : '更新';
+      const verbEn = install ? 'installs' : 'updates';
       return askOf(
         `${call.name} ${id ?? ''} changes the plugins and libraries a workbench module declares`,
         pair(
@@ -390,7 +398,7 @@ export function approvalVerdict(
         ),
         pair(
           `agent 想${verb}${workbenchModule(id).zh}需要的插件与库，允许吗？`,
-          `The agent wants to ${install ? 'install' : 'upgrade'} the plugins ${workbenchModule(id).en} declares. Allow?`,
+          `The agent wants to ${install ? 'install' : 'update'} the plugins ${workbenchModule(id).en} declares. Allow?`,
         ),
       );
     }
@@ -408,22 +416,10 @@ export function approvalVerdict(
         pair(`会把 [${spec}] 安装为工作台的模块包，允许吗？`, `it installs [${spec}] as a workbench module package. Allow?`),
         pair(`agent 想安装工作台的模块包 [${spec}]，允许吗？`, `The agent wants to install the workbench module package [${spec}]. Allow?`),
       );
-    case MODULES_UPDATE_DEPENDENCY_TOOL: {
-      const target = workbenchDependency(id);
-      return askOf(
-        `${MODULES_UPDATE_DEPENDENCY_TOOL} ${id ?? ''} upgrades a shared dependency on this machine`,
-        pair(`会升级${target.zh}，允许吗？`, `it upgrades ${target.en}. Allow?`),
-        pair(`agent 想升级${target.zh}，允许吗？`, `The agent wants to upgrade ${target.en}. Allow?`),
-      );
-    }
-    case MODULES_UPDATE_PLUGIN_TOOL: {
-      const target = workbenchPlugin(plugin);
-      return askOf(
-        `${MODULES_UPDATE_PLUGIN_TOOL} ${plugin ?? ''} updates a plugin on this machine`,
-        pair(`会更新${target.zh}，允许吗？`, `it updates ${target.en}. Allow?`),
-        pair(`agent 想更新${target.zh}，允许吗？`, `The agent wants to update ${target.en}. Allow?`),
-      );
-    }
+    case MODULES_UPDATE_DEPENDENCY_TOOL:
+      return updateAsk(MODULES_UPDATE_DEPENDENCY_TOOL, id, 'a shared dependency', workbenchDependency(id));
+    case MODULES_UPDATE_PLUGIN_TOOL:
+      return updateAsk(MODULES_UPDATE_PLUGIN_TOOL, plugin, 'a plugin', workbenchPlugin(plugin));
     case MODULES_UNINSTALL_PLUGIN_TOOL: {
       const target = workbenchPlugin(plugin);
       return askOf(

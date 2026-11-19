@@ -44,7 +44,7 @@ function stateOf(entry: MarketEntry): string {
       return '未安装';
     case 'outdated':
       return depOnlyOutdated(entry.capability)
-        ? `已安装，可用（依赖可升级：${entry.capability.detail ?? ''}）`
+        ? `已安装，可用（依赖可更新：${entry.capability.detail ?? ''}）`
         : `已安装，版本较旧（${entry.capability.detail}）`;
     case 'degraded':
       return `可选依赖未安装（${entry.capability.detail}）`;
@@ -94,7 +94,7 @@ function render(entries: readonly MarketEntry[], shared: readonly SharedDependen
         (dep.usedBy.length === 0 ? '' : ` · 供 ${dep.usedBy.join('、')} 使用`),
     )
     .join('\n');
-  return `${modules}\n\n共用依赖（只能升级）：\n${deps}`;
+  return `${modules}\n\n共用依赖（只能更新）：\n${deps}`;
 }
 
 const REMOVE_BLOCKED = new Set(['not-removable', 'management-required', 'stop-profile', 'bundle-in-use']);
@@ -314,7 +314,7 @@ export function registerMarketTools(
 
   const updateDependencyTool: DshToolDefinition = {
     name: MODULES_UPDATE_DEPENDENCY_TOOL,
-    description: '升级共用依赖（工作台自用的那份，如 plugin:demo）；只支持升级，按依赖 id 指定。',
+    description: '更新共用依赖（工作台自用的那份，如 plugin:demo）；只支持更新，按依赖 id 指定。',
     parameters: {
       type: 'object',
       properties: {

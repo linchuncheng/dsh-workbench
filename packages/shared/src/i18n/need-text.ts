@@ -3,7 +3,7 @@ export const zhNeedText = {
   'env.need.bin.hint': '请先把这条命令加入 PATH，然后重试。',
   'env.need.extension.missing': '这个模块需要的插件未安装',
   'env.need.extension.outdated': '这个模块需要的插件版本过旧',
-  'env.need.extension.hint': '安装或升级完成后点击重试，不影响其他模块。',
+  'env.need.extension.hint': '安装或更新完成后点击重试，不影响其他模块。',
   'env.need.lib.missing': '这个模块需要的共用依赖未安装',
   'env.need.lib.outdated': '这个模块需要的共用依赖版本过旧',
   'env.need.lib.unsatisfied': '这个模块需要的共用依赖版本不匹配',

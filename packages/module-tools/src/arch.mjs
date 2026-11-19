@@ -157,7 +157,7 @@ const protocolsStayCanonical = createRule({
   title: '模块不本地重声明外壳协议',
   hint:
     '协议类型只有一份：`@dsh-workbench/core/contract`。删掉本地 interface / type，改成 `import type`；' +
-    '本地重声明会让外壳升级时模块静默对不上。',
+    '本地重声明会让外壳更新时模块静默对不上。',
   run(ctx) {
     const findings = [];
     for (const record of ctx.records) {

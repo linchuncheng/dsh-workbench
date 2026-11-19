@@ -169,7 +169,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'outdated-release',
-      label: '依赖有新版本（模块版本没变，行上给「升级依赖」）',
+      label: '依赖有新版本（模块版本没变，行上给「更新依赖」）',
       manifests: [mine],
       capabilities: probe(id, 'outdated', {
         plugins: [

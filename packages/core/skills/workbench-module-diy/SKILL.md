@@ -96,7 +96,7 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 外加从管理族借来的七把：`panels_hide`、`modules_list`、`modules_install`、
 `modules_install_bundle`、`modules_uninstall`、`long_tasks_list`、`long_tasks_stop`。
 
-`manage` 包在 DIY 会话里**不提供**，也不要试着开启。升级模块、更换实现、安装插件、修改模块来源、调整面板顺序
+`manage` 包在 DIY 会话里**不提供**，也不要试着开启。更新模块、更换实现、安装插件、修改模块来源、调整面板顺序
 这些不在这个会话里做，回普通会话。
 
 审批口径一句话：**「加自己的、能撤的」不问；「引外来的、删掉的、占屏的、发出去的」问。**
