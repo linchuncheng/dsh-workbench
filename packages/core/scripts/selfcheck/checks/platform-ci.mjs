@@ -357,6 +357,7 @@ function manifestFindings(sites, workflowsList) {
   const declared = declaredEntriesOf(manifest);
   const declaredTests = declaredTestsOf(manifest);
   for (const [rel, os] of sites) {
+    if (Object.hasOwn(manifest.exempt ?? {}, rel)) continue;
     const entry = declared[rel];
     if (entry === undefined || !isRegisteredPlatformPath(rel, manifest)) {
       findings.push(`${rel} 是平台调用点，但登记表里没有它（或只写了 id 没指到 path）`);

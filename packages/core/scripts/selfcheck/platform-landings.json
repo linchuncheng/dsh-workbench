@@ -290,15 +290,6 @@
       "tests": [
         "packages/adapter-runtime/src/data/__tests__/index.test.ts"
       ]
-    },
-    "packages/module-tools/src/checks/standalone.mjs": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/module-tools/src/__tests__/standalone-signals.test.mjs"
-      ]
     }
   },
   "suites": {
@@ -342,6 +333,7 @@
   "exempt": {
     "packages/shared/src/contract/protocol/platform.ts": "HostOs / HostSurface 的类型声明，不是运行时平台判断",
     "packages/core/src/kernel/contract/platform.ts": "内核侧平台类型转出口，不是运行时判断",
-    "packages/core/src/shared/api/platform/contract.ts": "浏览器侧平台类型转出口，不是运行时判断"
+    "packages/core/src/shared/api/platform/contract.ts": "浏览器侧平台类型转出口，不是运行时判断",
+    "packages/module-tools/src/checks/standalone.mjs": "module-tools 的独立构建 CLI 只在收尾时按宿主注册可捕获的信号；这是开发工具的信号表，不是产品运行时平台分支"
   }
 }
