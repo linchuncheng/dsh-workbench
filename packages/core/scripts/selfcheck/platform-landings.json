@@ -337,7 +337,11 @@
       "packages/shared/src/host/runtime/__tests__/fs-write.test.ts",
       "packages/shared/src/host/seam/__tests__/seam.test.ts",
       "packages/adapter-runtime/src/cli/__tests__/command.test.ts",
-      "packages/adapter-probe/src/probe/__tests__/probe-units.test.ts"
+      "packages/adapter-probe/src/probe/__tests__/probe-units.test.ts",
+      "packages/adapter-probe/src/probe/__tests__/probe-units-release.test.ts",
+      "packages/adapter-supply/src/__tests__/package-route.test.ts",
+      "packages/adapter-supply/src/__tests__/plugin-source.test.ts",
+      "packages/adapters-default/src/__tests__/seed.test.ts"
     ]
   },
   "exempt": {

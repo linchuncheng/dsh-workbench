@@ -45,13 +45,14 @@ function step(payload: Record<string, unknown> | undefined, extra: Partial<ActSt
 
 const backgroundLine = (command: string, argv: readonly string[]): string =>
   [quoteShellArg(command), ...argv.map(quoteShellArg)].join(' ');
+const withoutCallOperator = (line: string): string => line.replace(/^& /u, '');
 
 describe('actBrowser：把子命令原样挂到 opencli browser <会话> 上', () => {
   it('★★ 参数各自引号、背景前缀与 --window background 都带上，超时默认 15 秒', async () => {
     const rig = fakeShell([{ stdout: 'noise {"clicked":true} tail' }]);
     const got = await actBrowser(rig.seam, 'opencli', 'workbench', ['click', '.wb-cardOpen'], undefined, { line: backgroundLine });
 
-    expect(rig.lines[0]).toBe(
+    expect(withoutCallOperator(rig.lines[0]!)).toBe(
       "'opencli' 'browser' 'workbench' 'click' '.wb-cardOpen' '--window' 'background'",
     );
     expect(rig.timeouts[0]).toBe(ACT_TIMEOUT_MS);

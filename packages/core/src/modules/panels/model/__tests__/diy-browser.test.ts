@@ -45,6 +45,8 @@ function fakeShell(steps: readonly Step[]) {
   return { shell: shell as unknown as DshShell, seam: fakeSeamOf(shell as unknown as DshShell), lines, envs };
 }
 
+const withoutCallOperator = (line: string): string => line.replace(/^& /u, '');
+
 describe('跑一条 opencli：argv 原样交给执行缝，窗口模式钉在 env 上', () => {
   it('★★ 每个参数各自引号，会话与子命令一个不改', async () => {
     const rig = fakeShell([{ stdout: 'ok' }]);
@@ -169,7 +171,7 @@ describe('抠 JSON 与那一页的握手', () => {
     const rig = fakeShell([{ stdout: 'ok' }]);
 
     expect(await writeShotsDir(rig.seam, '/w/demo/shots')).toBe(true);
-    expect(rig.lines[0]).toBe("'mkdir' '-p' '/w/demo/shots'");
+    expect(withoutCallOperator(rig.lines[0]!)).toBe("'mkdir' '-p' '/w/demo/shots'");
   });
 
   it('★ 卡锚点是外壳盖的那一个（模块自己写的卡壳也认）', () => {
@@ -209,7 +211,7 @@ describe('会话方言归命令面，外壳只给原始 argv', () => {
   it('★★ plainLine 不自己加 --session：方言由适配器的命令面决定', () => {
     const line = plainLine('opencli', ['browser', 'Record', 'eval', '1+1', '--window', 'background']);
 
-    expect(line).toBe("'opencli' 'browser' 'Record' 'eval' '1+1' '--window' 'background'");
+    expect(withoutCallOperator(line)).toBe("'opencli' 'browser' 'Record' 'eval' '1+1' '--window' 'background'");
     expect(line).not.toContain('--session');
   });
 });

@@ -301,6 +301,12 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
     const resolved = npm();
 
     if (!resolved.ok) throw new Error("应该解析得出");
+    if (process.platform === 'win32') {
+      expect(resolved.line).toContain('New-Item -ItemType Directory');
+      expect(resolved.line).toContain("pnpm add --dir");
+      expect(resolved.line).toContain('-ItemType Junction');
+      return;
+    }
     expect(resolved.line).toBe(
       [
         `mkdir -p '${PREFIX}'`,
@@ -310,8 +316,8 @@ describe("resolvePluginSource：npm（装进工作台自己的隔离运行时）
         `mkdir -p '${PEER_PARENT}'`,
         `rm -rf '${PEER_DIR}' && ln -s '${PEER_TARGET}' '${PEER_DIR}'`,
         "'opencli' plugin uninstall 'demo'",
-        `NPM_CONFIG_REGISTRY='${REGISTRY}' 'opencli' plugin install '${INSTALLED_DIR}'`,
-      ].join(" && "),
+        `NPM_CONFIG_REGISTRY='${REGISTRY}' 'opencli' plugin install '${path.join(PREFIX, 'node_modules', 'opencli-plugin-demo')}'`,
+      ].join(' && '),
     );
   });
 

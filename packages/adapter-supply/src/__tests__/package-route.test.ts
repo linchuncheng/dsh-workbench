@@ -233,7 +233,7 @@ describe('插件的安装命令（复用 plugin-source 那两条既有分支）'
 
     if (!plan.ok) throw new Error('这条该装得上');
     expect(plan.steps[0]).toEqual({ kind: 'mkdir', path: PREFIX });
-    expect(plan.line.startsWith(`mkdir -p '${PREFIX}' && rm -rf `)).toBe(true);
+    expect(plan.line.startsWith(process.platform === 'win32' ? 'New-Item -ItemType Directory' : `mkdir -p '${PREFIX}' && rm -rf `)).toBe(true);
     expect(plan.line).toContain(`&& pnpm add --dir '${PREFIX}'`);
   });
 
