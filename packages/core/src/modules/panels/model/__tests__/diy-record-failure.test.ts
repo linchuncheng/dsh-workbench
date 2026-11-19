@@ -40,7 +40,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
 
     await expect(
       built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL2, doing: '发布' }, rig.diyExec()),
-    ).rejects.toThrow('开不了录制窗');
+    ).rejects.toThrow('无法打开录制窗口');
     expect(built.record.live(Date.now())).toBeNull();
   });
 
@@ -60,7 +60,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
 
     await expect(
       built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL2, doing: '发布' }, rig.diyExec()),
-    ).rejects.toThrow('浮条注入失败');
+    ).rejects.toThrow('录制条注入失败');
     expect(built.record.live(Date.now())).toBeNull();
   });
 
@@ -99,7 +99,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
     });
 
     const early = (await first.tool(DIY_RECORD_READ_TOOL).execute({}, rig.diyExec())) as { text: string; phase: string };
-    expect(early.text).toContain('还没按');
+    expect(early.text).toContain('尚未开始录制');
     expect(early.phase).toBe('armed');
 
     const recording = heldStore(null);
@@ -119,7 +119,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
       phase: string;
       captureLines: number;
     };
-    expect(mid.text).toContain('还在录');
+    expect(mid.text).toContain('录制中');
     expect(mid.phase).toBe('recording');
     expect(mid.captureLines).toBe(0);
     expect(recording.live(Date.now())?.t0).toBe(7);
@@ -169,7 +169,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
     expect(out.noBody).toBe(true);
     expect(out.nav).toBe(true);
     expect(out.text).toContain('（捕获 · 入参 无');
-    expect(out.text).toContain('导航过');
+    expect(out.text).toContain('页面发生过导航');
   });
 
   it('★★ stop 收标签兜底：列表里没有可用的就退到 close；连它都没成 ⇒ 话里直说"他自己关一下"', async () => {
@@ -195,7 +195,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
 
     expect(out.cleaned.capture).toBe(true);
     expect(out.cleaned.tab).toBe(false);
-    expect(out.text).toContain('该标签未关闭');
+    expect(out.text).toContain('该标签页未关闭');
     expect(built.commands.some((one) => one.includes("'close'"))).toBe(true);
   });
 
@@ -222,7 +222,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
     const design = { datasource: { read: 'https://inventory.example.com/api/env/list' } };
     writeFileSync(join(dir, 'design.json'), JSON.stringify(design));
 
-    expect(foreignDomainText(design, 'https://evil.example.com/env')).toContain('不是一个域');
+    expect(foreignDomainText(design, 'https://evil.example.com/env')).toContain('不在同一个域');
     expect(foreignDomainText(design, 'https://inventory.example.com/env')).toBe('');
 
     await expect(
@@ -230,7 +230,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
         { unit: 'demo', url: 'https://evil.example.com/env', doing: '发布' },
         rig.diyExec(),
       ),
-    ).rejects.toThrow('不是一个域');
+    ).rejects.toThrow('不在同一个域');
     expect(built.commands).toHaveLength(0);
     expect(built.record.live(Date.now())).toBeNull();
   });
@@ -294,7 +294,7 @@ describe('录制交接：半路失败与实话（每一档都单独说）', () =
 
     expect(out.phase).toBe('recording');
     expect(out.timedOut).toBe(true);
-    expect(out.text).toContain('还在录');
+    expect(out.text).toContain('录制中');
     expect(record.live(Date.now())?.phase).toBe('recording');
     const queued = takeHeldNotices('s1');
     expect(queued).toHaveLength(1);

@@ -17,7 +17,7 @@ describe('录制那一档：已经活着的一场录制，再 prepare 连问都�
 
     expect(policy(call('s1'))).toEqual({
       kind: 'deny',
-      reason: expect.stringContaining('你这个会话已经持有一场录制'),
+      reason: expect.stringContaining('本会话已有一场录制'),
     });
     expect(await approvalFor(call('s1'), { writes: true, policy })).toEqual({
       kind: 'deny',
@@ -31,7 +31,7 @@ describe('录制那一档：已经活着的一场录制，再 prepare 连问都�
 
     const verdict = policy(call('s9'));
     expect(verdict?.kind).toBe('deny');
-    expect(verdict?.kind === 'deny' ? verdict.reason : '').toContain('另一场录制还占着（s1）');
+    expect(verdict?.kind === 'deny' ? verdict.reason : '').toContain('另一场录制尚未结束（s1）');
   });
 
   it('★ 完全权限（skipAsk）也不许把它问回来：这是"跑不成"，不是"要不要问"', async () => {
@@ -40,7 +40,7 @@ describe('录制那一档：已经活着的一场录制，再 prepare 连问都�
 
     expect(await approvalFor(call('s1'), { writes: true, policy, skipAsk: true })).toEqual({
       kind: 'deny',
-      reason: expect.stringContaining('已经持有一场录制'),
+      reason: expect.stringContaining('已有一场录制'),
     });
   });
 

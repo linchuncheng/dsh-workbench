@@ -123,21 +123,21 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
   });
 
   it('★ 那段话：还没按开始 / 还在录 / 录完一条都没有 —— 分档说清', () => {
-    expect(renderRecordRead(facts({ phase: 'armed' }))).toContain('还没按');
-    expect(renderRecordRead(facts({ phase: 'recording', rows: listRowsOf([POST()], null), hookCaught: 1 }))).toContain('还在录');
+    expect(renderRecordRead(facts({ phase: 'armed' }))).toContain('尚未开始录制');
+    expect(renderRecordRead(facts({ phase: 'recording', rows: listRowsOf([POST()], null), hookCaught: 1 }))).toContain('录制中');
     const bothZero = renderRecordRead(facts());
-    expect(bothZero).toContain('一条请求都没抓到');
+    expect(bothZero).toContain('没有捕获到任何请求');
     expect(bothZero).toContain('页面钩子 0 条');
-    expect(bothZero).toContain('落在这个时间段里 0 条');
-    expect(bothZero).toContain('不是筛掉的');
-    expect(renderRecordRead(facts({ rows: listRowsOf([POST()], null), capturedLines: 4, armed: false }))).toContain('还没有录制条');
+    expect(bothZero).toContain('在该时间段内 0 条');
+    expect(bothZero).toContain('并非经过筛选');
+    expect(renderRecordRead(facts({ rows: listRowsOf([POST()], null), capturedLines: 4, armed: false }))).toContain('没有录制条');
   });
 
   it('★★ 清单正文：逐条带序号与 key、⭐ 标出来（正文后面不再跟一段解释）', () => {
     const rows = listRowsOf([GET(), POST()], null);
     const text = renderRecordRead(facts({ rows, merged: 2, hookCaught: 1, capturedInSegment: 1 }));
 
-    expect(text).toContain('录完了 · 2 条（⭐ 1）');
+    expect(text).toContain('录制完成 · 2 条（⭐ 1）');
     expect(text).toContain(`· [0] ⭐ POST ${URL}/api/publish`);
     expect(text).toContain(`· [1]   GET ${URL}/api/list`);
     expect(text).toContain('入参 有');
@@ -158,7 +158,7 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
     );
 
     expect(rows).toHaveLength(1);
-    expect(text).toContain('录完了 · 20 条（⭐ 1）');
+    expect(text).toContain('录制完成 · 20 条（⭐ 1）');
     expect(text).not.toContain('一条都没删');
     expect(text).not.toContain('符合筛选');
     expect(text).not.toContain('是筛掉了，不是钩子没工作');
@@ -167,9 +167,9 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
   });
 
   it('★ 会话捕获那一轮成没成，如实报（fail / 还没回 都别装成"没抓到"）', () => {
-    expect(renderRecordRead(facts({ captureRound: 'fail' }))).toContain('会话捕获最近一轮没跑成');
-    expect(renderRecordRead(facts({ captureRound: '' }))).toContain('还没回过一轮');
-    expect(renderRecordRead(facts({ captureRound: 'ok' }))).not.toContain('没跑成');
+    expect(renderRecordRead(facts({ captureRound: 'fail' }))).toContain('会话捕获最近一轮未成功');
+    expect(renderRecordRead(facts({ captureRound: '' }))).toContain('尚未返回第一轮结果');
+    expect(renderRecordRead(facts({ captureRound: 'ok' }))).not.toContain('未成功');
   });
 
   it('★★ 清单很长时 ⭐ 必须被画出来（只取尾部会把"像写的那一条"切掉）', () => {
@@ -186,16 +186,16 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
 
   it('★ 没顶到行数帽却仍被截：说清是"这一读被输出上限截了"，别报成两万行', () => {
     const text = renderRecordRead(facts({ capturedTruncated: true, capturedTotalLines: 46, capturedLines: 20 }));
-    expect(text).toContain('一共落了 46 行');
-    expect(text).toContain('没顶到 20000 行那顶帽');
-    expect(text).toContain('这一读本身被输出上限截了');
+    expect(text).toContain('共写入 46 行');
+    expect(text).toContain('未达到 20000 行上限');
+    expect(text).toContain('被截断的是本次读取的输出');
   });
 
   it('★★ 抬头就一行：条数 + ⭐ 几（钩子 / 捕获的明细不再画 —— 那是 agent 不看的解释）', () => {
     const one = listRowsOf([POST()], null);
     const text = renderRecordRead(facts({ rows: one, hookCaught: 0, capturedLines: 1, capturedInSegment: 1 }));
 
-    expect(text.split('\n')[0]).toBe('录完了 · 1 条（⭐ 1）');
+    expect(text.split('\n')[0]).toBe('录制完成 · 1 条（⭐ 1）');
     expect(text).not.toContain('页面钩子');
     expect(text).not.toContain('合并去重后');
     expect(text).not.toContain('⭐ 都列上');
@@ -206,23 +206,23 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
       facts({ capturedTotalLines: 5000, capturedTruncated: true, capturedTailLimit: 2000 }),
     );
 
-    expect(truncated).toContain('一共落了 5000 行');
-    expect(truncated).toContain('只解析了最后 2000 行');
-    expect(truncated).toContain('只对最后这段成立');
-    expect(truncated).not.toContain('一条都没落');
-    expect(truncated).not.toContain('不是筛掉的');
-    expect(truncated).toContain('但捕获文件被截过');
+    expect(truncated).toContain('共写入 5000 行');
+    expect(truncated).toContain('只解析最后 2000 行');
+    expect(truncated).toContain('仅覆盖这段');
+    expect(truncated).not.toContain('未写入任何条目');
+    expect(truncated).not.toContain('并非经过筛选');
+    expect(truncated).toContain('捕获文件被截断');
 
     const whole = renderRecordRead(facts({ capturedTotalLines: 12 }));
-    expect(whole).not.toContain('只解析了最后');
-    expect(whole).toContain('不是筛掉的');
+    expect(whole).not.toContain('只解析最后');
+    expect(whole).toContain('并非经过筛选');
   });
 
   it('★ 缓冲丢了 / 导航过 / 一行都没落 —— 三档如实说', () => {
     const text = renderRecordRead(facts({ rows: listRowsOf([POST()], null), dropped: 2, nav: true }));
-    expect(text).toContain('最早丢了 2 条');
-    expect(text).toContain('导航过');
-    expect(text).toContain('会话捕获一条都没落');
+    expect(text).toContain('最早的 2 条被丢弃');
+    expect(text).toContain('页面发生过导航');
+    expect(text).toContain('会话捕获未写入任何条目');
   });
 
   it('★★ detail 那一拍：入参 / 出参 / 请求头 / 截断都写出来；没找到就说清有哪几条路', () => {
@@ -252,7 +252,7 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
     expect(hit).toContain('{"env":"test"}');
     expect(hit).toContain('出参（response body，原长 11 字节）：');
     expect(hit).toContain('请求头（可能含凭据');
-    expect(hit).not.toContain('没找到这一条');
+    expect(hit).not.toContain('未找到这一条');
 
     const cut = renderRecordDetail({
       found: true,
@@ -276,7 +276,7 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
     });
     expect(cut).toContain('这里截到 10');
     expect(cut).toContain('字符（没给 body_full_size');
-    expect(cut).toContain('出参（response body）：没有');
+    expect(cut).toContain('出参（response body）：无');
 
     const miss = renderRecordDetail({
       found: false,
@@ -298,8 +298,8 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
       maxBytes: 60000,
       note: '「POST nope」既不在快照原文里，也不在钩子那一份里',
     });
-    expect(miss).toContain('没找到这一条');
-    expect(miss).toContain('复制成 curl');
+    expect(miss).toContain('未找到这一条');
+    expect(miss).toContain('复制为 curl');
   });
 
   it('★★ 同一个 key 跨轮重名：明说重名几次（要 at 才钉得住是哪一次）', () => {
@@ -324,8 +324,8 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
       note: '',
     });
 
-    expect(text).toContain('这个 key 在这一场的原文里出现 3 次');
-    expect(text).toContain('带上清单里那一行的 at');
+    expect(text).toContain('该 key 在本场原文中出现 3 次');
+    expect(text).toContain('带上清单中该行的 at');
   });
 
   it('★ 那条写回包还没到（status 0）：抬头如实写，别让人读成"状态码 0"', () => {
@@ -350,9 +350,9 @@ describe('录制交接：清单一条都不删、原文按 key 取（纯函数�
       note: '',
     });
 
-    expect(text).toContain('回包还没到（status 0）');
+    expect(text).toContain('响应尚未返回（status 0）');
     expect(text).toContain('入参（request body，原长 18 字节）');
-    expect(text).toContain('出参（response body）：没有');
+    expect(text).toContain('出参（response body）：无');
   });
 
   it('★ prepare 那一拍只回一句（2026-10-20 用户定的：别把浮条那三拍再抄一遍）', () => {

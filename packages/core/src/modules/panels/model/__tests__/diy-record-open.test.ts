@@ -125,14 +125,14 @@ describe('开录制那一页：开完必须核地址，核不过就回落到 ope
     );
     expect(out.ok).toBe(false);
     expect(out.at).toBe('about:blank');
-    expect(out.why).toContain('没开起来');
+    expect(out.why).toContain('未能打开');
   });
 
   it('★ `tab new` 本身报错 ⇒ ok:false，说清是开不了窗', async () => {
     const seen: string[] = [];
     const out = await call(planShellOf([{}, { stdout: '[]' }, { stdout: '', stderr: 'no such window', exitCode: 1 }], seen));
     expect(out.ok).toBe(false);
-    expect(out.why).toContain('开不了录制窗');
+    expect(out.why).toContain('无法打开录制窗口');
   });
 
   it('★ 开之前先收这条会话的残留（否则新页会开进旧窗、不顶前台）', async () => {

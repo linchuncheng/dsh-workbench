@@ -91,7 +91,7 @@ describe('用户自己按的三个键：给 agent 一条 notice，状态那一�
     expect(message.role).toBe('user');
     expect(message.source.kind).toBe('workbench-diy-record');
     expect(message.source.form).toBe('notice');
-    expect(message.source.summary).toContain('用户按了看结果');
+    expect(message.source.summary).toContain('查看结果');
     expect(message.content[0]?.text).toContain('workbench_diy_record_read');
     expect(takeHeldNotices('s1')).toHaveLength(0);
   });
@@ -166,6 +166,6 @@ describe('用户自己按的三个键：给 agent 一条 notice，状态那一�
           shotsSeen: 0,
         }),
       ),
-    ).toContain('这一场收了');
+    ).toContain('这一场已结束');
   });
 });

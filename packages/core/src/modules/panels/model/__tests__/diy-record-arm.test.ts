@@ -112,7 +112,7 @@ describe('注入失败说清是哪一种', () => {
 
   it('★ 页面没回话 ⇒ 有 code 就报 code', () => {
     expect(armFailureText({ raw: '', code: 'no-bar', part: 4, parts: 5 })).toContain('no-bar');
-    expect(armFailureText({ raw: '', code: '', part: 1, parts: 5 })).toContain('页面没有回话');
+    expect(armFailureText({ raw: '', code: '', part: 1, parts: 5 })).toContain('页面没有返回结果');
   });
 
   it('★ 其它原文 ⇒ 原样带上，并给下一步', () => {

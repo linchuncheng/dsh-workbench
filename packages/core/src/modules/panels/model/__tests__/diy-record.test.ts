@@ -83,7 +83,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
     expect(out.ok).toBe(false);
     expect(out.code).toBe('materials-missing');
     expect(out.missing).toContain('必填信息');
-    expect(out.text).toContain('先别结束');
+    expect(out.text).toContain('暂不结束');
     expect(record.live(Date.now())).not.toBeNull();
   });
 
@@ -196,7 +196,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
 
     await expect(
       built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL, doing: '发布' }, rig.diyExec()),
-    ).rejects.toThrow('没有就绪');
+    ).rejects.toThrow('未就绪');
   });
 
   it('★★ 开录前先擦掉上一场留在 sessionStorage 里的账：不然新窗口一开就是「录制完成」', async () => {
@@ -231,7 +231,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
 
     await expect(
       built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL, doing: '发布' }, rig.diyExec('s9')),
-    ).rejects.toThrow('另一场录制还占着');
+    ).rejects.toThrow('另一场录制尚未结束');
   });
 
   it('★ 没给 url 当场拒（不猜是哪个站点）', async () => {
@@ -313,7 +313,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
 
     const out = (await built.tool(DIY_RECORD_READ_TOOL).execute({}, rig.diyExec())) as { text: string; ok: boolean };
     expect(out.ok).toBe(false);
-    expect(out.text).toContain('还没有录制条');
+    expect(out.text).toContain('没有录制条');
   });
 
   it('★ read：没有那一场时当场说清（先 prepare）', async () => {
@@ -366,7 +366,7 @@ describe('录制交接：prepare / read / stop 三把', () => {
     expect(out.cleaned).toEqual({ tab: true, capture: true, hook: true });
     expect(out.text).toContain('原文保留在');
     expect(out.text).toContain('不要重放');
-    expect(out.text).toContain('这段原文可以直接写入');
+    expect(out.text).toContain('本段原文可以直接写入');
     expect(record.live(Date.now())).toBeNull();
     expect(built.commands.some((one) => one.includes('tab') && one.includes('close'))).toBe(true);
   });
@@ -421,8 +421,8 @@ describe('录制交接：prepare / read / stop 三把', () => {
 
     const out = (await built.tool(DIY_RECORD_STOP_TOOL).execute({ force: true, forceWhy: '夹具里没有表单快照' }, rig.diyExec())) as { text: string };
 
-    expect(out.text).toContain('页面钩子已随窗口关闭，条数读不到了');
-    expect(out.text).toContain('录制窗口的标签已关闭');
+    expect(out.text).toContain('页面钩子已随窗口关闭，无法读取条数');
+    expect(out.text).toContain('录制窗口的标签页已关闭');
     expect(built.commands.some((one) => one.includes("'eval'"))).toBe(false);
   });
 });
@@ -524,8 +524,8 @@ describe('录制交接：detail 那一拍（清单 → 挑一条 → 原文）',
     )) as { found: boolean; text: string };
 
     expect(out.found).toBe(false);
-    expect(out.text).toContain('没找到这一条');
-    expect(out.text).toContain('复制成 curl');
+    expect(out.text).toContain('未找到这一条');
+    expect(out.text).toContain('复制为 curl');
   });
 
   it('★★ 给 key 且原文里有 ⇒ 一条 eval 都不发（收工后不许把空白标签招回来）', async () => {

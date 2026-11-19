@@ -95,11 +95,10 @@ export function registerRecordTools(
   const prepareTool: DshToolDefinition = {
     name: DIY_RECORD_PREPARE_TOOL,
     description:
-      '开一扇浏览器窗并置前，让用户录一次真实写入（开窗需批准）。' +
-      `同一时刻只允许一场录制；再调它就是下一段（上一扇会收起，开一扇新的），不要先 ${DIY_RECORD_STOP_TOOL}。` +
+      '打开一个浏览器窗口并置于前台，让用户录制一次真实写入（打开窗口需批准）。' +
+      `同一时刻只允许一场录制；再次调用会开始下一段（收起上一个窗口，打开新窗口），不要先调用 ${DIY_RECORD_STOP_TOOL}。` +
       `开始或结束后用 ${DIY_RECORD_READ_TOOL} 读取该段；结束整场才用 ${DIY_RECORD_STOP_TOOL}（只在流程「完成」那一步）。` +
-      '浮条「截图」无需另批（开窗已授权）：截图与快照一起进 ' +
-      `${DIY_RECORD_DETAIL_TOOL} 的字段证据表。`,
+      '录制条上的「截图」无需另行批准（打开窗口已授权）。',
     parameters: RECORD_PREPARE_PARAMS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -108,12 +107,12 @@ export function registerRecordTools(
       const atStep = writeFlowOf(sessionId);
       if (atStep !== null && atStep.id !== 'record' && atStep.id !== 'supplement') {
         throw new Error(
-          `现在停在「${atStep.title ?? atStep.id}」这一步：要补什么先递进流程（workbench_diy_step），别开新一段。`,
+          `当前停在「${atStep.title ?? atStep.id}」这一步。需要补充时，先用 workbench_diy_step 推进流程，不要开始新的一段。`,
         );
       }
       const used = segments.get(sessionId) ?? 0;
       if (atStep !== null && used >= RECORD_SEGMENT_CAP) {
-        throw new Error(`这一场已经录了 ${String(RECORD_SEGMENT_CAP)} 段 —— 到顶了：结束整场，缺口写进交代。`);
+        throw new Error(`本场已录制 ${String(RECORD_SEGMENT_CAP)} 段，达到上限。结束整场，并把缺口写进交代。`);
       }
       const { root } = await workspaceOf(ctx, exec);
       const artifactsDir = artifactsDirOf(root);
@@ -125,7 +124,7 @@ export function registerRecordTools(
       const url = asText(args['url']);
       if (url === '') {
         throw new Error(
-          '需要该页面的 url（用户平时访问这套系统的入口；请先用 workbench_diy_recon，或询问用户平时在哪里查看）。我不猜测站点。',
+          '需要该页面的 url（用户访问系统的入口）。先用 workbench_diy_recon 探测，或询问用户通常在哪里查看；不要猜测站点。',
         );
       }
       const foreign =
@@ -137,7 +136,7 @@ export function registerRecordTools(
       const urlContains = asText(rawExpect['urlContains']);
       const expect: RecordExpect | null = method === '' && urlContains === '' ? null : { method, urlContains };
       const seam = seamOf(ctx);
-      if (seam === undefined) throw new Error('这台机器上没有 shell 服务，无法打开录制窗口');
+      if (seam === undefined) throw new Error('本机没有 shell 服务，无法打开录制窗口');
       const wire = wireOf(ctx);
       const command = cliCommandOf(ctx);
       let held = store.live(Date.now());
@@ -182,9 +181,9 @@ export function registerRecordTools(
         const net = netFactsOf(armed.step.payload);
         if (armed.step.ok && page.ok && net !== undefined && !net.ready) {
           throw new Error(
-            `浮条已注入，但这页没有就绪（第 ${String(armed.part)}/${String(armed.parts)} 段都返回过 ok；` +
-              `浮条${net.bar ? '在' : '不在'} · href=${net.href || '?'} · title=${net.title || '?'}）。` +
-              '多半是注入那几拍页面又跳了一次：重新 prepare 一次通常能恢复；仍不行就把这段贴给作者。',
+            `录制条已注入，但页面未就绪（第 ${String(armed.part)}/${String(armed.parts)} 段均返回 ok；` +
+              `录制条${net.bar ? '在' : '不在'} · href=${net.href || '?'} · title=${net.title || '?'}）。` +
+              '通常是注入期间页面再次跳转：重新调用 prepare 一般可恢复；仍然失败就把这段交给维护者。',
           );
         }
         if (!armed.step.ok || !page.ok) {
@@ -223,7 +222,7 @@ export function registerRecordTools(
           size: page.calls.length,
           talk,
           text: capture
-            ? `${talk}（上一扇已收起，这是新的）· 第 ${String(used + 1)} 段`
+            ? `${talk}（上一个窗口已收起，这是新的一段）· 第 ${String(used + 1)} 段`
             : `${talk}（捕获未启动，本次只有页面钩子）`,
         });
       } catch (error) {
@@ -238,7 +237,7 @@ export function registerRecordTools(
   const readTool: DshToolDefinition = {
     name: DIY_RECORD_READ_TOOL,
     description:
-      '读取本次录制到的请求（用户按「结束录制」后使用）。未按开始或未安装钩子时都会说明，不会误报为"没有请求"。',
+      '读取本段录制到的请求（用户按「结束录制」后使用）。尚未开始或钩子未安装时会说明原因，不会误报为没有请求。',
     parameters: RECORD_READ_PARAMS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -246,7 +245,7 @@ export function registerRecordTools(
         ctx,
         store,
         exec,
-        '这台机器上没有 shell 服务，无法读取录制',
+        '本机没有 shell 服务，无法读取录制',
       );
       const budget = waitOf(asRecord(raw)['waitMs']);
       const opened = budget === 0 ? 0 : Date.now();
@@ -296,7 +295,7 @@ export function registerRecordTools(
         holdNotice(
           sessionId,
           noticeMessage(
-            `录制尚未结束（已等待约 ${waited} 秒）。请用户按「结束」后再调用 read。`,
+            `这一段录制尚未结束（已等待约 ${waited} 秒）。用户按「结束录制」后再调用 read。`,
             `工作台 DIY：录制尚未结束（已等待约 ${waited} 秒）`,
           ),
         );
@@ -327,7 +326,7 @@ export function registerRecordTools(
         shots: state.shotsSeen,
       });
       const note = over
-        ? ['用户按「结束」后采集已停，录制窗口先留着（收尾时才关）。以下为捕获文件里该段的清单。']
+        ? ['用户按「结束录制」后已停止采集，录制窗口暂时保留（收尾时关闭）。下面是捕获文件中该段的清单。']
         : [];
       let atStep = writeFlowOf(sessionId);
       if (flow !== undefined && over && materials.missing.length === 0 && atStep !== null) {
@@ -338,16 +337,16 @@ export function registerRecordTools(
       }
       const nextStep = over
         ? materials.missing.length > 0
-          ? `还缺 ${materials.missing.join(' / ')} —— 让用户补录：再调 ${DIY_RECORD_PREPARE_TOOL}（上一扇会收起，开一扇新的），不要 ${DIY_RECORD_STOP_TOOL}。`
+          ? `还缺 ${materials.missing.join(' / ')}。让用户补录：再次调用 ${DIY_RECORD_PREPARE_TOOL}（会收起上一个窗口，打开新窗口），不要调用 ${DIY_RECORD_STOP_TOOL}。`
           : atStep?.id === 'scan'
-            ? `材料齐了。下一步：探测（${DIY_STEP_TOOL} · needsSupplement / gaps）；探测完到「完成」再 ${DIY_RECORD_STOP_TOOL}。`
+            ? `材料已齐全。下一步：检查录制结果（${DIY_STEP_TOOL} · needsSupplement / gaps）；完成后到「完成」再调用 ${DIY_RECORD_STOP_TOOL}。`
             : atStep?.id === 'supplement'
-              ? `材料齐了。不用补录就把缺口清零递进流程，然后到「完成」再 ${DIY_RECORD_STOP_TOOL}。`
-              : `材料齐了。确实要结束整场才 ${DIY_RECORD_STOP_TOOL}（会关窗）；要补录就 ${DIY_RECORD_PREPARE_TOOL}（这一扇会收起，开一扇新的）。`
+              ? `材料已齐全。若无需补录，把缺口清零并推进流程，然后到「完成」再调用 ${DIY_RECORD_STOP_TOOL}。`
+              : `材料已齐全。要结束整场才调用 ${DIY_RECORD_STOP_TOOL}（会关闭窗口）；要补录就调用 ${DIY_RECORD_PREPARE_TOOL}（会收起上一个窗口，打开新窗口）。`
         : '';
       const said = stepOk
-        ? [readText, ...materialsTextOf(materials), nextStep, timedOut ? `仍在录制。请等用户按「结束」（需要等待时传入 waitMs，上限 ${String(WAIT_CAP_MS / 60000)} 分钟）。` : '']
-        : ['该页面上已无法读取（录制窗口可能已关闭）。台账与捕获文件中的该段清单仍然保留：', readText];
+        ? [readText, ...materialsTextOf(materials), nextStep, timedOut ? `仍在录制。等用户按「结束录制」；需要等待时传入 waitMs，上限 ${String(WAIT_CAP_MS / 60000)} 分钟。` : '']
+        : ['该页面已无法读取（录制窗口可能已关闭）。状态记录与捕获文件中的该段清单仍然保留：', readText];
       const text = [...note, ...said].filter((one) => one !== '').join('\n');
       return plainJson({
         ok: stepOk && page.ok,
@@ -381,8 +380,8 @@ export function registerRecordTools(
   const stopTool: DshToolDefinition = {
     name: DIY_RECORD_STOP_TOOL,
     description:
-      '结束整场：卸浮条、停捕获、关标签、清状态。只在流程「完成」那步可用；' +
-      '写请求缺入参/出参就先不结束，缺什么回给你；补不了才传 force+forceWhy。',
+      '结束整场：移除录制条、停止捕获、关闭标签页、清除状态。只在流程「完成」那一步可用。' +
+      '写请求缺入参或出参时不会结束，会返回缺什么；无法补齐才传 force + forceWhy。',
     parameters: RECORD_STOP_PARAMS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -391,12 +390,12 @@ export function registerRecordTools(
       if (atStep !== null && atStep.id !== 'finish') {
         const hint =
           atStep.id === 'scan'
-            ? `先把探测结果递进流程（${DIY_STEP_TOOL} · needsSupplement / gaps），再到「完成」结束整场。`
-            : `要补录就 ${DIY_RECORD_PREPARE_TOOL}（这一扇会收起，开一扇新的），不要 ${DIY_RECORD_STOP_TOOL}。`;
+            ? `先用 ${DIY_STEP_TOOL} 提交录制结果检查（needsSupplement / gaps）并推进流程，再到「完成」结束整场。`
+            : `要补录就调用 ${DIY_RECORD_PREPARE_TOOL}（会收起上一个窗口，打开新窗口），不要调用 ${DIY_RECORD_STOP_TOOL}。`;
         return plainJson({
           ok: false,
           code: 'flow-step',
-          text: `还没到结束整场那一步（现在停在「${atStep.title ?? atStep.id}」）：${hint}`,
+          text: `尚未到结束整场的步骤（当前停在「${atStep.title ?? atStep.id}」）。${hint}`,
         });
       }
       const openGaps = flow === undefined ? [] : flow.gaps(session);
@@ -405,18 +404,18 @@ export function registerRecordTools(
           ok: false,
           code: 'gaps-open',
           text:
-            `这一场还有没补上的缺口：${openGaps.join(' / ')} —— 要补就 ${DIY_RECORD_PREPARE_TOOL}；` +
-            '补不了才传 force+forceWhy，缺口照实写进交代。',
+            `本场还有未补齐的缺口：${openGaps.join(' / ')}。要补录就调用 ${DIY_RECORD_PREPARE_TOOL}；` +
+            '无法补齐才传 force + forceWhy，并把缺口如实写进交代。',
         });
       }
-      const { seam, wire, sessionId, held, command } = doorOf(ctx, store, exec, '这台机器上没有 shell 服务，无法结束录制');
+      const { seam, wire, sessionId, held, command } = doorOf(ctx, store, exec, '本机没有 shell 服务，无法结束录制');
       const force = asRecord(raw)['force'] === true;
       const forceWhy = asText(asRecord(raw)['forceWhy']).trim();
       const page = held.phase === 'finished' ? recordPageOf(undefined) : await stopPageOf(seam, command, wire);
       const capture = captureReadOf(held.captureFile);
       const bundle = bundleOf(capture, page, held, browserRowsOf(ctx));
       const hookCaught = page.calls.length;
-      const hookText = page.ok ? `页面钩子 ${String(hookCaught)} 条` : '页面钩子已随窗口关闭，条数读不到了';
+      const hookText = page.ok ? `页面钩子 ${String(hookCaught)} 条` : '页面钩子已随窗口关闭，无法读取条数';
       const noBody = bodyMissingOf(bundle.merged);
       const materials = materialsOf(bundle.merged, snapOfPage(page, held.captureFile), held.expect);
       if (materials.missing.length > 0 && !force) {
@@ -425,9 +424,9 @@ export function registerRecordTools(
           code: 'materials-missing',
           missing: materials.missing,
           text: [
-            `先别结束：这一段还缺 ${materials.missing.join(' / ')}。`,
+            `暂不结束：这一段还缺 ${materials.missing.join(' / ')}。`,
             ...materialsTextOf(materials),
-            '让他补齐这几样再调一次；确实补不了，才传 force: true + forceWhy（写清原因，会留痕）。',
+            '用户补齐这些后再调用；确实无法补齐时，才传 force: true + forceWhy（写清原因，会留痕）。',
           ].join('\n'),
         });
       }
@@ -435,7 +434,7 @@ export function registerRecordTools(
         return plainJson({
           ok: false,
           code: 'force-without-why',
-          text: '要用 force 结束得给 forceWhy —— 写清为什么这几样补不了，别空着。',
+          text: '使用 force 结束必须提供 forceWhy，说明这些材料为何无法补齐。',
         });
       }
       const snapFile = page.snap === null ? '' : await saveSnapFile(seam, command, held.captureFile, wire);
@@ -477,24 +476,24 @@ export function registerRecordTools(
         cleaned: { ...cleaned, hook: page.ok && page.unhooked },
         snapFile,
         text: [
-          `录制已结束：${held.unit} 的「${held.action}」该段共 ${String(bundle.merged.length)} 条请求（${hookText}；会话捕获该段 ${String(bundle.inside.length)} 条）。`,
+          `录制已结束：${held.unit} 的「${held.action}」本段共 ${String(bundle.merged.length)} 条请求（${hookText}；会话捕获该段 ${String(bundle.inside.length)} 条）。`,
           ...materialsTextOf(materials),
           force ? `强制结束（${forceWhy}）。` : '',
-          snapFile === '' ? '' : `表单原始 HTML 存在 ${snapFile}。`,
+          snapFile === '' ? '' : `表单原始 HTML 已保存到 ${snapFile}。`,
           kept
-            ? `原文保留在 ${lastFile}（下一场 prepare 会清除）。如需查看某一条，请使用 ${DIY_RECORD_DETAIL_TOOL}：提供 unit + key；同一个 key 跨轮会重名，再带上清单中该行的 at 即可准确定位。`
-            : '未保留原文（本场捕获文件为空或捕获未启动）。如需某一条，请让用户从 DevTools 复制 curl。',
+            ? `原文保留在 ${lastFile}（下一次 prepare 会清除）。要查看某一条，调用 ${DIY_RECORD_DETAIL_TOOL}：提供 unit + key；同一 key 跨轮会重名，同时带上清单中该行的 at 才能准确定位。`
+            : '未保留原文（本场捕获文件为空，或捕获未启动）。需要某一条时，让用户从 DevTools 复制 curl。',
           bundle.capture.round === 'fail'
             ? '（会话捕获最近一轮未成功，本场可能只有页面钩子。）'
             : '',
-          cleaned.tab ? '录制窗口的标签已关闭。' : '该标签未关闭，请用户手动关闭。',
-          back ? '已把工作台那一页调回前台。' : '没能自动切回工作台，请用户自己切一下。',
+          cleaned.tab ? '录制窗口的标签页已关闭。' : '该标签页未关闭，让用户手动关闭。',
+          back ? '已把工作台切回前台。' : '未能自动切回工作台，让用户手动切换。',
           cleaned.capture ? '' : '捕获进程未完全停止（最多 15 分钟自动结束）。',
           probeCommand !== ''
-            ? '这段原文可以直接写入 design.json 的 writes[].probeCommand。'
+            ? '本段原文可以直接写入 design.json 的 writes[].probeCommand。'
             : noBody
-              ? '只有方法 / URL，无法获取 body。请先补全 body，再写入 writes[].probeCommand。如需请求体，请让用户从 DevTools 复制 curl，或在用户页面上用 _eval 中的 fetch 发送一条同形请求（先征得用户同意）。'
-              : '本段原文为空，请勿写入 design.json。',
+              ? '只有方法 / URL，无法获取请求体。先补全请求体，再写入 writes[].probeCommand。需要请求体时，让用户从 DevTools 复制 curl，或在用户页面上用 _eval 中的 fetch 发送一条同形请求（先征得用户同意）。'
+              : '本段原文为空，不要写入 design.json。',
           '不要重放这段请求：没有预览模式时，写入一次即为真实写入。',
         ]
           .filter((one) => one !== '')

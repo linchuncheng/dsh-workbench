@@ -43,7 +43,7 @@ describe('素材体检：缺什么就说缺什么，别让 agent 自己猜', () 
     const read = materialsOf([call('GET'), call('GET')], snap(3, ['name']));
 
     expect(read.missing).toEqual(['写请求']);
-    expect(materialsTextOf(read)[0]).toContain('无法识别写请求');
+    expect(materialsTextOf(read)[0]).toContain('未识别到写请求');
   });
 
   it('★ 截断的 HTML 要提醒细节以截图为准', () => {
@@ -80,7 +80,7 @@ describe('一套全是 POST 的系统：靠打分认写，不靠 method', () => 
     expect(read.writes).toHaveLength(1);
     expect(read.writes[0]?.url).toContain('/save');
     expect(read.missing).toEqual([]);
-    expect(materialsTextOf(read).join('\n')).toContain('没算写：POST /api/issue/list');
+    expect(materialsTextOf(read).join('\n')).toContain('未计为写：POST /api/issue/list');
   });
 
   it('★★ prepare 时说的目标 urlContains ⇒ 一条命令就定下来，不用猜', () => {
@@ -91,7 +91,7 @@ describe('一套全是 POST 的系统：靠打分认写，不靠 method', () => 
     );
 
     expect(read.writes[0]?.url).toContain('/flow/commit');
-    expect(read.candidates[0]?.why.join('')).toContain('对得上');
+    expect(read.candidates[0]?.why.join('')).toContain('匹配');
   });
 
   it('★ 认不出写 ⇒ 明说让他指明，不假装', () => {

@@ -23,16 +23,16 @@
 
 3. **无现成命令 → 让用户录一次**（你准备，用户执行）：
 
-   - `workbench_diy_record_prepare({ unit, url, doing })`：打开窗口并置于前台（**需要审批一次**：站点、录制哪一步、保存位置、
-     结束后不切回），显示浮动条。用户依次：① 开始录制 ② 执行一次动作 ③ 结束录制。不要让用户操作第二次。
+   - `workbench_diy_record_prepare({ unit, url, doing })`：打开窗口并置于前台（**需要审批一次**：站点、录制内容、保存位置），
+     显示录制条。录制条出现即开始记录；用户执行一次动作后按「结束录制」。不要让用户操作第二次。
      `url` 必须与模块读源同域（`design.json` 声明过读源时跨域当场拒）。
-   - 表格填好、提交前，请用户按浮动条「截图」：不额外审批；产出整页图与页面快照（控件 `name` / `id`、
+   - 表格填好、提交前，请用户按录制条上的「截图」：不额外审批；产出整页图与页面快照（控件 `name` / `id`、
      标签、必填痕迹、填值、是否为空、是否改过）。提交时会自动再采集一份。
    - `workbench_diy_record_read`：取清单 `rows`（`index` / `key` / `method` / `url` / `status` / `ct` /
      `size` / `source` / `hasRequest` / `hasResponse` / `likelyWrite` / `marked`），不删行、不回体；
      `expect` 只标 ⭐ 并置顶。按 `key`（或 `index`）调 `workbench_diy_record_detail`：
      返回请求体与响应体原文 + 请求头（可能含凭据，不写入 `design.json`）。同 key 跨轮重名，带 `at` 定位。
-     未结束时 read 会说"还在录"；可带 `waitMs`（上限 15 分钟）。**一场 = 一个周期**；上一场未结束再
+     未结束时 read 会说「录制中」；可带 `waitMs`（上限 15 分钟）。**一场 = 一个周期**；上一场未结束再
      prepare 会当场拒（不弹审批）。
    - `workbench_diy_record_stop`：停捕获、收标签、清状态，原文另存 `shots/rec-<unit>.jsonl.last`。
      **先 read / detail，再 stop**。左栏键只发消息；录完无键。

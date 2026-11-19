@@ -6,29 +6,35 @@ import { deliverDebugNotice, noticeMessage, type AgentsLookup, type NoticeMessag
 export const RECORD_NOTICE_KIND = 'workbench-diy-record';
 
 const INTENT_WORD: Readonly<Record<RecordIntent, string>> = {
-  peek: '看结果',
-  halt: '停',
-  stop: '收工',
+  peek: '查看结果',
+  halt: '暂停录制',
+  stop: '结束录制',
+};
+
+const PHASE_WORD: Readonly<Record<RecordState['phase'], string>> = {
+  armed: '已就绪，等待开始',
+  recording: '录制中',
+  finished: '录制已完成',
 };
 
 export function recordNoticeText(intent: RecordIntent, state: RecordState): string {
-  const head = `［工作台 DIY］用户按了「${INTENT_WORD[intent]}」：`;
+  const head = `［工作台 DIY］收到「${INTENT_WORD[intent]}」：`;
   if (intent === 'peek') {
     return state.phase === 'finished'
-      ? `${head}${state.unit} 用户已结束这一段录制 —— 用 workbench_diy_record_read 取那一段（用户不在了也照取），取过用 workbench_diy_record_stop 收工。`
-      : `${head}${state.unit} 这一段现在还是 ${state.phase}（用户还没按「结束录制」）—— 等用户按完再 read；用户要是说浮条没了，read 那一步会顺手把浮条重新装上。`;
+      ? `${head}${state.unit} 这一段已经结束。用 workbench_diy_record_read 读取这一段（用户不在也照取），读取后用 workbench_diy_record_stop 结束整场。`
+      : `${head}${state.unit} 这一段当前仍为${PHASE_WORD[state.phase]}。等用户按「结束录制」后再 read；录制条若已消失，read 时会重新注入。`;
   }
   if (intent === 'halt') {
     return (
-      `${head}${state.unit} 用户停下了这一段（浮条可能被导航干掉过）。` +
-      '**先 read 再 stop**：read 会把那一页上的缓冲取出来，stop 之后就取不到了 —— 顺序反了就等于白录。'
+      `${head}${state.unit} 这一段已暂停（录制条可能已被页面导航移除）。` +
+      '**先 read 再 stop**：read 会取出该页面上的缓冲，stop 之后无法再取；顺序颠倒等于未录制。'
     );
   }
-  return `${head}${state.unit} 这一场收了（占用解除）。已经 read 过的部分在你手上；没读的那部分没了 —— 要再录一段重新 prepare 一场。`;
+  return `${head}${state.unit} 这一场已结束（占用解除）。已 read 的部分仍在你手上；未读取的部分已丢失。需要再录一段就重新 prepare。`;
 }
 
 export function recordNoticeSummary(intent: RecordIntent, state: RecordState): string {
-  return `工作台 DIY：用户按了${INTENT_WORD[intent]}（${state.unit}）`;
+  return `工作台 DIY：${INTENT_WORD[intent]}（${state.unit}）`;
 }
 
 export function recordNotice(intent: RecordIntent, state: RecordState): { message: NoticeMessage; summary: string } {
@@ -42,7 +48,7 @@ const NOTICE_MODE: Readonly<Record<RecordIntent, 'wake' | 'hold' | 'drop'>> = {
   stop: 'drop',
 };
 
-const REFUSAL = '现在没有录制中的那一场 —— 没什么可停 / 可收的';
+const REFUSAL = '当前没有正在进行的录制，无法查看结果或结束。';
 
 export interface RecordActDeps {
   readonly store: () => RecordStore | undefined;
@@ -70,7 +76,7 @@ export function recordActResource(deps: RecordActDeps): PostResource {
     resource: 'act',
     async handle(payload) {
       const intent = parseRecordIntent((payload as { intent?: unknown } | null)?.intent);
-      if (intent === null) return { ok: false, text: '不认识的意图（只认 peek / halt / stop）' };
+      if (intent === null) return { ok: false, text: '无法识别的操作（仅支持 peek / halt / stop）。' };
 
       const store = deps.store();
       const at = now();

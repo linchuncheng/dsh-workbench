@@ -824,9 +824,10 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'approval.plan.agent': 'What the AI can do',
   'approval.plan.data': 'Where the data comes from',
   'approval.record.site': 'Site',
-  'approval.record.what': 'Records',
+  'approval.record.what': 'Recording',
   'approval.record.lands': 'Saves to',
-  'approval.record.noUrl': 'No site address was provided; this request will be rejected outright.',
+  'approval.record.landsUnknown': 'Recording result file',
+  'approval.record.noUrl': 'No site address was provided, so recording cannot start.',
   'approval.record.oneAction': 'one action',
   'approval.longTask.what': 'Task to stop',
   'approval.longTask.signal':

@@ -96,7 +96,7 @@ const FINISH_SCHEMA = {
 
 export const DIY_WRITE_RECORD_FLOW: DiyFlow = {
   id: 'diy-write-record',
-  title: '录一次写',
+  title: '录制一次写入',
   steps: [
     {
       id: 'record',
@@ -106,7 +106,7 @@ export const DIY_WRITE_RECORD_FLOW: DiyFlow = {
     },
     {
       id: 'scan',
-      title: '探测',
+      title: '检查录制结果',
       tools: { deny: [DIY_RECORD_PREPARE_TOOL, DIY_RECORD_STOP_TOOL] },
       schema: SCAN_SCHEMA,
     },

@@ -171,14 +171,14 @@ export async function watchFinishStepOf(
     const back = await bringBackWorkbench(input.ctx);
     await keepHookCalls(input, page.calls);
     await takeSnapOf(input.seam, input.command, input.captureFile, input.wire);
-    const summary = `工作台 DIY：用户按了「结束录制」（${String(caught)} 条）`;
+    const summary = `工作台 DIY：录制完成（${String(caught)} 条）`;
     deliverDebugNotice(
       input.ctx.get('agents') as AgentsLookup | undefined,
       input.sessionId,
       noticeMessage(
-        `用户按了「结束录制」（页面钩子上 ${String(caught)} 条）—— 去 ${DIY_RECORD_READ_TOOL} 取这一段清单，要某一条原文用 ${DIY_RECORD_DETAIL_TOOL}。` +
-          '录制窗口先留着（结束只停止采集，不关窗）；你收尾时它才关。' +
-          (back ? '' : '（结束那一刻没把工作台调回前台，他可能还停在别的窗口。）'),
+        `用户按「结束录制」（页面钩子记录 ${String(caught)} 条）。调用 ${DIY_RECORD_READ_TOOL} 读取本段清单；需要某一条原文时调用 ${DIY_RECORD_DETAIL_TOOL}。` +
+          '录制窗口暂时保留（结束只停止采集，不关闭窗口），收尾时才关闭。' +
+          (back ? '' : '（结束时未能把工作台切回前台，用户可能仍停在其他窗口。）'),
         summary,
       ),
       'wake',

@@ -384,9 +384,9 @@ describe('捕获这条来源接进 read / stop（真工具 + shell 桩）', () =
 
     expect(out.captureLines).toBe(0);
     expect(out.noBody).toBe(false);
-    expect(out.text).toContain('一条请求都没抓到');
+    expect(out.text).toContain('没有捕获到任何请求');
     expect(out.text).toContain('页面钩子 0 条');
-    expect(out.text).toContain('落在这个时间段里 0 条');
+    expect(out.text).toContain('在该时间段内 0 条');
   });
 
   it('★★ 捕获被 tail 截过（行数超过上限）：read 要如实把这件事带出来，不许装作"一行都没落"', async () => {
@@ -413,8 +413,8 @@ describe('捕获这条来源接进 read / stop（真工具 + shell 桩）', () =
 
     expect(out.capturedTruncated).toBe(true);
     expect(out.capturedTotalLines).toBe(20001);
-    expect(out.text).toContain('一共落了 20001 行');
-    expect(out.text).toContain('只解析了最后 20000 行');
+    expect(out.text).toContain('共写入 20001 行');
+    expect(out.text).toContain('只解析最后 20000 行');
     expect(out.text).not.toContain('一行都没落');
   });
 
@@ -446,8 +446,8 @@ describe('捕获这条来源接进 read / stop（真工具 + shell 桩）', () =
     expect(out.noBody).toBe(true);
     expect(out.probeCommand).toBe('');
     expect(out.lastFile.endsWith('.last')).toBe(true);
-    expect(out.text).toContain('该段共 2 条请求（页面钩子已随窗口关闭，条数读不到了；会话捕获该段 2 条）');
-    expect(out.text).toContain('只有方法 / URL，无法获取 body');
+    expect(out.text).toContain('本段共 2 条请求（页面钩子已随窗口关闭，无法读取条数；会话捕获该段 2 条）');
+    expect(out.text).toContain('只有方法 / URL，无法获取请求体');
     expect(out.text).toContain('先征得用户同意');
   });
 });

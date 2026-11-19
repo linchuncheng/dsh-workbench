@@ -101,28 +101,28 @@ export function candidatesOf(calls: readonly RecordCall[], expect: MaterialsExpe
     const reads = hitsOf(path, READ_WORDS);
     if (writes.length > 0) {
       score += 4;
-      why.push(`路径像写（${writes.join('/')}）`);
+      why.push(`路径含写操作词（${writes.join('/')}）`);
     }
     if (reads.length > 0) {
       score -= 4;
-      why.push(`路径像读（${reads.join('/')}）`);
+      why.push(`路径含读操作词（${reads.join('/')}）`);
     }
     if (call.body.trim() !== '') {
       if (pagingOnlyOf(call.body)) {
         score -= 3;
-        why.push('body 只有分页');
+        why.push('请求体只有分页字段');
       } else {
         score += 3;
-        why.push('有 body');
+        why.push('有请求体');
       }
     }
     if (looksWrittenOf(call.response)) {
       score += 2;
-      why.push('回包像写成功');
+      why.push('响应符合写入成功');
     }
     if (matchedExpectOf(call, expect)) {
       score += 10;
-      why.push('与这次说的目标对得上');
+      why.push('与本次指定的目标匹配');
     }
     rows.push({ call, score, why });
   }
@@ -150,7 +150,7 @@ export function materialsOf(
 export function materialsTextOf(read: MaterialsRead): readonly string[] {
   const lines: string[] = [];
   if (read.writes.length === 0) {
-    lines.push('素材：无法识别写请求 —— 若这一场有保存动作，请指明是哪一条（prepare 时给 urlContains 最稳）');
+    lines.push('材料：未识别到写请求。若本场有保存操作，指明是哪一条（prepare 时提供 urlContains 最可靠）。');
   } else {
     const head = read.writes
       .slice(0, 3)
@@ -158,25 +158,25 @@ export function materialsTextOf(read: MaterialsRead): readonly string[] {
       .join(' / ');
     const more = read.writes.length > 3 ? ` 等 ${String(read.writes.length)} 条` : '';
     lines.push(
-      `素材：写请求 ${String(read.writes.length)} 条（${head}${more} · 入参 ${read.hasRequest ? '有' : '无'} · 出参 ${read.hasResponse ? '有' : '无'}）`,
+      `材料：写请求 ${String(read.writes.length)} 条（${head}${more} · 入参 ${read.hasRequest ? '有' : '无'} · 出参 ${read.hasResponse ? '有' : '无'}）`,
     );
     const others = read.candidates.filter((one) => one.score < WRITE_FLOOR).slice(0, 2);
     for (const one of others) {
-      lines.push(`· 没算写：${one.call.method} ${pathOf(one.call.url)}（${one.why.join(' · ')}）`);
+      lines.push(`· 未计为写：${one.call.method} ${pathOf(one.call.url)}（${one.why.join(' · ')}）`);
     }
   }
   const snap = read.snap;
   if (snap === null) {
-    lines.push('表单快照：无 —— 需要哪几个字段必填，请让他把那张表单截一张图');
+    lines.push('表单快照：无。需要必填字段信息时，让用户对表单截图。');
   } else if (snap.fields === 0) {
-    lines.push('表单快照：抓到了，但无法识别字段 —— 请让他把那张表单截一张图');
+    lines.push('表单快照：已获取，但无法识别字段。让用户对表单截图。');
   } else {
-    const names = snap.required.length === 0 ? '没标出必填' : `必填 ${String(snap.required.length)}（${snap.required.join(' / ')}）`;
-    const tail = snap.truncated ? '· HTML 被截断，细节以截图为准' : '· 原始 HTML 已存';
+    const names = snap.required.length === 0 ? '未标出必填' : `必填 ${String(snap.required.length)}（${snap.required.join(' / ')}）`;
+    const tail = snap.truncated ? '· HTML 被截断，细节以截图为准' : '· 原始 HTML 已保存';
     lines.push(`表单快照：${String(snap.fields)} 个字段，${names} ${tail}`);
   }
   if (read.missing.length > 0) {
-    lines.push(`还缺：${read.missing.join(' / ')} —— 先让他补这些，再写 design.json`);
+    lines.push(`还缺：${read.missing.join(' / ')}。先补齐这些，再写 design.json。`);
   }
   return lines;
 }

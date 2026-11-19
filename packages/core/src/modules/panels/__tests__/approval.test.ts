@@ -461,7 +461,9 @@ describe('文案口径：说清是工作台的动作、目标是哪个模块 / �
       { writes: true, policy: panelsApproval },
     );
 
-    expect(decision?.kind === 'ask' ? decision.displayReason.zh : '').toBe('申请录制调试会话');
+    expect(decision?.kind === 'ask' ? decision.displayReason.zh : '').toBe(
+      '工作台要在下列站点录制一次真实写入并保存请求原文，允许吗？',
+    );
   });
 
   it('★ 数据再长也不许把标题顶爆：把 id / 插件名 / 单元换成 20 字长名，仍是一行、仍在装配上限内', async () => {

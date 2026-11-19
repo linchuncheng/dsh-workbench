@@ -44,7 +44,7 @@ export const RECORD_ARM_BAR_SCRIPT = `(() => {
   if (bar === null) {
     bar = document.createElement('div');
     bar.id = '__dsh-record-bar';
-    bar.setAttribute('style', 'position:fixed;z-index:2147483647;right:16px;bottom:16px;display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:#1f2430;color:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);font:12px/1.5 -apple-system,system-ui,sans-serif');
+    bar.setAttribute('style', 'position:fixed;z-index:2147483647;right:16px;bottom:16px;display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(26,29,36,.94);color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 10px 30px -8px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.32);backdrop-filter:blur(12px);font:12px/1.5 -apple-system,system-ui,sans-serif');
     document.documentElement.appendChild(bar);
   }
   let glow = document.getElementById('__dsh-record-glow');
@@ -53,14 +53,14 @@ export const RECORD_ARM_BAR_SCRIPT = `(() => {
     glow.id = '__dsh-record-glow';
     document.documentElement.appendChild(glow);
   }
-  glow.setAttribute('style', 'position:fixed;inset:0;z-index:2147483646;pointer-events:none;border:3px solid rgba(96,165,250,.9);box-shadow:inset 0 0 34px rgba(96,165,250,.55),inset 0 0 110px rgba(96,165,250,.4);animation:__dshRecordGlow 2.4s ease-in-out infinite');
+  glow.setAttribute('style', 'position:fixed;inset:0;z-index:2147483646;pointer-events:none;box-shadow:inset 0 0 90px rgba(15,23,42,.16);animation:__dshRecordGlow 2.4s ease-in-out infinite');
   if (shell.nodes === undefined) {
   bar.textContent = '';
   const grip = document.createElement('span');
   grip.setAttribute('role', 'button');
   grip.setAttribute('tabindex', '0');
-  grip.setAttribute('title', '拖动浮条');
-  grip.setAttribute('aria-label', '拖动浮条');
+  grip.setAttribute('title', '拖动录制条');
+  grip.setAttribute('aria-label', '拖动录制条');
   grip.setAttribute('style', 'flex:0 0 auto;align-self:center;width:12px;height:18px;border-radius:3px;cursor:grab;touch-action:none;background-image:radial-gradient(circle,rgba(255,255,255,.5) 1.2px,transparent 1.3px);background-size:6px 6px;background-position:center center');
   const dot = document.createElement('span');
   dot.className = '__dsh-record-dot';
@@ -82,8 +82,8 @@ export const RECORD_ARM_BAR_SCRIPT = `(() => {
   end.setAttribute('style', look(false));
   shot.type = 'button';
   shot.setAttribute('tabindex', '-1');
-  shot.setAttribute('title', '拍一张当前页面的截图');
-  shot.setAttribute('aria-label', '拍一张当前页面的截图');
+  shot.setAttribute('title', '截取当前页面');
+  shot.setAttribute('aria-label', '截取当前页面');
   shot.textContent = '截图';
   end.type = 'button';
   end.setAttribute('tabindex', '-1');
@@ -91,7 +91,7 @@ export const RECORD_ARM_BAR_SCRIPT = `(() => {
   end.setAttribute('aria-label', '结束录制');
 
   const endText = document.createElement('span');
-  endText.textContent = '结束';
+  endText.textContent = '结束录制';
   end.appendChild(endText);
   bar.appendChild(grip);
   bar.appendChild(dot);
@@ -152,19 +152,19 @@ export const RECORD_ARM_BAR_ITEMS_SCRIPT = `(() => {
   if (sheet === null) {
     sheet = document.createElement('style');
     sheet.id = '__dsh-record-bar-style';
-    sheet.textContent = '@keyframes __dshRecordBreath{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.25;transform:scale(.7)}}#__dsh-record-bar .__dsh-record-dot{animation:__dshRecordBreath 1.1s ease-in-out infinite}@keyframes __dshRecordGlow{0%,100%{opacity:.55}50%{opacity:1}}@keyframes __dshRecordSpin{to{transform:rotate(360deg)}}';
+    sheet.textContent = '@keyframes __dshRecordBreath{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}#__dsh-record-bar .__dsh-record-dot{animation:__dshRecordBreath 2s ease-in-out infinite}@keyframes __dshRecordGlow{0%,100%{opacity:.55}50%{opacity:1}}@keyframes __dshRecordSpin{to{transform:rotate(360deg)}}';
     const sheetHost = document.head === null || document.head === undefined ? document.documentElement : document.head;
     sheetHost.appendChild(sheet);
   }
   if (shell.nodes !== undefined) {
     shell.bar.style.display = 'flex';
     shell.nodes.shot.innerHTML = ${JSON.stringify(CROP_ICON + '截图')};
-    shell.nodes.end.innerHTML = ${JSON.stringify(SQUARE_ICON + '<span>结束</span>')};
+    shell.nodes.end.innerHTML = ${JSON.stringify(SQUARE_ICON + '<span>结束录制</span>')};
     shell.squareIcon = ${JSON.stringify(SQUARE_ICON)};
     return { ok: true, reused: true };
   }
   shell.nodes.shot.innerHTML = ${JSON.stringify(CROP_ICON + '截图')};
-  shell.nodes.end.innerHTML = ${JSON.stringify(SQUARE_ICON + '<span>结束</span>')};
+  shell.nodes.end.innerHTML = ${JSON.stringify(SQUARE_ICON + '<span>结束录制</span>')};
   shell.squareIcon = ${JSON.stringify(SQUARE_ICON)};
 })()`;
 
@@ -195,7 +195,7 @@ export const RECORD_ARM_BAR_WIRING_SCRIPT = `(() => {
   const look = shell.look;
   const idleHtml = end.innerHTML;
   const spinHtml =
-    '<span style="display:inline-block;width:10px;height:10px;border:1.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:999px;corner-shape:round;animation:__dshRecordSpin .8s linear infinite"></span><span>正在回到工作台…</span>';
+    '<span style="display:inline-block;width:10px;height:10px;border:1.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:999px;corner-shape:round;animation:__dshRecordSpin .8s linear infinite"></span><span>正在返回工作台…</span>';
   const doneHtml = shell.squareIcon + '<span>已结束</span>';
   let switching = false;
   let handedOff = false;
@@ -219,7 +219,7 @@ export const RECORD_ARM_BAR_WIRING_SCRIPT = `(() => {
     }
     if (switching) {
       label.textContent =
-        '已结束 · 请求 ' + String(state.calls.length) + ' · 正在回到工作台…';
+        '录制完成 · ' + String(state.calls.length) + ' 条请求 · 正在返回工作台…';
       dot.style.display = 'none';
       end.innerHTML = spinHtml;
       end.disabled = true;
@@ -231,11 +231,11 @@ export const RECORD_ARM_BAR_WIRING_SCRIPT = `(() => {
     }
     end.innerHTML = handedOff ? doneHtml : idleHtml;
     label.textContent =
-      (phase === 'recording' ? '录制中 · ' : phase === 'finished' ? '录制完成 · ' : '录制 · 已停 · ') +
-      '请求 ' +
+      (phase === 'recording' ? '录制中 · ' : phase === 'finished' ? '录制完成 · ' : '录制已停止 · ') +
       String(state.calls.length) +
-      ' · 截图 ' +
-      String(typeof state.shots === 'number' ? state.shots : 0);
+      ' 条请求 · ' +
+      String(typeof state.shots === 'number' ? state.shots : 0) +
+      ' 张截图';
     dot.style.display = phase === 'recording' ? 'inline-block' : 'none';
     shot.disabled = phase !== 'recording';
     end.disabled = phase !== 'recording';

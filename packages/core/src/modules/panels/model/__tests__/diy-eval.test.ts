@@ -22,4 +22,9 @@ describe('注入页面的 JS：先包成 base64 再交给壳', () => {
 
     expect(decodedOf(evalPayloadOf(script))).toBe(script);
   });
+
+  it('★★ 脚本的返回值要带回给 opencli（Runtime.evaluate 取的是表达式的值）', () => {
+    expect((0, eval)(evalPayloadOf('({ ok: true, href: "/x" })'))).toEqual({ ok: true, href: '/x' });
+    expect((0, eval)(evalPayloadOf('(() => ({ ok: true, here: "y" }))()'))).toEqual({ ok: true, here: 'y' });
+  });
 });

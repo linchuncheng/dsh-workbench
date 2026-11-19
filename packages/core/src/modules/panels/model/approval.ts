@@ -294,12 +294,15 @@ export function approvalVerdict(
     const raw = argsOf(call);
     const asked = typeof raw['url'] === 'string' ? raw['url'].replace(/\s+/g, ' ').trim() : '';
     const act = typeof raw['doing'] === 'string' ? raw['doing'].replace(/\s+/g, ' ').trim() : '';
-    const title = pair('申请录制调试会话', 'Request recording a debug session');
+    const question = pair(
+      '工作台要在下列站点录制一次真实写入并保存请求原文，允许吗？',
+      'The workbench records one real write on the site below and saves the raw requests. Allow?',
+    );
     return askOf(
-      `${DIY_RECORD_PREPARE_TOOL} opens a browser window in front on ${asked} to record one real write` +
+      `${DIY_RECORD_PREPARE_TOOL} opens a browser window in front of ${asked} to record one real write` +
         (act === '' ? '' : ` (${act})`),
-      title,
-      title,
+      question,
+      question,
     );
   }
   if (

@@ -93,8 +93,8 @@ export async function openRecordPage(input: OpenRecordInput): Promise<{
       at: '',
       reused: reuse,
       why:
-        `开不了录制窗：${opened.stderr || opened.stdout || '运行时那边报了个错'}。` +
-        '先让用户把工作台那一页切到前台（第一次要这样），或跑一次运行时自检（doctor）看扩展连没连上。',
+        `无法打开录制窗口：${opened.stderr || opened.stdout || '运行时返回错误'}。` +
+        '先让用户把工作台切回前台（第一次打开需要如此），或运行运行时自检（doctor），确认扩展是否已连接。',
     };
   }
   const openedBox = opened === undefined ? undefined : payloadOf(opened.stdout, input.wire?.read);
@@ -114,15 +114,15 @@ export async function openRecordPage(input: OpenRecordInput): Promise<{
     seen = await waitPageOf(input, input.url);
   }
   if (!samePageOf(seen.href, input.url)) {
-    const where = seen.href === '' ? '一张空白页' : seen.href;
+    const where = seen.href === '' ? '空白页' : seen.href;
     const reason = seen.why === '' ? '' : `，页面的回话是 ${seen.why}`;
     return {
       ok: false,
       at: seen.href,
       reused: reuse,
       why:
-        `那一页没开起来（现在开的是 ${where}${reason}）—— 再看一眼 Chrome 里那扇录制窗，` +
-        '或跑一次运行时自检（doctor）看扩展连没连上。',
+        `该页面未能打开（当前打开的是 ${where}${reason}）。检查 Chrome 中的录制窗口，` +
+        '或运行运行时自检（doctor），确认扩展是否已连接。',
     };
   }
   const resolved = page === undefined ? await tabIdAtOf(input, seen.href) : page;

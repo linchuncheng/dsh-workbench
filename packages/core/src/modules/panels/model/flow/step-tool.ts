@@ -28,7 +28,7 @@ function nextOf(step: string, destination: string | null): string {
 
 const STEP_NEXT: Readonly<Record<string, string>> = {
   probe: '做完站探，把读到的站点递上来',
-  scan: '探测完，把「要不要补录」和缺口一起递上来',
+  scan: '检查完录制结果，把「是否需要补录」和缺口一起递上来',
   build: '写完模块，把模块标识递上来',
   install: '安装完成之后，把模块标识与安装结果递上来',
   verify: '走完一遍，把通过的与没验的递上来',
@@ -58,10 +58,10 @@ export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Arr
       type: 'object',
       properties: {
         sites: { type: 'array', description: '站探那步：读到了哪些站点 / 表。', items: { type: 'string' } },
-        needsSupplement: { type: 'boolean', description: '探测那步：这次要不要再补录一段。' },
+        needsSupplement: { type: 'boolean', description: '检查录制结果那一步：本次是否需要再补录一段。' },
         gaps: {
           type: 'array',
-          description: '探测那步：还缺什么（补录要补的东西），一条一句。',
+          description: '检查录制结果那一步：还缺什么（补录要补的内容），一条一句。',
           items: { type: 'string' },
         },
         unit: { type: 'string', description: '创建与安装那步：模块标识。' },

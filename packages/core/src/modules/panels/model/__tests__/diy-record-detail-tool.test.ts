@@ -25,7 +25,7 @@ describe('detail 那一拍的入口：形状对得上注册表，缺参数时说
     const built = rig.harness({ withTools: true, pact: false, record: heldStore(null), probe: [] });
     const tool = recordDetailToolOf(built.ctx as never, built.record);
 
-    await expect(tool.execute({}, rig.diyExec() as never)).rejects.toThrow('请提供 key');
+    await expect(tool.execute({}, rig.diyExec() as never)).rejects.toThrow('提供 key');
   });
 
   it('★ 本场清单已清、又没给 unit：说清「录制已不存在」并给出路', async () => {

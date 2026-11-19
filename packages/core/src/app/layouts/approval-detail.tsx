@@ -51,7 +51,10 @@ export function recordApprovalRows(
       label: t('approval.record.what'),
       value: doing === '' ? t('approval.record.oneAction') : `「${doing}」`,
     },
-    { label: t('approval.record.lands'), value: `shots/rec-${unit === '' ? '<unit>' : unit}.jsonl` },
+    {
+      label: t('approval.record.lands'),
+      value: unit === '' ? t('approval.record.landsUnknown') : `shots/rec-${unit}.jsonl`,
+    },
   ];
 }
 

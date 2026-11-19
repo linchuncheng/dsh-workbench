@@ -62,7 +62,7 @@ export async function armRecordPage(
     out = { step, part: index + 1, parts };
     if (!step.ok) break;
   }
-  if (out === undefined) throw new Error('没有可注入的浮条脚本');
+  if (out === undefined) throw new Error('没有可注入的录制条脚本');
   return out;
 }
 
@@ -126,8 +126,8 @@ export function foreignDomainText(design: unknown, url: string): string {
   const domain = domainOf(url);
   if (domain === '' || known.includes(domain)) return '';
   return (
-    `这一页（${domain}）跟这个模块已经探明的读源（${known.join(' / ')}）不是一个域 —— ` +
-    '录下来的请求原文要留在本机（工作台的取证目录），不许跨域录。换成它那个域的页面，或者先把这个模块的读源说清。'
+    `该页面（${domain}）与本模块已探明的数据来源（${known.join(' / ')}）不在同一个域。` +
+    '录制的请求原文只保留在本机（工作台的取证目录），不允许跨域录制。改用对应域的页面，或先说明本模块的数据来源。'
   );
 }
 
@@ -228,7 +228,7 @@ export function hookCallOf(page: RecordPageRead, key: string): RecordCall | null
   return null;
 }
 
-const DETAIL_WHERE_CAPTURE = '会话捕获（浏览器那一层，快照原文）';
+const DETAIL_WHERE_CAPTURE = '会话捕获（浏览器层，快照原文）';
 const DETAIL_WHERE_HOOK = '页面钩子（这一段）';
 
 const DETAIL_KEYS = [

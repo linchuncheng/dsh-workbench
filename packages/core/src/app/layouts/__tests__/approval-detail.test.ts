@@ -190,12 +190,12 @@ describe('计划审批：除了那张画，还要说清这个模块能给她什�
 });
 
 describe('审批详情座：外壳自己的族也画同一件 ApprovalPlan', () => {
-  it('★ 录制那三行全部从参数来：站点 / 录制功能 / 保存到', () => {
+  it('★ 录制那三行全部从参数来：站点 / 录制内容 / 保存到', () => {
     const rows = recordApprovalRows({ unit: 'demo', url: SITE, doing: '发布' }, t);
 
     expect(rows.map((row) => [row.label, row.value])).toEqual([
       ['站点', SITE],
-      ['录制功能', '「发布」'],
+      ['录制内容', '「发布」'],
       ['保存到', 'shots/rec-demo.jsonl'],
     ]);
   });
@@ -207,7 +207,7 @@ describe('审批详情座：外壳自己的族也画同一件 ApprovalPlan', () 
 
     expect(text).toContain('没有提供站点地址');
     expect(text).toContain('一次操作');
-    expect(text).toContain('shots/rec-<unit>.jsonl');
+    expect(text).toContain('录制结果文件');
     expect(text).not.toMatch(/undefined|NaN|\[object|approval\./);
   });
 

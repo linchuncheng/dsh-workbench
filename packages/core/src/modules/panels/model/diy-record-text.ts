@@ -118,13 +118,13 @@ export function armFailureText(input: {
   const raw = input.raw.trim();
   const where = `第 ${String(input.part)}/${String(input.parts)} 段`;
   if (/too long|E2BIG|argument list too long/i.test(raw)) {
-    return `浮条注入失败：${where}命令超过 Windows 的命令行上限（8191 字符）。重试无效；把这条原文与 Windows 版本报给维护者。`;
+    return `录制条注入失败：${where}命令超过 Windows 的命令行上限（8191 字符）。重试无效；把这条原文与 Windows 版本报告给维护者。`;
   }
   if (raw === '') {
-    const code = input.code === '' ? '页面没有回话' : input.code;
-    return `浮条注入失败：${where}没有生效（${code}）。等页面加载完再试一次；仍是这个结果就报给维护者。`;
+    const code = input.code === '' ? '页面没有返回结果' : input.code;
+    return `录制条注入失败：${where}没有生效（${code}）。等页面加载完成后再试；仍然失败就报告给维护者。`;
   }
-  return `浮条注入失败：${where}报错 ${raw}。等页面加载完再试一次；仍是这条原文就跑一次运行时自检（doctor），看扩展连没连上。`;
+  return `录制条注入失败：${where}报错 ${raw}。等页面加载完成后再试；仍然失败就运行运行时自检（doctor），确认扩展是否已连接。`;
 }
 
 export function probeCommandOf(calls: readonly RecordCall[]): string {
@@ -137,29 +137,35 @@ export function bodyMissingOf(calls: readonly RecordCall[]): boolean {
   return calls.length > 0 && calls.every((one) => one.body === '');
 }
 
+const PHASE_WORD: Readonly<Record<RecordState['phase'], string>> = {
+  armed: '已就绪，等待开始',
+  recording: '录制中',
+  finished: '录制已完成',
+};
+
 export function recordRefusalText(code: RecordRefusal, held?: RecordState): string {
   switch (code) {
     case 'held-by-other':
-      return `另一场录制还占着（${held === undefined ? '另一个会话' : held.sessionId}）—— 一台机器同时只允许一场：让它先 ${DIY_RECORD_STOP_TOOL}，或等它结束。`;
+      return `另一场录制尚未结束（${held === undefined ? '另一个会话' : held.sessionId}）。一台机器同时只允许一场录制：让该会话先调用 ${DIY_RECORD_STOP_TOOL} 结束，或等待它结束。`;
     case 'already-held':
-      return `你这个会话已经持有一场录制（${held === undefined ? '' : `${held.unit}，${held.phase}`}）—— 一台机器同时只允许一场：要换目标、要再来一场，都先 ${DIY_RECORD_STOP_TOOL}，再重新 ${DIY_RECORD_PREPARE_TOOL}（新的一场会再问他一次）。`;
+      return `本会话已有一场录制（${held === undefined ? '' : `${held.unit}，${PHASE_WORD[held.phase]}`}）。一台机器同时只允许一场录制：要换目标或再录一段，先调用 ${DIY_RECORD_STOP_TOOL}，再调用 ${DIY_RECORD_PREPARE_TOOL}；新的一场会再次询问用户。`;
     case 'not-owner':
-      return '这一场录制不是你这个会话的 —— 谁开始的谁结束。';
+      return '这一场录制不属于本会话。只有开始录制的会话才能结束它。';
     case 'none':
-      return '现在没有录制中的那一场。';
+      return '当前没有正在进行的录制。';
     case 'already-recording':
-      return '已经在录了 —— 请他按「结束录制」，再调这一次。';
+      return '本场正在录制。让用户按「结束录制」，再调用本工具。';
     case 'not-armed':
-      return `这一场已经录完了 —— 再录就是新的一场：先 ${DIY_RECORD_STOP_TOOL}，再重新 ${DIY_RECORD_PREPARE_TOOL}（会再问他一次）。`;
+      return `这一段录制已经结束。要再录一段，直接调用 ${DIY_RECORD_PREPARE_TOOL}（上一段会结束，上一个窗口会收起）。`;
     case 'not-recording':
-      return '还没开始录（他还没按「开始录制」）—— 先请他按开始。';
+      return '页面尚未开始录制。等页面加载完成后再调用。';
     case 'not-finished':
-      return `这一场还没录完 —— 等他按「结束录制」，再 ${DIY_RECORD_READ_TOOL} 或 ${DIY_RECORD_STOP_TOOL}。`;
+      return `这一段录制尚未结束。等用户按「结束录制」，再调用 ${DIY_RECORD_READ_TOOL} 或 ${DIY_RECORD_STOP_TOOL}。`;
   }
 }
 
 export function recordMissingText(): string {
-  return `现在没有录制中的那一场（${DIY_RECORD_PREPARE_TOOL} 起的那一场可能已经过期或结束了）—— 先调 ${DIY_RECORD_PREPARE_TOOL}。`;
+  return `当前没有正在进行的录制（${DIY_RECORD_PREPARE_TOOL} 开始的那一场可能已过期或结束）。先调用 ${DIY_RECORD_PREPARE_TOOL}。`;
 }
 
 export function recordTalkOf(): string {
@@ -256,15 +262,15 @@ export interface RecordReadFacts {
 
 export function renderRecordRead(input: RecordReadFacts): string {
   const shots = input.shots ?? 0;
-  const sep = shots > 0 ? ` · 他按了 ${String(shots)} 次截图（rec-shot-*.png）` : '';
+  const sep = shots > 0 ? ` · 用户已截图 ${String(shots)} 次（rec-shot-*.png）` : '';
   const faults: readonly string[] = [];
   if (!input.armed) {
-    return `那一页上还没有录制条（${DIY_RECORD_PREPARE_TOOL} 起的那一场可能被导航冲掉了）—— 先 ${DIY_RECORD_PREPARE_TOOL}，或让他回到那一页再 ${DIY_RECORD_READ_TOOL}。`;
+    return `该页面上没有录制条（${DIY_RECORD_PREPARE_TOOL} 开始的那一场可能因页面导航失效）。先调用 ${DIY_RECORD_PREPARE_TOOL}，或让用户回到该页面后再调用 ${DIY_RECORD_READ_TOOL}。`;
   }
-  if (input.phase === 'armed') return '他还没按「开始录制」—— 等他按了再读。';
+  if (input.phase === 'armed') return '页面尚未开始录制。等页面加载完成后再读取。';
   if (input.phase === 'recording') {
     return [
-      `还在录（页面钩子上已经攒了 ${String(input.hookCaught)} 条）—— 等他按「结束录制」。${sep}`,
+      `录制中（页面钩子已记录 ${String(input.hookCaught)} 条）。等用户按「结束录制」。${sep}`,
       ...faults,
     ].join('\n');
   }
@@ -277,31 +283,31 @@ export function renderRecordRead(input: RecordReadFacts): string {
   const truncatedNote = input.capturedTruncated
     ? [
         input.capturedTotalLines > input.capturedTailLimit
-          ? `（捕获文件这一场一共落了 ${String(input.capturedTotalLines)} 行，这里只解析了最后 ${String(input.capturedTailLimit)} 行 —— 更早的没看；下面的清单只对最后这段成立）`
-          : `（捕获文件这一场一共落了 ${String(input.capturedTotalLines)} 行（没顶到 ${String(input.capturedTailLimit)} 行那顶帽），是**这一读本身被输出上限截了** —— 读到的只是最近一段，下面的清单只对读到的这段成立）`,
+          ? `（本场捕获文件共写入 ${String(input.capturedTotalLines)} 行，这里只解析最后 ${String(input.capturedTailLimit)} 行；更早的行未读取，下面的清单仅覆盖这段。）`
+          : `（本场捕获文件共写入 ${String(input.capturedTotalLines)} 行，未达到 ${String(input.capturedTailLimit)} 行上限；被截断的是本次读取的输出，下面的清单仅覆盖读到的部分。）`,
       ]
     : [];
   const lines: string[] = [...truncatedNote, ...faults];
   if (input.rows.length > 0) {
-    lines.push(`录完了 · ${String(input.merged)} 条（⭐ ${String(marked.length)}）${sep}`, ...shown.map(rowTextOf));
+    lines.push(`录制完成 · ${String(input.merged)} 条（⭐ ${String(marked.length)}）${sep}`, ...shown.map(rowTextOf));
   } else {
     lines.push(
       input.capturedTruncated
-        ? `录完了：这一段（就解析到的那部分而言）一条请求都没抓到（页面钩子 0 条 · 解析到的会话捕获里落在这个时间段里 0 条）—— 但捕获文件被截过，见上面那行。${sep}`
-        : `录完了：这一段一条请求都没抓到（页面钩子 0 条 · 会话捕获落在这个时间段里 0 条，两边都是 0 —— 不是筛掉的）。` +
-          `若是页面一出现就点了保存，那一下发生在浮条出现之前、抓不到：重录一段，等浮条出现再点。${sep}`,
+        ? `录制完成：这一段没有捕获到任何请求（页面钩子 0 条；解析到的会话捕获在该时间段内 0 条）。捕获文件被截断，详见上一行。${sep}`
+        : `录制完成：这一段没有捕获到任何请求（页面钩子 0 条；会话捕获在该时间段内 0 条；两处均为 0，并非经过筛选）。` +
+          `若页面刚出现就执行了保存，该操作发生在录制条注入之前，无法捕获；重新录制一段，等录制条出现后再操作。${sep}`,
     );
   }
-  if (input.dropped > 0) lines.push(`（缓冲区满了，最早丢了 ${String(input.dropped)} 条）`);
+  if (input.dropped > 0) lines.push(`（缓冲区已满，最早的 ${String(input.dropped)} 条被丢弃）`);
   if (input.captureRound === 'fail') {
-    lines.push('（会话捕获最近一轮没跑成 —— 这一场可能只有页面钩子。）');
+    lines.push('（会话捕获最近一轮未成功，本场可能只有页面钩子。）');
   } else if (input.captureRound === '') {
-    lines.push('（会话捕获还没回过一轮 —— 再等一拍再看，别急着下"没抓到"的结论。）');
+    lines.push('（会话捕获尚未返回第一轮结果。稍后再读取，暂不能判定为未捕获。）');
   }
   if (input.capturedLines === 0 && !input.capturedTruncated) {
-    lines.push('（会话捕获一条都没落 —— 这次只有页面钩子。请求体抓不到时请他打开 DevTools 把那次请求复制成 curl）');
+    lines.push('（会话捕获未写入任何条目，本次只有页面钩子。无法获取请求体时，让用户打开 DevTools，把该请求复制为 curl。）');
   }
-  if (input.nav) lines.push('（这一段里那一页导航过 —— 浮条重新注入过，导航前的那几条可能不在）');
+  if (input.nav) lines.push('（这一段内页面发生过导航，录制条已重新注入；导航前的条目可能缺失。）');
   return lines.join('\n');
 }
 
@@ -338,31 +344,31 @@ function sizeLabel(size: number, exact: boolean): string {
 export function renderRecordDetail(input: RecordDetailFacts): string {
   if (!input.found) {
     return [
-      `没找到这一条：${input.note}`,
-      `可用的取法：② 还在这场录制里时用清单里的 key 或 index；③ 这一场已经结束的话，给 unit 让我去读 shots/rec-<unit>.jsonl.last；④ 都不行就让他打开 DevTools，把那次请求复制成 curl。`,
+      `未找到这一条：${input.note}`,
+      '可用的取法：录制进行中用清单里的 key 或 index；这一场已结束时提供 unit，读取 shots/rec-<unit>.jsonl.last；都不行时让用户打开 DevTools，把该请求复制为 curl。',
     ].join('\n');
   }
   const req = clip(input.request, input.maxBytes);
   const res = clip(input.response, input.maxBytes);
-  const status = input.status === 0 ? '回包还没到（status 0）' : String(input.status);
+  const status = input.status === 0 ? '响应尚未返回（status 0）' : String(input.status);
   const lines = [
     `${input.method} ${input.url} · ${status}${input.ct === '' ? '' : ` · ${input.ct}`}`,
     `（${input.where} · ${new Date(input.at).toISOString()}）`,
   ];
   lines.push(
     req.text === ''
-      ? '入参（request body）：没有'
+      ? '入参（request body）：无'
       : `入参（request body，原长 ${sizeLabel(input.requestFullSize, input.requestSizeExact)}${req.cut ? `，这里截到 ${String(input.maxBytes)}` : ''}）：\n${req.text}`,
   );
   lines.push(
     res.text === ''
-      ? '出参（response body）：没有'
+      ? '出参（response body）：无'
       : `出参（response body，原长 ${sizeLabel(input.responseFullSize, input.responseSizeExact)}${res.cut ? `，这里截到 ${String(input.maxBytes)}` : ''}）：\n${res.text}`,
   );
-  if (input.headers !== '') lines.push(`请求头（可能含凭据 —— 别落进 design.json）：${input.headers}`);
+  if (input.headers !== '') lines.push(`请求头（可能含凭据，不要写入 design.json）：${input.headers}`);
   if (input.ambiguous > 1) {
     lines.push(
-      `（这个 key 在这一场的原文里出现 ${String(input.ambiguous)} 次 —— 跨轮会重名；带上清单里那一行的 at 才钉得住是哪一次。）`,
+      `（该 key 在本场原文中出现 ${String(input.ambiguous)} 次；跨轮会重名，带上清单中该行的 at 才能确定是哪一次。）`,
     );
   }
   if (input.note !== '') lines.push(`（${input.note}）`);

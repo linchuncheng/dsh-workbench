@@ -100,7 +100,7 @@ describe('页面自己叫醒宿主：没有网络请求、没有计数台账，�
       woke += 1;
     };
 
-    buttonOf(harness, '拍一张当前页面的截图').onclick?.();
+    buttonOf(harness, '截取当前页面').onclick?.();
     expect(woke).toBe(1);
     expect(win['__dshRecordWake']).toBeNull();
 

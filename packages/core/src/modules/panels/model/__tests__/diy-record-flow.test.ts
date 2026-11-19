@@ -35,7 +35,7 @@ describe('录一次写：窗口与段归流程管，不归 agent 记', () => {
 
     await expect(
       built.tool(DIY_RECORD_PREPARE_TOOL).execute({ unit: 'demo', url: URL, doing: '发布' }, rig.diyExec()),
-    ).rejects.toThrow(/现在停在「探测」/);
+    ).rejects.toThrow(/当前停在「探测」/);
     expect(built.commands).toHaveLength(0);
   });
 
