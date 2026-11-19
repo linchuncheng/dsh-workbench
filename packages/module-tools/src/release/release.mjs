@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from 'node:util';
 import semver from 'semver';
 
 import { DESIGN_FILE, acceptanceOf } from '../contract/design.mjs';
+import { cardTitleFromMessages } from '../support/messages.mjs';
 import {
   advanceRun,
   artifactFingerprintOf,
@@ -65,6 +66,7 @@ import {
 } from '../market/market-index.mjs';
 
 export { NeedsUser, ReleaseError, ResumableError };
+export { cardTitleFromMessages };
 
 const CLI = fileURLToPath(new URL('../../bin/dsh-wb-module.mjs', import.meta.url));
 const SCRIPTS = ['typecheck', 'test', 'selfcheck'];
@@ -137,19 +139,31 @@ function runGate(exec, root, options) {
   for (const script of SCRIPTS) runScriptStage(exec, root, script, options);
 }
 
+function runChecks(exec, root, options) {
+  runCliStage(exec, root, ['check'], options);
+  if (existsSync(join(root, DESIGN_FILE))) runCliStage(exec, root, ['design', 'check'], options);
+}
+
+function beginVersion(exec, root, context) {
+  if (!context.resumeMatchesTree) runChecks(exec, root, context.stageOptions);
+  const next = { ...context.manifest, version: context.version };
+  if (!context.indexOnly) writeManifest(root, next);
+  if (context.tracking) {
+    advanceRun(context.home, context.unit, {
+      phase: 'version',
+      version: context.version,
+      fingerprint: artifactFingerprintOf(root),
+    });
+  }
+  writeStateKeepingRun(context.home, context.unit, stateOf(context.info, next, context.version, 'intent'));
+  return next;
+}
+
 function gitPathsOf(info) {
   const prefix = info.packagePath === '.' ? '' : `${info.packagePath}/`;
   return ['dist', 'client.js', 'cordis.patch.yml', 'package.json', 'README.md', 'DEVELOPING.md', 'CHANGELOG.md', 'design.json', 'readme.json']
     .map((one) => `${prefix}${one}`)
     .filter((one) => existsSync(join(info.toplevel, one)));
-}
-
-const MESSAGE_FILES = ['src/messages.ts', 'src/messages.tsx', 'src/messages.mjs', 'src/messages.js'];
-
-function titleIn(segment, key) {
-  const quoted = `['"\`]${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"\`]`;
-  const match = new RegExp(`${quoted}\\s*:\\s*['"\`]([^'"\`]*)['"\`]`).exec(segment);
-  return match === null ? '' : match[1].trim();
 }
 
 function writeStateKeepingRun(home, unit, value) {
@@ -172,26 +186,6 @@ function stopSummaryOf(target, manifest, version, changes, changelog, labels, ca
     ...(changelog === undefined ? {} : { changelog }),
     install: '',
   };
-}
-
-export function cardTitleFromMessages(root, unit) {
-  if (unit === '') return undefined;
-  const key = `${unit}.cardTitle`;
-  for (const file of MESSAGE_FILES) {
-    let text;
-    try {
-      text = readFileSync(join(root, file), 'utf8');
-    } catch {
-      continue;
-    }
-    const zhAt = text.search(/\bzh\s*:/);
-    const enAt = text.search(/\ben\s*:/);
-    const zh = zhAt === -1 ? '' : titleIn(text.slice(zhAt, enAt === -1 ? text.length : enAt), key);
-    const en = enAt === -1 ? '' : titleIn(text.slice(enAt), key);
-    if (zh === '' && en === '') continue;
-    return { ...(zh === '' ? {} : { zh }), ...(en === '' ? {} : { en }) };
-  }
-  return undefined;
 }
 
 function gitCommitOf(exec, info, version, capture, progress = {}, identity) {
@@ -769,6 +763,18 @@ export async function runRelease({
   const capture = json;
   const stageOptions = { cwd: root, capture, err };
   if (!resumeMatchesTree) runGate(exec, root, stageOptions);
+  const startVersion = (version) =>
+    beginVersion(exec, root, {
+      resumeMatchesTree,
+      stageOptions,
+      manifest,
+      version,
+      indexOnly,
+      tracking,
+      home,
+      unit,
+      info,
+    });
   if (tracking) advanceRun(home, unit, { phase: 'gates' });
 
   if (info.kind === 'market') {
@@ -793,7 +799,7 @@ export async function runRelease({
       emit(out, json, summary);
       return summary;
     }
-    if (!resumeMatchesTree) runCliStage(exec, root, ['check'], stageOptions);
+    if (!resumeMatchesTree) runChecks(exec, root, stageOptions);
     if (tracking) advanceRun(home, unit, { phase: 'version', version });
     const next = { ...manifest, version };
     const cardTitle = cardTitleFromMessages(root, unit);
@@ -893,11 +899,7 @@ export async function runRelease({
       emit(out, json, summary);
       return summary;
     }
-    if (!resumeMatchesTree) runCliStage(exec, root, ['check'], stageOptions);
-    const next = { ...manifest, version };
-    if (!indexOnly) writeManifest(root, next);
-    if (tracking) advanceRun(home, unit, { phase: 'version', version, fingerprint: artifactFingerprintOf(root) });
-    writeStateKeepingRun(home, unit, stateOf(info, next, version, 'intent'));
+    const next = startVersion(version);
     if (workspaceOnly) {
       const stopSummary = stopSummaryOf(target, next, version, changesOf(version), changelogReport, labels, categoryForIndex);
       emit(out, json, stopSummary);
@@ -951,11 +953,7 @@ export async function runRelease({
       emit(out, json, summary);
       return summary;
     }
-    if (!resumeMatchesTree) runCliStage(exec, root, ['check'], stageOptions);
-    const next = { ...manifest, version };
-    if (!indexOnly) writeManifest(root, next);
-    if (tracking) advanceRun(home, unit, { phase: 'version', version, fingerprint: artifactFingerprintOf(root) });
-    writeStateKeepingRun(home, unit, stateOf(info, next, version, 'intent'));
+    const next = startVersion(version);
     if (indexOnly) {
       const state = readState(home, unit);
       const checked = verifyGit(exec, info, version);
@@ -1046,7 +1044,7 @@ export async function runRelease({
   }
   if (changelogChange !== undefined) changes.push(changelogChange);
   if (dryRun) {
-    if (!resumeMatchesTree) runCliStage(exec, root, ['check'], stageOptions);
+    if (!resumeMatchesTree) runChecks(exec, root, stageOptions);
     const files = localFiles(exec, root);
     checkPublished(files);
     const summary = {
@@ -1068,7 +1066,7 @@ export async function runRelease({
   if (tracking) advanceRun(home, unit, { phase: 'version', version, fingerprint: artifactFingerprintOf(root) });
   let published = false;
   try {
-    if (!resumeMatchesTree) runCliStage(exec, root, ['check'], stageOptions);
+    if (!resumeMatchesTree) runChecks(exec, root, stageOptions);
     writeStateKeepingRun(home, unit, stateOf(info, next, version, 'intent'));
     if (workspaceOnly) {
       const stopSummary = stopSummaryOf(target, next, version, changes, changelogReport, labels, categoryForIndex);

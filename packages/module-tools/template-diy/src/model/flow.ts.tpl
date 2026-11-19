@@ -16,10 +16,10 @@ export interface SampleRun {
 export function sampleFlow(): FlowDefinition {
   return {
     id: 'sample',
-    title: '读目录 → 汇总',
+    title: '读取目录 → 汇总',
     target: { $ref: 'in.path' },
     steps: [
-      { id: 'read', title: '读目录', action: 'read' },
+      { id: 'read', title: '读取目录', action: 'read' },
       {
         id: 'summarize',
         title: '汇总',
@@ -35,12 +35,12 @@ export function sampleFlow(): FlowDefinition {
 }
 
 export function headlineOf(run: SampleRun): string {
-  if (run.status === 'ok') return '样板流程跑完了';
-  if (run.status === 'failed') return '样板流程失败';
-  if (run.status === 'stopped') return '样板流程已停止';
-  if (run.status === 'needs-human') return '样板流程在等人处理';
-  if (run.status === 'needs-login') return '样板流程要登录';
-  return run.step === '' ? '样板流程正在跑' : `样板流程：${run.step}`;
+  if (run.status === 'ok') return '示例流程已完成';
+  if (run.status === 'failed') return '示例流程失败';
+  if (run.status === 'stopped') return '示例流程已停止';
+  if (run.status === 'needs-human') return '示例流程等待处理';
+  if (run.status === 'needs-login') return '示例流程需要登录';
+  return run.step === '' ? '示例流程运行中' : `示例流程运行中：${run.step}`;
 }
 
 export function runIsLive(run: SampleRun): boolean {

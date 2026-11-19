@@ -993,7 +993,7 @@ export async function run() {
       for (const name0 of inDeclaration.filter((one) => !inDesign.includes(one))) {
         problems.push(
           `${name}: 清单的 tools[] 里声明了「${name0}」，design.json 的能力行里却没有它 —— ` +
-            '底稿是给人读的那半（它干嘛、要不要点头，`design render` 拿它出 DEVELOPING.md）：' +
+            '底稿是给人读的那半（它干嘛、要不要批准，`design render` 拿它出 DEVELOPING.md）：' +
             `要么在 design.json 的 capabilities[] 里为「${name0}」补一行，要么把它从清单里删掉`,
         );
       }
@@ -1118,7 +1118,7 @@ export async function run() {
         if (typeof mounted.needsApproval !== 'function') {
           problems.push(
             `${name}: 工具 ${tool.name} 的清单里写着 writes:true，但 mount() 的返回值里没有 needsApproval —— ` +
-              `外壳每次调用前都问它"这次要不要点头"，没有它就只有一句"没认领"，**每一次调用都当场被拒**。` +
+              `外壳每次调用前都问它"这次要不要批准"，没有它就只有一句"没认领"，**每一次调用都当场被拒**。` +
               `做法：mount() 返回的对象里加 needsApproval(call)，认出这把工具再给 verdict：` +
               `{ kind: 'read' }（这次不用问）或 { kind: 'ask', reason, question: {zh,en}, fallback: {zh,en} }（要问，且问得清）`,
           );
@@ -1209,7 +1209,7 @@ export async function run() {
         }
         if (!described) {
           problems.push(
-            `${name}: 写工具 ${tool.name} 的 needsApproval 对合成调用回了 ask（要点头），` +
+            `${name}: 写工具 ${tool.name} 的 needsApproval 对合成调用回了 ask（需要批准），` +
               `但 approvalDetail 没说清"这次会发生什么"（zh/en 或 {blocked}）—— ` +
               `审批屏上用户只能看到一句通用问句，看不到会动什么${cannotShape}`,
           );

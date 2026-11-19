@@ -45,6 +45,7 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (KB * KB * KB)).toFixed(1)} GB`;
 }
 
+
 function payloadState(payload: OverviewPayload): OverviewState {
   const blank = payload.files === 0 && payload.dirs === 0;
   return blank ? { kind: 'empty', payload } : { kind: 'ready', payload };

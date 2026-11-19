@@ -1,4 +1,4 @@
-// 模块包的接线自检：把 client.js 当成浏览器里的加载器那样跑一遍，再把宿主产物当 ESM 跑一遍。
+// 模块包的接线自检：把 client.js 当成浏览器里的加载器运行一次，再把宿主产物当 ESM 跑一遍。
 //
 // 为什么值得有：宿主侧挂没挂上，curl /panels 就能看见；浏览器侧挂没挂上，过去只能靠"刷个页面看看"。
 // 这个脚本复刻 dsh 加载器的**契约**（`window.__ModuleLoader__.load({ id, factory })` + `factory(require)`），
@@ -280,7 +280,7 @@ check(
   JSON.stringify(registeredTools.map((tool) => tool?.name)),
 );
 
-// ── 模板自己的故事：流程真跑一遍，长任务最后落到 ok ──────────────────────
+// ── 模板自己的故事：流程真运行一次，长任务最后落到 ok ──────────────────────
 const startAction = (mounted.actions ?? []).find((one) => one.resource === RUN_RESOURCE);
 check('动作通道里有起流程的入口（卡片那颗钮走的就是它）', typeof startAction?.handle === 'function');
 const started = startAction?.handle({ path: moduleDir });
@@ -295,8 +295,8 @@ while (snapshot !== null && snapshot.status === 'running' && Date.now() < deadli
 }
 check('流程整条跑到 ok', snapshot?.status === 'ok', String(snapshot?.status));
 check(
-  '流水里有「读目录」',
-  (snapshot?.steps ?? []).some((step) => step.includes('读目录')),
+  '流水里有「读取目录」',
+  (snapshot?.steps ?? []).some((step) => step.includes('读取目录')),
   (snapshot?.steps ?? []).join(' | '),
 );
 
@@ -308,7 +308,7 @@ const noteTool = registeredTools.find((tool) => tool?.name === `${UNIT_ID}_add_n
 const noteDecl = (manifest.dsh?.workbench?.tools ?? []).find((tool) => tool?.name === `${UNIT_ID}_add_note`);
 check('写工具注册上了，清单里也声明成 writes: true（壳才会走审批）', noteTool !== undefined && noteDecl?.writes === true);
 check(
-  '写工具要点头，审批屏说得出会写什么',
+  '写工具需要批准，审批屏说得出会写什么',
   mounted.needsApproval?.({ name: `${UNIT_ID}_add_note`, arguments: { text: 'x' } })?.kind === 'ask' &&
     typeof mounted.approvalDetail?.({ name: `${UNIT_ID}_add_note`, arguments: { text: 'x' } })?.zh === 'string',
 );

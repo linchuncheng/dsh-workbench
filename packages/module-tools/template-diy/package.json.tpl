@@ -31,7 +31,7 @@
     "workbench": {
       "apiVersion": 3,
       "unit": "__UNIT__",
-      "title": { "zh": "__UNIT__ 模块", "en": "__UNIT__ module" },
+      "title": { "zh": "目录概览", "en": "Directory overview" },
       "card": { "order": 90 },
       "tools": [
         { "name": "__UNIT___run", "writes": false, "key": "run" },

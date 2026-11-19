@@ -13,11 +13,11 @@
     { "key": "unreadable", "sees": "（待填）", "canDo": "（待填）", "agentCan": "（待填）" }
   ],
   "config": [
-    { "persistence": "prefs", "key": "（待填）", "watches": "（待填）", "default": "（待填）", "valuesFrom": "（待填）", "wrongChoice": "（待填）" }
+    { "persistence": "prefs", "key": "limit", "watches": "（待填）", "default": "（待填）", "valuesFrom": "（待填）", "wrongChoice": "（待填）" }
   ],
   "capabilities": [
-    { "name": "__UNIT___run", "oneLine": "（待填）", "shape": "（待填）", "approval": "不点头（只读）" },
-    { "name": "__UNIT___add_note", "oneLine": "（待填）", "shape": "（待填）", "approval": "点头（写本模块笔记）" }
+    { "name": "__UNIT___run", "oneLine": "（待填）", "shape": "（待填）", "approval": "无需批准（只读）" },
+    { "name": "__UNIT___add_note", "oneLine": "（待填）", "shape": "（待填）", "approval": "需要批准（写本模块笔记）" }
   ],
   "linkage": [
     { "who": "（待填）", "when": "（待填）", "whatChanges": "（待填）", "userSees": "（待填）" }

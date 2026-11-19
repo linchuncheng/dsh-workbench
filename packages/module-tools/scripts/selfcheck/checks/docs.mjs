@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { BIN, fillPendingDesign } from '../lib.mjs';
 
-const TITLE = '文档：init 生成用户 README 与作者 DEVELOPING；design render 两份都更新；旧 README 能迁到 DEVELOPING';
+const TITLE = '文档：init 生成用户 README 与作者 DEVELOPING；design render 两份都更新；绑定与审批图缺了直接红；旧 README 能迁到 DEVELOPING';
 
 function run(args) {
   return execFileSync(process.execPath, [BIN, ...args], { encoding: 'utf8', stdio: 'pipe' });
@@ -15,15 +15,45 @@ function read(dir, file) {
   return readFileSync(join(dir, file), 'utf8');
 }
 
+function failureOf(args) {
+  try {
+    run(args);
+    return '';
+  } catch (error) {
+    return `${error.stdout ?? ''}${error.stderr ?? ''}`;
+  }
+}
+
+function applyRed(source, operation) {
+  if (operation.title !== undefined) source.title = operation.title;
+  if (operation.dropApproval === true) source.shots = source.shots.filter((one) => one.kind !== 'approval');
+  if (operation.dropBound !== undefined) {
+    const [field, value] = operation.dropBound;
+    source[field] = source[field].filter((one) => {
+      if (typeof one === 'string') return true;
+      const bound = field === 'agent' ? one.capabilities : field === 'trouble' ? one.states : [one.config];
+      return !(bound ?? []).includes(value);
+    });
+  }
+  if (operation.setCapabilities !== undefined) {
+    const [index, names] = operation.setCapabilities;
+    source.agent[index].capabilities = names;
+  }
+}
+
+const CARD = '┌─ 卡片 ─┐\n│ ● 标题 │\n└────────┘';
+
 export const checks = [
   {
     title: TITLE,
     run(_ctx, report) {
       const probe = mkdtempSync(join(tmpdir(), 'wb-docs-'));
       const problems = [];
+      const sourceFile = join(probe, 'readme.json');
+      const manifestFile = join(probe, 'package.json');
       try {
         run(['init', 'demo', '--dir', probe, '--template', 'diy']);
-        if (!existsSync(join(probe, 'readme.json'))) problems.push('init 没生成 readme.json');
+        if (!existsSync(sourceFile)) problems.push('init 没生成 readme.json');
         fillPendingDesign(probe);
         run(['design', 'render', '--cwd', probe]);
         run(['design', 'check', '--cwd', probe]);
@@ -38,21 +68,47 @@ export const checks = [
         }
         const drawn = read(probe, 'README.md');
         if (!drawn.includes('## 长这样')) problems.push('README 缺「长这样」那一节');
-        if (!drawn.includes('```\n┌─ 卡片 ─┐') || !drawn.includes('│ ● 标题 │')) problems.push('卡片图没画进 README');
+        if (!drawn.includes(`\`\`\`\n${CARD}`)) problems.push('卡片图没画进 README');
         if (!/## 你会看到什么\n\n- 填好/.test(drawn)) problems.push('正文没按条目渲染');
 
-        const noShot = JSON.parse(read(probe, 'readme.json'));
-        noShot.shots = [];
-        writeFileSync(join(probe, 'readme.json'), JSON.stringify(noShot, null, 2));
-        let shotFailure = '';
-        try {
-          run(['design', 'check', '--cwd', probe]);
-        } catch (error) {
-          shotFailure = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+        const baseline = JSON.parse(read(probe, 'readme.json'));
+        const expectRed = (mutate, needle, label) => {
+          const next = structuredClone(baseline);
+          mutate(next);
+          writeFileSync(sourceFile, `${JSON.stringify(next, null, 2)}\n`);
+          let out = '';
+          try {
+            run(['design', 'check', '--cwd', probe]);
+          } catch (error) {
+            out = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+          }
+          if (!out.includes(needle)) problems.push(`${label}没拦住（找「${needle}」）`);
+          writeFileSync(sourceFile, `${JSON.stringify(baseline, null, 2)}\n`);
+        };
+
+        const redCases = [
+          ['漏掉写能力的 agent 文案时', { dropBound: ['agent', 'demo_add_note'] }, '能力「demo_add_note」没有用户文案'],
+          ['绑错了能力名时', { setCapabilities: [0, ['no_such_capability']] }, '不存在的能力'],
+          ['漏掉设置文案时', { dropBound: ['do', 'limit'] }, '设置「limit」没有用户文案'],
+          ['漏掉空态排障时', { dropBound: ['trouble', 'empty'] }, '状态「empty」没有排障文案'],
+          ['有写工具却没画审批屏时', { dropApproval: true }, '没有审批图'],
+          ['标题与卡片名不一致时', { title: '别的名字' }, '两边要用同一个词'],
+        ];
+        for (const [label, operation, needle] of redCases) {
+          expectRed((source) => applyRed(source, operation), needle, label);
         }
-        if (!shotFailure.includes('shots 是空的')) problems.push('没画图时 design check 没拦住');
-        noShot.shots = [{ caption: '卡片', ascii: '┌─ 卡片 ─┐\n│ ● 标题 │\n└────────┘' }];
-        writeFileSync(join(probe, 'readme.json'), JSON.stringify(noShot, null, 2));
+
+        const sourceFileBefore = read(probe, 'readme.json');
+        const manifest = JSON.parse(read(probe, 'package.json'));
+        const tools = manifest.dsh.workbench.tools.map((one) => ({ ...one, writes: false }));
+        writeFileSync(manifestFile, `${JSON.stringify({ ...manifest, dsh: { ...manifest.dsh, workbench: { ...manifest.dsh.workbench, tools } } }, null, 2)}\n`);
+        const noWriteFailure = failureOf(['design', 'check', '--cwd', probe]);
+        if (!noWriteFailure.includes('没有写工具，却有审批图')) {
+          problems.push('没有写工具却有审批图时没拦住');
+        }
+        writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
+        writeFileSync(sourceFile, sourceFileBefore);
+
         run(['design', 'render', '--cwd', probe]);
         run(['design', 'check', '--cwd', probe]);
 
@@ -62,7 +118,7 @@ export const checks = [
 
         const design = JSON.parse(read(probe, 'design.json'));
         design.oneLine = 'ENGINEERING_ONLY_SENTINEL';
-        writeFileSync(join(probe, 'design.json'), JSON.stringify(design, null, 2));
+        writeFileSync(join(probe, 'design.json'), `${JSON.stringify(design, null, 2)}\n`);
         run(['design', 'render', '--cwd', probe]);
         if (read(probe, 'README.md').includes('ENGINEERING_ONLY_SENTINEL')) {
           problems.push('README 把 design.json 的工程字段带进来了');
@@ -70,17 +126,12 @@ export const checks = [
         run(['design', 'check', '--cwd', probe]);
 
         const source = JSON.parse(read(probe, 'readme.json'));
-        source.see = '打开 src/host.ts 看';
-        writeFileSync(join(probe, 'readme.json'), JSON.stringify(source, null, 2));
-        let copyFailure = '';
-        try {
-          run(['design', 'check', '--cwd', probe]);
-        } catch (error) {
-          copyFailure = `${error.stdout ?? ''}${error.stderr ?? ''}`;
-        }
-        if (!copyFailure.includes('源码路径')) problems.push('用户文案里的源码路径没被 point 出来');
-        source.see = '填好';
-        writeFileSync(join(probe, 'readme.json'), JSON.stringify(source, null, 2));
+        source.see = ['打开 src/host.ts 看'];
+        writeFileSync(sourceFile, `${JSON.stringify(source, null, 2)}\n`);
+        const copyFailure = failureOf(['design', 'check', '--cwd', probe]);
+        if (!copyFailure.includes('源码路径')) problems.push('用户文案里的源码路径没被点出来');
+        source.see = ['填好'];
+        writeFileSync(sourceFile, `${JSON.stringify(source, null, 2)}\n`);
         run(['design', 'render', '--cwd', probe]);
         run(['design', 'check', '--cwd', probe]);
 

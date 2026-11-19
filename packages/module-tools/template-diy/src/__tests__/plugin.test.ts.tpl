@@ -356,7 +356,7 @@ describe('写通道：笔记 + 审批', () => {
     expect(notes.notes.map((one) => one.text)).toContain('agent 记的');
   });
 
-  it('写工具要点头：needsApproval 回 ask，approvalDetail 说清写什么', () => {
+  it('写工具需要批准：needsApproval 回 ask，approvalDetail 说清写什么', () => {
     const h = harness();
     const verdict = h.mounted.needsApproval?.({
       name: DECLARED_TOOLS.addNote.name,

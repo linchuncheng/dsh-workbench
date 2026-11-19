@@ -2,6 +2,7 @@ import { createElement as h, type ChangeEvent } from 'react';
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives';
 import { kit } from '@dsh-workbench/core/client';
 import { NOTE_TEXT_MAX, type Note as NoteRow } from '../model/notes';
+import { when } from './when';
 
 const { Field, Note, Row, Rows, TextField } = kit.components;
 const UNIT_ID = '__UNIT__';
@@ -10,7 +11,7 @@ export interface NotesSectionProps {
   readonly path: string;
   readonly className: string;
   readonly lineClassName: string;
-  readonly t: (key: string) => string;
+  readonly t: (key: string, params?: Record<string, unknown>) => string;
   readonly notes: readonly NoteRow[];
   readonly draft: string;
   readonly onDraft: (value: string) => void;
@@ -68,7 +69,7 @@ export function NotesSection({
       : h(
           Rows,
           null,
-          ...notes.map((one) => h(Row, { key: one.id, label: one.text, value: one.at })),
+          ...notes.map((one) => h(Row, { key: one.id, label: one.text, value: when(one.at, t) })),
         ),
   );
 }

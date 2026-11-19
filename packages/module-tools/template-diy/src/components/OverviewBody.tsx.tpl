@@ -1,6 +1,7 @@
 import { createElement as h } from 'react';
 import { kit } from '@dsh-workbench/core/client';
 import { formatBytes, type OverviewState } from '../model/overview';
+import { when } from './when';
 import styles from './OverviewBody.module.css';
 
 const { CenteredState, EmptyState, IconPanelScreen, Row, Rows, StateBlock } = kit.components;
@@ -8,7 +9,7 @@ const UNIT_ID = '__UNIT__';
 
 export interface OverviewBodyProps {
   readonly state: OverviewState;
-  readonly t: (key: string) => string;
+  readonly t: (key: string, params?: Record<string, unknown>) => string;
 }
 
 export function OverviewBody({ state, t }: OverviewBodyProps): ReturnType<typeof h> {
@@ -55,7 +56,7 @@ export function OverviewBody({ state, t }: OverviewBodyProps): ReturnType<typeof
           h(Row, {
             key: file.name,
             label: file.name,
-            value: `${formatBytes(file.bytes)} · ${file.mtime}`,
+            value: `${formatBytes(file.bytes)} · ${when(file.mtime, t)}`,
           }),
         ),
       ),

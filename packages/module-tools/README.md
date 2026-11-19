@@ -9,7 +9,7 @@
 pnpm exec dsh-wb-module init my-unit                    # 建骨架（唯一模板，已默认）
 pnpm build        # dist/host.js + 套了 loader 壳的 client.js
 pnpm check        # 十四条判据
-pnpm design check # 设计底稿有没有空格、readme.json / README / DEVELOPING 有没有落后
+pnpm design check # 设计底稿有没有空格；README 有没有覆盖能力 / 配置 / 状态 / 审批；两份文档有没有落后
 ```
 
 要发货再加一步 `pnpm exec dsh-wb-module publish`：跑门禁、核 `files` 与 `npm pack` 清单，默认 **只 dry run，不真发**。
@@ -196,12 +196,12 @@ export default [
 `dsh-wb-module lint --fix` 先写回再跑一遍看还剩什么。**`check` 永远不动手改文件** ——
 门禁是判据，不是修复器。
 
-模板生成三份文档：`readme.json` 是终端用户文案源（标题、简介、卡片布局草图 `shots[]`、会看到什么、能做什么、agent 能做什么、数据从哪来、排障、FAQ，后五段是短条目），`README.md` 只由它生成；`DEVELOPING.md` 是作者文档（实现、路由、判据、数据源与三张表），由 `design.json` 生成。`design render` 刷新这两份；`design check` 会拦住空文案、占位符和技术词；旧模块先跑 `design migrate`，它把旧 `README.md` 原样保存为 `DEVELOPING.md`，再生成 `readme.json` 与用户 README。
+模板生成三份文档：`readme.json` 是终端用户文案源（标题、简介、卡片布局草图 `shots[]`、会看到什么、能做什么、agent 能做什么、数据从哪来、排障、FAQ，后五段是短条目），`README.md` 只由它生成；`DEVELOPING.md` 是作者文档（实现、路由、判据、数据源与三张表），由 `design.json` 生成。`design render` 刷新这两份；`design check` 拦住空文案、占位符、技术词、缺绑定、缺审批图与标题不一致，全部按错误处理。`agent[]` 绑 `capabilities[].name`、`do[]` 绑 `config[].key`、`trouble[]` 绑 `states[]`，`shots[]` 用 `kind` 标卡片与审批；有写工具就必须有审批图。`release` 在 `check` 之后直接跑 `design check`。旧模块先跑 `design migrate`，它把旧 `README.md` 原样保存为 `DEVELOPING.md`，再生成 `readme.json` 与用户 README；已有 `readme.json` 的模块按上面的绑定补齐。
 
 ## `design.json`：三张表
 
 面板 / 能力 / 联动三张表、状态矩阵、数据源记录、写通道记录、验收清单都住在模块根目录的
-`design.json`，DEVELOPING.md 里那一段由它生成（夹在 `<!-- dsh-wb:design:start/end -->` 之间）。README.md 的用户文案不看 design.json，只看模块根的 `readme.json`。
+`design.json`，DEVELOPING.md 里那一段由它生成（夹在 `<!-- dsh-wb:design:start/end -->` 之间）。README.md 的用户文案只看模块根的 `readme.json`；其中 `agent` / `do` / `trouble` 的绑定字段与 `design.json` 的能力、配置、状态对账，`shots` 的 `kind` 与清单的写工具对账。
 
 它是**设计底稿**：三张表与探明记录装人话（`oneLine` / `shape` / `approvalText` / 三张表的文字）；
 读源那一条可以多带 `key` 与 `recipe` 两个机器字段 —— 它们只用于生成 `src/datasource.ts`，
@@ -264,9 +264,9 @@ export default [
 - 形状与六种配方见模块 DIY 的 [`DATASOURCE.md`](../core/skills/workbench-module-diy/DATASOURCE.md)。
 
 ```bash
-dsh-wb-module design check    # 空着的格一格格点名叫出来 + README / DEVELOPING 有没有落后
+dsh-wb-module design check    # 空着的格一格格点名叫出来 + 覆盖 / 审批图 / 标题 + README / DEVELOPING 有没有落后
 dsh-wb-module design render   # 用 readme.json 重新生成 README，用 design.json 刷新 DEVELOPING 那一段
-dsh-wb-module design accept   # 在真卡片上逐条走通后打勾
+dsh-wb-module design accept   # 在真卡片上逐条验证后勾选
 ```
 
 ## 协议：`package.json` 里的五段

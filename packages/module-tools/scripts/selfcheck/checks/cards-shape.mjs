@@ -75,6 +75,10 @@ export const checks = [
         relaxed.states[0] = { key: 'idle', na: '读的是账号，不随项目变：没选项目时这张卡压根不渲染' };
         for (const state of relaxed.states) delete state.agentCan;
         writeFileSync(design, JSON.stringify(relaxed, null, 2));
+        const sourceFile = join(probe, 'readme.json');
+        const source = JSON.parse(readFileSync(sourceFile, 'utf8'));
+        source.agent = source.agent.map((one) => (typeof one === 'string' ? one : one.text));
+        writeFileSync(sourceFile, JSON.stringify(source, null, 2));
         run('render');
         run('check');
 
@@ -125,7 +129,7 @@ export function apply(ctx) {
         oneLine: 'x',
         panel: [],
         config: [],
-        capabilities: names.map((name) => ({ name, oneLine: 'x', shape: '只读', approval: '不用点头' })),
+        capabilities: names.map((name) => ({ name, oneLine: 'x', shape: '只读', approval: '无需批准' })),
         linkage: [],
         acceptance: [],
         reads: [{ read: 'r', params: 'p', credentials: 'c', notLoggedIn: 'n', timeout: 't' }],

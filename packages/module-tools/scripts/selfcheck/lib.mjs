@@ -123,7 +123,15 @@ export function fillPendingDesign(dir) {
     for (const key of ['title', 'summary', 'see', 'do', 'agent', 'data', 'install', 'trouble']) {
       const value = source[key];
       if (typeof value === 'string' && value.includes('（待填')) source[key] = '填好';
-      if (Array.isArray(value)) source[key] = value.map((one) => (typeof one === 'string' && one.includes('（待填') ? '填好' : one));
+      if (Array.isArray(value)) {
+        source[key] = value.map((one) => {
+          if (typeof one === 'string') return one.includes('（待填') ? '填好' : one;
+          if (one !== null && typeof one === 'object' && typeof one.text === 'string' && one.text.includes('（待填')) {
+            return { ...one, text: '填好' };
+          }
+          return one;
+        });
+      }
     }
     if (Array.isArray(source.shots)) {
       source.shots = source.shots.map((one) => ({ ...one, ascii: '┌─ 卡片 ─┐\n│ ● 标题 │\n└────────┘' }));

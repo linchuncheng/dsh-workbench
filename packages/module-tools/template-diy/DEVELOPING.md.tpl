@@ -6,7 +6,7 @@
 
 这份是 **唯一模板**（`--template diy`，也是默认）生成的骨架：一张**读当前项目目录的只读卡**，
 数据从宿主侧**真读**一个目录算出来（`node:fs`），另带一条**能跑**的流程 / 长任务 / 真工具 /
-动作通道样板；不是一个写死的样板。
+动作通道示例；不是写死的示例。
 
 ```bash
 dsh-wb-module init <unit> --dir <目录>              # 生成这份骨架（只有这一个模板）
@@ -21,7 +21,7 @@ dsh-wb-module check --only cards   # 十四条可以单跑
 pnpm build        # 构建产物
 pnpm typecheck    # tsc --noEmit
 pnpm test         # vitest：路由真读数 + 卡片五态 + 长任务/工具契约
-pnpm selfcheck    # 构建 + 把 client.js 当浏览器加载器跑一遍 + 真跑一趟流程 + 走 scripts/smoke.assert.mjs
+pnpm selfcheck    # 构建 + 把 client.js 当浏览器加载器运行一次 + 真运行一次流程 + 走 scripts/smoke.assert.mjs
 pnpm check        # dsh-wb-module check
 pnpm lint         # dsh-wb-module lint（`--fix` 就地改文件；`check` 永不动手）
 pnpm run check:duplication   # jscpd 扫 src / scripts，有克隆就红
@@ -62,7 +62,9 @@ pnpm run duplication:report  # 全量报告到 coverage/duplication/
 | `design.json` | 三张表 + 状态矩阵 + 数据源记录 + 验收清单（**唯一真相**，上面那段由它生成；`dsh-wb-module design check/render/accept` 读写它） | — |
 | `src/model/overview.ts` | 纯逻辑：类型 + 五态状态机 + `formatBytes`。两个运行时都读得到，不碰 react / kit / dsh / `node:*` | 1 |
 | `src/model/__tests__/overview.test.ts` | 模型层的配对测试（有 `src/model/**` 就必须有 —— `arch` 的 M08） | 99 |
-| `src/model/flow.ts` | 样板流程的纯逻辑：`FlowDefinition` + 五态标题 / 是否还在跑；不碰宿主 | 1 |
+| `src/model/time.ts` | 纯逻辑：时间串 → 毫秒；显示层的相对时间由外壳给 | 1 |
+| `src/model/__tests__/time.test.ts` | 时间模型的配对测试 | 99 |
+| `src/model/flow.ts` | 示例流程的纯逻辑：`FlowDefinition` + 五态标题 / 是否运行中；不碰宿主 | 1 |
 | `src/model/__tests__/flow.test.ts` | 流程模型的配对测试 | 99 |
 | `src/model/notes.ts` | 笔记的纯逻辑：校验 / 读回 / 最多 20 条 | 1 |
 | `src/model/__tests__/notes.test.ts` | 笔记模型的配对测试 | 99 |
@@ -70,17 +72,18 @@ pnpm run duplication:report  # 全量报告到 coverage/duplication/
 | `src/model/__tests__/prefs.test.ts` | 配置模型的配对测试 | 99 |
 | `src/messages.ts` | 卡片那几句文案（zh / en），键带 `<unit>.` 前缀 | 1 |
 | `src/declared-tools.ts` | 清单里工具名的生成物（`dsh-wb-module sync` 写；代码只引 `DECLARED_TOOLS.run.name` / `DECLARED_TOOLS.addNote.name`，不写字面量） | 1 |
-| `src/components/OverviewCard.tsx` | 卡片：`Card` 壳 + 五态 + 最大的几个文件 + 长任务行 + 笔记（写）/「显示几个」配置 | 2 |
+| `src/components/OverviewCard.tsx` | 卡片：`Card` 壳 + 五态 + 最大的几个文件 + 任务行 + 笔记（写）/「显示几个」配置 | 2 |
 | `src/components/OverviewBody.tsx` | 五态各自那一屏（待机 / 加载 / 就绪 / 空 / 出错） | 2 |
 | `src/components/OverviewBody.module.css` | 就绪态「最大的几个文件」列表的布局 | 2 |
-| `src/components/RunSection.tsx` | 长任务那一块：跑流程的钮 + `LongTaskRow`（五态 / 停止） | 2 |
-| `src/components/NotesSection.tsx` | 笔记那一块：输入 + 存一条 + 列表 | 2 |
-| `src/components/PrefsSection.tsx` | 「最大的几个文件」配置（`SelectField`，按工作区存） | 2 |
+| `src/components/when.ts` | 显示层：把毫秒交给外壳的相对时间格式 | 2 |
+| `src/components/RunSection.tsx` | 长任务那一块：运行流程的按钮 + `LongTaskRow`（五态 / 停止） | 2 |
+| `src/components/NotesSection.tsx` | 笔记那一块：输入 + 保存 + 列表 | 2 |
+| `src/components/PrefsSection.tsx` | 「显示几个文件」配置（`SelectField`，按工作区存） | 2 |
 | `src/components/OverviewCard.module.css` | 这个组件自己的样式（CSS Modules，构建时类名按路径哈希）—— **样式跟组件同目录** | 2 |
 | `src/components/__tests__/OverviewCard.test.ts` | 这张卡五态各画得出来 + 写失败留在卡上（测试住同目录的 `__tests__/`）；流程 / 笔记 / 配置的接线由 `plugin.test.ts` 与 smoke 覆盖 | 99 |
 | `src/host.ts` | 宿主面：接线 + 三条只读路由（`overview` / `notes` / `prefs`）+ 挂工具 / 长任务 / 动作通道 / `prefs` / 审批口径 | 10 |
 | `src/host/overview.ts` | 宿主侧内部实现：`readOverview()`（真读目录）+ 路由回答 | 10 |
-| `src/host/sample.ts` | 宿主侧内部实现：样板流程的动作、长任务、只读工具 | 10 |
+| `src/host/sample.ts` | 宿主侧内部实现：示例流程的动作、长任务、只读工具 | 10 |
 | `src/host/notes.ts` | 宿主侧内部实现：笔记读写（`deps.store`）+ 写工具 + 动作通道 | 10 |
 | `src/client.tsx` | 浏览器面：**只剩面** —— 注册 + 把 props 交给 `components/OverviewCard` | 10 |
 | `src/__tests__/plugin.test.ts` | 面注册 + 路由真读 + 工具注册 + 流程真跑 + 笔记/配置/审批 | 99 |
@@ -90,7 +93,7 @@ pnpm run duplication:report  # 全量报告到 coverage/duplication/
 | `tsconfig.json` / `vitest.config.ts` / `types/globals.d.ts` / `types/styles.d.ts` | 经典 JSX 运行时（`jsxFactory: h`）、vitest 的别名、浏览器半侧的运行时垫片、`*.module.css` 的类名表声明 | — |
 | `DEVELOPING.md` | 就是本文（作者文档；用户说明在 `README.md`） | — |
 
-## 长任务、工具、写通道与配置（样板）
+## 长任务、工具、写通道与配置（示例）
 
 这份骨架故意带了一组**可跑**的能力，示范五件事：
 
@@ -100,8 +103,8 @@ pnpm run duplication:report  # 全量报告到 coverage/duplication/
   `dsh.workbench.tools` 一字不差。`__UNIT___run` 起一趟流程，传 `runId` 则只看同一趟。
 - **长任务**：`deps.longTasks.create()` 交回一张注册表，`run` 里调 `deps.flow.run()` 并把
   `onStep` 交给 `longTaskStepOf`（shared/host 的默认映射）；卡片用 `useLongTask` 读、`LongTaskRow` 画。
-- **写通道 + 审批**：`__UNIT___add_note` 在清单里写 `writes: true`，`mount()` 返回 `needsApproval`（这次要点头）
-  与 `approvalDetail`（审批屏上那句"会写什么"）；agent 调用前壳会拦一道。卡片那颗钮走动作通道
+- **写通道 + 审批**：`__UNIT___add_note` 在清单里写 `writes: true`，`mount()` 返回 `needsApproval`（这次要批准）
+  与 `approvalDetail`（审批屏上那句"会写什么"）；agent 调用前壳会拦一道。卡片那个按钮走动作通道
   `<unit>-add-note`（点击即确认，不审批），与写工具共用同一份 `deps.store` 数据；网络 / 校验失败
   留在按钮下面那一行，不静默。
 - **配置（prefs）**：`mount()` 返回 `prefs: { resource, handle }`，按工作区把"显示几个文件"存进

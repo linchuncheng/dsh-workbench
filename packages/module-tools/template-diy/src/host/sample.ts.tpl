@@ -33,16 +33,16 @@ export function createSample(deps: UnitMountDeps): Sample {
   const flowDefinition = sampleFlow();
   const actions = deps.flow.createActions();
   const runDescription =
-    '跑一遍样板流程（读目录 → 汇总）；只读本机目录，不写平台，不用点头；再传 runId 可只看同一趟。';
+    '运行示例流程（读取目录 → 汇总）；只读本机目录，不写平台，无需批准；传入 runId 只查看同一趟。';
 
   actions.register(
     'read',
     async (_input, context) => {
-      context.log('读目录');
+      context.log('读取目录');
       const payload = readOverview(context.workspace, LIST_LIMIT);
       return { files: payload.files, dirs: payload.dirs, bytes: payload.bytes };
     },
-    { title: '读目录' },
+    { title: '读取目录' },
   );
   actions.register(
     'summarize',

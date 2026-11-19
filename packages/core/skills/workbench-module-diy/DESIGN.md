@@ -117,6 +117,36 @@ pnpm exec dsh-wb-module design accept    # 逐条走通后打勾
 
 ## 6 readme.json
 
-终端用户看到的 `README.md` 只从模块根的 `readme.json` 生成，字段是 `title` / `summary` / `shots[]` / `see[]` / `do[]` / `agent[]` / `data[]` / `install` / `trouble[]` / `faq[]`。写的时候按用户视角：看到什么、能点什么、哪些要点头、数据从哪来；不写 `src/`、路由、判据、错误码、工具链命令，也不留 `（待填）`。`shots` 至少一张：`{ caption, ascii }`（标题默认「长这样」，没有卡片就写 `shotsTitle`），用界面真实文案画（按 [§3](#3-用-ascii-沟通) 的画法），渲染成「卡片长这样」那一节。其余各段写条目（每段 1–4 条，单条不超过 70 字），图为主、文为辅。
-`design render` 写 README，`design check` 会点出空字段、占位符和技术词。旧模块跑 `design migrate` 生成骨架。
+终端用户看到的 `README.md` 只从模块根的 `readme.json` 生成。写的时候按用户视角：看到什么、能点什么、哪些需要批准、数据从哪来；不写 `src/`、路由、判据、错误码、工具链命令，也不留 `（待填）`。
 
+字段：`title` / `summary` / `shots[]` / `see[]` / `do[]` / `agent[]` / `data[]` / `install` / `trouble[]` / `faq[]`。条目有绑定形态，`design check` 按它判覆盖：
+
+```json
+{
+  "shots": [
+    { "kind": "card", "caption": "卡片", "ascii": "……" },
+    { "kind": "approval", "caption": "审批", "ascii": "……" }
+  ],
+  "do": [
+    { "config": "limit", "text": "「显示几个文件」选 5 / 10 / 20，只影响显示。" },
+    "用户能点击的另一个按钮。"
+  ],
+  "agent": [
+    { "capabilities": ["demo_run"], "text": "让 agent 运行示例流程：只读，无需批准。" },
+    { "capabilities": ["demo_add_note"], "text": "让 agent 记笔记：需要批准。" }
+  ],
+  "trouble": [
+    { "states": ["empty", "unreadable"], "text": "空目录不是故障；读不到时刷新重试。" }
+  ]
+}
+```
+
+- `agent[]` 每条绑 1..N 个 `capabilities[].name`；每个能力至少一条，未知名字红。
+- `do[]` 每条可绑一个 `config[].key`；每个配置至少一条，未知 key 红。
+- `trouble[]` 每条可绑若干 `states[]`；`empty` / `unreadable` 不适用（`na`）才免。
+- `shots` 至少一张 `card`；有 `writes: true` 的工具就必须有一张 `kind: "approval"`，没有写工具却有审批图也红。
+- `title` 必须与卡片标题（`src/messages.ts` 的 `<unit>.cardTitle`）同词；没有卡名就退回清单 `title`。
+- 字符串条目仍可渲染，但不参与覆盖；没有绑定就算没写。
+- 每段 1–4 条、单条 ≤70 字，长解释进 `faq`。
+
+`design render` 写 README；`design check` 点出空字段、占位符、技术词、缺绑定、缺审批图与标题不一致，全部按错误处理。`release` 在 `check` 之后直接跑 `design check`；旧模块跑 `design migrate` 生成骨架，已有 `readme.json` 的模块按上面补绑定。

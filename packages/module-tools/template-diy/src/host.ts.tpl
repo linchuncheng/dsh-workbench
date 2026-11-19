@@ -12,6 +12,7 @@ import { NOTE_RESOURCE, NOTES_ROUTE, UNIT_ID } from './model/notes';
 import { PREFS_RESOURCE, PREFS_ROUTE, applyPrefs, prefsOf } from './model/prefs';
 import { createNotes } from './host/notes';
 import { createSample } from './host/sample';
+import { messages } from './messages';
 import { overviewAnswer } from './host/overview';
 
 export { readOverview } from './host/overview';
@@ -87,9 +88,15 @@ const face: UnitModuleFace = {
       },
       ...writeApprovalOf({
         tools: [DECLARED_TOOLS.addNote.name],
-        reason: '会往这个模块的笔记里加一条',
-        question: { zh: '把这条笔记写进去吗？', en: 'Write this note?' },
-        fallback: { zh: '只写本模块的笔记文件，不动平台', en: 'Writes only this module’s notes file' },
+        reason: '会往当前项目的模块笔记里加一条',
+        question: {
+          zh: `记到当前项目的「${messages.zh['__UNIT__.cardTitle']}」里，允许吗？`,
+          en: `Add it to "${messages.en['__UNIT__.cardTitle']}" for this project?`,
+        },
+        fallback: {
+          zh: `只写当前项目的「${messages.zh['__UNIT__.cardTitle']}」笔记，不修改平台。`,
+          en: `Writes only this project’s "${messages.en['__UNIT__.cardTitle']}" notes.`,
+        },
         detail: { zh: '新增 1 条笔记', en: 'Add 1 note' },
       }),
       ...(sample.runs === undefined ? {} : { longTasks: sample.runs }),

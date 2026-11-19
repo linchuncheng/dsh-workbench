@@ -58,6 +58,9 @@ vi.mock('@dsh-workbench/core/client', () => ({
       SelectField: () => null,
       TextField: () => null,
     },
+    lib: {
+      relativeTimeAgo: () => '刚刚',
+    },
   },
 }));
 
