@@ -52,8 +52,7 @@ export function desktopRuntimeEnvPath(
 ): string | undefined {
   const bins = desktopBundledBins(proc, exists);
   if (bins.length === 0) return undefined;
-  const parts = (parentPath ?? '').split(separator).filter((part) => part !== '' && !bins.includes(part));
-  return [...bins, ...parts].join(separator);
+  return pathWithBinsOf(parentPath, bins, separator);
 }
 
 export function desktopRuntimeEnv(
