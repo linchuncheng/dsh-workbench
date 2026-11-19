@@ -5,14 +5,14 @@ import { join } from 'node:path';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { quoteShellArg } from '@dsh-workbench/shared/host';
 import { describe, expect, it } from 'vitest';
-import { filesOf, findFileOf, installedVersionOf, queryCommandOf, renderNameText, runSurfaceQuery, toolchainArgvOf, toolchainBinAmong, toolchainBinOf } from '../diy-components';
+import { filesOf, findFileOf, installedVersionOf, queryCommandOf, renderNameText, runSurfaceQuery, toolchainArgvOf, toolchainBinAmong, toolchainBinOf } from '../diy-surface';
 import { fakeSeamOf } from './seam-fake';
 
 const PACKAGES_DIR = join(import.meta.dirname, '..', '..', '..', '..', '..', '..');
 const MODULE_TOOL_BIN = join(PACKAGES_DIR, 'module-tools', 'bin', 'dsh-wb-module.mjs');
 const PRIMITIVES_DIR = join(PACKAGES_DIR, 'workbench', 'node_modules', '@deepseek-ai', 'dsh-client-ui-primitives');
 
-describe('workbench_diy_components · 工具链回话不对的时候', () => {
+describe('workbench_diy_surface · 工具链回话不对的时候', () => {
   it('★ 非零退出码：报错带上退出码与末尾三行（不假装拿到了清单）', async () => {
     const reply = () => ({ exitCode: 2, stdout: 'line-a\nline-b\nline-c\nline-d\n', stderr: 'boom\n' });
 
@@ -103,7 +103,7 @@ describe('workbench_diy_components · 工具链回话不对的时候', () => {
   });
 });
 
-describe('workbench_diy_components · 真跑一遍工具链', () => {
+describe('workbench_diy_surface · 真跑一遍工具链', () => {
   it.skipIf(!existsSync(MODULE_TOOL_BIN) || !existsSync(PRIMITIVES_DIR))(
     '★ 一条龙：runShell（resolve → execute → result）跑真 CLI、解析 JSON、落到 Button 的声明',
     async () => {
@@ -139,7 +139,7 @@ describe('workbench_diy_components · 真跑一遍工具链', () => {
   );
 });
 
-describe('workbench_diy_components · 工具链', () => {
+describe('workbench_diy_surface · 工具链', () => {
   it('★ 先认工坊根 node_modules/.bin 里的那个，其次认包里的 bin 脚本（路径带引号后再进 shell）', () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-wb-bin-'));
     try {

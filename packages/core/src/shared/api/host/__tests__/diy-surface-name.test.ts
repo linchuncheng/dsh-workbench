@@ -9,10 +9,10 @@ import {
   renderNameText,
   renderSurfaceText,
   skillDirOf,
-} from '../diy-components';
-import { kit, primitives } from './diy-components-samples';
+} from '../diy-surface';
+import { kit, primitives } from './diy-surface-samples';
 
-describe('workbench_diy_components · 给名字', () => {
+describe('workbench_diy_surface · 给名字', () => {
   it('★ 给名字：回绝对路径 + 那份类型文件的原文；找不到就回近似的名字', () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-wb-comp-'));
     try {
@@ -36,7 +36,7 @@ describe('workbench_diy_components · 给名字', () => {
   });
 });
 
-describe('workbench_diy_components · kit 那批的说明文字', () => {
+describe('workbench_diy_surface · kit 那批的说明文字', () => {
   it('skillDirOf 从深处往上找 skills/workbench-module-diy（找不到回 null）', () => {
     const root = mkdtempSync(join(tmpdir(), 'dsh-wb-skill-'));
     try {
@@ -67,7 +67,7 @@ describe('workbench_diy_components · kit 那批的说明文字', () => {
   });
 });
 
-describe('workbench_diy_components · 找不到的时候别撒谎', () => {
+describe('workbench_diy_surface · 找不到的时候别撒谎', () => {
   it('★ 名字在清单里、只是扫不到文件：说"扫不到类型文件"，不说"没有这个东西"', () => {
     const noFiles = { buckets: { components: ['Card'], hooks: ['useApiResource'] }, files: {} };
     const text = renderNameText('Card', null, { kit: noFiles });
@@ -99,7 +99,7 @@ describe('workbench_diy_components · 找不到的时候别撒谎', () => {
   });
 });
 
-describe('workbench_diy_components · 不知道 ≠ 没有（2026-10-20 真机假阴性）', () => {
+describe('workbench_diy_surface · 不知道 ≠ 没有（2026-10-20 真机假阴性）', () => {
   const notInstalled = { installed: null, pinned: null, modules: [], snippet: { devDependency: { name: '@deepseek-ai/dsh-client-ui-primitives', version: '0.2.1-rc.2' } } };
 
   it('★ 原语没装：kit 那一面照旧拍板("kit 里没有")，只有"在不在原语里"说不了 + 给补法', () => {
@@ -162,7 +162,7 @@ describe('workbench_diy_components · 不知道 ≠ 没有（2026-10-20 真机�
   });
 });
 
-describe('workbench_diy_components · 清单就是清单（诊断不进这里）', () => {
+describe('workbench_diy_surface · 清单就是清单（诊断不进这里）', () => {
   it('★ 就算载荷里带着 problems，渲染出来也不出现判据 / 诊断字样', () => {
     const dirty = {
       primitives,

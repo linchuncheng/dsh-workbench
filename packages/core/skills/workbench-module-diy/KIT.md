@@ -1,6 +1,6 @@
 # kit：选型、组合、最小写法
 
-`check --only kit` 列**当前安装的外壳真实有的**成员；逐件用法在 `.d.ts` 的 JSDoc（`workbench_diy_components name=<名>`）。
+`check --only kit` 列**当前安装的外壳真实有的**成员；逐件用法在 `.d.ts` 的 JSDoc（`workbench_diy_surface name=<名>`）。
 本文件只给跨件规则与最小示例。全部从 `kit.components` / `kit.hooks` / `kit.lib` / `kit.api`
 （`@dsh-workbench/core/client`）取；示例中 `h = createElement`（从 `react` 引）。
 
@@ -206,13 +206,13 @@ h(FormRows, null,
 
 1. 调用点只给数据与语义；外观类名只允许布局槽（通栏、外边距、网格位置）。
 2. 字号与颜色走 kit 与令牌。重点数字用 `--dsw-font-xl-24` + `tabular-nums`；
-   令牌名现查不猜：`workbench_diy_components` 给 `scope: 'tokens'`（现读装着的 dsh 与外壳；`name=--dsw-…` 连浅/深值）。
+   令牌名现查不猜：`workbench_diy_surface` 给 `scope: 'tokens'`（现读装着的 dsh 与外壳；`name=--dsw-…` 连浅/深值）。
    刻度外字面值在模块 `DEVELOPING.md` 说明（[PANEL.md](PANEL.md) §6）。
 3. 自写 CSS 只写布局（flex / grid / gap / 对齐）。
 
 ## 8 需要 kit 没有的标准控件
 
-查：`workbench_diy_components`（DIY 会话）或 `check --only primitives`（`--all` / `--json` / `--file <名>`）。
+查：`workbench_diy_surface`（DIY 会话）或 `check --only primitives`（`--all` / `--json` / `--file <名>`）。
 写入：
 
 ```jsonc

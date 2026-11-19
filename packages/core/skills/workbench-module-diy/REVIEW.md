@@ -14,7 +14,7 @@
 | `standalone` | 依赖工作台源码才能构建 | 不引用工作台源码；`tsconfig.paths` 用相对路径 |
 | `markers` | 私有源 / 私网地址 / 内网域名进入公开包 | 不进包；配置落到模块配置面；组织特有的词表由 `DSH_WB_INTERNAL_MARKERS` 提供 |
 | `alias` | `@/` 指向工作台源码 | `@/` 只指自己 `src/` |
-| `style` | 模块定义 `.wb-*`；手写行 / 操作区 / 表单（F1–F4）；`--dsw-*` / `--wb-*` 不在现读的令牌清单 | 样式走 `*.module.css`（无 `wb-` 前缀）；借外壳类用 `:global(.wb-…)`；行 / 操作区用 `FormRow(s)` / `FormActions`，表单用 `Form`（[KIT.md](KIT.md) §5）。F4：裸 `<form` 或手写 `wb-formRow` / `wb-formRows` / `wb-field`。令牌名现查：`workbench_diy_components` `scope: 'tokens'` |
+| `style` | 模块定义 `.wb-*`；手写行 / 操作区 / 表单（F1–F4）；`--dsw-*` / `--wb-*` 不在现读的令牌清单 | 样式走 `*.module.css`（无 `wb-` 前缀）；借外壳类用 `:global(.wb-…)`；行 / 操作区用 `FormRow(s)` / `FormActions`，表单用 `Form`（[KIT.md](KIT.md) §5）。F4：裸 `<form` 或手写 `wb-formRow` / `wb-formRows` / `wb-field`。令牌名现查：`workbench_diy_surface` `scope: 'tokens'` |
 | `arch` | 结构：巨文件 / 反向依赖 / 跨运行时 / 表外目录 / 模型无测试 / 测试住 `__tests__`；依赖白名单（含 execa / which / proper-lockfile / write-file-atomic / dayjs / zod）+ `shell-quote` / `shelljs` / `zx` deny；能力首选 dayjs / structuredClone / URLSearchParams / zod（日期已是硬门禁） | 见「第十二条」 |
 | `lint` | 语法：`as any` / `console` / `debugger` / 颜色字面量 / `!important` / **直接读 `process.platform` / `versions.electron` / `dshDesktop` / `navigator.userAgent`** / react-hooks | 见「第十三条」 |
 

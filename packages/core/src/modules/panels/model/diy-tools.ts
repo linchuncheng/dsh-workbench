@@ -4,7 +4,7 @@ import type { DebugStore, PanelStateStore } from '@dsh-workbench/shared/host';
 import { PANEL_STATE_SERVICE, UNITS_SERVICE, WORKBENCH_ADAPTERS, supplyPortOf } from '@dsh-workbench/shared/host';
 import type { AdapterSet, LongTaskBase, LongTaskRegistry } from '@dsh-workbench/shared/host';
 
-import { registerComponentsTool } from './diy-components';
+import { registerSurfaceTool } from './diy-surface';
 import { registerDebugTools } from './diy-debug-tools';
 import { registerLogTools } from './diy-logs';
 import { registerBrowserTools } from './diy-browser-tools';
@@ -352,7 +352,7 @@ export function registerDiyTools(
   return [
     tools.register(statusTool),
     tools.register(panelTool),
-    ...registerComponentsTool(ctx, tools),
+    ...registerSurfaceTool(ctx, tools),
     tools.register(reconTool),
     ...registerSpecTool(ctx, tools),
     ...registerLogTools(ctx, tools),

@@ -97,7 +97,7 @@ pnpm design check # 设计底稿有没有空格、readme.json / README / DEVELOP
 
 `style` 还查**令牌名**：模块源码里每个 `var(--dsw-* | --wb-*)` 都要在现读的清单里 ——
 `--dsw-*` 从装着的 dsh 主题读、`--wb-*` 从外壳出货的 `client.js` 读；读不到的那一份不判红，只记一条
-「这次没验」。拼错的名字按最近的几个候选点名（`workbench_diy_components` 的 `scope: 'tokens'` 是同一个来源）。
+「这次没验」。拼错的名字按最近的几个候选点名（`workbench_diy_surface` 的 `scope: 'tokens'` 是同一个来源）。
 
 `style` 还有两族更窄的判据：**手写的「标签 + 控件」行与手写的操作区**判红（归 kit 的
 `FormRow(s)` 与 `FormActions`），**裸 `<form>` 与手写整张表单**也判红（归 `Form`）。

@@ -27,7 +27,7 @@ export const DIY_STATUS_TOOL = 'workbench_diy_status';
 export const DIY_PLAN_TOOL = 'workbench_diy_plan';
 export const DIY_STEP_TOOL = 'workbench_diy_step';
 export const DIY_PANEL_TOOL = 'workbench_diy_panel';
-export const DIY_COMPONENTS_TOOL = 'workbench_diy_components';
+export const DIY_SURFACE_TOOL = 'workbench_diy_surface';
 export const DIY_RECON_TOOL = 'workbench_diy_recon';
 export const DIY_SPEC_TOOL = 'workbench_diy_spec';
 export const DIY_INSTALL_TOOL = 'workbench_diy_install';
@@ -79,7 +79,7 @@ export const DIY_TOOLS = [
   DIY_PLAN_TOOL,
   DIY_STEP_TOOL,
   DIY_PANEL_TOOL,
-  DIY_COMPONENTS_TOOL,
+  DIY_SURFACE_TOOL,
   DIY_RECON_TOOL,
   DIY_SPEC_TOOL,
   DIY_INSTALL_TOOL,
@@ -153,7 +153,7 @@ export const READ_TOOLS = [
   MARKET_CATEGORIES_TOOL,
   DIY_STATUS_TOOL,
   DIY_PANEL_TOOL,
-  DIY_COMPONENTS_TOOL,
+  DIY_SURFACE_TOOL,
   DIY_RECON_TOOL,
   DIY_SPEC_TOOL,
   DIY_STATE_TOOL,

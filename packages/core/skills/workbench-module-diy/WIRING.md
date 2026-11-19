@@ -6,7 +6,7 @@
 
 | 需要 | 来源 |
 |---|---|
-| 宿主侧纯函数 / 常量 | 优先工具 / 挂载里的 `deps`（`HostKit`）；模块顶层常量仍从 `@dsh-workbench/shared/host` 取（`dependencies`） |
+| 宿主侧纯函数 / 常量 | 优先工具 / 挂载里的 `deps`（`HostKit`）；清单用 `workbench_diy_surface scope=deps` 现查；模块顶层常量仍从 `@dsh-workbench/shared/host` 取（`dependencies`） |
 | 宿主平台事实（deployment / 能力 / 宿主机工具链） | `mount(deps)` 里的 `deps.surface`（`HostSurface`）：工具（`registerTools`）在闭包里用它；不要自己读 `process.platform` |
 | 让模型看一眼 / 抽结论 / 起子 agent | `mount(deps)` 里的 `deps.ai`（`AiPort`）：[AI.md](AI.md)；不要自己 `ctx.get('llm')`，也不自己存图片 |
 | 读站点数据 | `deps.data`：单跳用 `request(recipe)`，多跳（后一跳要用前一跳的结果）用 `plan({ steps })`，二进制 / DOM 才写脚本：[DATASOURCE.md](DATASOURCE.md) |

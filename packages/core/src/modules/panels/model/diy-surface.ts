@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { dshHome, hostSurface, readTokens, seamOf, supplyPortOf } from '@dsh-workbench/shared/host';
 import {
+  DEPS_SURFACE,
   findFileOf,
   refusesEvery,
   renderNameText,
@@ -13,24 +14,24 @@ import {
   wantsKit,
   wantsPrimitives,
   type SurfaceQuery,
-} from '@/shared/api/host/diy-components';
+} from '@/shared/api/host/diy-surface';
 import { renderTokensText } from '@/shared/api/host/diy-tokens';
 import { workshopPathOf } from '@/shared/api/host/diy';
 import { asRecord, asText, moduleDirsOf, OUTPUT, plainJson, workspaceOf } from './diy-context';
-import { DIY_COMPONENTS_TOOL } from '../unit';
+import { DIY_SURFACE_TOOL } from '../unit';
 
-export function componentsTool(ctx: DshHostContext): DshToolDefinition {
+export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
   return {
-    name: DIY_COMPONENTS_TOOL,
+    name: DIY_SURFACE_TOOL,
     description:
-      '这份外壳里能用什么：dsh 原语、kit 清单、CSS 令牌；platform 看宿主能力。',
+      '外壳可用面：kit / 原语 / 令牌 / 宿主能力 / deps。',
     parameters: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: '要看的那件（例 Card；--dsw-… / --wb-… 连浅/深值回）。' },
-        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform'], description: '只看一面；tokens = 令牌；不填 = kit + primitives。' },
-        bucket: { type: 'string', description: '只看某一桶并列全（例 components / alias / wb；桶名以清单为准）。' },
-        all: { type: 'boolean', description: '列全表（默认每组前 12 个）—— 只在指名 scope 时生效。' },
+        name: { type: 'string', description: '要看的那件（Card；--dsw-… 连值回）。' },
+        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform', 'deps'], description: 'kit=组件；primitives=原语；tokens=令牌；platform=宿主能力；deps=宿主依赖；不填=kit+primitives。' },
+        bucket: { type: 'string', description: '只看某一桶并列全（例 components）。' },
+        all: { type: 'boolean', description: '列全表（默认每组前 12 个）。' },
       },
       additionalProperties: false,
     },
@@ -42,6 +43,10 @@ export function componentsTool(ctx: DshHostContext): DshToolDefinition {
       const name = asText(args['name']);
       const bucket = asText(args['bucket']);
       const all = args['all'] === true;
+      if (scope === 'deps') {
+        const text = ['宿主 deps（UnitMountDeps）：', ...Object.entries(DEPS_SURFACE).map(([name, detail]) => `${name}: ${detail}`)].join('\n');
+        return plainJson({ workspace: root, scope, name, bucket, all, deps: DEPS_SURFACE, text });
+      }
       if (scope === 'platform') {
         const capabilities = hostSurface().capabilities;
         const text = [
@@ -139,6 +144,6 @@ export function componentsTool(ctx: DshHostContext): DshToolDefinition {
   };
 }
 
-export function registerComponentsTool(ctx: DshHostContext, tools: DshToolRegistry): readonly (() => void)[] {
-  return [tools.register(componentsTool(ctx))];
+export function registerSurfaceTool(ctx: DshHostContext, tools: DshToolRegistry): readonly (() => void)[] {
+  return [tools.register(surfaceTool(ctx))];
 }
