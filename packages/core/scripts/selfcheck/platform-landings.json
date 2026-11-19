@@ -169,39 +169,6 @@
   },
   "ports": {},
   "allow": {
-    "packages/adapter-probe/src/install/install-smoke.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/adapter-probe/src/install/__tests__/install-smoke.test.ts"
-      ]
-    },
-    "packages/adapter-probe/src/preflight/preflight-route.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/adapter-probe/src/preflight/__tests__/preflight-route.test.ts"
-      ]
-    },
-    "packages/adapter-probe/src/preflight/preflight.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/adapter-probe/src/preflight/__tests__/preflight.test.ts"
-      ]
-    },
     "packages/adapter-probe/src/toolchain/runtime-seed.ts": {
       "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
       "platforms": [
@@ -305,7 +272,10 @@
       "packages/core/src/shared/api/host/__tests__/recover-update-script.test.ts",
       "packages/adapter-runtime/src/data/__tests__/recipe.test.ts",
       "packages/adapter-runtime/src/data/__tests__/submit-plan.test.ts",
-      "packages/core/src/shared/api/host/__tests__/git-process.test.ts"
+      "packages/core/src/shared/api/host/__tests__/git-process.test.ts",
+      "packages/adapter-probe/src/preflight/__tests__/preflight-route.test.ts",
+      "packages/adapter-probe/src/preflight/__tests__/preflight.test.ts",
+      "packages/adapter-probe/src/install/__tests__/install-smoke.test.ts"
     ]
   },
   "exempt": {

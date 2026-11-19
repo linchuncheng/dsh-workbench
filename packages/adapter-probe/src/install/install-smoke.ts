@@ -13,7 +13,7 @@ export interface InstallSmokeInput {
   readonly platform?: NodeJS.Platform | undefined;
 }
 
-export function versionCommandLine(command: string, platform: NodeJS.Platform = process.platform): string {
+export function versionCommandLine(command: string, platform?: NodeJS.Platform): string {
   return `${quoteShellArgFor(command, platform)} --version`;
 }
 

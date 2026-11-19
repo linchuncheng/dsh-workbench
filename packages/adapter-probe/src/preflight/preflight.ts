@@ -1,7 +1,7 @@
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
 import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, WARM_TIMEOUT_MS, now } from '@dsh-workbench/shared/host';
 import { tailLines } from '@dsh-workbench/shared/host';
-import { quoteShellArgFor } from '@dsh-workbench/shared/host';
+import { hostOsOf, quoteShellArgFor } from '@dsh-workbench/shared/host';
 import { opencliCommandLine, OPENCLI_SITE_SESSION_ENV, OPENCLI_WINDOW_ENV } from '@dsh-workbench/adapter-runtime';
 import { productWrite, type Seam } from '@dsh-workbench/shared/host';
 import { DIY_UPGRADE_COMMAND } from './diy-preset-health.js';
@@ -93,8 +93,9 @@ export function createPreflight(options: {
   platform?: NodeJS.Platform | undefined;
 }): Preflight {
   const { seam, command = 'opencli', logger } = options;
-  const platform = options.platform ?? process.platform;
-  const commandToken = quoteShellArgFor(command, platform);
+  const platform = options.platform;
+  const targetOs = hostOsOf(platform);
+  const commandToken = quoteShellArgFor(command, targetOs);
   const capabilities = options.capabilities ?? { console: true, pluginMarket: true, browserBridge: true };
   const withConsole = capabilities.console;
   const withBridge = capabilities.browserBridge;
