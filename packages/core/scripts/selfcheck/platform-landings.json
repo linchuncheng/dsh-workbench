@@ -280,17 +280,6 @@
         "packages/adapter-runtime/src/data/__tests__/index.test.ts"
       ]
     },
-    "packages/core/src/shared/api/host/git-exec.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/core/src/shared/api/host/__tests__/git-process.test.ts"
-      ]
-    },
     "packages/core/src/shared/api/platform/client.ts": {
       "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
       "platforms": [
@@ -346,7 +335,8 @@
       "packages/core/src/shared/api/host/__tests__/diy-form-file.test.ts",
       "packages/core/src/shared/api/host/__tests__/recover-update-script.test.ts",
       "packages/adapter-runtime/src/data/__tests__/recipe.test.ts",
-      "packages/adapter-runtime/src/data/__tests__/submit-plan.test.ts"
+      "packages/adapter-runtime/src/data/__tests__/submit-plan.test.ts",
+      "packages/core/src/shared/api/host/__tests__/git-process.test.ts"
     ]
   },
   "exempt": {

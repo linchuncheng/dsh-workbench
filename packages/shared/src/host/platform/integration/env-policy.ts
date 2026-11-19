@@ -183,7 +183,7 @@ export function bootstrapEnvOf(input: BootstrapEnvInput): Record<string, string>
  * @param platform 宿主平台。
  * @returns git 非交互 env。
  */
-export function promptlessGitEnvOf(platform: NodeJS.Platform): Record<string, string> {
+export function promptlessGitEnvOf(platform: NodeJS.Platform = process.platform): Record<string, string> {
   const shared = {
     GIT_TERMINAL_PROMPT: '0',
     SSH_ASKPASS_REQUIRE: 'never',
@@ -202,7 +202,7 @@ export function promptlessGitEnvOf(platform: NodeJS.Platform): Record<string, st
  */
 export function promptlessProcessEnvOf(
   parent: NodeJS.ProcessEnv,
-  platform: NodeJS.Platform,
+  platform: NodeJS.Platform = process.platform,
 ): Record<string, string> {
   const env = { ...inheritedEnvOf(parent), ...promptlessGitEnvOf(platform) };
   if (platform === 'win32') {
