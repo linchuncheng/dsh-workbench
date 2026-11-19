@@ -469,7 +469,7 @@ describe('模块外部供给审批：要装的插件与库摆进详情座', () =
     expect(moduleSupplyRows(unit, 'inventory', t)).toEqual([
       { label: '模块', value: 'inventory' },
       { label: '插件', value: 'inventory —— 读库存数据' },
-      { label: '共用依赖', value: 'acme-sdk ^2.1 —— 调库存接口' },
+      { label: '库', value: 'acme-sdk ^2.1 —— 调库存接口' },
     ]);
   });
 
