@@ -1,76 +1,30 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, win32 } from 'node:path';
+import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
+import { BROWSER_SPECS, browserInstallCandidates, hostOsOf, noWrite, now, quoteShellArgFor, type Seam, writeJsonFile } from '@dsh-workbench/shared/host';
 import type { DesktopBrowserId, WakeBrowserReply } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 
-const BROWSER_IDS = ['chrome', 'edge', 'brave', 'chromium', 'vivaldi'] as const;
+const BROWSER_IDS = BROWSER_SPECS.map((one) => one.id);
 
 export interface DesktopBrowser {
   observe(): Promise<void>;
   wake(): Promise<WakeBrowserReply>;
 }
 
-interface BrowserSpec {
-  readonly id: DesktopBrowserId;
-  readonly label: string;
-  readonly macProcess: string;
-  readonly linuxBinary: string;
-  readonly linuxProcess: string;
+function isBrowserId(value: unknown): value is DesktopBrowserId {
+  return typeof value === 'string' && (BROWSER_IDS as readonly string[]).includes(value);
 }
 
-const BROWSERS: readonly BrowserSpec[] = [
-  {
-    id: 'chrome',
-    label: 'Google Chrome',
-    macProcess: 'Google Chrome',
-    linuxBinary: '/usr/bin/google-chrome',
-    linuxProcess: 'chrome',
-  },
-  {
-    id: 'edge',
-    label: 'Microsoft Edge',
-    macProcess: 'Microsoft Edge',
-    linuxBinary: '/usr/bin/microsoft-edge',
-    linuxProcess: 'msedge',
-  },
-  {
-    id: 'brave',
-    label: 'Brave Browser',
-    macProcess: 'Brave Browser',
-    linuxBinary: '/usr/bin/brave-browser',
-    linuxProcess: 'brave',
-  },
-  {
-    id: 'chromium',
-    label: 'Chromium',
-    macProcess: 'Chromium',
-    linuxBinary: '/usr/bin/chromium',
-    linuxProcess: 'chromium',
-  },
-  {
-    id: 'vivaldi',
-    label: 'Vivaldi',
-    macProcess: 'Vivaldi',
-    linuxBinary: '/usr/bin/vivaldi',
-    linuxProcess: 'vivaldi-bin',
-  },
-];
+function specOf(id: DesktopBrowserId) {
+  return BROWSER_SPECS.find((item) => item.id === id) ?? BROWSER_SPECS[0]!;
+}
 
 const WAKE_WAIT_MS = 12_000;
 const SHORT_WAIT_MS = 3_000;
 const POLL_MS = 500;
 const STATUS_TIMEOUT_MS = 5_000;
 const LAUNCH_TIMEOUT_MS = 10_000;
-
-function isBrowserId(value: unknown): value is DesktopBrowserId {
-  return typeof value === 'string' && (BROWSER_IDS as readonly string[]).includes(value);
-}
-
-function specOf(id: DesktopBrowserId): BrowserSpec {
-  return BROWSERS.find((item) => item.id === id) ?? BROWSERS[0]!;
-}
 
 export function createDesktopBrowser(options: {
   seam: Seam;
@@ -101,40 +55,15 @@ export function createDesktopBrowser(options: {
     return { ok: result !== undefined && result.exitCode === 0 && !result.timedOut, stdout: result?.stdout ?? '' };
   }
 
-  function winCandidates(id: DesktopBrowserId): string[] {
-    const programFiles = env.ProgramFiles ?? env.PROGRAMFILES ?? 'C:\\Program Files';
-    const programFilesX86 = env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)';
-    const localAppData = env.LOCALAPPDATA ?? join(home, 'AppData', 'Local');
-    const relative: Readonly<Record<DesktopBrowserId, readonly string[]>> = {
-      chrome: ['Google', 'Chrome', 'Application', 'chrome.exe'],
-      edge: ['Microsoft', 'Edge', 'Application', 'msedge.exe'],
-      brave: ['BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'],
-      chromium: ['Chromium', 'Application', 'chrome.exe'],
-      vivaldi: ['Vivaldi', 'Application', 'vivaldi.exe'],
-    };
-    const bases =
-      id === 'edge' || id === 'chrome' || id === 'brave'
-        ? [programFiles, programFilesX86, localAppData]
-        : [localAppData, programFiles];
-    return bases.map((base) => win32.join(base, ...relative[id]));
-  }
-
   function winExecutable(id: DesktopBrowserId): string | undefined {
-    return winCandidates(id).find((path) => exists(path));
+    return browserInstallCandidates(id, 'win32', { env, home }).find((path) => exists(path));
   }
 
   function installed(): DesktopBrowserId[] {
-    return BROWSERS.filter((spec) => {
-      if (platform === 'darwin') {
-        return (
-          exists(`/Applications/${spec.label}.app`) ||
-          exists(join(home, 'Applications', `${spec.label}.app`))
-        );
-      }
-      if (platform === 'linux') return exists(spec.linuxBinary);
-      if (platform === 'win32') return winExecutable(spec.id) !== undefined;
-      return false;
-    }).map((spec) => spec.id);
+    const os = hostOsOf(platform);
+    return BROWSER_SPECS.filter((spec) =>
+      browserInstallCandidates(spec.id, os, { env, home }).some((path) => exists(path)),
+    ).map((spec) => spec.id);
   }
 
   function readSaved(): DesktopBrowserId | undefined {
@@ -158,7 +87,7 @@ export function createDesktopBrowser(options: {
 
   async function running(): Promise<DesktopBrowserId[]> {
     if (platform === 'darwin' || platform === 'linux') {
-      const names = BROWSERS.map((spec) =>
+      const names = BROWSER_SPECS.map((spec) =>
         quoteShellArgFor(platform === 'darwin' ? spec.macProcess : spec.linuxProcess, platform),
       );
       const result = await run(`pgrep -lx ${names.join(' ')}`, STATUS_TIMEOUT_MS);
@@ -167,7 +96,7 @@ export function createDesktopBrowser(options: {
         const match = /^\s*\d+\s+(.+?)\s*$/.exec(line);
         const name = match?.[1];
         if (name === undefined) continue;
-        const spec = BROWSERS.find(
+        const spec = BROWSER_SPECS.find(
           (item) =>
             item.macProcess === name || item.linuxProcess === name,
         );

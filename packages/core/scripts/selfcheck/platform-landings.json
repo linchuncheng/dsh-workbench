@@ -49,6 +49,25 @@
           "packages/shared/src/host/platform/integration/__tests__/tool-lookup.test.ts"
         ]
       }
+    },
+    "host.integration.browsers": {
+      "path": "packages/shared/src/host/platform/integration/browsers.ts",
+      "platforms": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "tests": {
+        "darwin": [
+          "packages/shared/src/host/platform/integration/__tests__/browsers.test.ts"
+        ],
+        "linux": [
+          "packages/shared/src/host/platform/integration/__tests__/browsers.test.ts"
+        ],
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/browsers.test.ts"
+        ]
+      }
     }
   },
   "ports": {},
