@@ -236,11 +236,12 @@ function jobsOf(text) {
     if (line.trim() !== '' && indentOf(line) === 0) break;
     const header = /^ {2}([A-Za-z0-9_-]+):\s*$/u.exec(line);
     if (header !== null) {
-      current = { id: header[1], images: new Set(), commands: [] };
+      current = { id: header[1], images: new Set(), commands: [], advisory: false };
       jobs.push(current);
       continue;
     }
     if (current === undefined) continue;
+    if (/^ {4}continue-on-error:\s*true\s*$/u.test(line)) current.advisory = true;
     const run = /^\s+(?:-\s+)?run:\s*(.*)$/u.exec(line);
     if (run !== null) {
       const body = run[1].trim();
@@ -315,14 +316,16 @@ function coveringJobsOf(testRel, workflowsList) {
   const out = [];
   for (const workflow of workflowsList) {
     for (const job of workflow.jobs) {
-      if (jobCovers(job, testRel, pkgName)) out.push({ workflow: workflow.name, job: job.id, oses: job.images });
+      if (jobCovers(job, testRel, pkgName)) {
+        out.push({ workflow: workflow.name, job: job.id, oses: job.images, advisory: job.advisory });
+      }
     }
   }
   return out;
 }
 
 function missingCoverage(testRel, os, workflowsList) {
-  return !coveringJobsOf(testRel, workflowsList).some((one) => one.oses.has(os));
+  return !coveringJobsOf(testRel, workflowsList).some((one) => !one.advisory && one.oses.has(os));
 }
 
 function smokeScriptFindings(workflowsList) {
@@ -332,6 +335,7 @@ function smokeScriptFindings(workflowsList) {
   if (job === undefined) {
     return ['platform-smoke.yml 里没有 smoke job：平台冒烟不再被 CI 跑'];
   }
+  if (job.advisory) findings.push('platform-smoke 的 smoke job 是 advisory：平台腿不再阻塞');
   const missingOs = OS.filter((one) => !job.images.has(one));
   if (missingOs.length > 0) findings.push(`platform-smoke 少了 ${missingOs.join('、')} 腿`);
   const commands = job.commands.join('\n');
@@ -483,19 +487,31 @@ export const checks = [
       const crlfNegative =
         crlfJob !== undefined &&
         jobCovers(crlfJob, 'packages/shared/src/host/shell/__tests__/shell-text.test.ts', '@dsh-workbench/shared');
+      const advisoryJob = {
+        id: 'advisory',
+        images: new Set(['win32']),
+        commands: [`node ${PLATFORM_TEST_RUNNER}`],
+        advisory: true,
+      };
+      const advisoryNegative = missingCoverage(
+        'packages/shared/src/host/shell/__tests__/shell-text.test.ts',
+        'win32',
+        [{ name: 'advisory.yml', jobs: [advisoryJob] }],
+      );
       const ok =
         findings.length === 0 &&
         negative &&
         testScanNegative &&
         workflowNegative &&
         runnerNegative &&
-        crlfNegative;
+        crlfNegative &&
+        advisoryNegative;
       report(
         TITLE,
         ok,
         ok
           ? `${sites.size} 个平台调用点都在登记表里；平台测试由 ${PLATFORM_TEST_RUNNER} 按登记表跑在 ${OS.join('/')} 腿上；宿主事实测试由 suites 兜住；冒烟脚本由 ${SMOKE_INDEX} 目录发现（判据负例也过）`
-          : !negative || !testScanNegative || !workflowNegative || !runnerNegative || !crlfNegative
+          : !negative || !testScanNegative || !workflowNegative || !runnerNegative || !crlfNegative || !advisoryNegative
             ? '判据自己的负例没过：扫描或 workflow 解析不可信'
             : findings.join(' · '),
       );
