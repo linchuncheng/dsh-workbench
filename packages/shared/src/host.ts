@@ -85,7 +85,7 @@ export * from './host/runtime/cli-error.js';
 export * from './host/runtime/cli.js';
 export * from './host/runtime/dsh-compat.js';
 export * from './host/runtime/env-policy.js';
-export * from './host/runtime/front-app.js';
+export * from './host/platform/integration/front-app.js';
 export * from './host/runtime/fs-write.js';
 export * from './host/runtime/http.js';
 export * from './host/runtime/lease.js';

@@ -19,6 +19,25 @@
           "packages/shared/src/host/platform/__tests__/facts.test.ts"
         ]
       }
+    },
+    "host.integration.front-app": {
+      "path": "packages/shared/src/host/platform/integration/front-app.ts",
+      "platforms": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "tests": {
+        "darwin": [
+          "packages/shared/src/host/platform/integration/__tests__/front-app.test.ts"
+        ],
+        "linux": [
+          "packages/shared/src/host/platform/integration/__tests__/front-app.test.ts"
+        ],
+        "win32": [
+          "packages/shared/src/host/platform/integration/__tests__/front-app.test.ts"
+        ]
+      }
     }
   },
   "ports": {},
@@ -194,17 +213,6 @@
       ],
       "tests": [
         "packages/shared/src/host/runtime/__tests__/env-policy.test.ts"
-      ]
-    },
-    "packages/shared/src/host/runtime/front-app.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/shared/src/host/runtime/__tests__/front-app.test.ts"
       ]
     },
     "packages/shared/src/host/seam/process.ts": {

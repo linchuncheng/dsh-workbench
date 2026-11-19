@@ -1,5 +1,5 @@
-import type { HostOs } from '../../contract/protocol/platform.js';
-import { quoteShellArgFor } from '../platform/ops/shell.js';
+import type { HostOs } from '../../../contract/protocol/platform.js';
+import { quoteShellArgFor } from '../ops/shell.js';
 
 export function frontAppCommand(platform: HostOs): string | undefined {
   if (platform === 'darwin') return 'lsappinfo info -only bundleID $(lsappinfo front)';
