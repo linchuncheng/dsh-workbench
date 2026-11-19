@@ -1,6 +1,30 @@
 import { deps, hygiene, library } from '@arch-guard/core/presets';
 import { testsLiveInFolders } from './rules/tests-in-folders.mjs';
 
+function softCapability(preferred, softSyntax, apiNames, hint) {
+  return { preferred, softSyntax, apiNames, hint };
+}
+
+export const DEPENDENCY_ALLOWLIST = [
+  '@deepseek-ai/cordis',
+  '@deepseek-ai/cordis-plugin-loader',
+  '@dsh-workbench/adapters-default',
+  '@dsh-workbench/shared',
+  '@puppeteer/browsers',
+  'commander',
+  'dayjs',
+  'execa',
+  'markdown-it',
+  'postcss',
+  'prompts',
+  'proper-lockfile',
+  'semver',
+  'tinyglobby',
+  'which',
+  'write-file-atomic',
+  'yaml',
+];
+
 export const STACK_CAPABILITIES = {
   'cli-args': 'commander',
   'unique-id': 'crypto.randomUUID',
@@ -9,7 +33,6 @@ export const STACK_CAPABILITIES = {
   datetime: 'dayjs',
   'deep-clone': 'structuredClone',
   'query-string': 'URLSearchParams',
-  validation: 'zod',
   semver: {
     preferred: 'semver',
     syntax: [
@@ -42,12 +65,55 @@ export const STACK_CAPABILITIES = {
     syntax: ['\\bprocess\\.kill\\([^)]*,\\s*0\\)', 'flag:\\s*[\'"]wx[\'"]'],
     hint: '自己抢文件锁用 proper-lockfile（stale / 重试 / 跨平台）。',
   },
+  'yaml-config': softCapability(
+    'yaml',
+    ["split\\(\\s*['\"]\\n['\"]\\s*\\)"],
+    ['patternsFromYaml', 'parseWorkspaceYaml', 'readWorkspaceYaml', 'appendExclude'],
+    '用 yaml：parse / parseDocument + LineCounter；别按行切 YAML',
+  ),
+  'pnpm-workspace-glob': softCapability(
+    'tinyglobby',
+    ['readdirSync\\(', 'isDirectory\\('],
+    ['expandPattern', 'walkDirs', 'segmentMatches', 'dirsOfPattern'],
+    '用 tinyglobby：globSync(patterns, { cwd, onlyDirectories })',
+  ),
+  'pnpm-lock-parse': softCapability(
+    'yaml',
+    ['pnpm-lock\\.yaml'],
+    ['registryFromLockfile', 'lockEntries', 'readLockfile'],
+    '用 yaml 读 packages 节点；别用字符窗口猜块',
+  ),
+  'css-rules': softCapability(
+    'postcss',
+    ['matchAll\\(/\\[\\^\\{\\}\\]'],
+    ['selfManagedRowsIn', 'cssRulesIn', 'parseCssRules'],
+    '用 postcss 走 AST；别用正则切 CSS 规则',
+  ),
+  'markdown-anchor': softCapability(
+    'markdown-it',
+    ['\\^\\{1,6\\}', 'matchAll\\(/\\]\\('],
+    ['headingSlugsOf', 'slugOf', 'docLinksOf'],
+    '用 markdown-it + github-slugger 生成标题锚点',
+  ),
+  'browser-download': {
+    preferred: '@puppeteer/browsers',
+    syntax: ['googlechromelabs\\.github\\.io/chrome-for-testing'],
+    hint: '用 @puppeteer/browsers 的 install / resolveBuildId；别手抓 CFT 元数据再解压',
+  },
   'atomic-state': {
     preferred: 'write-file-atomic',
     syntax: ['writeFileSync\\([^)]*\\.(?:sync\\.json|self-update\\.json)'],
     hint: '自己直写状态文件用 write-file-atomic（防写一半）。',
   },
 };
+
+export function stackDeps() {
+  return deps({
+    allow: DEPENDENCY_ALLOWLIST,
+    fingerprints: [{ capability: 'query-string', allowOwn: false }],
+    capabilities: STACK_CAPABILITIES,
+  });
+}
 
 export function stackArch(options = {}) {
   const {

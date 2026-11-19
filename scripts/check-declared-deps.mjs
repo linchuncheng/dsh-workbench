@@ -4,6 +4,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LIBRARY_DECISIONS } from './arch/library-decisions.mjs';
+import { libraryDecisionProblems } from './check-library-decisions.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const RELEASE_LIST = join(ROOT, 'packages/shared/src/host/supply/release-packages.generated.ts');
@@ -77,4 +79,11 @@ if (problems.length > 0) {
   console.error('  补 dependencies / peerDependencies，或把这份产物从包里去掉了再发。');
   process.exit(1);
 }
+const libraryProblems = libraryDecisionProblems();
+if (libraryProblems.length > 0) {
+  for (const problem of libraryProblems) console.error(`✖ ${problem}`);
+  console.error(`✖ 能力决策记录不完整：${libraryProblems.length} 条`);
+  process.exit(1);
+}
 console.log(`✔ 产物 import 都在声明里：${scanned.join(' · ')}`);
+console.log(`✔ 能力决策记录完整：${String(LIBRARY_DECISIONS.length)} 条（adopt / defer 都有理由）`);

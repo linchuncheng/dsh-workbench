@@ -1,12 +1,11 @@
 import { unitRules } from './arch/rules/units.mjs';
 import { kernelRules } from './arch/rules/kernel.mjs';
-import { STACK_CAPABILITIES } from '../../scripts/arch/stack.mjs';
+import { stackDeps } from '../../scripts/arch/stack.mjs';
 import { testsLiveInFolders } from '../../scripts/arch/rules/tests-in-folders.mjs';
 import {
   callSites,
   cssModulesKit,
   designSystem,
-  deps,
   hygiene,
   i18n,
   library,
@@ -69,10 +68,7 @@ export default {
       ],
     }),
 
-    deps({
-      fingerprints: [{ capability: 'query-string', allowOwn: false }],
-      capabilities: STACK_CAPABILITIES,
-    }),
+    stackDeps(),
 
     callSites([
 
