@@ -143,6 +143,17 @@
       "tests": [
         "packages/shared/src/host/runtime/__tests__/env-policy.test.ts"
       ]
+    },
+    "host.integration.host-surface": {
+      "path": "packages/shared/src/host/platform/integration/host-surface.ts",
+      "platforms": [
+        "darwin",
+        "win32",
+        "linux"
+      ],
+      "tests": [
+        "packages/shared/src/host/platform/integration/__tests__/host-surface.test.ts"
+      ]
     }
   },
   "ports": {},
@@ -289,17 +300,6 @@
       ],
       "tests": [
         "packages/core/src/shared/api/platform/__tests__/client.test.ts"
-      ]
-    },
-    "packages/shared/src/host/adapters/platform.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "darwin",
-        "win32",
-        "linux"
-      ],
-      "tests": [
-        "packages/adapter-probe/src/runtime/__tests__/platform.test.ts"
       ]
     },
     "packages/module-tools/src/checks/standalone.mjs": {

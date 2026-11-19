@@ -28,7 +28,7 @@ export * from './host/adapters/adapter-contract.js';
 export * from './host/adapters/adapter-set.js';
 export * from './host/adapters/adapter-types.js';
 export * from './host/adapters/adapters.js';
-export * from './host/adapters/platform.js';
+export * from './host/platform/integration/host-surface.js';
 export * from './host/adapters/port-types.js';
 export * from './host/adapters/supply-port.js';
 export * from './host/adapters/toolbox-port.js';

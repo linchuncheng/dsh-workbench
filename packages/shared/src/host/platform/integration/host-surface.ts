@@ -1,7 +1,7 @@
-import type { HostSurface, ProfileName, SelfUpdateCli } from '../../contract/protocol/platform.js';
-import { hostOsOf } from '../platform/facts.js';
+import type { HostSurface, ProfileName, SelfUpdateCli } from '../../../contract/protocol/platform.js';
+import { hostOsOf } from '../facts.js';
 
-export { hostOsOf } from '../platform/facts.js';
+export { hostOsOf } from '../facts.js';
 
 export interface HostSurfaceInput {
   readonly proc?: { readonly versions: { readonly electron?: string | undefined; readonly node?: string | undefined } };
