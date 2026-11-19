@@ -1,1 +1,1 @@
-export { cmdNameOf, quoteShellArg, quoteShellArgFor, shellKindOf } from '../../shell/shell-text.js';
+export { cmdNameOf, quoteShellArg, quoteShellArgFor, shellKindOf } from './shell-text.js';

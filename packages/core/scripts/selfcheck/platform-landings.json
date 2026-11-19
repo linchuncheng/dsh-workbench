@@ -106,6 +106,25 @@
           "packages/shared/src/host/platform/integration/__tests__/browser-launch.test.ts"
         ]
       }
+    },
+    "host.ops.shell-text": {
+      "path": "packages/shared/src/host/platform/ops/shell-text.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/shell/__tests__/shell-text.test.ts"
+      ]
+    },
+    "host.ops.shell-render": {
+      "path": "packages/shared/src/host/platform/ops/shell-render.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/shared/src/host/shell/__tests__/shell-render.test.ts",
+        "packages/shared/src/host/shell/__tests__/windows-quote.test.ts"
+      ]
     }
   },
   "ports": {},
@@ -283,15 +302,6 @@
         "packages/shared/src/host/seam/__tests__/process.test.ts"
       ]
     },
-    "packages/shared/src/host/shell/shell-render.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/shared/src/host/shell/__tests__/shell-render.test.ts"
-      ]
-    },
     "packages/module-tools/src/checks/standalone.mjs": {
       "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
       "platforms": [
@@ -299,15 +309,6 @@
       ],
       "tests": [
         "packages/module-tools/src/__tests__/standalone-signals.test.mjs"
-      ]
-    },
-    "packages/shared/src/host/shell/shell-text.ts": {
-      "reason": "迁移基线：HostOs 已收口到 facts，shell 种类/后缀仍在这里派生；阶段 2 搬进 platform/ops",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/shared/src/host/shell/__tests__/shell-text.test.ts"
       ]
     }
   },

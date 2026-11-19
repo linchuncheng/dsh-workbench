@@ -14,7 +14,7 @@ const ENV_PREFIX_ALLOWED = new Map([
   ],
 ]);
 
-const SHELL_INVOCATION_OWN = 'packages/shared/src/host/shell/shell-render.ts';
+const SHELL_INVOCATION_OWN = 'packages/shared/src/host/platform/ops/shell-render.ts';
 const LINK_TYPE_OWN = 'packages/core/scripts/selfcheck/checks/platform.mjs';
 const PATH_SPLIT_OWN = 'packages/core/scripts/selfcheck/checks/platform.mjs';
 const SHELL_PROBE_OWN = 'packages/core/scripts/selfcheck/lib.mjs';
