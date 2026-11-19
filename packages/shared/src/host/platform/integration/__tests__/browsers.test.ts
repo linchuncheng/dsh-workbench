@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { BROWSER_SPECS, browserInstallCandidates } from '../browsers.js';
@@ -6,7 +7,7 @@ describe('浏览器安装候选', () => {
   it('三台 OS 的候选路径', () => {
     expect(browserInstallCandidates('chrome', 'darwin', { env: {}, home: '/Users/me' })).toEqual([
       '/Applications/Google Chrome.app',
-      '/Users/me/Applications/Google Chrome.app',
+      join('/Users/me', 'Applications', 'Google Chrome.app'),
     ]);
     expect(browserInstallCandidates('chrome', 'linux', { env: {}, home: '/home/me' })).toEqual([
       '/usr/bin/google-chrome',
