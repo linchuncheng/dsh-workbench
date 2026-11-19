@@ -165,7 +165,7 @@ describe('Windows 工坊 Node seed', () => {
     const root = mkdtempSync(join(tmpdir(), 'wb-seed-win-'));
     roots.push(root);
     const shellRoot = fakeShellRoot(root);
-    const bin = fakePnpm(root, 2000);
+    const bin = fakePnpm(root, 6000);
     const env = {
       ...process.env,
       DSH_HOME: root,
@@ -177,17 +177,25 @@ describe('Windows 工坊 Node seed', () => {
       env,
       stdio: 'ignore',
     });
+    const closed = new Promise((resolve) => child.on('close', resolve));
     const readState = () => JSON.parse(readFileSync(stateFile, 'utf8'));
-    const deadline = Date.now() + 15_000;
-    while (!existsSync(stateFile) && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 25));
+    try {
+      const deadline = Date.now() + 15_000;
+      while (!existsSync(stateFile) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      const first = readState().at;
+      const heartbeatBy = Date.now() + 5_000;
+      let during = readState();
+      while (during.at === first && Date.now() < heartbeatBy) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        during = readState();
+      }
+      expect(during.state).toBe('syncing');
+      expect(during.at).not.toBe(first);
+    } finally {
+      await closed;
     }
-    const first = readState().at;
-    await new Promise((resolve) => setTimeout(resolve, 1_200));
-    const during = readState();
-    expect(during.state).toBe('syncing');
-    expect(during.at).not.toBe(first);
-    await new Promise((resolve) => child.on('close', resolve));
     expect(JSON.parse(readFileSync(stateFile, 'utf8')).state).toBe('ok');
   });
 

@@ -55,7 +55,7 @@ describe('最小 MCP 客户端（stdio + 行分隔 JSON-RPC）', () => {
   it('★ MCP server 无法启动（命令不在）→ 说清无法启动，不带崩宿主', async () => {
     const mcp = clientOf('/nonexistent/chrome-devtools-mcp', []);
     try {
-      await expect(mcp.listTools()).rejects.toThrow(/MCP server (?:无法启动|退出了)/);
+      await expect(mcp.listTools()).rejects.toThrow(/MCP server (?:无法启动|已退出)/);
     } finally {
       await mcp.close();
     }

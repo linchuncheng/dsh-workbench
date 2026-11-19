@@ -56,6 +56,8 @@ const pluginPreviewRe = copyStemPattern([
 const pluginInstalledRe = copyStemPattern(['panels.market.add.installedPlugin']);
 const workbenchTitles = copyOf('panels.market.workbenchName');
 const workbenchUpdateTexts = copyOf('panels.market.update');
+const marketOpenTexts = [...copyOf('panels.tab.market'), ...copyOf('panels.browseMarket')];
+const marketInstalledTexts = copyOf('panels.market.tabInstalled');
 const selfUpdateReadyRe = copyPattern(['panels.market.selfUpdatePendingRestart']);
 const selfUpdateFailedRe = copyPattern([
   'panels.market.selfUpdateRetry',
@@ -687,20 +689,7 @@ async function waitForGateAndReady(cdp) {
 }
 
 async function openMarket(cdp) {
-  const opened = await click(
-    cdp,
-    [
-      'Browse the module market',
-      'Choose modules',
-      'Browse modules',
-      'Open the module market',
-      'Workbench module market',
-      '模块市场',
-      '浏览模块',
-      '工作台模块市场',
-    ],
-    3000,
-  );
+  const opened = await click(cdp, marketOpenTexts, 3000);
   if (opened === 'missing') await fail(cdp, '打开市场页没找到入口', await bodyOf(cdp));
   await waitForBody(
     cdp,
@@ -712,7 +701,7 @@ async function openMarket(cdp) {
 }
 
 async function openInstalledTab(cdp) {
-  const tabs = ['已安装', 'Installed'];
+  const tabs = marketInstalledTexts;
   const until = Date.now() + remaining('切到已安装', 30_000);
   while (Date.now() < until) {
     const hit = await click(cdp, tabs, 800);

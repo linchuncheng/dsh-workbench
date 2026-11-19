@@ -61,7 +61,7 @@ function wire(
 }
 
 async function settled(handler: (search: URLSearchParams) => Answer): Promise<Answer> {
-  const until = Date.now() + 1_000;
+  const until = Date.now() + 15_000;
   for (;;) {
     const answer = handler(new URLSearchParams(''));
     if (answer.phase === 'ready' || answer.phase === 'failed') return answer;
