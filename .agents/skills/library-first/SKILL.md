@@ -56,6 +56,9 @@ description: 要手写一个通用能力（解析 YAML / JSON / Markdown / CSS�
 退路：<什么时候重评；换掉时改哪里>
 ```
 
+实际落点是 `scripts/arch/library-decisions.mjs`：`check:deps` 会校验每条记录的字段，以及 `adopt` 是否登记在
+`scripts/arch/stack.mjs` 的 `STACK_CAPABILITIES` 里；`defer` 不能同时出现在那张表。
+
 ## 完成判据
 
 - diff 里每一处新写的通用机制，都能指到一个库，或指到一条「不选库」的记录。
