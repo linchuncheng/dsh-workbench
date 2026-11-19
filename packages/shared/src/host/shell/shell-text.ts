@@ -1,3 +1,4 @@
+import type { HostOs } from '../../contract/protocol/platform.js';
 import { hostOsOf } from '../platform/facts.js';
 
 /**
@@ -10,7 +11,7 @@ export type ShellKind = 'posix' | 'pwsh';
  * @param platform - 目标平台，默认当前 `process.platform`。
  * @returns `'pwsh'` 或 `'posix'`。
  */
-export function shellKindOf(platform?: NodeJS.Platform): ShellKind {
+export function shellKindOf(platform?: NodeJS.Platform | HostOs): ShellKind {
   return hostOsOf(platform) === 'win32' ? 'pwsh' : 'posix';
 }
 
@@ -20,7 +21,7 @@ export function shellKindOf(platform?: NodeJS.Platform): ShellKind {
  * @param platform - 目标平台，默认当前 `process.platform`。
  * @returns 该平台上可直接执行的文件名。
  */
-export function cmdNameOf(name: string, platform?: NodeJS.Platform): string {
+export function cmdNameOf(name: string, platform?: NodeJS.Platform | HostOs): string {
   return hostOsOf(platform) === 'win32' ? `${name}.cmd` : name;
 }
 
@@ -30,7 +31,7 @@ export function cmdNameOf(name: string, platform?: NodeJS.Platform): string {
  * @param platform - 目标平台，默认当前 `process.platform`。
  * @returns 可安全拼进该平台 shell 命令的一段文本；含空格 / 元字符的值不会被当成语法。
  */
-export function quoteShellArgFor(value: unknown, platform?: NodeJS.Platform): string {
+export function quoteShellArgFor(value: unknown, platform?: NodeJS.Platform | HostOs): string {
   const text = String(value);
   if (shellKindOf(platform) === 'pwsh') return `'${text.replace(/'/g, "''")}'`;
   return `'${text.replace(/'/g, `'\\''`)}'`;
