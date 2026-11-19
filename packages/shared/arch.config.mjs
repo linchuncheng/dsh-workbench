@@ -33,6 +33,7 @@ export default {
       src: 'src',
       entry: ['index.ts', 'host.ts', 'testing.ts'],
       modules: {
+        client: 2,
         contract: 1,
         lib: 2,
         config: 2,

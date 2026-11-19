@@ -37,6 +37,7 @@ export * from './components/layout/SettingsSection.js';
 export * from './components/layout/SetupShell.js';
 export * from './components/layout/Stack.js';
 export * from './components/layout/icons.js';
+export * from './client/platform/surface.js';
 export * from './config/constants.js';
 export * from './config/storage.js';
 export * from './contract/adapters.js';
