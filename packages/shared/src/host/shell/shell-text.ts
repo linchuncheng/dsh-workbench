@@ -1,3 +1,5 @@
+import { hostOsOf } from '../platform/facts.js';
+
 /**
  * 一台机器上跑命令的那种 shell：POSIX 系（sh / bash / zsh），或 dsh 在 Windows 上用的 pwsh。
  */
@@ -8,8 +10,8 @@ export type ShellKind = 'posix' | 'pwsh';
  * @param platform - 目标平台，默认当前 `process.platform`。
  * @returns `'pwsh'` 或 `'posix'`。
  */
-export function shellKindOf(platform: NodeJS.Platform = process.platform): ShellKind {
-  return platform === 'win32' ? 'pwsh' : 'posix';
+export function shellKindOf(platform?: NodeJS.Platform): ShellKind {
+  return hostOsOf(platform) === 'win32' ? 'pwsh' : 'posix';
 }
 
 /**
@@ -18,8 +20,8 @@ export function shellKindOf(platform: NodeJS.Platform = process.platform): Shell
  * @param platform - 目标平台，默认当前 `process.platform`。
  * @returns 该平台上可直接执行的文件名。
  */
-export function cmdNameOf(name: string, platform: NodeJS.Platform = process.platform): string {
-  return platform === 'win32' ? `${name}.cmd` : name;
+export function cmdNameOf(name: string, platform?: NodeJS.Platform): string {
+  return hostOsOf(platform) === 'win32' ? `${name}.cmd` : name;
 }
 
 /**
@@ -28,7 +30,7 @@ export function cmdNameOf(name: string, platform: NodeJS.Platform = process.plat
  * @param platform - 目标平台，默认当前 `process.platform`。
  * @returns 可安全拼进该平台 shell 命令的一段文本；含空格 / 元字符的值不会被当成语法。
  */
-export function quoteShellArgFor(value: unknown, platform: NodeJS.Platform = process.platform): string {
+export function quoteShellArgFor(value: unknown, platform?: NodeJS.Platform): string {
   const text = String(value);
   if (shellKindOf(platform) === 'pwsh') return `'${text.replace(/'/g, "''")}'`;
   return `'${text.replace(/'/g, `'\\''`)}'`;
@@ -40,7 +42,7 @@ export function quoteShellArgFor(value: unknown, platform: NodeJS.Platform = pro
  * @returns 可安全拼进当前平台 shell 命令的一段文本。
  */
 export function quoteShellArg(value: unknown): string {
-  return quoteShellArgFor(value, process.platform);
+  return quoteShellArgFor(value);
 }
 
 /**

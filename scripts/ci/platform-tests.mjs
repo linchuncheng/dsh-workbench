@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runLogged } from './run-logged.mjs';
+import { testsOfManifest } from '../../packages/core/scripts/selfcheck/checks/platform-ci.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const MANIFEST = join(ROOT, 'packages/core/scripts/selfcheck/platform-landings.json');
@@ -20,19 +21,6 @@ function manifestOf() {
   }
 }
 
-function testsOf(manifest) {
-  const files = new Set();
-  for (const group of ['allow', 'landings', 'ports']) {
-    for (const entry of Object.values(manifest[group] ?? {})) {
-      for (const test of entry.tests ?? []) files.add(test);
-    }
-  }
-  for (const tests of Object.values(manifest.suites ?? {})) {
-    for (const test of tests ?? []) files.add(test);
-  }
-  return [...files].sort();
-}
-
 function groupsOf(files) {
   const groups = new Map();
   for (const file of files) {
@@ -45,7 +33,7 @@ function groupsOf(files) {
   return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-const groups = groupsOf(testsOf(manifestOf()));
+const groups = groupsOf(testsOfManifest(manifestOf()));
 if (groups.length === 0) fail('清单里一个测试都没有');
 if (dryRun) {
   for (const group of groups) console.log(`${group.name}: ${group.files.length} 个测试\n  ${group.files.join('\n  ')}`);

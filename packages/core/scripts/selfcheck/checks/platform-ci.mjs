@@ -141,17 +141,35 @@ function hostFactTestFiles() {
   return out.sort();
 }
 
-function declaredTestsOf(manifest) {
+export function testsOfEntry(entry) {
+  if (Array.isArray(entry.tests)) return entry.tests;
+  if (typeof entry.tests === 'object' && entry.tests !== null) return Object.values(entry.tests).flat();
+  return [];
+}
+
+export function testsForOs(entry, os) {
+  if (Array.isArray(entry.tests)) return entry.tests;
+  if (typeof entry.tests === 'object' && entry.tests !== null && Array.isArray(entry.tests[os])) {
+    return entry.tests[os];
+  }
+  return [];
+}
+
+export function testsOfManifest(manifest) {
   const out = new Set();
   for (const group of ['allow', 'landings', 'ports']) {
     for (const entry of Object.values(manifest[group] ?? {})) {
-      for (const test of entry.tests ?? []) out.add(test);
+      for (const test of testsOfEntry(entry)) out.add(test);
     }
   }
   for (const tests of Object.values(manifest.suites ?? {})) {
     for (const test of tests ?? []) out.add(test);
   }
-  return out;
+  return [...out].sort();
+}
+
+function declaredTestsOf(manifest) {
+  return new Set(testsOfManifest(manifest));
 }
 
 function declaredPlatformsOf(entry) {
@@ -348,7 +366,7 @@ function manifestFindings(sites, workflowsList) {
     if (declaredOs.join(',') !== found.join(',')) {
       findings.push(`${rel} 的平台分支变了：登记写 ${declaredOs.join('+') || '空'}，源码是 ${found.join('+')}`);
     }
-    const tests = Array.isArray(entry.tests) ? entry.tests : [];
+    const tests = testsOfEntry(entry);
     if (tests.length === 0) {
       findings.push(`${rel} 没登记任何测试`);
       continue;
@@ -359,8 +377,13 @@ function manifestFindings(sites, workflowsList) {
       else findings.push(`${rel} 登记的测试不存在：${test}`);
     }
     for (const one of os) {
-      if (!present.some((test) => !missingCoverage(test, one, workflowsList))) {
-        findings.push(`${rel} 的 ${one} 分支没有任何测试在 ${one} 腿上跑（登记：${present.join('、') || '无'}）`);
+      const osTests = testsForOs(entry, one);
+      if (osTests.length === 0) {
+        findings.push(`${rel} 的 ${one} 分支没有登记按 OS 的测试`);
+        continue;
+      }
+      if (!osTests.some((test) => present.includes(test) && !missingCoverage(test, one, workflowsList))) {
+        findings.push(`${rel} 的 ${one} 分支没有任何测试在 ${one} 腿上跑（登记：${osTests.join('、') || '无'}）`);
       }
     }
   }
