@@ -55,9 +55,20 @@ const pluginPreviewRe = copyStemPattern([
 ]);
 const pluginInstalledRe = copyStemPattern(['panels.market.add.installedPlugin']);
 const workbenchTitles = copyOf('panels.market.workbenchName');
-const workbenchUpdateTexts = copyOf('panels.market.update');
-const marketOpenTexts = [...copyOf('panels.tab.market'), ...copyOf('panels.browseMarket')];
+const legacyMarketOpenTexts = [
+  'Workbench module market',
+  'Open the module market',
+  'Browse modules',
+  'Choose modules',
+];
+const legacyUpdateTexts = ['Update', '更新'];
+const marketOpenTexts = [
+  ...copyOf('panels.tab.market'),
+  ...copyOf('panels.browseMarket'),
+  ...legacyMarketOpenTexts,
+];
 const marketInstalledTexts = copyOf('panels.market.tabInstalled');
+const workbenchUpdateTexts = [...copyOf('panels.market.update'), ...legacyUpdateTexts];
 const selfUpdateReadyRe = copyPattern(['panels.market.selfUpdatePendingRestart']);
 const selfUpdateFailedRe = copyPattern([
   'panels.market.selfUpdateRetry',
