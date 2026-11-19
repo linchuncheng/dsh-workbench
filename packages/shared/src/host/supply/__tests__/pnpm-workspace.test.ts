@@ -134,23 +134,26 @@ describe('workspaceDirsOf：glob 展开', () => {
   it('* 只返回目录，按路径排序', () => {
     const root = tempRoot();
     dirsOf(root, ['packages/a', 'packages/b', 'apps/c', 'packages/node_modules/x']);
-    expect(workspaceDirsOf(root, ['packages/*'])).toEqual([join(root, 'packages/a'), join(root, 'packages/b')]);
+    expect(workspaceDirsOf(root, ['packages/*'])).toEqual([
+      join(root, 'packages/a').replaceAll('\\', '/'),
+      join(root, 'packages/b').replaceAll('\\', '/'),
+    ]);
   });
 
   it('! 排除生效', () => {
     const root = tempRoot();
     dirsOf(root, ['packages/a', 'packages/b']);
-    expect(workspaceDirsOf(root, ['packages/*', '!packages/b'])).toEqual([join(root, 'packages/a')]);
+    expect(workspaceDirsOf(root, ['packages/*', '!packages/b'])).toEqual([join(root, 'packages/a').replaceAll('\\', '/')]);
   });
 
   it('{a,b} 与 ** 都能展开', () => {
     const root = tempRoot();
     dirsOf(root, ['packages/a', 'apps/c', 'deep/nested/d']);
     expect(workspaceDirsOf(root, ['{packages,apps}/*'])).toEqual([
-      join(root, 'apps/c'),
-      join(root, 'packages/a'),
+      join(root, 'apps/c').replaceAll('\\', '/'),
+      join(root, 'packages/a').replaceAll('\\', '/'),
     ]);
-    expect(workspaceDirsOf(root, ['deep/**'])).toContain(join(root, 'deep/nested/d'));
+    expect(workspaceDirsOf(root, ['deep/**'])).toContain(join(root, 'deep/nested/d').replaceAll('\\', '/'));
   });
 
   it('. 就是根目录；不存在的目录不返回', () => {
@@ -162,7 +165,7 @@ describe('workspaceDirsOf：glob 展开', () => {
   it('同一个目录被多个 pattern 命中时只留一条', () => {
     const root = tempRoot();
     dirsOf(root, ['packages/a']);
-    expect(workspaceDirsOf(root, ['packages/*', 'packages/a'])).toEqual([join(root, 'packages/a')]);
+    expect(workspaceDirsOf(root, ['packages/*', 'packages/a'])).toEqual([join(root, 'packages/a').replaceAll('\\', '/')]);
   });
 
   it('软链到工作区外的目录也返回，由调用方判 insideRoot', () => {

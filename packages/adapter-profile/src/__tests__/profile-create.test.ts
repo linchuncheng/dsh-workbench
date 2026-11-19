@@ -99,7 +99,7 @@ describe('新建工作台：创建', () => {
       expect(result.profile).toBe('wb2');
       expect(result.home).toBe(join(home, 'wb2'));
       expect(result.copied).toEqual(['settings']);
-      expect(result.command).toContain("bin/dsh-workbench' --profile 'wb2'");
+      expect(result.command).toContain(`${join('bin', 'dsh-workbench')}' --profile 'wb2'`);
       expect(result.command).not.toContain('WORKBENCH_PROFILE=');
     }
     expect(seen).toMatchObject({
