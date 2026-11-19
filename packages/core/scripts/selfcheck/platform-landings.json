@@ -341,7 +341,11 @@
       "packages/adapter-probe/src/probe/__tests__/probe-units-release.test.ts",
       "packages/adapter-supply/src/__tests__/package-route.test.ts",
       "packages/adapter-supply/src/__tests__/plugin-source.test.ts",
-      "packages/adapters-default/src/__tests__/seed.test.ts"
+      "packages/adapters-default/src/__tests__/seed.test.ts",
+      "packages/core/src/shared/api/host/__tests__/diy-form-file.test.ts",
+      "packages/core/src/shared/api/host/__tests__/recover-update-script.test.ts",
+      "packages/adapter-runtime/src/data/__tests__/recipe.test.ts",
+      "packages/adapter-runtime/src/data/__tests__/submit-plan.test.ts"
     ]
   },
   "exempt": {

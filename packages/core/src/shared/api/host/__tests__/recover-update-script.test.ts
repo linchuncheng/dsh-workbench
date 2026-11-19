@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -154,7 +154,11 @@ describe('启动器脚本：exec dsh 之前消费待重装记录', () => {
   function pnpmStub(): { readonly dir: string; readonly stamp: string } {
     const dir = mkdtempSync(join(ROOT, 'bin-'));
     const stamp = join(dir, 'ran.txt');
-    writeFileSync(join(dir, 'pnpm'), `#!/bin/sh\necho "$@" > "${stamp}"\nexit 0\n`, { mode: 0o755 });
+    if (process.platform === 'win32') {
+      writeFileSync(join(dir, 'pnpm.cmd'), `@echo %* > "${stamp}"\r\n@exit /b 0\r\n`);
+    } else {
+      writeFileSync(join(dir, 'pnpm'), `#!/bin/sh\necho "$@" > "${stamp}"\nexit 0\n`, { mode: 0o755 });
+    }
     return { dir, stamp };
   }
 
@@ -171,7 +175,7 @@ describe('启动器脚本：exec dsh 之前消费待重装记录', () => {
     });
     const stub = pnpmStub();
 
-    runScript(input, { PATH: `${stub.dir}:${process.env['PATH'] ?? ''}` });
+    runScript(input, { PATH: `${stub.dir}${delimiter}${process.env['PATH'] ?? ''}` });
 
     expect(existsSync(stub.stamp)).toBe(true);
     expect(readFileSync(stub.stamp, 'utf8')).toContain(`--dir ${input.profileDir}`);
@@ -192,7 +196,7 @@ describe('启动器脚本：exec dsh 之前消费待重装记录', () => {
     const stub = pnpmStub();
     const lease = acquireHostLease({ profileDir: input.profileDir, profile: 'workbench', pid: process.pid });
     try {
-      runScript(input, { PATH: `${stub.dir}:${process.env['PATH'] ?? ''}` });
+      runScript(input, { PATH: `${stub.dir}${delimiter}${process.env['PATH'] ?? ''}` });
       expect(existsSync(stub.stamp)).toBe(false);
       expect(existsSync(recordFile)).toBe(true);
     } finally {
@@ -214,7 +218,11 @@ describe('启动器脚本：exec dsh 之前消费待重装记录', () => {
     const binDir = join(input.root, 'pnpm-10', 'node_modules', '.bin');
     mkdirSync(binDir, { recursive: true });
     const stamp = join(binDir, 'ran.txt');
-    writeFileSync(join(binDir, 'pnpm'), `#!/bin/sh\necho "$@" > "${stamp}"\nexit 0\n`, { mode: 0o755 });
+    if (process.platform === 'win32') {
+      writeFileSync(join(binDir, 'pnpm.cmd'), `@echo %* > "${stamp}"\r\n@exit /b 0\r\n`);
+    } else {
+      writeFileSync(join(binDir, 'pnpm'), `#!/bin/sh\necho "$@" > "${stamp}"\nexit 0\n`, { mode: 0o755 });
+    }
 
     runScript(input);
 
@@ -236,7 +244,7 @@ describe('启动器脚本：exec dsh 之前消费待重装记录', () => {
     const stub = pnpmStub();
     const lease = acquireUpdateLease({ root: input.root });
     try {
-      runScript(input, { PATH: `${stub.dir}:${process.env['PATH'] ?? ''}` });
+      runScript(input, { PATH: `${stub.dir}${delimiter}${process.env['PATH'] ?? ''}` });
       expect(existsSync(stub.stamp)).toBe(false);
       expect(existsSync(recordFile)).toBe(true);
     } finally {

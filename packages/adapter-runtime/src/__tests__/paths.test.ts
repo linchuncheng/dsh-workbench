@@ -100,19 +100,17 @@ describe('pnpm 的 store 跟随既有 node_modules（装好的那份不许翻面
 describe('真实的 .modules.yaml 是 JSON 数据（pnpm 10 写的就是这个）', () => {
   const project = join(isolatedRoot(), 'toolchain');
   const npmCache = join(isolatedRoot(), 'npm-cache');
-  const realShape = [
-    '{',
-    '  "hoistedDependencies": {',
-    '    "demo@1.0.0": {',
-    '      "demo": "private"',
-    '    }',
-    '  },',
-    `  "storeDir": "${npmCache}",`,
-    '  "virtualStoreDir": "node_modules/.pnpm",',
-    '  "packageManager": "pnpm@10.32.1"',
-    '}',
-    '',
-  ].join('\n');
+  const realShape = JSON.stringify(
+    {
+      hoistedDependencies: { 'demo@1.0.0': { demo: 'private' } },
+      storeDir: npmCache,
+      virtualStoreDir: 'node_modules/.pnpm',
+      packageManager: 'pnpm@10.32.1',
+    },
+    null,
+    2,
+  );
+
 
   it('★ 贴合真实文件：{ + hoistedDependencies + virtualStoreDir 的多行 JSON 里跟随 storeDir', () => {
     expect(storeDirFor(project, readerOf(realShape).read)).toBe(npmCache);
