@@ -50,12 +50,6 @@ export function createApprovalGate(
           reason: `流程里的 agent 节点不能调写工具 ${name}：把写平台那一步做成动作步骤。`,
         };
       }
-      if (tool?.elevates === true) {
-        return {
-          kind: 'deny',
-          reason: `流程里的 agent 节点不能调要审批的工具 ${name}：这一趟没人能替它点头。`,
-        };
-      }
     }
     const decision = await next();
     if (decision.kind !== 'allow') return decision;
@@ -65,10 +59,7 @@ export function createApprovalGate(
     const policy = owner?.needsApproval;
     const declaredNote = name !== undefined && deps.declaredNotes().has(name);
     const writes = tool?.writes ?? false;
-    const elevates = tool?.elevates ?? false;
-    const skipAsk = (writes || elevates) && fullPermissionOf(deps.ctx, exec.agent);
-    return (
-      (await approvalFor(call, { detailOf, policy, writes, elevates, declaredNote, skipAsk })) ?? decision
-    );
+    const skipAsk = writes && fullPermissionOf(deps.ctx, exec.agent);
+    return (await approvalFor(call, { detailOf, policy, writes, declaredNote, skipAsk })) ?? decision;
   };
 }

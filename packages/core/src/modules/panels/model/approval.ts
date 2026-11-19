@@ -25,8 +25,6 @@ import {
   DIY_PUBLISH_TOOL,
   DIY_PLAN_TOOL,
 } from '../unit';
-import type { Toolbox } from './toolbox';
-import { toolboxVerdictFor } from './toolbox-approval';
 import type { MarketSourceConfig, PublishPreview } from '@dsh-workbench/shared/contract/protocol/market-index';
 import type { LongTaskRunsLookup } from './long-task-tools';
 import { publishClaimDenyOf } from './publish-claim';
@@ -257,10 +255,7 @@ export function publishVerdictFor(
 export function approvalVerdict(
   call: ApprovalCall,
   marketSource?: MarketSourceLookup,
-  toolbox?: Toolbox,
 ): ApprovalVerdict | undefined {
-  const boxed = toolboxVerdictFor(call, toolbox);
-  if (boxed !== undefined) return boxed;
   if (call.name === LONG_TASKS_STOP_TOOL) return stopVerdict(call, undefined);
   if (call.name === DIY_PUBLISH_TOOL) return publishVerdict(call);
   if (call.name === DIY_DEBUG_START_TOOL || call.name === DIY_DEBUG_RESUME_TOOL) {

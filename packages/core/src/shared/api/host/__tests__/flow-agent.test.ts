@@ -408,7 +408,6 @@ describe('流程子会话的工具边界', () => {
     ctx: contextOf({}),
     toolOf: (name) => {
       if (name === 'workbench_gitops_set') return { unit: 'gitops', writes: true };
-      if (name === 'workbench_ask_the_boss') return { unit: 'panels', writes: false, elevates: true };
       return undefined;
     },
     faceOf: () => undefined,
@@ -442,14 +441,6 @@ describe('流程子会话的工具边界', () => {
       },
     );
     expect(asked).toEqual({ kind: 'deny', reason: expect.stringContaining('不能问人') });
-
-    const elevating = await gate(
-      { name: 'workbench_ask_the_boss', agent: { session: { id: 'child-1' } } },
-      async () => {
-        throw new Error('要审批的工具不该走到问人的那一步');
-      },
-    );
-    expect(elevating).toEqual({ kind: 'deny', reason: expect.stringContaining('没人能替它点头') });
 
     let called = false;
     const normal = await gate(

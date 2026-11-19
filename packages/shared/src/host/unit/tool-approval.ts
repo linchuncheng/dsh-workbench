@@ -33,7 +33,7 @@ export const APPROVAL_HEADLINE_LIMIT =
 
 const NOTE_SCHEMA: Readonly<Record<string, unknown>> = {
   type: 'string',
-  description: '一句话说明你这次想拿它干什么（要点头时显示在审批屏上；40 字以内）。',
+  description: '一句话说明这次要执行的操作（需要审批时显示在审批屏上；40 字以内）。',
 };
 
 export function withApprovalNote(
@@ -78,9 +78,9 @@ export interface ApprovalCall {
 }
 
 /**
- * 套件对一次写调用给出的判定：`read` 只是看看、`allow` 会写但本套件不问、`deny` 这一次根本跑不成
+ * 模块对一次写调用给出的判定：`read` 只是看看、`allow` 会写但本模块不问、`deny` 这一次根本跑不成
  * （连问都不该问，`reason` 原样交给 agent）、`ask` 要用户点头（`question` 接在明细后，`fallback` 是没明细时的整句；
- * `noteInDetail` 为真表示套件把 agent 的附注画在自己的详情座里，标题只留动作、不再追加）。
+ * `noteInDetail` 为真表示模块把 agent 的附注画在自己的详情座里，标题只留动作、不再追加）。
  */
 export type ApprovalVerdict =
   | { readonly kind: 'read' }
@@ -100,12 +100,11 @@ export type ApprovalVerdict =
 export type ApprovalPolicy = (call: ApprovalCall) => ApprovalVerdict | undefined;
 
 /**
- * 闸门的输入：`skipAsk` 为真表示会话已经不要审批提示（完全权限）—— 认领检查、`{blocked}` 与套件自己的
+ * 闸门的输入：`skipAsk` 为真表示会话已经不要审批提示（完全权限）—— 认领检查、`{blocked}` 与模块自己的
  * `deny` 照旧，只是不再返回 `ask`；dsh 在 `approval: never` 下会把 `ask` 直接拒掉。
  */
 export interface ApprovalContext {
   readonly writes?: boolean | undefined;
-  readonly elevates?: boolean | undefined;
   readonly policy?: ApprovalPolicy | undefined;
   readonly declaredNote?: boolean | undefined;
   readonly skipAsk?: boolean | undefined;
@@ -138,8 +137,7 @@ export async function approvalFor(
   call: ApprovalCall,
   context: ApprovalContext = {},
 ): Promise<AskDecision | undefined> {
-  const asked = context.writes === true || context.elevates === true;
-  if (!asked) return undefined;
+  if (context.writes !== true) return undefined;
 
   let verdict: ApprovalVerdict | undefined;
   try {
@@ -147,7 +145,7 @@ export async function approvalFor(
   } catch (error) {
     return {
       kind: 'deny',
-      reason: `问"要不要审批"的时候套件的策略抛了错，已经停下：${messageOf(error)}`,
+      reason: `检查是否需要审批时，模块的审批策略抛出错误，已停止：${messageOf(error)}`,
     };
   }
 
@@ -159,10 +157,8 @@ export async function approvalFor(
     return {
       kind: 'deny',
       reason:
-        `${call.name ?? '这把工具'} 在清单里声明` +
-        (context.elevates === true ? '会抬高工具面' : '会写东西') +
-        '，但它的套件没认领这次调用 —— 停下：' +
-        '在套件的 needsApproval 里补一条审批（含"这次会发生什么"），别让它静默过去',
+        `${call.name ?? '这把工具'} 在清单里声明会写东西，但它的模块没有为这次调用声明审批，已在执行前停止。` +
+        '下一步：在模块的 needsApproval 中补一条审批（包含「这次会发生什么」）。',
     };
   }
 
@@ -170,7 +166,7 @@ export async function approvalFor(
   try {
     facts = await context.detailOf?.(call);
   } catch (error) {
-    return { kind: 'deny', reason: `拿不到"这次会发生什么"，已经停下：${messageOf(error)}` };
+    return { kind: 'deny', reason: `无法获取这次操作的影响，已停止：${messageOf(error)}` };
   }
   if (facts !== undefined && 'blocked' in facts) return { kind: 'deny', reason: facts.blocked };
 

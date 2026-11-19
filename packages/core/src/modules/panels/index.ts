@@ -332,7 +332,6 @@ export const panelsHost: UnitOwnedFace = {
         (unit, author) =>
           publishPreviewOf(workshopPathOf(ctx), unit, author === undefined ? {} : { author }),
         marketSources,
-        toolbox,
       ),
       gate: {
         deniedTools: (context) => {

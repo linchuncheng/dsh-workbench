@@ -721,7 +721,6 @@ ctx.get('workbenchUnits').registerUnit({
   能给出理由的名字，必须在 `deniedTools` 里。
 - `mount()` 失败要撤回已注册工具（路由在 mount 成功后才收）。
 - 清单 `tools[].name` 与 `registerTools()` 实际名字对账；`writes: true` 必须有审批。
-- `tools[].elevates: true` 表示这次调用会抬高工具面（开工具包），审批按它认领，与 `writes` 无关。
 
 ### 5.6.1 工具包（按需加载）
 
@@ -737,7 +736,8 @@ ctx.get('workbenchUnits').registerUnit({
 - 状态按会话（宿主内存）；DIY 模式默认开 `manage + diy`，其余会话从空开始；显式 open/close 覆盖默认。
   preset 一律读会话投影（`presetOfSession`，控制工具与收窄同一份）：工坊那条会话是建完再 select 的，
   会话 header 上没有 `agentPreset`。
-- 开启工具包要用户审批（`elevates`）；非法 / 没在板子上的单元在审批之前就被拒；关闭不审批。
+- 开启工具包不审批：它只是把工具解锁到本次会话，包里的写工具仍逐条问；非法 / 没在板子上的单元
+  照样被拒；关闭不审批。
 - **发现性**（ADR-0108）：默认面就是模型能读到的全部索引，所以三把控制工具的文案里带一张最小能力地图
   （能力 → 包的字面量，含 `mcp:<server>`），且不抬 `tool-surface.test.ts` 的字数棘轮；
   「这台机器上具体有哪几个 `unit:<id>` / 哪台 `mcp:<server>`」这份**活索引**在 agent 创建时注册成一把

@@ -5,8 +5,6 @@ import { zh } from '@dsh-workbench/shared';
 import { approvalFor, type ApprovalCall } from '@dsh-workbench/shared/host';
 import { pluginToolIndexOf, shellApprovalPlan, type ApprovalPlanView } from '@/app/layouts/approval-detail';
 import { panelsApprovalFor } from '../model/approval-policy';
-import { createToolbox } from '../model/toolbox';
-import { TOOLBOX_OPEN_TOOL } from '../unit';
 import { ASK_TOOLS, WRITE_CALLS, stopRuns } from './approval-samples';
 
 const GOLDEN = new URL('../../../../test/golden/approval-screens.md', import.meta.url);
@@ -94,50 +92,6 @@ const MODULE_UNIT: UnitManifest = {
     { kind: 'lib', name: 'acme-sdk', version: '^2.1', purpose: '调库存接口' },
   ],
 };
-
-const TOOLBOX_UNIT: UnitManifest = {
-  ...MODULE_UNIT,
-  tools: [
-    { name: 'workbench_inventory_list', writes: false },
-    { name: 'workbench_inventory_build', writes: true },
-  ],
-};
-
-function toolboxOfMcp(): ReturnType<typeof createToolbox> {
-  return createToolbox({
-    manifests: () => [TOOLBOX_UNIT],
-    mcp: () => [
-      {
-        name: 'chrome',
-        tools: ['mcp__chrome__navigate_page', 'mcp__chrome__take_snapshot'],
-      },
-    ],
-  });
-}
-
-async function toolboxScreenOf(
-  targets: readonly string[],
-  toolbox: ReturnType<typeof createToolbox> = createToolbox({ manifests: () => [TOOLBOX_UNIT] }),
-): Promise<readonly string[]> {
-  const args = { targets };
-  const call: ApprovalCall = { name: TOOLBOX_OPEN_TOOL, arguments: args };
-  const decision = await approvalFor(call, {
-    writes: false,
-    elevates: true,
-    policy: panelsApprovalFor(stopRuns(), undefined, undefined, undefined, toolbox),
-  });
-  const title = decision?.kind === 'ask' ? decision.displayReason.zh : '（不问）';
-
-  return [
-    `## ${TOOLBOX_OPEN_TOOL}（${targets.join(' + ')}）`,
-    '',
-    ...box(
-      title,
-      ['', title, '', ...planLines(shellApprovalPlan({ tool: TOOLBOX_OPEN_TOOL, args }, t, undefined, [TOOLBOX_UNIT]))],
-    ),
-    '',
-  ];
-}
 
 interface PluginCommand {
   readonly plugin: string;
@@ -272,13 +226,12 @@ async function document(): Promise<string> {
     '**2026-11-19 录制那一屏改口径**：标题点明工作台、真实写入与保存请求原文；第三行标签从 `录制功能`',
     '改为 `录制内容`（与「一次操作」那个值对得上）。',
     '',
+    '**2026-11-19 去掉 `workbench_toolbox_open` 那几屏**：开包只是把工具解锁到本次会话，包里的写工具仍逐条问，',
+    '开包本身不再问；mcp 包那一屏随它一起下屏。',
+    '',
   ];
   for (const tool of ASK_TOOLS) parts.push(...(await screenOf(tool)));
   parts.push(...(await pluginScreen()));
-  parts.push(...(await toolboxScreenOf(['manage'])));
-  parts.push(...(await toolboxScreenOf(['unit:inventory'])));
-  parts.push(...(await toolboxScreenOf(['unit:inventory', 'manage'])));
-  parts.push(...(await toolboxScreenOf(['mcp:chrome'], toolboxOfMcp())));
   return parts.join('\n');
 }
 

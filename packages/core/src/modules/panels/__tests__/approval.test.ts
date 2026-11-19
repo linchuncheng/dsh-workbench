@@ -10,8 +10,6 @@ import { panelsApproval } from '../model/approval-policy';
 import { ALLOWED_WRITES, ASK_TOOLS, WRITE_CALLS, writers } from './approval-samples';
 import {
   ALL_TOOLS,
-  ELEVATING_TOOLS,
-  TOOLBOX_OPEN_TOOL,
   DIY_CLICK_TOOL,
   DIY_DEBUG_PAUSE_TOOL,
   DIY_DEBUG_RESUME_TOOL,
@@ -252,19 +250,13 @@ describe('工坊那一族一律不问（用户 2026-10-16 的决定：闭环里�
 });
 
 describe('读工具一格都不许问（它们不在写工具那半边）', () => {
-  it('★ 读工具就是清单里没写 writes 的那些：策略对它们没意见，外壳也不会来问（抬工具面那几把例外）', async () => {
+  it('★ 读工具就是清单里没写 writes 的那些：策略对它们没意见，外壳也不会来问', async () => {
     expect([...READ_TOOLS].sort()).toEqual(
       [...ALL_TOOLS].filter((name) => !(WRITE_TOOLS as readonly string[]).includes(name)).sort(),
     );
     for (const name of READ_TOOLS) {
       const tool = panelsUnit.tools.find((one) => one.name === name);
       expect(tool?.writes, name).toBe(false);
-      const lifting = (ELEVATING_TOOLS as readonly string[]).includes(name);
-      expect(tool?.elevates ?? false, name).toBe(lifting);
-      if (lifting) {
-        expect(panelsApproval({ name, arguments: { targets: ['manage'] } })?.kind, name).toBe('ask');
-        continue;
-      }
       const verdict = panelsApproval({ name, arguments: { unit: 'demo', keyword: 'x' } });
       expect(verdict, name).toEqual(
         (DIY_TOOLS as readonly string[]).includes(name) ? { kind: 'allow' } : undefined,
@@ -314,30 +306,11 @@ describe('清单里的写工具都在自己的策略后面（漏了不报错，�
       expect(kind, name).toBe(ALLOWED_WRITES.has(name) ? 'allow' : 'ask');
     }
     for (const name of READ_TOOLS) {
-      if ((ELEVATING_TOOLS as readonly string[]).includes(name)) {
-        expect(panelsApproval({ name, arguments: { targets: ['manage'] } })?.kind, name).toBe('ask');
-        continue;
-      }
       const verdict = panelsApproval({ name, arguments: {} });
       expect(verdict, name).toEqual(
         (DIY_TOOLS as readonly string[]).includes(name) ? { kind: 'allow' } : undefined,
       );
     }
-  });
-
-  it('★ 抬工具面按 elevates 问，不靠 writes：没写 writes 也会问；没认领照样 deny', async () => {
-    const asked = await approvalFor(
-      { name: TOOLBOX_OPEN_TOOL, arguments: { targets: ['manage'] } },
-      { writes: false, elevates: true, policy: panelsApproval },
-    );
-    expect(asked?.kind).toBe('ask');
-
-    const caught = await approvalFor(
-      { name: TOOLBOX_OPEN_TOOL, arguments: { targets: ['manage'] } },
-      { writes: false, elevates: true },
-    );
-    expect(caught?.kind).toBe('deny');
-    expect(caught?.kind === 'deny' ? caught.reason : '').toContain('抬高工具面');
   });
 });
 

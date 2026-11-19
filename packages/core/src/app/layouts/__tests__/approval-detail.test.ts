@@ -12,7 +12,6 @@ import {
   shellApprovalDetail,
   shellApprovalRenderer,
   shellClaimsApprovalDetail,
-  toolboxApprovalRows,
   versionLineOf,
 } from '../approval-detail';
 import { planSections } from '../approval-plan';
@@ -23,7 +22,6 @@ import {
   MARKET_DISABLE_TOOL,
   MARKET_ENABLE_TOOL,
   MODULES_INSTALL_TOOL,
-  TOOLBOX_OPEN_TOOL,
 } from '@/modules/panels/client';
 
 const HERE = new URL('../', import.meta.url);
@@ -177,10 +175,10 @@ describe('计划审批：除了那张画，还要说清这个模块能给她什�
 
   it('★★ 四段都摊出来，空条目丢掉', () => {
     expect(planSections(args, t).map((section) => [section.label, section.items])).toEqual([
-      ['一眼看到', ['卡了几天', '金额']],
-      ['你能做', ['点一下就按金额排']],
+      ['能看到什么', ['卡了几天', '金额']],
+      ['你可以做什么', ['点一下就按金额排']],
       ['AI 能做什么', ['每天早上替我念一遍']],
-      ['数据从哪来', ['从她的库存系统读，只读']],
+      ['数据来源', ['从她的库存系统读，只读']],
     ]);
   });
 
@@ -471,18 +469,18 @@ describe('模块外部供给审批：要装的插件与库摆进详情座', () =
     expect(moduleSupplyRows(unit, 'inventory', t)).toEqual([
       { label: '模块', value: 'inventory' },
       { label: '插件', value: 'inventory —— 读库存数据' },
-      { label: '库', value: 'acme-sdk ^2.1 —— 调库存接口' },
+      { label: '共用依赖', value: 'acme-sdk ^2.1 —— 调库存接口' },
     ]);
   });
 
   it('没声明就没有；清单没读回来就说读不到 —— 不猜、不写空行', () => {
     expect(moduleSupplyRows({ ...unit, needs: [] }, 'inventory', t)).toEqual([
       { label: '模块', value: 'inventory' },
-      { label: '要装的', value: '这个模块没有声明插件与库' },
+      { label: '需要安装的内容', value: '这个模块没有声明插件与库' },
     ]);
     expect(moduleSupplyRows(undefined, 'inventory', t)[1]).toEqual({
-      label: '要装的',
-      value: '读不到这个模块要装什么',
+      label: '需要安装的内容',
+      value: '无法读取这个模块的依赖声明',
     });
   });
 
@@ -490,61 +488,6 @@ describe('模块外部供给审批：要装的插件与库摆进详情座', () =
     const seat = seatOf(MODULES_INSTALL_TOOL, { id: 'inventory' }, shellApprovalRenderer(() => [unit]));
 
     expect(seat?.props?.rows).toHaveLength(3);
-    expect(seat?.props?.code).toBeUndefined();
-  });
-});
-
-describe('工具包审批：详情座一行一个包，范围与写工具的口径都写清', () => {
-  const unit: UnitManifest = {
-    id: 'inventory',
-    title: { zh: '库存', en: 'Inventory' },
-    titleKey: 'dsh-workbench.unit.inventory.title',
-    card: null,
-    tools: [
-      { name: 'workbench_inventory_list', writes: false },
-      { name: 'workbench_inventory_build', writes: true },
-    ],
-    host: { inject: [] },
-  };
-
-  it('★ 外壳包与单元包各一行：名字 + 共 N 把（读 / 写）', () => {
-    expect(toolboxApprovalRows({ targets: ['manage', 'unit:inventory'] }, [unit], t)).toEqual([
-      { label: '工具包', value: '工作台管理 · 共 21 个（读 5 / 写 16）' },
-      { label: '工具包', value: '库存 · 共 2 个（读 1 / 写 1）' },
-      { label: '范围', value: '这个会话' },
-      { label: '写入', value: '工具包中的写工具仍会逐条确认' },
-    ]);
-  });
-
-  it('★ MCP 包只点名字与 server，写入那一行改说"审批仍走 dsh"', () => {
-    expect(toolboxApprovalRows({ targets: ['mcp:chrome'] }, [], t)).toEqual([
-      { label: '工具包', value: 'chrome（MCP server）' },
-      { label: '范围', value: '这个会话' },
-      { label: '写入', value: 'MCP 工具自己的审批仍走 dsh' },
-    ]);
-  });
-
-  it('不认识的 target 原样写出来，不编名字', () => {
-    expect(toolboxApprovalRows({ targets: ['unit:nope'] }, [], t)[0]).toEqual({
-      label: '工具包',
-      value: 'unit:nope',
-    });
-  });
-
-  it('★ 座位画的正是这张表（批量开包时一行一个包）', () => {
-    const seat = seatOf(
-      TOOLBOX_OPEN_TOOL,
-      { targets: ['unit:inventory', 'manage'] },
-      shellApprovalRenderer(() => [unit]),
-    );
-
-    expect(seat?.props?.rows).toHaveLength(4);
-    expect(seat?.props?.rows?.map((row) => (row as { label: string }).label)).toEqual([
-      '工具包',
-      '工具包',
-      '范围',
-      '写入',
-    ]);
     expect(seat?.props?.code).toBeUndefined();
   });
 });

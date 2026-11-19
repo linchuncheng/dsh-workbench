@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createNoopDataReader } from '@dsh-workbench/shared/testing';
 import type { HostContext, UnitManifest } from '@dsh-workbench/shared';
 import type { DshToolDefinition } from '@dsh-workbench/shared/host';
-import { approvalFor, MCP_TOOLS_SERVICE, SESSION_PROJECTIONS_SERVICE, type McpServerPacks } from '@dsh-workbench/shared/host';
+import { MCP_TOOLS_SERVICE, SESSION_PROJECTIONS_SERVICE, type McpServerPacks } from '@dsh-workbench/shared/host';
 import { createHostKit, createWorkspaceStore, hostSurface, WORKBENCH_ADAPTERS } from '@dsh-workbench/shared/host';
 import { panelsHost } from '../index';
 import { createToolbox } from '../model/toolbox';
@@ -146,14 +146,13 @@ const reasonOf = (
 ): string | undefined => mounted.gate?.denyReason?.(name, { workspace: dir, preset, session });
 
 describe('工具箱：默认只留控制面，按会话开包', () => {
-  it('清单：三个控制工具都在，开包那把写着 elevates、不算写', () => {
+  it('清单：三个控制工具都在，开包那把不算写', () => {
     const openTool = panelsUnit.tools?.find((one) => one.name === TOOLBOX_OPEN_TOOL);
 
     expect(panelsUnit.tools?.map((one) => one.name)).toEqual(
       expect.arrayContaining([TOOLBOX_LIST_TOOL, TOOLBOX_OPEN_TOOL, TOOLBOX_CLOSE_TOOL]),
     );
     expect(openTool?.writes).toBe(false);
-    expect(openTool?.elevates).toBe(true);
   });
 
   it('★ 默认会话：manage / diy / 单元包全收着；开一个单元包只放它自己', async () => {
@@ -171,7 +170,7 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
     expect(afterUnit).toContain(DIY_PACK_TOOLS[0]);
   });
 
-  it('★ 批量开：一次传多个 target，只问一次审批，全部生效', async () => {
+  it('★ 批量开：一次传多个 target，全部生效', async () => {
     const { mounted, registered } = mount();
 
     const opened = await call(registered, TOOLBOX_OPEN_TOOL, { targets: ['manage', 'unit:board-x'] }, 's-1');
@@ -349,65 +348,6 @@ describe('收起的工具：拒绝理由指回包与下一步', () => {
   });
 });
 
-describe('开包审批：elevates 走同一套审批闸', () => {
-  it('合法开包：ask，标题点名第一个包与数量；详情座那一份交给座位', async () => {
-    const { mounted } = mount();
-    const approvalCall = { name: TOOLBOX_OPEN_TOOL, arguments: { targets: ['manage', 'unit:board-x'] } };
-    const policy = mounted.needsApproval;
-
-    const decision = await approvalFor(approvalCall, {
-      writes: false,
-      elevates: true,
-      ...(policy === undefined ? {} : { policy }),
-    });
-
-    expect(decision?.kind).toBe('ask');
-    expect(decision?.kind === 'ask' ? decision.displayReason.zh : '').toContain('工作台管理');
-    expect(decision?.kind === 'ask' ? decision.displayReason.zh : '').toContain('2 个工具包');
-  });
-
-  it('非法目标：审批之前就 blocked（不给用户看一个注定失败的按钮）', async () => {
-    const { mounted } = mount();
-    const approvalCall = { name: TOOLBOX_OPEN_TOOL, arguments: { targets: ['unit:nope', 'manage'] } };
-
-    const decision = await approvalFor(approvalCall, {
-      writes: false,
-      elevates: true,
-      ...(mounted.needsApproval === undefined ? {} : { policy: mounted.needsApproval }),
-    });
-
-    expect(decision?.kind).toBe('deny');
-    expect(decision?.kind === 'deny' ? decision.reason : '').toContain('unit:board-x');
-  });
-
-  it('没给 targets：审批前 blocked，提示要给 targets', async () => {
-    const { mounted } = mount();
-    const approvalCall = { name: TOOLBOX_OPEN_TOOL, arguments: { targets: [] } };
-
-    const decision = await approvalFor(approvalCall, {
-      writes: false,
-      elevates: true,
-      ...(mounted.needsApproval === undefined ? {} : { policy: mounted.needsApproval }),
-    });
-
-    expect(decision?.kind).toBe('deny');
-  });
-
-  it('全权限跳过 ask：skipAsk 对抬工具面同样生效', async () => {
-    const { mounted } = mount();
-    const approvalCall = { name: TOOLBOX_OPEN_TOOL, arguments: { targets: ['manage'] } };
-
-    const decision = await approvalFor(approvalCall, {
-      writes: false,
-      elevates: true,
-      skipAsk: true,
-      ...(mounted.needsApproval === undefined ? {} : { policy: mounted.needsApproval }),
-    });
-
-    expect(decision).toBeUndefined();
-  });
-});
-
 describe('MCP server 也是外部包', () => {
   const servers: readonly McpServerPacks[] = [
     { name: 'chrome', tools: ['mcp__chrome__navigate_page', 'mcp__chrome__take_snapshot'] },
@@ -428,19 +368,5 @@ describe('MCP server 也是外部包', () => {
 
     expect(deniedOf(mounted, 's-1')).not.toContain('mcp__chrome__navigate_page');
     expect(deniedOf(mounted, null)).toEqual([]);
-  });
-
-  it('★ 审批：mcp 包也走同一套，标题点它的名字', async () => {
-    const { mounted } = mount(servers);
-    const approvalCall = { name: TOOLBOX_OPEN_TOOL, arguments: { targets: ['mcp:chrome'] } };
-
-    const decision = await approvalFor(approvalCall, {
-      writes: false,
-      elevates: true,
-      ...(mounted.needsApproval === undefined ? {} : { policy: mounted.needsApproval }),
-    });
-
-    expect(decision?.kind).toBe('ask');
-    expect(decision?.kind === 'ask' ? decision.displayReason.zh : '').toContain('chrome（MCP）');
   });
 });

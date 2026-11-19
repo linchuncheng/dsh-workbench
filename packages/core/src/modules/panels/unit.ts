@@ -65,8 +65,6 @@ export const TOOLBOX_CLOSE_TOOL = 'workbench_toolbox_close';
 
 export const TOOLBOX_TOOLS = [TOOLBOX_LIST_TOOL, TOOLBOX_OPEN_TOOL, TOOLBOX_CLOSE_TOOL] as const;
 
-export const ELEVATING_TOOLS: readonly PanelsToolName[] = [TOOLBOX_OPEN_TOOL];
-
 export const PACK_TARGET_LIMIT = 8;
 
 export const DIY_DEBUG_START_TOOL = 'workbench_diy_debug_start';
@@ -299,11 +297,7 @@ export const panelsUnit: UnitManifest = {
   titleKey: `${PANELS_MODULE_ID}.title`,
   card: null,
   tools: [
-    ...READ_TOOLS.map((name) => ({
-      name,
-      writes: false,
-      ...(ELEVATING_TOOLS.includes(name) ? { elevates: true } : {}),
-    })),
+    ...READ_TOOLS.map((name) => ({ name, writes: false })),
     ...WRITE_TOOLS.map((name) => ({ name, writes: true })),
   ],
   host: {

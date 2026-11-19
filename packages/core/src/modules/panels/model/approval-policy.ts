@@ -16,7 +16,6 @@ import {
   type MarketSourceLookup,
   type PublishApprovalPreview,
 } from './approval';
-import type { Toolbox } from './toolbox';
 
 export const panelsApproval: ApprovalPolicy = (call) => approvalVerdict(call);
 
@@ -37,7 +36,6 @@ export function panelsApprovalFor(
   recording?: (() => RecordState | null) | undefined,
   publishPreview?: ((unit: string, author?: string) => PublishApprovalPreview | null) | undefined,
   marketSources?: MarketSourcesStore | undefined,
-  toolbox?: Toolbox | undefined,
 ): ApprovalPolicy {
   const sourceOf: MarketSourceLookup | undefined =
     marketSources === undefined
@@ -51,6 +49,6 @@ export function panelsApprovalFor(
     if (call.name === LONG_TASKS_STOP_TOOL) return stopVerdictFor(call, longTaskRuns);
     if (call.name === DIY_PLAN_TOOL) return confirmVerdictFor(call);
     if (call.name === DIY_PUBLISH_TOOL) return publishVerdictFor(call, publishPreview);
-    return recordHeldVerdict(call, recording) ?? approvalVerdict(call, sourceOf, toolbox);
+    return recordHeldVerdict(call, recording) ?? approvalVerdict(call, sourceOf);
   };
 }
