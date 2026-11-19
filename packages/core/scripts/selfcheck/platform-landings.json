@@ -165,19 +165,30 @@
       "tests": [
         "packages/core/src/shared/api/platform/__tests__/client.test.ts"
       ]
+    },
+    "host.integration.data": {
+      "path": "packages/shared/src/host/platform/integration/data.ts",
+      "platforms": [
+        "win32"
+      ],
+      "tests": [
+        "packages/adapter-runtime/src/data/__tests__/index.test.ts"
+      ]
     }
   },
-  "ports": {},
-  "allow": {
-    "packages/adapter-probe/src/toolchain/runtime-seed.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+  "ports": {
+    "adapter.toolchain.runtime-seed": {
+      "path": "packages/adapter-probe/src/toolchain/runtime-seed.ts",
+      "reason": "adapter-probe 的运行时自举端口：Windows 上要写 cmd 包装与 node launcher，专用模块，不是业务分支",
       "platforms": [
         "win32"
       ],
       "tests": [
         "packages/adapter-probe/src/toolchain/__tests__/runtime-seed.test.ts"
       ]
-    },
+    }
+  },
+  "allow": {
     "packages/adapter-probe/src/toolchain/toolchain.ts": {
       "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
       "platforms": [
@@ -225,15 +236,6 @@
       ],
       "tests": [
         "packages/adapter-runtime/src/cli/__tests__/opencli.test.ts"
-      ]
-    },
-    "packages/adapter-runtime/src/data/index.ts": {
-      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
-      "platforms": [
-        "win32"
-      ],
-      "tests": [
-        "packages/adapter-runtime/src/data/__tests__/index.test.ts"
       ]
     }
   },
