@@ -3,6 +3,7 @@ import { RECORD_BAR_KEY, RECORD_FRESH_KEY, RECORD_KEY, RECORD_KEEP_KEY, RECORD_O
 export const RECORD_READ_SCRIPT = `(async () => {
   const KEY = ${JSON.stringify(RECORD_KEY)};
   const KEEP = ${JSON.stringify(RECORD_KEEP_KEY)};
+  const OFF = ${JSON.stringify(RECORD_OFF_KEY)};
   const BEAT_WAIT = 3000;
   let state = window[KEY] !== null && typeof window[KEY] === 'object' ? window[KEY] : null;
   if (state === null) {
@@ -13,7 +14,21 @@ export const RECORD_READ_SCRIPT = `(async () => {
       state = null;
     }
   }
-  if (state === null || typeof state !== 'object') return { ok: false, code: 'not-armed', phase: 'none', calls: [] };
+  if (state === null || typeof state !== 'object') return { ok: false, code: 'not-armed', phase: 'none', calls: [], hooked: false };
+  const page = (hooked) => ({
+    ok: true,
+    hooked,
+    phase: typeof state.phase === 'string' ? state.phase : 'armed',
+    t0: state.t0 === undefined ? null : state.t0,
+    t1: state.t1 === undefined ? null : state.t1,
+    href: typeof state.href === 'string' ? state.href : '',
+    here: location.href,
+    dropped: typeof state.dropped === 'number' ? state.dropped : 0,
+    shots: typeof state.shots === 'number' ? state.shots : 0,
+    calls: Array.isArray(state.calls) ? state.calls : [],
+    snap: typeof state.snap !== 'object' || state.snap === null ? null : { href: String(state.snap.href === undefined ? '' : state.snap.href), title: String(state.snap.title === undefined ? '' : state.snap.title), bytes: typeof state.snap.bytes === 'number' ? state.snap.bytes : 0, truncated: state.snap.truncated === true, at: typeof state.snap.at === 'number' ? state.snap.at : 0, fields: Array.isArray(state.snap.fields) ? state.snap.fields.length : 0, required: Array.isArray(state.snap.fields) ? state.snap.fields.filter((one) => one !== null && typeof one === 'object' && one.required === true).map((one) => String(one.name === undefined ? '' : one.name)).slice(0, 20) : [] },
+  });
+  if (typeof window[OFF] !== 'function' || document.getElementById('__dsh-record-bar') === null) return page(false);
   let resolveWake = null;
   const woken = new Promise((resolve) => {
     resolveWake = resolve;
@@ -28,7 +43,7 @@ export const RECORD_READ_SCRIPT = `(async () => {
   await Promise.race([woken, new Promise((resolve) => { timer = setTimeout(resolve, BEAT_WAIT); })]);
   if (timer !== null) clearTimeout(timer);
   if (window.__dshRecordWake === onBeat) window.__dshRecordWake = null;
-  return { ok: true, phase: typeof state.phase === 'string' ? state.phase : 'armed', t0: state.t0 === undefined ? null : state.t0, t1: state.t1 === undefined ? null : state.t1, href: typeof state.href === 'string' ? state.href : '', here: location.href, dropped: typeof state.dropped === 'number' ? state.dropped : 0, shots: typeof state.shots === 'number' ? state.shots : 0, calls: Array.isArray(state.calls) ? state.calls : [], snap: typeof state.snap !== 'object' || state.snap === null ? null : { href: String(state.snap.href === undefined ? '' : state.snap.href), title: String(state.snap.title === undefined ? '' : state.snap.title), bytes: typeof state.snap.bytes === 'number' ? state.snap.bytes : 0, truncated: state.snap.truncated === true, at: typeof state.snap.at === 'number' ? state.snap.at : 0, fields: Array.isArray(state.snap.fields) ? state.snap.fields.length : 0, required: Array.isArray(state.snap.fields) ? state.snap.fields.filter((one) => one !== null && typeof one === 'object' && one.required === true).map((one) => String(one.name === undefined ? '' : one.name)).slice(0, 20) : [] } };
+  return page(true);
 })()`;
 
 export const RECORD_STOP_SCRIPT = `(() => {
