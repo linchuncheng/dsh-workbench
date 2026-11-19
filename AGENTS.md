@@ -117,6 +117,7 @@ pnpm run check                        # 门禁：整仓那一套（= `pnpm -w ru
 | 共享契约、哑组件、宿主工具、收录判据 | [`packages/shared/README.md`](packages/shared/README.md) |
 | 最小可安装模块样本 | [`packages/module-hello/README.md`](packages/module-hello/README.md) |
 | 改跨层的东西：接缝、能力口、包依赖方向、某段命令或格式归谁 | [`DESIGN-BOUNDARIES.md`](DESIGN-BOUNDARIES.md)：§2 接缝 · §5 改动落哪 · §6 守卫 |
+| 加平台分支 / 处理 Windows、macOS、Linux 差异 | [`PLATFORM-BOUNDARIES.md`](PLATFORM-BOUNDARIES.md)：固定落点、`HostFacts` / `HostOps` / `HostIntegration`、selfcheck 平台判据 |
 | 改文档站、加一页、换配色 | [`packages/docs/README.md`](packages/docs/README.md) |
 | 对某个术语拿不准 | [`CONTEXT.md`](CONTEXT.md) |
 | 想知道某个选择为什么是这样 | `private-docs/docs/adr/`（需要私有仓权限） |
