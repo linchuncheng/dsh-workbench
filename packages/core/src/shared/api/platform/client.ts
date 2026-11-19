@@ -38,6 +38,10 @@ export function clientSurface(input: ClientSurfaceInput = {}): ClientSurface {
     deployment: shell === 'electron' ? 'desktop' : 'web',
     shell,
     hostOs,
-    capabilities: { debugFooter: shell !== 'electron', macFileManager: hostOs === 'darwin' },
+    capabilities: {
+      debugFooter: shell !== 'electron',
+      macFileManager: hostOs === 'darwin',
+      primaryModifier: hostOs === 'darwin' ? 'meta' : 'ctrl',
+    },
   };
 }

@@ -35,6 +35,7 @@ export function hostSurface(input: HostSurfaceInput = {}): HostSurface {
       browserWake: deployment === 'desktop',
       selfUpdateCli,
       safeMode: deployment === 'desktop',
+      fileManager: hostOs === 'darwin' ? 'finder' : hostOs === 'win32' ? 'explorer' : 'none',
     },
     restartHint: deployment === 'desktop' ? '退出并重开 Desktop' : '重启一次 dsh',
     toolchain: {

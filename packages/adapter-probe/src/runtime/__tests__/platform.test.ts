@@ -33,6 +33,7 @@ describe('宿主平台面', () => {
     expect(surface.capabilities.browserWake).toBe(true);
     expect(surface.capabilities.selfUpdateCli).toBe('desktop-cli');
     expect(surface.capabilities.safeMode).toBe(true);
+    expect(surface.capabilities.fileManager).toBe('finder');
     expect(surface.restartHint).toBe('退出并重开 Desktop');
     expect(surface.toolchain.node.source).toBe('desktop-shim');
   });
@@ -48,6 +49,7 @@ describe('宿主平台面', () => {
     expect(surface.hostOs).toBe('win32');
     expect(surface.capabilities.pageDebug).toBe(true);
     expect(surface.capabilities.browserWake).toBe(false);
+    expect(surface.capabilities.fileManager).toBe('explorer');
     expect(surface.capabilities.selfUpdateCli).toBe('path-dsh');
     expect(surface.capabilities.safeMode).toBe(false);
     expect(surface.restartHint).toBe('重启一次 dsh');

@@ -9,6 +9,7 @@ describe('客户端平台面', () => {
     expect(surface.hostOs).toBe('darwin');
     expect(surface.capabilities.debugFooter).toBe(true);
     expect(surface.capabilities.macFileManager).toBe(true);
+    expect(surface.capabilities.primaryModifier).toBe('meta');
   });
 
   it('★ 有 dshDesktop 就是 Electron，调试 footer 关闭', () => {
@@ -21,6 +22,7 @@ describe('客户端平台面', () => {
     expect(surface.hostOs).toBe('win32');
     expect(surface.capabilities.debugFooter).toBe(false);
     expect(surface.capabilities.macFileManager).toBe(false);
+    expect(surface.capabilities.primaryModifier).toBe('ctrl');
   });
 
   it('页面没写 data-platform 时按 UA 认系统（浏览器里的 macOS 也算 darwin）', () => {

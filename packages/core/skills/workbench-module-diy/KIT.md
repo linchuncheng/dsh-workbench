@@ -121,7 +121,7 @@ h(Form<{ branch: string }>, {
 | 整卡起步（gate + 忙 + 探针 + 上报 + blocker） | `useUnitBoard`（`read(gated)` 内调 `useApiResource`） |
 | 单点 / 整表能力门 | `useCapabilityGate` / `useCapabilityMap` |
 | 写（组件内不 fetch）/ 长任务轮询 | `useHostWrite` / `useLongTask`（`LongTaskRow`；`longTaskIsLive`；写后 `refresh()`） |
-| 平台事实（Desktop / web、宿主 OS、能力） | `usePlatform`：返回 client（浏览器侧现算）与 host（来自 health，可能还没读到，按未知处理） |
+| 平台事实 | `usePlatform`：client 有 primaryModifier；host 有 fileManager（finder / explorer / none） |
 
 取数链见 [LINKAGE.md](LINKAGE.md) §8；配置见 [PANEL.md](PANEL.md) §5。
 
