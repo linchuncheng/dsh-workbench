@@ -23,7 +23,7 @@
 
 2. **按四层找数据**：
 
-   ① **opencli 自带**：`workbench_diy_recon`（`keyword=<站点 / 系统 / 域名>`，或 `url` 取域名）。
+   ① **opencli 自带侦察兵**：`workbench_diy_recon`（`keyword=…` 或 `url`）。
    返回可用能力：站点、命令、`strategy`（PUBLIC / COOKIE / INTERCEPT / UI）、是否需要用户 Chrome 登录、
    可直接复用的命令。**命中即复用，不安装、不审批。** 官方发现指引：`opencli skills read opencli-usage`。
    一个词可能带出多组（如 `arxiv` 带 `hf`、`semanticscholar`），逐一查看。优先 `public`；`cookie` / `ui` /
@@ -48,8 +48,7 @@
      有 → 接口读；无但页面有整块表格 → DOM 读。判断一次即可。
    - `opencli` 随工作台预装（隔离运行时位于 `$DSH_HOME/workbench/opencli/`，启动检查时安装，不碰 `~/.opencli`）。
      如果隔离运行时尚未安装完成，工具会报错提示；请转述原文，不要猜测 URL。
-   - 脚本约定：不在站点 → `not-on-site`；登录过期 → `not-logged-in`；没权限 → `forbidden`
-     （工具归一为 `permission-denied`）；成功 → `{ ok: true, ...数据 }`。
+   - 脚本约定：不在站点 → `not-on-site`；登录过期 → `not-logged-in`；没权限 → `forbidden`；成功 → `{ ok: true, ...数据 }`。
    - 新 session 的 `eval` 会静默开 `about:blank`（后台容器窗，不抢焦点）。脚本第一行判断
      `location.origin`；不在站点则 `open` 该页，等约 1 秒再 eval。在 shell 里运行 opencli 时不要自行
      拼接命令前缀：`OPENCLI_WINDOW` 这类环境变量通过宿主 shell 的 env 覆盖（`env` 是叠加，POSIX / pwsh 通用），
@@ -196,7 +195,7 @@ const out = await data.plan({
 
 | 情况 | 文案 |
 |---|---|
-| 未登录 / 凭据过期 | "前往 XX 登录"（可点击，指向用户常用入口） |
+| 没登录 / 凭据过期 | "前往 XX 登录"（可点击，指向用户常用入口） |
 | 超时 / 网络不通 | "本次未读取到，请稍后重试" |
 | 站点改版、字段缺失 | "返回结构与预期不一致" |
 

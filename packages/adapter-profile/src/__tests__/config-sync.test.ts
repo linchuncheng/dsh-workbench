@@ -218,7 +218,7 @@ describe('配置同步：读写文件与快照', () => {
     expect(only.profiles.map((profile) => profile.name)).toEqual(['workbench']);
     expect(only.reason).toBeUndefined();
     const nowhere = configSyncSnapshot({ home: join(home, 'nope'), self: 'workbench', profileDir: null });
-    expect(nowhere.reason).toBe('拿不到当前 profile 目录');
+    expect(nowhere.reason).toBe('无法读取当前工作台配置目录');
   });
 
   it('应用的拒绝路径：没说来源 / 来源是自己 / 来源不存在 / 选的行没了', async () => {
@@ -243,7 +243,7 @@ describe('配置同步：读写文件与快照', () => {
     });
     expect(await configSyncApply({ ...deps, profileDir: null }, { source: 'web', keys: ['id:web'] })).toEqual({
       ok: false,
-      text: '拿不到当前 profile 目录，这次没写任何东西',
+      text: '无法读取当前工作台配置目录，本次未做任何写入',
     });
   });
 

@@ -212,7 +212,7 @@ h(FormRows, null,
 
 ## 8 需要 kit 没有的标准控件
 
-查：`workbench_diy_surface`（DIY 会话）或 `check --only primitives`（`--all` / `--json` / `--file <名>`）。
+查：`workbench_diy_surface`（DIY）或 `check --only primitives`（`--all` / `--json` / `--file <名>`）。
 写入：
 
 ```jsonc

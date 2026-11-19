@@ -208,7 +208,7 @@
 - 固化 = 宿主半侧的 `FlowDefinition`（类型从 `@dsh-workbench/core/contract` 取）+ `deps.flow.run` + §9 的长任务 + `registerTools`。
 - 一次性 = 直接使用现有工具 / 命令执行，不建模块。
 - 写平台的 flow 工具在清单里 `writes: true` + `needsApproval`；运行前给出对象 / 环境 / 影响。
-- `deps.flow.check(flow, actions)` 先过；动作里用 `ctx.need(intervention)` 报人工干预节点（旧的 `ctx.login(url)` 仍可用），`ctx.log` 报进度。
+- `deps.flow.check(flow, actions)` 先过；动作里用 `ctx.need(intervention)` 报人工干预节点，`ctx.log` 报进度。
 - **agent 节点**：子 agent 读与判断，不写平台；结果进 `steps.<id>`；由看板按钮发起时会附带用户当前会话。见 [FLOW.md](FLOW.md) §4。
 - flow 的运行时只走 `deps.flow`，类型只走 `@dsh-workbench/core/contract`；不要为 flow 直接 import `@dsh-workbench/shared/host`。
 - 不要在 flow 里存凭据；不要把一次性任务静默固化。
