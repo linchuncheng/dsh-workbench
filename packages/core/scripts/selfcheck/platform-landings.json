@@ -1,7 +1,11 @@
 {
-  "sites": {
+  "schemaVersion": 2,
+  "landings": {},
+  "ports": {},
+  "allow": {
     "packages/adapter-probe/src/install/install-smoke.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -11,7 +15,8 @@
       ]
     },
     "packages/adapter-probe/src/preflight/preflight-route.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -21,7 +26,8 @@
       ]
     },
     "packages/adapter-probe/src/preflight/preflight.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -31,7 +37,8 @@
       ]
     },
     "packages/adapter-probe/src/probe/probe-units.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -39,7 +46,8 @@
       ]
     },
     "packages/adapter-probe/src/runtime/browser-wake.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -49,7 +57,8 @@
       ]
     },
     "packages/adapter-probe/src/runtime/front-app.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -59,7 +68,8 @@
       ]
     },
     "packages/adapter-probe/src/runtime/platform.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -69,7 +79,8 @@
       ]
     },
     "packages/adapter-probe/src/toolchain/runtime-seed.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -77,7 +88,8 @@
       ]
     },
     "packages/adapter-probe/src/toolchain/toolchain.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -85,7 +97,8 @@
       ]
     },
     "packages/adapter-runtime/src/browser/browser-read.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -93,7 +106,8 @@
       ]
     },
     "packages/adapter-runtime/src/cli/command.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -101,7 +115,8 @@
       ]
     },
     "packages/adapter-runtime/src/cli/opencli-runtime.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -109,7 +124,8 @@
       ]
     },
     "packages/adapter-runtime/src/cli/opencli-window.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -119,7 +135,8 @@
       ]
     },
     "packages/adapter-runtime/src/cli/opencli.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -129,7 +146,8 @@
       ]
     },
     "packages/adapter-runtime/src/data/index.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -137,7 +155,8 @@
       ]
     },
     "packages/core/src/shared/api/host/git-exec.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -147,7 +166,8 @@
       ]
     },
     "packages/core/src/shared/api/platform/client.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -157,7 +177,8 @@
       ]
     },
     "packages/shared/src/host/adapters/platform.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -167,7 +188,8 @@
       ]
     },
     "packages/shared/src/host/runtime/env-policy.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -175,7 +197,8 @@
       ]
     },
     "packages/shared/src/host/runtime/front-app.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "darwin",
         "win32",
         "linux"
@@ -185,7 +208,8 @@
       ]
     },
     "packages/shared/src/host/seam/process.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -193,7 +217,8 @@
       ]
     },
     "packages/shared/src/host/shell/shell-render.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -201,7 +226,8 @@
       ]
     },
     "packages/shared/src/host/shell/shell-text.ts": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -209,7 +235,8 @@
       ]
     },
     "packages/module-tools/src/checks/standalone.mjs": {
-      "os": [
+      "reason": "迁移基线：收口到 platform/** 或专用端口前，先按现状放行",
+      "platforms": [
         "win32"
       ],
       "tests": [
@@ -243,5 +270,10 @@
       "packages/shared/src/host/runtime/__tests__/fs-write.test.ts",
       "packages/shared/src/host/seam/__tests__/seam.test.ts"
     ]
+  },
+  "exempt": {
+    "packages/shared/src/contract/protocol/platform.ts": "HostOs / HostSurface 的类型声明，不是运行时平台判断",
+    "packages/core/src/kernel/contract/platform.ts": "内核侧平台类型转出口，不是运行时判断",
+    "packages/core/src/shared/api/platform/contract.ts": "浏览器侧平台类型转出口，不是运行时判断"
   }
 }

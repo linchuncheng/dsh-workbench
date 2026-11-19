@@ -169,15 +169,16 @@ GitHub Actions runs three workflows:
 ### Cross-platform call sites
 
 A cross-platform call site is code that reads the host OS directly (`process.platform`, `hostOs`,
-an OS literal) or invokes an OS-native command. Every such file is listed in
-`packages/core/scripts/selfcheck/platform-ci.json` under `sites`, with the OSes it branches on and
-the test that covers it. Tests that are platform-sensitive without belonging to a single call site
-are listed under `suites`. `scripts/ci/platform-tests.mjs` reads that manifest, groups the tests by
-package and runs them on every leg, so adding a platform branch or test edits the manifest rather
-than the workflow.
+an OS literal) or invokes an OS-native command. Platform differences are allowed only in the
+registered landings and adapter ports in `packages/core/scripts/selfcheck/platform-landings.json`;
+during migration, existing files sit in `allow` with a reason and must shrink. Each landing/port
+declares the OSes it branches on and the test that covers it. Tests that are platform-sensitive
+without belonging to a single landing are listed under `suites`. `scripts/ci/platform-tests.mjs`
+reads that manifest, groups the tests by package and runs them on every leg, so adding a platform
+branch or test edits the manifest rather than the workflow.
 
 A test file that reads a host fact directly (`process.platform`, `USERPROFILE`, `ComSpec`,
-`taskkill`) must be listed under some `sites[].tests` or `suites`. The judge scans
+`taskkill`) must be listed under some landing/port `tests` or `suites`. The judge scans
 `packages/**/*.test.*`; an unregistered host-fact test fails it. Passing `'win32'` as an explicit
 string argument to a pure renderer is not a host fact and can stay in the normal gate.
 

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { runLogged } from './run-logged.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
-const MANIFEST = join(ROOT, 'packages/core/scripts/selfcheck/platform-ci.json');
+const MANIFEST = join(ROOT, 'packages/core/scripts/selfcheck/platform-landings.json');
 const dryRun = process.argv.includes('--dry-run');
 
 function fail(message) {
@@ -22,8 +22,10 @@ function manifestOf() {
 
 function testsOf(manifest) {
   const files = new Set();
-  for (const entry of Object.values(manifest.sites ?? {})) {
-    for (const test of entry.tests ?? []) files.add(test);
+  for (const group of ['allow', 'landings', 'ports']) {
+    for (const entry of Object.values(manifest[group] ?? {})) {
+      for (const test of entry.tests ?? []) files.add(test);
+    }
   }
   for (const tests of Object.values(manifest.suites ?? {})) {
     for (const test of tests ?? []) files.add(test);

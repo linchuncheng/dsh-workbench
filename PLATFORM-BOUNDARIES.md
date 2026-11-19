@@ -218,6 +218,9 @@ interface HostIntegration {
       "reason": "阶段 2 搬进 platform/ops",
       "owner": "platform"
     }
+  },
+  "exempt": {
+    "packages/shared/src/contract/protocol/platform.ts": "HostOs 类型声明，不是运行时判断"
   }
 }
 ```
@@ -226,15 +229,16 @@ interface HostIntegration {
 - 不再登记 24 个调用点。`allow` 由现有树的扫描结果生成，不是手写清单；它只允许文件级临时放行，新代码不能进。
 - `ports` 只允许**专用模块**；`browser-wake.ts` 这种混合文件不能登记为端口，必须先拆。
 - `tests` 按 OS 分文件；gate 证明“这个测试在该 OS 的 leg 上跑过”，不假装证明每行分支覆盖。
+- `exempt` 是永久例外，只允许类型声明、协议校验、mock、lint 规则字符串；每条写理由，不参与 OS × 测试覆盖。
 
 ### 5.2 扫描
 
 - 复用现有 TypeScript AST scanner；不用纯正则。
 - 排除位置：类型位置、`contract/`、`__tests__/`、`fixtures/`、`-mock`、检查实现本身、dev/CI tooling。
 - 永久例外：协议类型/校验、mock 数据、lint 规则字符串、启动器文件；每个都写理由。
-- 命中后只允许在 `landings`、`ports`、`allow`、客户端落点、启动器例外。
+- 命中后只允许在 `landings`、`ports`、`allow`、`exempt`、客户端落点、启动器例外。
 - 负例用内存字符串或临时树，不往 `src/` 写文件（避免和 `check:standalone` 的 `src/` 改名相撞）。
-- 现有 `checks/platform.mjs` 的硬编码 `ADAPTERS` 列表由本登记表的 `landings` + `ports` 取代，不再维护第二份 allowlist。
+- 现有 `checks/platform.mjs` 的硬编码 `ADAPTERS` 列表由本登记表的 `landings` + `ports` + `allow` + `exempt` 取代，不再维护第二份 allowlist。
 
 ### 5.3 CI 覆盖
 
