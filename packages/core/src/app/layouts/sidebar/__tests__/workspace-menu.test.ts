@@ -186,7 +186,7 @@ describe('菜单里的三项：设置别名 / 在 Finder 中显示 / 删除工�
   });
 
   it('★ 打开位置的文案按宿主系统选：macOS 说 Finder，别处说文件夹', () => {
-    expect(MENU).toContain('clientSurface().capabilities.macFileManager');
+    expect(MENU).toContain("fileManager === 'finder'");
     expect(MENU).not.toContain('hostOs');
     expect(MENU).toContain("'project.menu.reveal.finder'");
     expect(MENU).toContain("'project.menu.reveal.folder'");

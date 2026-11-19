@@ -26,6 +26,7 @@ import { workspaceRecencyOf } from './workspace-recency';
 import { cx } from '@dsh-workbench/shared';
 
 import { PanelList } from './PanelNav';
+import { usePlatform } from '@/shared/hooks/use-platform';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { SessionList } from './SessionList';
 
@@ -89,6 +90,7 @@ function addWorkspace(input: {
 
 export function Sidebar(props: SidebarProps) {
   const { collapsed, renderSlot, t, useWorkspaces, usePanelInfo } = props;
+  const platform = usePlatform();
 
   const items = useWorkspaces((state) => state.items);
   const archived = useWorkspaces((state) => state.archivedSessionIds);
@@ -176,6 +178,7 @@ export function Sidebar(props: SidebarProps) {
         onAlias={props.renameWorkspace}
         onDelete={props.deleteWorkspace}
         onReveal={props.revealWorkspace}
+        fileManager={platform.host?.capabilities.fileManager ?? 'none'}
         t={t}
       />
       {wide && creating ? (

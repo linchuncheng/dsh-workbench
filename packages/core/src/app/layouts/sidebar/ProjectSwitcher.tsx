@@ -25,11 +25,12 @@ export interface ProjectSwitcherProps {
   onAlias: (workspaceId: string, title: string) => Promise<boolean>;
   onDelete: (workspaceId: string) => Promise<boolean>;
   onReveal: (path: string) => void;
+  fileManager: 'finder' | 'explorer' | 'none';
   t: Translate;
 }
 
 export function ProjectSwitcher(props: ProjectSwitcherProps) {
-  const { current, attention, recency, compact = false, onPick, onAdd, onAlias, onDelete, onReveal, t } = props;
+  const { current, attention, recency, compact = false, onPick, onAdd, onAlias, onDelete, onReveal, fileManager, t } = props;
   const {
     open,
     setOpen,
@@ -151,6 +152,7 @@ export function ProjectSwitcher(props: ProjectSwitcherProps) {
           setOpen(false);
           onReveal(path);
         }}
+        fileManager={fileManager}
       />
       {naming === null ? null : (
         <WorkspaceAliasDialog
