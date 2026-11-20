@@ -58,3 +58,40 @@ export function tailLines(text: string | null | undefined, lines = 6): string {
     .split('\n');
   return all.slice(-lines).join('\n');
 }
+
+const FAILURE_HINT =
+  /(?:\bERR_(?:PNPM|NPM)_[A-Z0-9_]+|npm (?:ERR!|error)\b|\b(?:Error|TypeError|RangeError|FetchError|RequestError|SyntaxError):|\b(?:EACCES|EPERM|ENOENT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPROTO|ENETUNREACH|EHOSTUNREACH|ENETDOWN|ENOSPC|EROFS|EMFILE|EADDRINUSE)\b|socket hang up|certificate|self[- ]signed|unable to verify|tls handshake)/;
+
+const FAILURE_NOISE = /^(?:update available\b|progress:|packages:)/i;
+
+const ANSI_SEQUENCE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*[A-Za-z]`, 'g');
+
+const MAX_LINE = 400;
+
+function clippedLine(line: string): string {
+  return line.length > MAX_LINE ? `${line.slice(0, MAX_LINE)}…` : line;
+}
+
+/**
+ * 从命令输出里抽一段能看的失败原文：保留真正的错误行与末尾几行，跳过 pnpm 的更新提示这类噪音。
+ * @param text - 原文（通常是 stderr，取不到时给 stdout）；`null` / `undefined` 当空串。
+ * @param lines - 末尾再留几行，默认 4。
+ * @returns 最多 6 行、去重后的失败原文；空输入给空串。
+ */
+export function failureSummaryOf(text: string | null | undefined, lines = 4): string {
+  const all = String(text ?? '')
+    .replace(ANSI_SEQUENCE, '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+  const head = all[0];
+  if (head === undefined) return '';
+  const picked: string[] = [];
+  const add = (line: string): void => {
+    if (!picked.includes(line)) picked.push(line);
+  };
+  if (!FAILURE_NOISE.test(head)) add(head);
+  for (const line of all.filter((line) => FAILURE_HINT.test(line)).slice(0, 2)) add(line);
+  for (const line of all.slice(-lines)) add(line);
+  return (picked.length === 0 ? [head] : picked).map(clippedLine).join('\n');
+}

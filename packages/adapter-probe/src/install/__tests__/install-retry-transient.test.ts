@@ -46,6 +46,47 @@ describe('刚发布完 tarball 还没铺开：重试，而不是让用户再点�
     expect(dropped).toEqual([]);
   });
 
+  it('★ 只剩 TLS 栈、没有 ERR 码时也认得出是网络：照样自动再试', async () => {
+    const { deps, runs } = depsOf([
+      { ok: false, detail: '    at TLSSocket.onHttpSocketClose (file:///Applications/pnpm.mjs:75346:15)' },
+      { ok: true },
+    ]);
+
+    const result = await installWithRetry(deps, 'pnpm add x', wording);
+
+    expect(result.ok).toBe(true);
+    expect(runs).toHaveLength(2);
+  });
+
+  it('★ TLS 被掐断 / 元数据抓取失败也算临时：自动再试，而不是让用户再点一次', async () => {
+    const { deps, runs } = depsOf([
+      {
+        ok: false,
+        detail: '[ERR_PNPM_META_FETCH_FAIL] GET https://registry.npmjs.org/@jackwener%2Fopencli: request failed, reason: socket hang up',
+      },
+      { ok: true },
+    ]);
+
+    const result = await installWithRetry(deps, 'pnpm add x', wording);
+
+    expect(result.ok).toBe(true);
+    expect(runs).toHaveLength(2);
+  });
+
+  it('★ 认不出错误码的栈帧（以前首行被更新提示占掉）就不重试：没有依据就别空转', async () => {
+    const { deps, runs } = depsOf([
+      {
+        ok: false,
+        detail: '    at Request.onError (file:///Applications/pnpm.mjs:70375:31)',
+      },
+    ]);
+
+    const result = await installWithRetry(deps, 'pnpm add x', wording);
+
+    expect(result.ok).toBe(false);
+    expect(runs).toHaveLength(1);
+  });
+
   it('★ 三次都 404 → 如实失败，且没走「清掉重装」那条路', async () => {
     const { deps, dropped, runs } = depsOf([
       { ok: false, detail: 'ERR_PNPM_FETCH_404' },

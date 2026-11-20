@@ -10,14 +10,11 @@ import { runtimeProfileValue } from '@/shared/hooks/use-runtime-capabilities';
 import { bridgeAdviceLines, guidanceTextOf, stepDetailText } from './gate-text';
 import type { RuntimeProfile } from '@dsh-workbench/shared';
 import { readRuntimeCapabilities } from '@/shared/hooks/runtime-queries';
-import { createGateDeadline } from './gate-deadline';
 import { brandMarkIcon, el, spinnerIcon, svgIcon } from './gate-dom';
 import { createForcePlan, retryTargetOf } from './force-plan';
 import { logAtBottom } from './log-follow';
 
 const POLL_MS = 400;
-
-const GIVE_UP_MS = 300_000;
 
 function stepLabel(step: PreflightStep, t: Translate): string {
   const id: PreflightStepId = step.id;
@@ -174,30 +171,9 @@ diy.append(diyTitle, diyWhy, diyLines, diyStep, diyCommand.row, diyButtons);
     closed = true;
     cancelled = true;
     if (timer !== undefined) clearTimeout(timer);
-    deadline.disarm();
     overlay.remove();
     if (root !== null) root.inert = previousInert;
   }
-
-  let deadline = createGateDeadline(GIVE_UP_MS, close);
-
-  function extend(): void {
-    if (closed || held) return;
-    deadline.disarm();
-    deadline = createGateDeadline(GIVE_UP_MS, close);
-  }
-
-  let held = false;
-
-  function holdOpen(): void {
-    if (held) return;
-    held = true;
-    deadline.disarm();
-  }
-
-  overlay.addEventListener('pointerdown', extend, { passive: true });
-  overlay.addEventListener('keydown', extend, { passive: true });
-  overlay.addEventListener('wheel', extend, { passive: true });
 
   interface StepRow {
     readonly item: HTMLElement;
@@ -275,6 +251,7 @@ diy.append(diyTitle, diyWhy, diyLines, diyStep, diyCommand.row, diyButtons);
 
     const items = snapshot.steps.map((step) => {
       const row = ensureRow(step);
+      const wasStatus = row.status;
       row.item.dataset.status = step.status;
       if (row.status !== step.status) {
         row.status = step.status;
@@ -298,6 +275,14 @@ diy.append(diyTitle, diyWhy, diyLines, diyStep, diyCommand.row, diyButtons);
         row.log.hidden = true;
         row.head.setAttribute('aria-expanded', 'false');
         row.item.dataset.expanded = 'false';
+      }
+      if (step.status === 'failed' && wasStatus !== 'failed' && row.expandable) {
+        row.expanded = true;
+        row.follow = false;
+        row.log.hidden = false;
+        row.head.setAttribute('aria-expanded', 'true');
+        row.item.dataset.expanded = 'true';
+        row.log.scrollTop = 0;
       }
       if (row.expanded && row.follow) row.log.scrollTop = row.log.scrollHeight;
       return row.item;
@@ -397,10 +382,7 @@ diy.append(diyTitle, diyWhy, diyLines, diyStep, diyCommand.row, diyButtons);
       close();
       return;
     }
-    if (action === 'hold') {
-      holdOpen();
-      return;
-    }
+    if (action === 'hold') return;
     timer = setTimeout(() => void poll(), POLL_MS);
   }
 

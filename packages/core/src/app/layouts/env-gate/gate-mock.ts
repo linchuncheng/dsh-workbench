@@ -17,7 +17,7 @@ function cliOkStep(): PreflightStep {
   };
 }
 
-const INSTALL_COMMAND = "pnpm add --dir '/Users/you/.dsh/workbench/opencli/toolchain' @jackwener/opencli@2.0.3 --store-dir '/Users/you/.dsh/workbench/opencli/pnpm-store' --allow-build=@jackwener/opencli";
+const INSTALL_COMMAND = "pnpm add --dir '/Users/you/.dsh/workbench/opencli/toolchain' @jackwener/opencli@2.0.3 --store-dir '/Users/you/.dsh/workbench/opencli/pnpm-store' --allow-build=@jackwener/opencli --save-exact --config.update-notifier=false";
 
 export interface GateMockExpect {
   readonly hint: 'checking' | 'installing' | 'installingToolchain' | 'failed' | 'hold';

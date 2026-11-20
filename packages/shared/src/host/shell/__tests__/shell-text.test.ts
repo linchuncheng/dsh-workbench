@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
-import { cmdNameOf, quoteShellArg, quoteShellArgFor, shellKindOf, tailLines } from '../shell-text.js';
+import { cmdNameOf, failureSummaryOf, quoteShellArg, quoteShellArgFor, shellKindOf, tailLines } from '../shell-text.js';
 
 function shellSees(value: string): string {
   return execFileSync('/bin/sh', ['-c', `printf '%s' ${quoteShellArg(value)}`], {
@@ -40,6 +40,59 @@ describe('tailLines', () => {
   it('空输入给空串', () => {
     expect(tailLines(undefined, 3)).toBe('');
     expect(tailLines('   ', 3)).toBe('');
+  });
+});
+
+describe('failureSummaryOf（失败原文：留错误行，不留首行噪音）', () => {
+  const TLS_FAILURE = [
+    'Update available! 11.28.5 → 12.21.0.',
+    '[ERR_PNPM_META_FETCH_FAIL] GET https://registry.npmjs.org/@jackwener%2Fopencli: request failed, reason: socket hang up',
+    '',
+    '    at Request.onError (file:///Applications/pnpm.mjs:70375:31)',
+    '    at Object.errorRequest (file:///Applications/pnpm.mjs:69717:18)',
+    '    at TLSSocket.onHttpSocketClose (file:///Applications/pnpm.mjs:75346:15)',
+    '    at TLSSocket.emit (node:events:526:24)',
+  ].join('\n');
+
+  it('★ pnpm 的更新提示占首行时：真正的 ERR_PNPM 行要留下（以前只剩首行 + 栈尾）', () => {
+    const summary = failureSummaryOf(TLS_FAILURE);
+
+    expect(summary.split('\n')[0]).toContain('ERR_PNPM_META_FETCH_FAIL');
+    expect(summary).toContain('TLSSocket.onHttpSocketClose');
+    expect(summary).not.toContain('Update available!');
+  });
+
+  it('★ 首行本来就是错误码：首行不动，尾部照留（store 报错靠首行判重装）', () => {
+    const store = [
+      ' ERR_PNPM_UNEXPECTED_STORE  Unexpected store location',
+      '',
+      'The dependencies are linked from another store.',
+      'Reinstall your dependencies.',
+      'You may change the global store location.',
+      '(This error may happen if the node_modules was installed with a different major version of pnpm)',
+    ].join('\n');
+
+    const summary = failureSummaryOf(store);
+
+    expect(summary.split('\n')[0]).toBe('ERR_PNPM_UNEXPECTED_STORE  Unexpected store location');
+    expect(summary).toContain('different major version of pnpm');
+  });
+
+  it('没有明显错误行时保持旧行为：首行 + 末尾几行', () => {
+    expect(failureSummaryOf('one\ntwo\nthree')).toBe('one\ntwo\nthree');
+    expect(failureSummaryOf('a\nb\nc\nd\ne\nf', 3)).toBe('a\nd\ne\nf');
+  });
+
+  it('空输入给空串；只剩噪音时原样留下', () => {
+    expect(failureSummaryOf(undefined)).toBe('');
+    expect(failureSummaryOf('   \n')).toBe('');
+    expect(failureSummaryOf('Update available! 1.0.0 → 2.0.0.')).toBe('Update available! 1.0.0 → 2.0.0.');
+  });
+
+  it('去掉 ANSI 颜色，长行截断', () => {
+    expect(failureSummaryOf('\u001b[31mError:\u001b[39m boom')).toBe('Error: boom');
+    const long = `Error: ${'x'.repeat(500)}`;
+    expect(failureSummaryOf(long)).toHaveLength(401);
   });
 });
 

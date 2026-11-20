@@ -569,6 +569,22 @@ describe('classifyFailure（失败时给人话指引的依据）', () => {
   it('网络问题 → network（该提示查代理）', () => {
     expect(classifyFailure('npm ERR! code ENOTFOUND')).toBe('network');
     expect(classifyFailure('request to https://registry.npmjs.org failed, reason: ETIMEDOUT')).toBe('network');
+    expect(
+      classifyFailure(
+        '[ERR_PNPM_META_FETCH_FAIL] GET https://registry.npmjs.org/@jackwener%2Fopencli: request failed, reason: socket hang up',
+      ),
+    ).toBe('network');
+    expect(classifyFailure('fetch failed (cause: Error: EPROTO wrong version number)')).toBe('network');
+    expect(classifyFailure('ERR_PNPM_FETCH_500  Internal Server Error')).toBe('network');
+    expect(classifyFailure('unable to verify the first certificate')).toBe('network');
+    expect(
+      classifyFailure('    at TLSSocket.onHttpSocketClose (file:///Applications/pnpm.mjs:75346:15)'),
+    ).toBe('network');
+  });
+
+  it('★ 401 / 403 不是网络问题：别让人去查代理', () => {
+    expect(classifyFailure('ERR_PNPM_FETCH_401  Unauthorized')).toBe('unknown');
+    expect(classifyFailure('ERR_PNPM_FETCH_403  Forbidden')).toBe('unknown');
   });
 
   it('命令不存在 → missing', () => {

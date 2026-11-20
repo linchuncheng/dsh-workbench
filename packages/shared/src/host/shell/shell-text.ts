@@ -1,5 +1,6 @@
 export {
   cmdNameOf,
+  failureSummaryOf,
   quoteShellArg,
   quoteShellArgFor,
   shellKindOf,

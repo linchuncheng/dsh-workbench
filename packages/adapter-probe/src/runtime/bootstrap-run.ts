@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { isolatedRoot } from '@dsh-workbench/adapter-runtime';
-import { bootstrapEnvOf, invocationOf, tailLines } from '@dsh-workbench/shared/host';
+import { bootstrapEnvOf, failureSummaryOf, invocationOf, tailLines } from '@dsh-workbench/shared/host';
 import type { Seam, ShellKind } from '@dsh-workbench/shared/host';
 import { desktopRuntimeEnvPath } from './desktop-runtime.js';
 import { currentShellKind } from './platform.js';
@@ -80,10 +80,7 @@ async function seamSpawn(
 function failureDetail(text: string): string {
   const trimmed = text.trim();
   if (trimmed === '') return '';
-  const tail = tailLines(trimmed, 4);
-  const head = trimmed.split('\n')[0]?.trim() ?? '';
-  if (head === '' || tail.split('\n').some((line) => line.trim() === head)) return tail;
-  return `${head}\n…\n${tail}`;
+  return failureSummaryOf(trimmed, 4);
 }
 
 export async function runBootstrapCommand(
@@ -98,7 +95,11 @@ export async function runBootstrapCommand(
       options.spawn === undefined
         ? await seamSpawn(options.seam, line, shellKind, env, options.timeoutMs)
         : await options.spawn(command.file, command.args, { env, timeout: options.timeoutMs });
-    if (result.timedOut === true) return { ok: false, detail: `超时（${String(options.timeoutMs)} ms）：${line}` };
+    if (result.timedOut === true) {
+      const timedOut = `超时（${String(options.timeoutMs)} ms）：${line}`;
+      const partial = failureDetail(result.stderr || result.stdout);
+      return { ok: false, detail: partial === '' ? timedOut : `${timedOut}\n${partial}` };
+    }
     if (result.exitCode === 0) return { ok: true, detail: tailLines(result.stdout, 1) };
     const detail = failureDetail(result.stderr || result.stdout);
     return {

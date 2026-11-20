@@ -129,7 +129,7 @@ export function isolatedInstallCommand(
   store: string = storeDirFor(dir),
 ): string {
   const pnpm = process.env.DSH_WB_PNPM?.trim() || 'pnpm';
-  return `${pnpm} add --dir ${quoteShellArg(dir)} ${OPENCLI_NPM_PACKAGE}@${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)} --store-dir ${quoteShellArg(store)} ${pnpmIsolationFlags()} --allow-build=${OPENCLI_NPM_PACKAGE} --save-exact`;
+  return `${pnpm} add --dir ${quoteShellArg(dir)} ${OPENCLI_NPM_PACKAGE}@${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)} --store-dir ${quoteShellArg(store)} ${pnpmIsolationFlags()} --allow-build=${OPENCLI_NPM_PACKAGE} --save-exact --config.update-notifier=false`;
 }
 
 export function isolatedPnpmInstallCommand(
@@ -140,7 +140,7 @@ export function isolatedPnpmInstallCommand(
   return (
     `node ${quoteShellArg(pnpmCjs)} add --dir ${quoteShellArg(dir)} ` +
     `${OPENCLI_NPM_PACKAGE}@${runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV)} --store-dir ${quoteShellArg(store)} ` +
-    `${pnpmIsolationFlags()} --allow-build=${OPENCLI_NPM_PACKAGE} --save-exact`
+    `${pnpmIsolationFlags()} --allow-build=${OPENCLI_NPM_PACKAGE} --save-exact --config.update-notifier=false`
   );
 }
 

@@ -105,6 +105,28 @@ describe('runBootstrapCommand（自举命令走宿主域）', () => {
     expect(result.detail).toContain('different major version of pnpm');
   });
 
+  it('★ 首行是 pnpm 更新提示、错误在中间：ERR_PNPM 那行不能被「首行 + 栈尾」挤掉', async () => {
+    const spawn: BootstrapSpawn = async () => ({
+      exitCode: 1,
+      stdout: '',
+      stderr: [
+        'Update available! 11.28.5 → 12.21.0.',
+        '[ERR_PNPM_META_FETCH_FAIL] GET https://registry.npmjs.org/@jackwener%2Fopencli: request failed, reason: socket hang up',
+        '',
+        '    at Request.onError (file:///Applications/pnpm.mjs:70375:31)',
+        '    at Object.errorRequest (file:///Applications/pnpm.mjs:69717:18)',
+        '    at TLSSocket.onHttpSocketClose (file:///Applications/pnpm.mjs:75346:15)',
+        '    at TLSSocket.emit (node:events:526:24)',
+      ].join('\n'),
+    });
+
+    const result = await runBootstrapCommand('pnpm add --dir /x', { timeoutMs: 1000, shellKind: 'posix', spawn });
+
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain('ERR_PNPM_META_FETCH_FAIL');
+    expect(result.detail).not.toContain('Update available!');
+  });
+
   it('失败输出没被截掉时不重复首行', async () => {
     const spawn: BootstrapSpawn = async () => ({ exitCode: 3, stdout: '', stderr: 'one\ntwo\nthree\n' });
 
@@ -150,6 +172,21 @@ describe('runBootstrapCommand（自举命令走宿主域）', () => {
 
     expect(result.ok).toBe(false);
     expect(result.detail).toContain('超时');
+  });
+
+  it('★ 超时前已经打出来的错误也要带上（pnpm 自己重试时最容易只剩一句"超时"）', async () => {
+    const spawn: BootstrapSpawn = async () => ({
+      exitCode: null,
+      timedOut: true,
+      stdout: '',
+      stderr: '[ERR_PNPM_META_FETCH_FAIL] GET https://registry.npmjs.org/@jackwener%2Fopencli: request failed, reason: socket hang up',
+    });
+
+    const result = await runBootstrapCommand('pnpm add --dir /x', { timeoutMs: 1000, shellKind: 'posix', spawn });
+
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain('超时');
+    expect(result.detail).toContain('ERR_PNPM_META_FETCH_FAIL');
   });
 
   it('命令起不来 → ok:false，说清起不来', async () => {
