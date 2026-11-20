@@ -46,7 +46,7 @@ const unit = {
 const demoState = (result: Awaited<ReturnType<typeof probeUnitCommands>>) =>
   result.needs.find((need) => need.kind === 'extension' && need.name === 'demo');
 
-describe('版本信号（源上有新版）', () => {
+describe('版本信号（源上有新版本）', () => {
   it('命令齐、本地旧、源上新 → 结论仍是 ok（能用），版本差记在 installed/latest 上并给升级命令', async () => {
     vi.stubEnv(ENV, REGISTRY);
     const fake = shellWith('1.0.39', '1.0.40');
@@ -83,7 +83,7 @@ describe('版本信号（源上有新版）', () => {
     expect(demoState(result)?.command).toBeUndefined();
   });
 
-  it('没设源的环境变量 → 只有"我们装的是哪版"，**不谎报"有新版"**', async () => {
+  it('没设源的环境变量 → 只有"我们装的是哪版"，**不谎报"有新版本"**', async () => {
     vi.stubEnv(ENV, '');
     const fake = shellWith('1.0.39', '1.0.40');
 

@@ -156,7 +156,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.sharedUsedBy': 'Used by {modules}',
   'panels.market.listSeparator': ', ',
   'panels.market.sharedMissing': 'not installed',
-  'panels.market.sharedOutdated': 'update available',
+  'panels.market.sharedOutdated': 'Update available',
   'panels.market.sharedUnsatisfied': 'version mismatch',
   'panels.market.sharedOk': 'ready',
   'panels.market.versionArrow': '{from} → {to}',
@@ -287,7 +287,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.sharedKindPlugin': 'Plugin',
   'panels.market.sharedKindLib': 'Library',
   'panels.market.detailSharedUsedBy': 'Used by modules',
-  'panels.market.moduleOutdated': 'update available',
+  'panels.market.moduleOutdated': 'Update available',
   'panels.market.olderOnDisk': 'update needed',
   'panels.market.olderOnDiskNote':
     'Installed {installed} while {running} is running. Update before restarting; a restart now runs {installed}.',

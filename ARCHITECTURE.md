@@ -915,7 +915,7 @@ NeedState / UnitCapability
 |---|---|
 | `missing` | 缺依赖 / 未安装 |
 | `unsatisfied` | 缺依赖（版本不对） |
-| `outdated` | 有新版 + 更新 / 更新依赖 |
+| `outdated` | 有新版本 + 更新 / 更新依赖 |
 | `unsupported` | 需要更新工作台 |
 | `unchecked` | 状态未知 |
 

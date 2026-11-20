@@ -472,7 +472,7 @@ describe('已装模块的最新版（打开市场页问一次 registry）', () =
     return { dir, cleanup: () => fs.rmSync(dir, { recursive: true, force: true }) };
   }
 
-  it('★ 每个模块问一次源：有新版的带上 latest，问不到就不带（界面据此决定给不给「更新」）', async () => {
+  it('★ 每个模块问一次源：有新版本的带上 latest，问不到就不带（界面据此决定给不给「更新」）', async () => {
     const { dir, cleanup } = profileWith('0.1.2');
     const { seam, commands } = fakeShell({ '@a/mod': '0.2.0' });
     const ctx = fakeContext({ ...MANAGER }, dir);
@@ -496,7 +496,7 @@ describe('已装模块的最新版（打开市场页问一次 registry）', () =
     cleanup();
   });
 
-  it('★ 有新版就问 dsh 要完整版本表：带 tags/废弃/incompatible，latest 取表里最新', async () => {
+  it('★ 有新版本就问 dsh 要完整版本表：带 tags/废弃/incompatible，latest 取表里最新', async () => {
     const { dir, cleanup } = profileWith('0.1.2');
     const { seam } = fakeShell({ '@a/mod': '0.2.0' }, { '@a/mod': declarationOf('mod', 3) });
     const asked: string[] = [];
@@ -879,7 +879,7 @@ describe('已装模块的最新版（打开市场页问一次 registry）', () =
     cleanup();
   });
 
-  it('★ 源解析不出来 → 说明是没配来源，不是"没有新版"', async () => {
+  it('★ 源解析不出来 → 说明是没配来源，不是"没有新版本"', async () => {
     const { dir, cleanup } = bareProfile();
     const { seam, commands } = fakeShell({ '@a/mod': '0.2.0' });
     const result = (await moduleVersionsHandler(fakeContext({ ...MANAGER }, dir), seam as never)(

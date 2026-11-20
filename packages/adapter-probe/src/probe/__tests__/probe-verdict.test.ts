@@ -37,7 +37,7 @@ describe('aggregate：交叉依赖并进结论', () => {
     expect(out.detail).toContain('opencli-workflow');
   });
 
-  it('★ 库有新版（命令都齐）→ 结论仍是 **ok**（能不能用不受影响；升级归市场的共用依赖行）', () => {
+  it('★ 库有新版本（命令都齐）→ 结论仍是 **ok**（能不能用不受影响；升级归市场的共用依赖行）', () => {
     const out = aggregate('inventory', [DEMO, WORKFLOW], [extensionOk, libBehind]);
 
     expect(out.status).toBe('ok');
@@ -107,7 +107,7 @@ describe('extensionStateOf：模块声明的版本下限也要被判', () => {
     expect(state.detail).toContain('>=0.4.2');
   });
 
-  it('★ 低于下限、但源上有新版 → 仍然是 outdated（升级能修好，优先给升级）', () => {
+  it('★ 低于下限、但源上有新版本 → 仍然是 outdated（升级能修好，优先给升级）', () => {
     const state = extensionStateOf({
       need: pinned,
       hit: { commands: ['envs'] },

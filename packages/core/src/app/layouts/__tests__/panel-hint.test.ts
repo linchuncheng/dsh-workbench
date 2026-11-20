@@ -123,12 +123,12 @@ describe('panelRowName', () => {
     const name = panelRowName('工作台模块市场', { labelKey: 'panels.market.hasNew', tone: 'warning' }, t);
 
     expect(name).toContain('工作台模块市场');
-    expect(name).toContain('可更新');
+    expect(name).toContain('有新版本');
   });
 
   it('★ 只有一句时不多出分隔符', () => {
     expect(panelRowName('工作台模块市场', { labelKey: 'panels.market.hasNew', tone: 'warning' }, t)).toBe(
-      '工作台模块市场（可更新）',
+      '工作台模块市场（有新版本）',
     );
   });
 
@@ -139,7 +139,7 @@ describe('panelRowName', () => {
         { labelKey: 'panels.market.hasProblem', tone: 'danger', moreKeys: ['panels.market.hasNew'] },
         t,
       ),
-    ).toBe('工作台模块市场（模块异常；可更新）');
+    ).toBe('工作台模块市场（模块异常；有新版本）');
   });
 
   it('第二句不止一条 → 逐条译、逐条连', () => {
@@ -153,7 +153,7 @@ describe('panelRowName', () => {
         },
         t,
       ),
-    ).toBe('工作台模块市场（模块异常；可更新；可更新）');
+    ).toBe('工作台模块市场（模块异常；有新版本；有新版本）');
   });
 
   it('没提示 → 名字就是面板自己的名字（不多出括号）', () => {

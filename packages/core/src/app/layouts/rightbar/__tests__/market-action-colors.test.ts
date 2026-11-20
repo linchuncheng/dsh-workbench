@@ -16,7 +16,7 @@ describe('「更新」的颜色口径跟着文案走', () => {
     }
   });
 
-  it('有新版、但要走「装指定版本」的那一行：动作是 install-version，它必须带更新色', () => {
+  it('有新版本、但要走「装指定版本」的那一行：动作是 install-version，它必须带更新色', () => {
     const actions = marketActions(
       rowOf({
         canUpdate: true,

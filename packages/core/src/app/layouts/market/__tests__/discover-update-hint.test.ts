@@ -7,7 +7,7 @@ const read = (name: string): string => readFileSync(new URL(name, HERE), 'utf8')
 const ROWS = read('discover-rows.tsx');
 const CSS = read('MarketPage.module.css');
 
-describe('发现列表那一格：有新版就用黄字说的是「有新版本」', () => {
+describe('发现列表那一格：有新版本时用黄字说「有新版本」', () => {
   it('★ 只有 update-available 才挂黄字那枚类（已装、没新版的不上色）', () => {
     expect(ROWS).toContain("const update = latest.install === 'update-available';");
     expect(ROWS).toContain('className={update ? styles.discoverUpdateAction : undefined}');

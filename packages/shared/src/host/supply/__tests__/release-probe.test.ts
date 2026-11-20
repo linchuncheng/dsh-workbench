@@ -165,13 +165,13 @@ describe('本地账本与「有没有这一版」', () => {
 });
 
 describe('检测结果以 tarball 为准，不只信 npm view', () => {
-  it('★ 元数据说有这一版，但 tarball 拉不到 → 不算有新版', async () => {
+  it('★ 元数据说有这一版，但 tarball 拉不到 → 不算有新版本', async () => {
     const { probe, seam } = harness([{ stdout: '1.2.0\n' }], { headOk: false });
 
     await expect(probe.latestVersion({ seam, name: '@a/mod', registry: REGISTRY })).resolves.toBeUndefined();
   });
 
-  it('★ tarball 拉得到 → 才算有新版', async () => {
+  it('★ tarball 拉得到 → 才算有新版本', async () => {
     const { probe, seam } = harness([{ stdout: '1.2.0\n' }]);
 
     await expect(probe.latestVersion({ seam, name: '@a/mod', registry: REGISTRY })).resolves.toBe('1.2.0');
@@ -333,7 +333,7 @@ describe('鉴权拿不到时的兜底', () => {
     }
   });
 
-  it('★ 明确 404 → 还是不算有新版', async () => {
+  it('★ 明确 404 → 还是不算有新版本', async () => {
     vi.stubEnv('NPM_CONFIG_USERCONFIG', join(tmpdir(), 'dsh-wb-missing-npmrc'));
     const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<{ ok: boolean; status: number }>>(
       async () => ({ ok: false, status: 404 }),

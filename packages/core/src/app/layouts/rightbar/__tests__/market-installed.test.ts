@@ -154,7 +154,7 @@ describe('市场页的「已装（本机）」那半（module-distribution spec 
     expect(rows[0]?.note?.key).toBe('panels.market.moduleRefused');
   });
 
-  it('★ 有几版新可装时这一行照旧说「有新版」，不摆红点（两条都是真的，红点留给"完全用不上"）', () => {
+  it('★ 有几版新可装时这一行照旧说「有新版本」，不摆红点（两条都是真的，红点留给"完全用不上"）', () => {
     const rows = installedRows(
       [{ unit: 'fresh', pkg: '@dsh-workbench/module-fresh', installed: '0.1.0', latest: '0.1.1' }],
       [],
@@ -182,7 +182,7 @@ describe('市场页的「已装（本机）」那半（module-distribution spec 
     expect(rows[0]?.hint).toBeUndefined();
   });
 
-  it('★ 有新版才给更新，且走 bundle 的那条路（update-bundle）', () => {
+  it('★ 有新版本才给更新，且走 bundle 的那条路（update-bundle）', () => {
     const rows = installedRows(
       [{ unit: 'inventory', pkg: '@acme/module-inventory', installed: '0.1.1', latest: '0.1.2' }],
       [unit('inventory')],
@@ -196,7 +196,7 @@ describe('市场页的「已装（本机）」那半（module-distribution spec 
     expect(marketActions(rows[0]!)).toEqual(['update-bundle', 'remove-bundle']);
   });
 
-  it('★ 源上的新版要更新的工作台 → 仍然说「有新版」，但不给更新按钮，并说清为什么', () => {
+  it('★ 源上的新版要更新的工作台 → 仍然说「有新版本」，但不给更新按钮，并说清为什么', () => {
     const rows = installedRows(
       [
         {

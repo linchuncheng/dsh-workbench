@@ -44,7 +44,7 @@ function stateOf(entry: MarketEntry): string {
       return '未安装';
     case 'outdated':
       return depOnlyOutdated(entry.capability)
-        ? `已安装，可用（依赖可更新：${entry.capability.detail ?? ''}）`
+        ? `已安装，可用（依赖有新版本：${entry.capability.detail ?? ''}）`
         : `已安装，版本较旧（${entry.capability.detail}）`;
     case 'degraded':
       return `可选依赖未安装（${entry.capability.detail}）`;

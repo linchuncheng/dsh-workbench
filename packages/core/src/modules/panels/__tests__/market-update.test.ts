@@ -260,7 +260,7 @@ describe('升模块包（行上的「更新」）：有包就升包，没包就�
     expect(outcome?.change.stage).toBe('install');
   });
 
-  it('★ 升模块也把它的供给一起升（供给有新版不该留在那儿）', async () => {
+  it('★ 升模块也把它的供给一起升（供给有新版本不该留在那儿）', async () => {
     const fake = createFakeShell([{ stdout: '0.1.3' }, { stdout: '' }]);
     const market = createMarketService({
 

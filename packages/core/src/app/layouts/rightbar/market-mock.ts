@@ -148,14 +148,14 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'outdated',
-      label: '缺必需命令（行上只说「有新版」，不点名缺什么）',
+      label: '缺必需命令（行上只说「有新版本」，不点名缺什么）',
       manifests: [mine],
       capabilities: probe(id, 'outdated', { missing: ['x'] }),
       expect: { rows: 1, state: 'outdated', actions: ['update', 'uninstall'], note: 'none' },
     },
     {
       id: 'module-update',
-      label: '模块包有新版（行上给「更新」，装了要重启）',
+      label: '模块包有新版本（行上给「更新」，装了要重启）',
       manifests: [mine],
       capabilities: probe(id, 'ok', { plugins: [{ name: 'fixture', status: 'ok', missing: [] }] }),
       updates: { [id]: { installed: '0.1.2', latest: '0.2.0', pkg: '@dsh-workbench/module-one', spec: '^0.1.2', registry: 'https://registry.npmjs.org/' } },
@@ -319,7 +319,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'plugin-outdated',
-      label: '用户装的插件：有新版（给更新 / 卸载）',
+      label: '用户装的插件：有新版本（给更新 / 卸载）',
       manifests: [],
       capabilities: {},
       plugins: [{ pkg: 'acme-plugin-inventory', name: 'inventory', installed: '1.0.24', latest: '1.0.25', registry: 'https://r.example/team/', installedAt: '2026-09-30T08:00:00.000Z' }],
@@ -357,7 +357,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
     },
     {
       id: 'workbench-update',
-      label: '工作台有新版（这一行也给「更新」，装完面板自己换上）',
+      label: '工作台有新版本（这一行也给「更新」，装完面板自己换上）',
       manifests: [],
       capabilities: {},
       workbench: { pkg: '@dsh-workbench/core', installed: '0.1.18', latest: '0.1.19' },

@@ -82,14 +82,14 @@ export const checks = [
     },
   },
   {
-    title: '★ 左栏那枚徽标认模块包的新版、也认市场里的异常（入口漏带模块版本 = 模块有新版时标签永远不亮）',
+    title: '★ 左栏那枚徽标认模块包的新版、也认市场里的异常（入口漏带模块版本 = 模块有新版本时标签永远不亮）',
     run(ctx, report) {
 
       const source = marketPanel();
       const entryHintCalls = source.match(/marketHintOf\(/g) ?? [];
       const entryHintReadsVersions = source.includes('useModuleVersions(');
       report(
-        '★ 左栏那枚徽标认模块包的新版、也认市场里的异常（入口漏带模块版本 = 模块有新版时标签永远不亮）',
+        '★ 左栏那枚徽标认模块包的新版、也认市场里的异常（入口漏带模块版本 = 模块有新版本时标签永远不亮）',
         entryHintCalls.length === 1 && entryHintReadsVersions,
         `market/panel.tsx：marketHintOf ${entryHintCalls.length} 处 · useModuleVersions ${entryHintReadsVersions ? '用着' : '没在'}（入口的徽标只该走那一处判据，版本读数取自共享 store）`,
       );

@@ -58,7 +58,7 @@ function probeOf(table: Readonly<Record<string, 'ok' | 'auth' | 'unreachable'>>)
 const gitUrlOf = (row: { readonly source: { readonly type: string; readonly url?: string } } | undefined): string =>
   row !== undefined && row.source.type === 'git' ? (row.source.url ?? '') : '';
 
-describe('已安装页问索引：谁有新版', () => {
+describe('已安装页问索引：谁有新版本', () => {
   it('★ 索引里有更高的版本才算一条；传输按「当初装它那种」先试，通了就不再多探', async () => {
     const fake = probeOf({ 'ssh://git@host/org/repo.git': 'ok' });
     const rows = await installedFromIndexes({

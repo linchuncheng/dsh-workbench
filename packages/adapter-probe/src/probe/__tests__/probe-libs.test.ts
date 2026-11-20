@@ -67,14 +67,14 @@ describe('probeLibs：交叉依赖（env.libs）', () => {
     expect(state?.command).toContain('https://registry.invalid/internal/');
   });
 
-  it('库在、源上同版 → 不说有新版（不谎报）', async () => {
+  it('库在、源上同版 → 不说有新版本（不谎报）', async () => {
     installLib('opencli-workflow', '1.1.23');
     const state = (await probeLibs({ needs: [NEED], seam: seamFor(fakeShell('1.1.23').shell), force: true })).get('opencli-workflow');
 
     expect(state).toMatchObject({ status: 'ok', installed: '1.1.23', latest: '1.1.23' });
   });
 
-  it('★ 库在、源上有新版（声明是范围）→ need outdated，版本差记在 installed/latest 上', async () => {
+  it('★ 库在、源上有新版本（声明是范围）→ need outdated，版本差记在 installed/latest 上', async () => {
     installLib('opencli-workflow', '1.1.22');
     const state = (await probeLibs({ needs: [RANGE], seam: seamFor(fakeShell('1.1.23').shell), force: true })).get('opencli-workflow');
 

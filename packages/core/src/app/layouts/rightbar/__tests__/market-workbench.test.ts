@@ -12,7 +12,7 @@ const CORE = '@dsh-workbench/core';
 const AT = '2026-10-23T01:00:00.000Z';
 
 describe('市场里「工作台」自己那一行（四种处境）', () => {
-  it('① 源上有新版 → 行上给一颗「更新」，段还是它自己那一段', () => {
+  it('① 源上有新版本 → 行上给一颗「更新」，段还是它自己那一段', () => {
     const row = workbenchRow({ pkg: CORE, installed: '0.1.18', latest: '0.1.19' });
 
     expect(row).toMatchObject({
@@ -36,7 +36,7 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual([]);
   });
 
-  it('① 官方版本表说这一版跟当前 dsh 不兼容 → 有新版样式，但不给更新，说明要哪一版 dsh', () => {
+  it('① 官方版本表说这一版跟当前 dsh 不兼容 → 有新版本样式，但不给更新，说明要哪一版 dsh', () => {
     const blocked = {
       kind: 'incompatible' as const,
       requirements: { 'engines.dsh': '>=2.0.0' },
@@ -62,7 +62,7 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual([]);
   });
 
-  it('② 已经最新 → 只显示版本，不给按钮（也不许说"有新版"）', () => {
+  it('② 已经最新 → 只显示版本，不给按钮（也不许说"有新版本"）', () => {
     const row = workbenchRow({ pkg: CORE, installed: '0.1.19', latest: '0.1.19' });
 
     expect(row).toMatchObject({ state: 'installed', canUpdate: false, version: { installed: '0.1.19' } });
@@ -70,14 +70,14 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual([]);
   });
 
-  it('② 连源上的版本都问不到（没有 latest）→ 照样只是没按钮，不是"有新版"', () => {
+  it('② 连源上的版本都问不到（没有 latest）→ 照样只是没按钮，不是"有新版本"', () => {
     const row = workbenchRow({ pkg: CORE, installed: '0.1.19' });
 
     expect(row?.state).toBe('installed');
     expect(marketActions(row as MarketRow)).toEqual([]);
   });
 
-  it('③ 本仓那份（link: 装的）→ 不给更新，打「本地」标（源上有新版也不比）', () => {
+  it('③ 本仓那份（link: 装的）→ 不给更新，打「本地」标（源上有新版本也不比）', () => {
     const row = workbenchRow({ pkg: CORE, installed: '0.1.18', latest: '0.1.19', local: true });
 
     expect(row).toMatchObject({ state: 'installed', canUpdate: false, local: true, version: { installed: '0.1.18' } });
@@ -231,7 +231,7 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual([]);
   });
 
-  it('⑤ 有新版也有旧数据 → 先迁移 + 不再提醒，不摆更新', () => {
+  it('⑤ 有新版本也有旧数据 → 先迁移 + 不再提醒，不摆更新', () => {
     const row = workbenchRow({
       pkg: CORE,
       installed: '0.1.19',
@@ -505,7 +505,7 @@ describe('工作台那一行：不混进模块里，也不单占一段', () => {
     }
   });
 
-  it('★ 左栏那枚「有新版本」也认它（否则面板上有新版、侧栏一声不响）', () => {
+  it('★ 左栏那枚「有新版本」也认它（否则面板上有新版本、侧栏一声不响）', () => {
     const manifests = [
       {
         id: 'issues',

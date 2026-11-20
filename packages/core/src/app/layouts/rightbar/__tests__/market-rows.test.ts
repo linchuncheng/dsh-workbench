@@ -97,7 +97,7 @@ describe('marketRows', () => {
     expect(row?.canUninstall).toBe(true);
   });
 
-  it('★ 源上的新版要更新的工作台 → 说「有新版」，但不给更新按钮，并说清为什么', () => {
+  it('★ 源上的新版要更新的工作台 → 说「有新版本」，但不给更新按钮，并说清为什么', () => {
     const blocked = { kind: 'needs-workbench' as const };
     const row = marketRows([unit('issues')], installed(), {
       issues: { installed: '1.0.0', latest: '2.0.0', blocked },
@@ -143,7 +143,7 @@ describe('marketRows', () => {
     expect(row?.canInstall).toBe(false);
   });
 
-  it('★ 命令都齐、但**源上有新版** → 模块行**不变黄**（升级归共用依赖行）', () => {
+  it('★ 命令都齐、但**源上有新版本** → 模块行**不变黄**（升级归共用依赖行）', () => {
     const row = marketRows(
       [unit('issues')],
       capsOf('issues', 'ok', [needStateOf(DEMO, 'ok', { installed: '1.0.39', latest: '1.0.40' })]),
@@ -350,7 +350,7 @@ describe('marketSections', () => {
 describe('marketHasUpdates', () => {
   const newer = capsOf('issues', 'outdated', [needStateOf(DEMO, 'outdated', { installed: '1.0.16', latest: '1.0.17' })]);
 
-  it('★ 有要更新的行 → 亮（模块缺命令；或一份**共用依赖**有新版）', () => {
+  it('★ 有要更新的行 → 亮（模块缺命令；或一份**共用依赖**有新版本）', () => {
     const manifests = [unit('issues')];
 
     expect(marketHasUpdates(marketRows(manifests, outdated()))).toBe(true);

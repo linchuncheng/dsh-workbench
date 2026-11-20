@@ -124,7 +124,7 @@ export function installedMocks(input: {
     },
     {
       id: 'installed-pending-update',
-      label: '本机装了、还没加载 + 源上有新版（给「更新」，也说明要重启）',
+      label: '本机装了、还没加载 + 源上有新版本（给「更新」，也说明要重启）',
       manifests: [],
       capabilities: {},
       installed: [

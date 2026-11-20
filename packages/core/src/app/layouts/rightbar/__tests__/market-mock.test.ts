@@ -131,7 +131,7 @@ describe('MARKET_MOCKS', () => {
     expect(ids).toContain('plugin-broken');
   });
 
-  it('★ 工作台自己那一行的处境各有场景：有新版 / 已最新 / 本仓那份 / 刚更新完 / 旧数据待迁移', () => {
+  it('★ 工作台自己那一行的处境各有场景：有新版本 / 已最新 / 本仓那份 / 刚更新完 / 旧数据待迁移', () => {
     const ids = MARKET_MOCKS.map((mock) => mock.id);
 
     expect(ids).toContain('workbench-update');

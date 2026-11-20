@@ -362,7 +362,7 @@ describe('首屏那一趟（已安装）与「检测更新」那一趟是两趟'
     expect(moduleVersionsValue().modulesCheck.checkedAt).not.toBeNull();
   });
 
-  it('★ 已安装那一趟不许把上一次检测到的「有新版」擦掉，也不动那个时刻', async () => {
+  it('★ 已安装那一趟不许把上一次检测到的「有新版本」擦掉，也不动那个时刻', async () => {
     vi.mocked(readModuleVersions).mockResolvedValueOnce(versionsWithLatest('0.1.1', '0.1.2'));
     await runModuleVersionsRead(true, true);
     const at = moduleVersionsValue().modulesCheck.checkedAt;

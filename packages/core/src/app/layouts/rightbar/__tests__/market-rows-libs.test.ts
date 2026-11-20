@@ -20,7 +20,7 @@ function unit(id: string, plugin?: string): UnitManifest {
 }
 
 describe('marketRows：交叉依赖（env.libs）', () => {
-  it('★ 单元自有库有新版 → 模块行不说「有新版」，只挂「升级依赖」；版本不动', () => {
+  it('★ 单元自有库有新版本 → 模块行不说「有新版本」，只挂「升级依赖」；版本不动', () => {
     const withLib: CapabilityMap = {
       inventory: {
         unit: 'inventory',

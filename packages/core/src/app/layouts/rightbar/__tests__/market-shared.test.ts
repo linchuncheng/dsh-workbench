@@ -160,7 +160,7 @@ describe('sharedRows：处境与动作（点一行只有一行变）', () => {
     expect(marketRows(manifests, { a: state })[0]?.canInstall).toBe(true);
   });
 
-  it('★ 有新版 → 「更新」（update-dependency），并给 `installed → latest`', () => {
+  it('★ 有新版本 → 「更新」（update-dependency），并给 `installed → latest`', () => {
     const manifests = [unit('a', { lib: 'opencli-workflow' })];
     const state = capability('a', {
       libs: [{ name: 'opencli-workflow', purpose: '夹具用途', status: 'outdated', installed: '1.1.22', latest: '1.1.23' }],
@@ -174,7 +174,7 @@ describe('sharedRows：处境与动作（点一行只有一行变）', () => {
     expect(sharedActions(row as never)).toEqual(['update-dependency']);
   });
 
-  it('★ 插件行「源上有新版」→ 版本号来自 release（`opencli-plugin-inventory 1.0.19 → 1.0.20`）', () => {
+  it('★ 插件行「源上有新版本」→ 版本号来自 release（`opencli-plugin-inventory 1.0.19 → 1.0.20`）', () => {
     const manifests = [unit('a', { plugin: 'inventory' })];
     const state = capability('a', {
       extensions: [
@@ -225,7 +225,7 @@ describe('sharedRows：处境与动作（点一行只有一行变）', () => {
 });
 
 describe('共用依赖那颗点：跟模块行同一口径', () => {
-  it('★ 有新版 / 版本不对 → 黄点（跟同一行那颗黄「更新」钮一个信号），没装 / 状态未知 → 灰点', () => {
+  it('★ 有新版本 / 版本不对 → 黄点（跟同一行那颗黄「更新」钮一个信号），没装 / 状态未知 → 灰点', () => {
     expect(SHARED_DOT.outdated).toBe('warning');
     expect(SHARED_DOT.unsatisfied).toBe('warning');
     expect(SHARED_DOT.installed).toBe('done');

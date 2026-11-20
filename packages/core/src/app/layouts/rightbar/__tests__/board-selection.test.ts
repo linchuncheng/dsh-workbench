@@ -80,7 +80,7 @@ describe('panelBadgeKey（模块页那一行的角标）', () => {
     expect(panelBadgeKey(undefined)).toBeUndefined();
   });
 
-  it('★ 只差依赖的新版本：不带 ⚠，写「依赖可升级」（模块本身没换版本、也照样能用）', () => {
+  it('★ 只差依赖的新版本：不带 ⚠，写「依赖有新版本」（模块本身没换版本、也照样能用）', () => {
     expect(panelBadgeKey(capability('outdated'))).toBe('panels.dep.depsNewer');
   });
 

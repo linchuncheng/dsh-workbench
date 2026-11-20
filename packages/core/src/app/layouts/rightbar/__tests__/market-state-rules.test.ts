@@ -134,7 +134,7 @@ describe('装没装：本机的名单说了算，没得探不等于不知道', (
 });
 
 describe('本机那份（link: 装的，含 DIY 工坊造的）', () => {
-  it('★ 源上就算有更新的版本，也不给「有新版」、也不摆「更新」（点了会顶掉本地那份）', () => {
+  it('★ 源上就算有更新的版本，也不给「有新版本」、也不摆「更新」（点了会顶掉本地那份）', () => {
     const updates = marketUpdatesOf([
       { unit: 'hello', pkg: '@p/hello', installed: '0.1.0', latest: '0.2.0', local: true },
     ]);
@@ -185,7 +185,7 @@ describe('本机那份（link: 装的，含 DIY 工坊造的）', () => {
 });
 
 describe('为什么该更新：一句话 + 底下说清缘由', () => {
-  it('★ 缺必需命令 → 状态就是「有新版」，行上不点名缺哪几条（名字是内部细节，留给详情与 agent）', () => {
+  it('★ 缺必需命令 → 状态就是「有新版本」，行上不点名缺哪几条（名字是内部细节，留给详情与 agent）', () => {
     const row = marketRows(
       [unit('issues', 'demo')],
       capability('issues', 'outdated', { missing: ['x', 'y'] }),
@@ -196,7 +196,7 @@ describe('为什么该更新：一句话 + 底下说清缘由', () => {
     expect(row?.note).toBeUndefined();
   });
 
-  it('模块包有新版 → 同一句「有新版」，理由靠版本箭头说', () => {
+  it('模块包有新版本 → 同一句「有新版本」，理由靠版本箭头说', () => {
     const row = marketRows(
       [unit('issues', 'demo')],
       capability('issues', 'ok'),
@@ -237,7 +237,7 @@ describe('异常的行：那颗「全局默认」照画，但禁用', () => {
     expect(marketSwitchLocked(notLoaded as never)).toBe(false);
   });
 
-  it('★ 好好的 / 有新版 / 只是没装 ⇒ 都不禁用', () => {
+  it('★ 好好的 / 有新版本 / 只是没装 ⇒ 都不禁用', () => {
     const rows = [
       ...marketRows([unit('hello')], capability('hello', 'ok'), { hello: { installed: '0.1.0' } }),
       ...marketRows([unit('two')], capability('two', 'missing', { provision: 'ready' })),

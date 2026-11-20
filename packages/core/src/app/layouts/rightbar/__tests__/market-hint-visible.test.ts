@@ -77,7 +77,7 @@ describe('左栏入口那枚标签：与市场页读同一份模块版本', () =
     ).toEqual({ a: { installed: '1.0.0', pkg: 'pkg-a' }, b: { installed: '1.0.0', latest: '1.0.1', pkg: 'pkg-b' } });
   });
 
-  it('★ 本机那份（link:）不问源：就算源上有新版，也不写 latest、也不让标签亮', () => {
+  it('★ 本机那份（link:）不问源：就算源上有新版本，也不写 latest、也不让标签亮', () => {
     const updates = marketUpdatesOf([
       { unit: 'hello', pkg: 'pkg-hello', installed: '0.1.8', latest: '0.1.9', local: true },
     ]);
@@ -157,7 +157,7 @@ describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / �
     ).toEqual(PROBLEM);
   });
 
-  it('★ 不可用 + 源上有新版 → 仍然是模块异常（黄 state 盖不住「声明被拒」）', () => {
+  it('★ 不可用 + 源上有新版本 → 仍然是模块异常（黄 state 盖不住「声明被拒」）', () => {
     expect(
       marketHintOf({
         manifests: [MANIFEST],
@@ -176,7 +176,7 @@ describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / �
     ).toEqual({ ...PROBLEM, moreKeys: ['panels.market.hasNew'] });
   });
 
-  it('★ 插件装坏了 + 源上有新版 → 同样是模块异常', () => {
+  it('★ 插件装坏了 + 源上有新版本 → 同样是模块异常', () => {
     expect(
       marketHintOf({
         manifests: [MANIFEST],
@@ -209,7 +209,7 @@ describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / �
     ).toEqual({ ...PROBLEM, moreKeys: ['panels.market.pendingRestart', 'panels.market.hasNew'] });
   });
 
-  it('★ 有新版时先说新版：不能一边说「重启后生效」一边给「更新」钮（用户还没更新过）', () => {
+  it('★ 有新版本时先说新版：不能一边说「重启后生效」一边给「更新」钮（用户还没更新过）', () => {
     expect(
       marketHintOf({
         manifests: [MANIFEST],
@@ -220,7 +220,7 @@ describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / �
     ).toEqual(NEW);
   });
 
-  it('★ 未生效 + 源上有新版 → 仍然是「重启后生效」（黄 state 盖不住「装了没载入」）', () => {
+  it('★ 未生效 + 源上有新版本 → 仍然是「重启后生效」（黄 state 盖不住「装了没载入」）', () => {
     expect(
       marketHintOf({
         manifests: [MANIFEST],

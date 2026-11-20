@@ -33,7 +33,7 @@ const rowOf = (over: Partial<MarketRow> = {}): MarketRow => ({
 });
 
 describe('已安装页：索引里那条新版，走的是索引自己的更新路', () => {
-  it('★ 索引说有新版 → 补上 latest 并记住它是从哪来的', () => {
+  it('★ 索引说有新版本 → 补上 latest 并记住它是从哪来的', () => {
     const merged = withMarketUpdates([moduleOf()], [market]);
     expect(merged[0]?.latest).toBe('1.2.0');
     expect(merged[0]?.market?.sourceId).toBe('s1');
