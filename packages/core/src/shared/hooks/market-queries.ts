@@ -52,6 +52,7 @@ export function readPublishPreview(
   author?: string,
   changelog?: string,
   changelogType?: string,
+  workspace?: string,
 ): Promise<ApiResponse<{ readonly preview: PublishPreview | null }>> {
   return apiGet<{ readonly preview: PublishPreview | null }>(MARKET_PUBLISH_PREVIEW_ROUTE, {
     unit,
@@ -59,5 +60,6 @@ export function readPublishPreview(
     ...(author === undefined || author === '' ? {} : { author }),
     ...(changelog === undefined || changelog.trim() === '' ? {} : { changelog }),
     ...(changelogType === undefined || changelogType === '' ? {} : { changelogType }),
+    ...(workspace === undefined || workspace === '' ? {} : { workspace }),
   });
 }

@@ -255,9 +255,11 @@ function PublishChangelogSeat({
 function PublishApprovalSeat({
   args,
   t,
+  workspace,
 }: {
   readonly args: Readonly<Record<string, unknown>>;
   readonly t: Translate;
+  readonly workspace: string | undefined;
 }) {
   const unit = textOf(args, 'unit');
   const version = textOf(args, 'version');
@@ -270,13 +272,13 @@ function PublishApprovalSeat({
   useEffect(() => {
     if (unit === '') return;
     let live = true;
-    void readPublishPreview(unit, version, author, changelog, changelogType).then((response) => {
+    void readPublishPreview(unit, version, author, changelog, changelogType, workspace).then((response) => {
       if (live) setPreview(response.ok ? response.preview : null);
     });
     return () => {
       live = false;
     };
-  }, [unit, version, author, changelog, changelogType]);
+  }, [unit, version, author, changelog, changelogType, workspace]);
   return h(
     ApprovalPlan,
     { rows: publishRows(args, preview, t) },
@@ -427,10 +429,11 @@ export function moduleSupplyRows(
 
 export function shellApprovalRenderer(
   manifests: () => readonly UnitManifest[],
+  workspaceOf?: (() => string | null) | undefined,
 ): (input: ApprovalInput, t: Translate) => ReactNode {
   return (input, t) => {
     const list = manifests();
-    return shellApprovalDetail(input, t, pluginToolIndexOf(list), list);
+    return shellApprovalDetail(input, t, pluginToolIndexOf(list), list, workspaceOf?.() ?? undefined);
   };
 }
 
@@ -481,8 +484,9 @@ export function shellApprovalDetail(
   t: Translate,
   pluginTools?: ReadonlyMap<string, UnitToolRuntime> | undefined,
   manifests?: readonly UnitManifest[] | undefined,
+  workspace?: string | undefined,
 ): ReactNode {
-  if (input.tool === DIY_PUBLISH_TOOL) return h(PublishApprovalSeat, { args: input.args, t });
+  if (input.tool === DIY_PUBLISH_TOOL) return h(PublishApprovalSeat, { args: input.args, t, workspace });
   if (input.tool === MARKET_ENABLE_TOOL || input.tool === MARKET_DISABLE_TOOL) {
     return h(MarketSourceApprovalSeat, { tool: input.tool, args: input.args, t });
   }

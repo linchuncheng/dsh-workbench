@@ -29,7 +29,6 @@ export interface DiyFlowRuns {
 export function createDiyFlowRuns(options: {
   readonly host: FlowHost;
   readonly flow: DiyFlow;
-  readonly workspaceOf: (session: string) => string;
   readonly onEnd: (session: string) => void;
 }): DiyFlowRuns {
   const runs = new Map<string, Run>();
@@ -66,12 +65,7 @@ export function createDiyFlowRuns(options: {
         runs.delete(session);
       }
       const flow = flowFor(input['destination']);
-      const session_ = options.host.open({
-        flow,
-        input,
-        workspace: options.workspaceOf(session),
-        onStep: () => {},
-      });
+      const session_ = options.host.open({ flow, input, onStep: () => {} });
       const run: Run = { flow, session: session_, input, values: {} };
       runs.set(session, run);
       void session_.result.then(() => {

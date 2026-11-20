@@ -24,7 +24,7 @@ const chart: FlowDefinition = {
 
 describe('外部递进来的值，引擎自己校验', () => {
   it('★★ 缺字段被拒，点名缺哪个，流程不前进', async () => {
-    const session = createFlowHost().open({ flow: chart, input: {}, workspace: '/w/a', onStep: () => {} });
+    const session = createFlowHost().open({ flow: chart, input: {}, onStep: () => {} });
 
     const provided = session.provide('a', { destination: 'board' });
 
@@ -33,7 +33,7 @@ describe('外部递进来的值，引擎自己校验', () => {
   });
 
   it('★★ 值不在枚举里被拒，说清只能是什么', async () => {
-    const session = createFlowHost().open({ flow: chart, input: {}, workspace: '/w/a', onStep: () => {} });
+    const session = createFlowHost().open({ flow: chart, input: {}, onStep: () => {} });
 
     const provided = session.provide('a', { destination: '看板', summary: 'x' });
 
@@ -42,7 +42,7 @@ describe('外部递进来的值，引擎自己校验', () => {
   });
 
   it('★ 合规的值才推进，且原样记下', async () => {
-    const session = createFlowHost().open({ flow: chart, input: {}, workspace: '/w/a', onStep: () => {} });
+    const session = createFlowHost().open({ flow: chart, input: {}, onStep: () => {} });
 
     expect(session.provide('a', { destination: 'board', summary: '盯库存' })).toEqual({ ok: true });
 

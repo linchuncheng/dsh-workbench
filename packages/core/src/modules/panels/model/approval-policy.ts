@@ -13,7 +13,8 @@ import {
   publishVerdictFor,
   stopVerdictFor,
   type MarketSourceLookup,
-  type PublishApprovalPreview,
+  type PublishPreviewAsk,
+  type PublishPreviewLookup,
 } from './approval';
 import { confirmVerdictFor, type PlanFlowStepOf } from './approval-plan';
 
@@ -34,7 +35,7 @@ function recordHeldVerdict(
 export function panelsApprovalFor(
   longTaskRuns?: LongTaskRunsLookup | undefined,
   recording?: (() => RecordState | null) | undefined,
-  publishPreview?: ((unit: string, author?: string) => PublishApprovalPreview | null) | undefined,
+  publishPreview?: ((ask: PublishPreviewAsk) => PublishPreviewLookup) | undefined,
   marketSources?: MarketSourcesStore | undefined,
   planStepOf?: PlanFlowStepOf | undefined,
 ): ApprovalPolicy {

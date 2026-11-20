@@ -80,7 +80,7 @@ export type DshShell = Pick<ShellExecutor, 'resolve' | 'execute'>;
 export type { Workspace as DshWorkspaceRecord };
 
 /** 宿主侧的工作区登记处（服务名 `workspaceRegistry`）。 */
-export type DshWorkspaceRegistry = Pick<WorkspaceRegistry, 'create' | 'resolveByPath'>;
+export type DshWorkspaceRegistry = Pick<WorkspaceRegistry, 'create' | 'list' | 'resolveByPath'>;
 
 /** agent preset 名册里的一行：id、显示名与 dsh 自己给的挂起原因。 */
 export type { AgentPreset as DshAgentPresetRow } from '@deepseek-ai/dsh-agent-preset-registry';

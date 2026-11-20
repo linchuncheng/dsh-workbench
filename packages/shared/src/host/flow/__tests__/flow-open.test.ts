@@ -15,7 +15,6 @@ function openOf(definition: FlowDefinition = flow) {
   const session = createFlowHost().open({
     flow: definition,
     input: {},
-    workspace: '/w/a',
     onStep: (event) => events.push(event),
   });
   return { session, events };

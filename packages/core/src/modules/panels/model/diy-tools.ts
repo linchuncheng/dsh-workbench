@@ -67,8 +67,8 @@ export function registerDiyTools(
   market: MarketService,
   panels: PanelsService,
   debug: DebugStore,
-  previewOf: (unit: string) => PublishPreview | null = () => null,
-  inferredAuthorOf: (unit: string) => Promise<string | undefined> = async () => undefined,
+  previewOf: (root: string, unit: string) => PublishPreview | null = () => null,
+  inferredAuthorOf: (root: string, unit: string) => Promise<string | undefined> = async () => undefined,
   installRuns?: LongTaskRegistry<LongTaskBase>,
 ): Array<() => void> {
   const supply = supplyPortOf(ctx);
@@ -111,7 +111,7 @@ export function registerDiyTools(
             mountedAt: registry?.addedAt?.(one.unit),
           }),
       );
-      const preview = wanted === '' ? null : previewOf(wanted);
+      const preview = wanted === '' ? null : previewOf(root, wanted);
       const text = [renderStatus(root, rows), publishStatusOf(preview)].filter((one) => one !== '').join('\n');
       return plainJson({
         workspace: root,

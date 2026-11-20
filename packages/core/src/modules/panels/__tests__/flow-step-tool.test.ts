@@ -11,7 +11,6 @@ function rig() {
   const runs = createDiyFlowRuns({
     host: createFlowHost(),
     flow: DIY_BOARD_FLOW,
-    workspaceOf: () => '/w/a',
     onEnd: () => {},
   });
   const registered: unknown[] = [];

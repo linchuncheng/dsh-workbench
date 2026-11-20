@@ -17,6 +17,7 @@ import {
 import { planSections } from '../approval-plan';
 import {
   ALL_TOOLS,
+  DIY_PUBLISH_TOOL,
   DIY_RECORD_PREPARE_TOOL,
   DIY_RECORD_READ_TOOL,
   MARKET_DISABLE_TOOL,
@@ -67,6 +68,25 @@ describe('发布审批：版本单独一行，仓库 / 分支 / 两个 commit �
     expect(versionLineOf('0.0.1', 'minor', undefined)).toBe('0.0.1 → 0.1.0');
     expect(versionLineOf('0.0.1', '2.0.0', undefined)).toBe('0.0.1 → 2.0.0');
     expect(versionLineOf('0.0.1', '', undefined)).toBe('0.0.1');
+  });
+
+  it('★★ 详情座把这次会话的工作区交给预览：换工作区才读得到那个仓库里的模块', () => {
+    const direct = shellApprovalDetail(
+      { tool: DIY_PUBLISH_TOOL, args: { unit: 'argocd' } },
+      t,
+      undefined,
+      undefined,
+      '/w/repo',
+    ) as { readonly props: { readonly workspace?: string } };
+    expect(direct.props.workspace).toBe('/w/repo');
+
+    const viaShell = shellApprovalRenderer(
+      () => [],
+      () => '/w/repo',
+    )({ tool: DIY_PUBLISH_TOOL, args: { unit: 'argocd' } }, t) as {
+      readonly props: { readonly workspace?: string };
+    };
+    expect(viaShell.props.workspace).toBe('/w/repo');
   });
 
   it('★ 市场目标的详情行：模块 / 版本 / 目标 / 作者 / 标签 / 仓库 / 分支 / 打包文件 / 索引 / 提交', () => {
@@ -407,7 +427,7 @@ describe('座位的查找顺序：模块自己的 renderer → 外壳那张表 �
   });
 
   it('★ 注册处把外壳那张表交出去（不交这一族永远是空的）', () => {
-    expect(CLIENT).toContain('renderShell: shellApprovalRenderer(units.declared)');
+    expect(CLIENT).toContain('renderShell: shellApprovalRenderer(units.declared');
     expect(CLIENT).toContain("'conversation.approval.detail'");
   });
 

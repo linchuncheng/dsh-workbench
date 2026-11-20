@@ -13,6 +13,10 @@ import { createDiyRig } from './diy-harness';
 
 const rig = createDiyRig();
 
+function ok<T>(preview: T): { readonly ok: true; readonly preview: T } {
+  return { ok: true, preview };
+}
+
 function withBin(): void {
   const bin = path.join(rig.WORKSHOP(), 'node_modules', '.bin');
   fs.mkdirSync(bin, { recursive: true });
@@ -462,6 +466,27 @@ describe('workbench_diy_publish · 推断的署名就是发布用的署名', () 
     expect(inferred).toBe(0);
     expect(commands[0]).toContain("'--author' 'Ada <ada@example.com>'");
   });
+
+  it('★★ 预览与推断都拿这条会话登记的工作区当根（不是写死的工坊路径）', async () => {
+    rig.scaffold('demo');
+    withBin();
+    const seen: string[] = [];
+    const { tool } = rig.harness({
+      preview: (root, unit) => {
+        seen.push(`${root} ${unit}`);
+        return null;
+      },
+      authorHint: async (root, unit) => {
+        seen.push(`${root} ${unit}`);
+        return '陈康 <kang@example.com>';
+      },
+      probe: both(PUBLISHED),
+    });
+
+    await tool(DIY_PUBLISH_TOOL)?.execute({ unit: 'demo', target: 'team' }, rig.diyExec());
+
+    expect(seen).toEqual([`${rig.WORKSHOP()} demo`, `${rig.WORKSHOP()} demo`]);
+  });
 });
 
   it('changelogNote / changelogType 原样传给 release，结果里说清写没写', async () => {
@@ -552,8 +577,59 @@ describe('workbench_diy_publish · 推断的署名就是发布用的署名', () 
   });
 
 describe('workbench_diy_publish · 审批', () => {
+  it('★★ 预览按这次调用所在的工作区取：拿得到就不退回「只写本机」那句', () => {
+    const seen: Array<string | undefined> = [];
+    const policy = panelsApprovalFor(undefined, undefined, ({ workspace, unit }) => {
+      seen.push(workspace);
+      if (unit !== 'argocd') {
+        return { ok: false, reason: `当前工作区里没有模块「${unit}」，发布不会进行。` };
+      }
+      return ok({
+        name: '@pagoda-dsh-workbench/module-argocd',
+        version: '1.1.8',
+        market: {
+          url: 'https://git.example.com/wb/market.git',
+          indexPath: 'market',
+          artifactPath: 'artifacts/argocd',
+          files: ['package.json'],
+          nextVersion: '1.1.9',
+        },
+      });
+    });
+
+    const verdict = policy({
+      name: DIY_PUBLISH_TOOL,
+      arguments: { unit: 'argocd', category: '发布与部署' },
+      workspace: '/w/repo',
+    });
+
+    expect(seen).toEqual(['/w/repo']);
+    expect(verdict?.kind).toBe('ask');
+    if (verdict?.kind !== 'ask') return;
+    expect(verdict.reason).toContain('@pagoda-dsh-workbench/module-argocd@1.1.8');
+    expect(verdict.reason).toContain('https://git.example.com/wb/market.git');
+    expect(verdict.question.zh).toContain('市场仓库');
+    expect(verdict.question.zh).not.toContain('只写本机');
+  });
+
+  it('★★ 读不到工作区或模块：直接拒，不给信息不全的审批屏', () => {
+    const denied = (reason: string) =>
+      panelsApprovalFor(undefined, undefined, () => ({ ok: false, reason }))({
+        name: DIY_PUBLISH_TOOL,
+        arguments: { unit: 'argocd' },
+      });
+
+    expect(denied('读不到这条会话的登记工作区，发布不会进行。')).toEqual({
+      kind: 'deny',
+      reason: '读不到这条会话的登记工作区，发布不会进行。',
+    });
+    const module = denied('当前工作区里没有模块「argocd」，发布不会进行。');
+    expect(module?.kind).toBe('deny');
+    expect(module?.kind === 'deny' ? module.reason : '').toContain('当前工作区里没有模块');
+  });
+
   it('发布不跟工坊整族 allow 走：要一次审批，reason 里点名包与版本', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       registry: 'https://npm.demo.test/',
@@ -567,7 +643,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('四种出口说的是四件事：团队源 / 公开 npm / 安装包 / git 源码也推', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       registry: 'https://npm.demo.test/',
@@ -588,7 +664,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('配了可写索引源时默认发市场，标题点名仓库地址', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -611,7 +687,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('只刷元数据（refresh）：问一次，说的是「不升版本、不重发产物」', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -634,7 +710,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('★ 这一版没有更新日志又没带 changelogNote：不弹审批屏，直接拒给 agent 改法', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       changelog: { version: '0.1.0', missing: true },
@@ -646,7 +722,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('带了更新日志、或这一版已有，就照常问一次；只刷元数据不查更新日志', () => {
-    const missing = panelsApprovalFor(undefined, undefined, () => ({
+    const missing = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -657,7 +733,7 @@ describe('workbench_diy_publish · 审批', () => {
       missing({ name: DIY_PUBLISH_TOOL, arguments: { unit: 'demo', refresh: true, category: '任务与协作' } })?.kind,
     ).toBe('ask');
 
-    const has = panelsApprovalFor(undefined, undefined, () => ({
+    const has = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -667,14 +743,14 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('只核验（verify）不问：它不发任何东西', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => null);
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({ name: '@demo/probe', version: '0.1.0' }));
     expect(policy({ name: DIY_PUBLISH_TOOL, arguments: { unit: 'demo', target: 'team', verify: true } })).toEqual({
       kind: 'allow',
     });
   });
 
   it('★ 市场里还没有分类又没传 category：不弹审批屏，直接拒并给改法', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       market: {
@@ -692,7 +768,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('★ 带了分类就照常问；条目已有分类时可以不传（标签可选）', () => {
-    const bare = panelsApprovalFor(undefined, undefined, () => ({
+    const bare = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       market: {
@@ -707,7 +783,7 @@ describe('workbench_diy_publish · 审批', () => {
     );
     expect(bare({ name: DIY_PUBLISH_TOOL, arguments: { unit: 'demo', labels: ['探针'] } })?.kind).toBe('deny');
 
-    const categorised = panelsApprovalFor(undefined, undefined, () => ({
+    const categorised = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -723,7 +799,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('标签最多两个：三个就不弹审批屏', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -745,7 +821,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('市场里同名归别人：审批直接拒，不让人点同意', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -767,7 +843,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('别的模块已占这个 unit：审批直接拒', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -789,7 +865,7 @@ describe('workbench_diy_publish · 审批', () => {
   });
 
   it('参数带了这个署名：认领按这次的署名判，不拿模块里那个', () => {
-    const policy = panelsApprovalFor(undefined, undefined, (_unit, author) => ({
+    const policy = panelsApprovalFor(undefined, undefined, (ask) => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],
@@ -802,14 +878,14 @@ describe('workbench_diy_publish · 审批', () => {
         files: ['package.json'],
       },
       claim:
-        author === '乙' ? { state: 'conflict', owner: '甲 <a@example.com>' } : { state: 'owned', owner: '甲 <a@example.com>' },
+        ask.author === '乙' ? { state: 'conflict', owner: '甲 <a@example.com>' } : { state: 'owned', owner: '甲 <a@example.com>' },
     }));
     expect(policy({ name: DIY_PUBLISH_TOOL, arguments: { unit: 'demo' } })?.kind).toBe('ask');
     expect(policy({ name: DIY_PUBLISH_TOOL, arguments: { unit: 'demo', author: '乙' } })?.kind).toBe('deny');
   });
 
   it('点名了别的索引源：审批不拦，交给 release 判', () => {
-    const policy = panelsApprovalFor(undefined, undefined, () => ({
+    const policy = panelsApprovalFor(undefined, undefined, () => ok({
       name: '@demo/probe',
       version: '0.1.0',
       labels: ['探针'],

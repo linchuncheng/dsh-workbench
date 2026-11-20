@@ -42,18 +42,42 @@ function marketHomeOf(entries: readonly MarketIndexEntry[]): string {
 
 const CHANGELOG = '# 更新日志\n\n## v0.0.2\n\n`2026-10-26`\n\n### ✨ 新增\n\n- 这一版的新东西\n';
 
+type Handler = (search: URLSearchParams) => unknown;
+
+function routesOf(
+  root: string,
+  inferred?: (root: string, unit: string) => Promise<string | undefined>,
+): ReturnType<typeof publishPreviewRoutes> {
+  return publishPreviewRoutes(
+    { registered: (asked) => (asked === root ? root : null) },
+    inferred ?? (async () => undefined),
+  );
+}
+
+function readerOf(
+  handler: Handler | undefined,
+  root: string,
+): (query: string) => Promise<{ readonly preview: PublishPreview | null }> {
+  return async (query) => {
+    const params = new URLSearchParams(query);
+    if (!params.has('workspace')) params.set('workspace', root);
+    return (await handler?.(params)) as { readonly preview: PublishPreview | null };
+  };
+}
+
 describe('发布预览的只读路由', () => {
-  it('挂在 panels/market-publish-preview 上，按 unit 给出模块与版本；缺 unit 时给 null', async () => {
+  it('挂在 panels/market-publish-preview 上，按 unit 与工作区给出模块与版本；缺一个就给 null', async () => {
     const root = workshopOf();
     const home = mkdtempSync(join(tmpdir(), 'wb-publish-preview-home-'));
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = home;
     try {
-      const routes = publishPreviewRoutes(root);
+      const routes = routesOf(root);
       expect(Object.keys(routes)).toEqual([MARKET_PUBLISH_PREVIEW_ROUTE]);
       const handler = routes[MARKET_PUBLISH_PREVIEW_ROUTE];
       expect(handler).toBeDefined();
-      expect(await handler?.(new URLSearchParams('unit=probe'))).toEqual({
+      const read = readerOf(handler, root);
+      expect(await read('unit=probe')).toEqual({
         ok: true,
         preview: {
           name: '@demo/probe',
@@ -62,7 +86,12 @@ describe('发布预览的只读路由', () => {
         },
       });
       expect(await handler?.(new URLSearchParams(''))).toEqual({ ok: true, preview: null });
-      expect(await handler?.(new URLSearchParams('unit=nope'))).toEqual({ ok: true, preview: null });
+      expect(await handler?.(new URLSearchParams('unit=nope&workspace=' + encodeURIComponent(root)))).toEqual({
+        ok: true,
+        preview: null,
+      });
+      expect(await read('')).toEqual({ ok: true, preview: null });
+      expect(await handler?.(new URLSearchParams('unit=probe'))).toEqual({ ok: true, preview: null });
     } finally {
       if (previous === undefined) delete process.env.DSH_WORKBENCH_HOME;
       else process.env.DSH_WORKBENCH_HOME = previous;
@@ -76,9 +105,8 @@ describe('发布预览的只读路由', () => {
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = mkdtempSync(join(tmpdir(), 'wb-publish-preview-home-'));
     try {
-      const handler = publishPreviewRoutes(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const handler = routesOf(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, root);
       expect((await read('unit=probe&author=Ada+%3Cada%40example.com%3E')).preview?.author).toBe(
         'Ada <ada@example.com>',
       );
@@ -96,12 +124,11 @@ describe('发布预览的只读路由', () => {
     process.env.DSH_WORKBENCH_HOME = mkdtempSync(join(tmpdir(), 'wb-publish-preview-home-'));
     let inferred = 0;
     try {
-      const handler = publishPreviewRoutes(root, async () => {
+      const handler = routesOf(root, async () => {
         inferred += 1;
         return '陈康 <kang@example.com>';
       })[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const read = readerOf(handler, root);
 
       expect((await read('unit=probe')).preview?.author).toBe('陈康 <kang@example.com>');
       expect(inferred).toBe(1);
@@ -140,9 +167,8 @@ describe('发布预览的只读路由', () => {
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = mkdtempSync(join(tmpdir(), 'wb-publish-preview-home-'));
     try {
-      const handler = publishPreviewRoutes(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const handler = routesOf(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, root);
       const fresh = await read('unit=probe&changelog=一条&changelogType=fixed');
       expect(fresh.preview?.changelog?.version).toBe('0.0.1');
       expect(fresh.preview?.changelog?.pending).toBe(true);
@@ -162,9 +188,8 @@ describe('发布预览的只读路由', () => {
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = mkdtempSync(join(tmpdir(), 'wb-publish-preview-home-'));
     try {
-      const handler = publishPreviewRoutes(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const handler = routesOf(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, root);
       const current = await read('unit=probe&version=0.0.2');
       expect(current.preview?.changelog).toEqual({
         version: '0.0.2',
@@ -196,9 +221,8 @@ describe('发布预览的只读路由', () => {
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = market;
     try {
-      const handler = publishPreviewRoutes(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const handler = routesOf(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, root);
       expect((await read('unit=probe&author=乙+%3Cyi%40example.com%3E')).preview?.claim).toEqual({
         state: 'conflict',
         owner: '甲 <a@example.com>',
@@ -229,9 +253,8 @@ describe('发布预览的只读路由', () => {
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = market;
     try {
-      const handler = publishPreviewRoutes(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const handler = routesOf(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, root);
       expect((await read('unit=probe&author=甲')).preview?.claim).toEqual({
         state: 'unit-taken',
         entry: '@demo/other',
@@ -267,9 +290,8 @@ describe('发布预览的只读路由', () => {
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = market;
     try {
-      const handler = publishPreviewRoutes(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const handler = routesOf(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, root);
       expect((await read('unit=probe&author=甲')).preview?.claim).toEqual({
         state: 'path-taken',
         entry: '@demo/other',
@@ -294,9 +316,8 @@ describe('发布预览的只读路由', () => {
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = market;
     try {
-      const handler = publishPreviewRoutes(root, async () => '甲 <a@example.com>')[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const handler = routesOf(root, async () => '甲 <a@example.com>')[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, root);
       expect((await read('unit=probe')).preview?.claim).toEqual({
         state: 'owned',
         owner: '甲 <a@example.com>',
@@ -315,15 +336,74 @@ describe('发布预览的只读路由', () => {
     const previous = process.env.DSH_WORKBENCH_HOME;
     process.env.DSH_WORKBENCH_HOME = market;
     try {
-      const handler = publishPreviewRoutes(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
-      const read = async (query: string): Promise<{ readonly preview: PublishPreview | null }> =>
-        (await handler?.(new URLSearchParams(query))) as { readonly preview: PublishPreview | null };
+      const handler = routesOf(root)[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, root);
       expect((await read('unit=probe&author=甲')).preview?.claim).toEqual({ state: 'new' });
     } finally {
       if (previous === undefined) delete process.env.DSH_WORKBENCH_HOME;
       else process.env.DSH_WORKBENCH_HOME = previous;
       rmSync(root, { recursive: true, force: true });
       rmSync(market, { recursive: true, force: true });
+    }
+  });
+});
+
+function repoOf(): string {
+  const root = mkdtempSync(join(tmpdir(), 'wb-publish-repo-'));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'pduiv2', private: true }));
+  writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n');
+  mkdirSync(join(root, 'packages', 'module-probe'), { recursive: true });
+  writeFileSync(
+    join(root, 'packages', 'module-probe', 'package.json'),
+    JSON.stringify({ name: '@demo/probe', version: '1.1.8', dsh: { workbench: { unit: 'probe' } } }),
+  );
+  return root;
+}
+
+describe('发布预览只认调用方给的工作区（没有工作区就没有预览）', () => {
+  it('★★ 工作区是唯一来源：同一个 unit 在不同仓库出各自的版本，认不出就 null', async () => {
+    const workshop = workshopOf();
+    const repo = repoOf();
+    const previous = process.env.DSH_WORKBENCH_HOME;
+    process.env.DSH_WORKBENCH_HOME = mkdtempSync(join(tmpdir(), 'wb-publish-preview-home-'));
+    try {
+      const handler = publishPreviewRoutes({
+        registered: (asked) => [repo, workshop].find((one) => one === asked) ?? null,
+      })[MARKET_PUBLISH_PREVIEW_ROUTE];
+      const read = readerOf(handler, repo);
+      expect((await read('unit=probe')).preview?.version).toBe('1.1.8');
+      expect((await read(`unit=probe&workspace=${encodeURIComponent(workshop)}`)).preview?.version).toBe('0.0.1');
+      expect((await read(`unit=probe&workspace=${encodeURIComponent('/nonexistent/wb')}`)).preview).toBeNull();
+      expect(await handler?.(new URLSearchParams('unit=probe'))).toEqual({ ok: true, preview: null });
+    } finally {
+      if (previous === undefined) delete process.env.DSH_WORKBENCH_HOME;
+      else process.env.DSH_WORKBENCH_HOME = previous;
+      rmSync(workshop, { recursive: true, force: true });
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('★ 推断署名只在认得出的那个根上跑：没给工作区、认不出工作区都不问', async () => {
+    const repo = repoOf();
+    const previous = process.env.DSH_WORKBENCH_HOME;
+    process.env.DSH_WORKBENCH_HOME = mkdtempSync(join(tmpdir(), 'wb-publish-preview-home-'));
+    const asked: Array<readonly [string, string]> = [];
+    try {
+      const handler = publishPreviewRoutes(
+        { registered: (workspace) => (workspace === repo ? repo : null) },
+        async (root, unit) => {
+          asked.push([root, unit]);
+          return '甲 <a@example.com>';
+        },
+      )[MARKET_PUBLISH_PREVIEW_ROUTE];
+      await handler?.(new URLSearchParams(`unit=probe&workspace=${encodeURIComponent(repo)}`));
+      await handler?.(new URLSearchParams('unit=probe'));
+      await handler?.(new URLSearchParams(`unit=probe&workspace=${encodeURIComponent('/nonexistent/wb')}`));
+      expect(asked).toEqual([[repo, 'probe']]);
+    } finally {
+      if (previous === undefined) delete process.env.DSH_WORKBENCH_HOME;
+      else process.env.DSH_WORKBENCH_HOME = previous;
+      rmSync(repo, { recursive: true, force: true });
     }
   });
 });

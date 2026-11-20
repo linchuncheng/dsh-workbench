@@ -440,6 +440,13 @@ function mount(ctx: DshClientContext): void {
   const gate = createBootGate(ctx);
   ctx.effect(() => () => gate.close(), 'dsh-workbench: env gate');
 
+  const sessionWorkspacePath = (): string | null => {
+    const sessions = ctx.get('sessions');
+    if (sessions === undefined) return null;
+    const current = currentSessionId(sessions.list.getSnapshot(), false);
+    return workspaceOfSession(ctx.workspaces.list.getSnapshot().items, current)?.path ?? null;
+  };
+
   ctx.slots.inject('conversation.approval.detail', () =>
     ctx.slots.register(
       {
@@ -449,7 +456,7 @@ function mount(ctx: DshClientContext): void {
         inject: () => ({
           t: ctx.locale.bind(LOCALE_NS),
           units: units.all(),
-          renderShell: shellApprovalRenderer(units.declared),
+          renderShell: shellApprovalRenderer(units.declared, sessionWorkspacePath),
         }),
       },
       ApprovalDetail,

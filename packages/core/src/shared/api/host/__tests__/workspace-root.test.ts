@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DshHostContext, DshWorkspaceRecord, DshWorkspaceRegistry } from '@dsh-workbench/shared/host';
-import { sessionWorkspaceOf } from '../workspace-root';
+import { registeredWorkspacePathOf, sessionWorkspaceOf } from '../workspace-root';
 
 const roots: string[] = [];
 
@@ -26,6 +26,14 @@ function looseRegistry(...records: DshWorkspaceRecord[]): DshWorkspaceRegistry {
     get: () => undefined,
     create: async () => undefined,
     resolveByPath: async (dir: string) => records.find((record) => record.path === dir),
+  } as unknown as DshWorkspaceRegistry;
+}
+
+function listRegistry(...records: DshWorkspaceRecord[]): DshWorkspaceRegistry {
+  return {
+    list: () => records,
+    create: async () => undefined,
+    resolveByPath: async () => undefined,
   } as unknown as DshWorkspaceRegistry;
 }
 
@@ -99,5 +107,55 @@ describe('sessionWorkspaceOf（会话的登记工作区）', () => {
 
     expect(await sessionWorkspaceOf(ctxFor(strictRegistry(seen, workspace)), deep)).toBeNull();
     expect(seen.length).toBeLessThan(64);
+  });
+});
+
+describe('registeredWorkspacePathOf（同步版：审批与预览要的那一格）', () => {
+  it('cwd 在登记工作区的子目录里：向上命中登记的根', () => {
+    const root = tempRoot();
+    const workspace = { id: 'w1', path: root, title: '演示工作区' } as unknown as DshWorkspaceRecord;
+
+    expect(registeredWorkspacePathOf(ctxFor(listRegistry(workspace)), join(root, 'packages', 'a'))).toBe(root);
+    expect(registeredWorkspacePathOf(ctxFor(listRegistry(workspace)), root)).toBe(root);
+  });
+
+  it('★★ 登记表里没有 ⇒ null —— 不扫"像工作区的目录"，也不拿工坊顶替', () => {
+    const root = tempRoot();
+    const other = { id: 'w2', path: join(root, 'elsewhere'), title: '别处' } as unknown as DshWorkspaceRecord;
+
+    expect(registeredWorkspacePathOf(ctxFor(listRegistry(other)), join(root, 'nowhere', 'deeper'))).toBeNull();
+  });
+
+  it('没有 workspaceRegistry 服务 / 空 cwd ⇒ null', () => {
+    expect(registeredWorkspacePathOf(ctxFor(undefined), '/w/a')).toBeNull();
+    expect(registeredWorkspacePathOf(ctxFor(listRegistry()), null)).toBeNull();
+    expect(registeredWorkspacePathOf(ctxFor(listRegistry()), '   ')).toBeNull();
+  });
+
+  it('★ 登记表读不出来 ⇒ null（审批屏不能因为这一格炸掉）', () => {
+    const broken = {
+      list: () => {
+        throw new Error('domain closed');
+      },
+    } as unknown as DshWorkspaceRegistry;
+
+    expect(registeredWorkspacePathOf(ctxFor(broken), '/w/a')).toBeNull();
+  });
+
+  it('★ 登记的是 realpath、cwd 走符号链接：照样认得出登记的根', () => {
+    const root = tempRoot();
+    const link = join(root, 'link');
+    symlinkSync(root, link);
+    const real = realpathSync(root);
+    const workspace = { id: 'w1', path: real, title: '演示工作区' } as unknown as DshWorkspaceRecord;
+
+    expect(registeredWorkspacePathOf(ctxFor(listRegistry(workspace)), join(link, 'packages', 'a'))).toBe(real);
+  });
+
+  it('★ 目录带尾斜杠也认得出登记的那个根', () => {
+    const root = tempRoot();
+    const workspace = { id: 'w1', path: root, title: '演示工作区' } as unknown as DshWorkspaceRecord;
+
+    expect(registeredWorkspacePathOf(ctxFor(listRegistry(workspace)), `${root}/`)).toBe(root);
   });
 });

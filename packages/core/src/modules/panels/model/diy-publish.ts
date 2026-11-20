@@ -28,8 +28,8 @@ export const PUBLISH_TIMEOUT_MS = 30 * 60 * 1000;
 
 export interface PublishToolDeps {
   readonly resolve: (root: string, raw: unknown) => DiyModule;
-  readonly previewOf: (unit: string) => PublishPreview | null;
-  readonly inferredAuthorOf: (unit: string) => Promise<string | undefined>;
+  readonly previewOf: (root: string, unit: string) => PublishPreview | null;
+  readonly inferredAuthorOf: (root: string, unit: string) => Promise<string | undefined>;
 }
 
 interface ReleaseRun {
@@ -287,8 +287,13 @@ export function registerPublishTool(
       const verify = args['verify'] === true;
       const resume = args['resume'] === true;
       const refresh = args['refresh'] === true;
-      if (!verify && target !== 'local' && author === '' && (deps.previewOf(found.unit)?.author ?? '') === '') {
-        author = (await deps.inferredAuthorOf(found.unit)) ?? '';
+      if (
+        !verify &&
+        target !== 'local' &&
+        author === '' &&
+        (deps.previewOf(root, found.unit)?.author ?? '') === ''
+      ) {
+        author = (await deps.inferredAuthorOf(root, found.unit)) ?? '';
       }
       const argv = [...toolchainArgvOf(bin), 'release', '--cwd', found.dir, '--json'];
       if (verify) argv.push('--verify');

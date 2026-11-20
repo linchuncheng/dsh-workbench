@@ -267,7 +267,6 @@ export interface FlowStepEvent {
 export interface FlowOpenOptions {
   readonly flow: FlowDefinition;
   readonly input: unknown;
-  readonly workspace: string;
   readonly onStep: (event: FlowStepEvent) => void;
   readonly now?: (() => number) | undefined;
 }

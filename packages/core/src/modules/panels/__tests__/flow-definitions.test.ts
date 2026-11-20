@@ -10,7 +10,6 @@ function openBoard(destination = 'board') {
   const session = createFlowHost().open({
     flow: DIY_BOARD_FLOW,
     input: { destination, summary: '盯库存' },
-    workspace: '/w/a',
     onStep: (event) => events.push(event),
   });
   return { session, events };

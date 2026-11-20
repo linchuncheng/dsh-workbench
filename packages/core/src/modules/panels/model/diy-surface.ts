@@ -16,7 +16,6 @@ import {
   type SurfaceQuery,
 } from '@/shared/api/host/diy-surface';
 import { renderTokensText } from '@/shared/api/host/diy-tokens';
-import { workshopPathOf } from '@/shared/api/host/diy';
 import { asRecord, asText, moduleDirsOf, OUTPUT, plainJson, workspaceOf } from './diy-context';
 import { DIY_SURFACE_TOOL } from '../unit';
 
@@ -62,13 +61,7 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
       }
       if (scope === 'tokens' || name.startsWith('--')) {
         const profile = supplyPortOf(ctx).profileDirOf(ctx);
-        const dirs = [
-          profile ?? '',
-          join(dshHome(), 'profiles'),
-          workshopPathOf(ctx) ?? '',
-          root,
-          ...moduleDirsOf(root),
-        ];
+        const dirs = [profile ?? '', join(dshHome(), 'profiles'), root, ...moduleDirsOf(root)];
         const tokens = readTokens(dirs);
         const text = renderTokensText(tokens, { name, bucket, all, searched: dirs });
         return plainJson({
@@ -98,13 +91,11 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
           text: TWO_FACE_ALL,
         });
       }
-      const shellRoot = workshopPathOf(ctx);
-      const shellBin = shellRoot === null ? null : toolchainBinOf(shellRoot);
       const local =
         [root, ...moduleDirsOf(root)]
           .map((dir) => ({ dir, bin: toolchainBinOf(dir) }))
           .find((one) => one.bin !== null) ?? null;
-      const bin = local?.bin ?? shellBin;
+      const bin = local?.bin ?? null;
       if (bin === null) {
         throw new Error(
           `当前工作区及其模块中都没有 dsh-wb-module（${join(root, 'node_modules')} 下不存在）。` +
@@ -114,13 +105,10 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
       const seam = seamOf(ctx);
       if (seam === undefined) throw new Error('本机没有 shell 服务，无法读取组件清单');
 
-      const workdir = local?.dir ?? shellRoot ?? root;
-      const fallbackBin = local !== null && shellBin !== null && shellBin !== bin ? shellBin : undefined;
+      const workdir = local?.dir ?? root;
       const [primitives, kit] = await Promise.all([
-        wantsPrimitives(scope)
-          ? runSurfaceQuery(seam, bin, 'primitives', workdir, fallbackBin)
-          : Promise.resolve(undefined),
-        wantsKit(scope) ? runSurfaceQuery(seam, bin, 'kit', workdir, fallbackBin) : Promise.resolve(undefined),
+        wantsPrimitives(scope) ? runSurfaceQuery(seam, bin, 'primitives', workdir) : Promise.resolve(undefined),
+        wantsKit(scope) ? runSurfaceQuery(seam, bin, 'kit', workdir) : Promise.resolve(undefined),
       ]);
       const query: SurfaceQuery = {
         ...(primitives === undefined ? {} : { primitives }),

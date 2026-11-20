@@ -158,16 +158,35 @@ function stopVerdict(call: ApprovalCall, runs: LongTaskRunsLookup | undefined): 
 
 export type PublishApprovalPreview = PublishPreview;
 
+export interface PublishPreviewAsk {
+  readonly workspace?: string | undefined;
+  readonly unit: string;
+  readonly author?: string | undefined;
+}
+
+export type PublishPreviewLookup =
+  | { readonly ok: true; readonly preview: PublishApprovalPreview }
+  | { readonly ok: false; readonly reason: string };
+
 function publishVerdict(
   call: ApprovalCall,
-  preview?: (unit: string, author?: string) => PublishApprovalPreview | null,
+  preview?: (ask: PublishPreviewAsk) => PublishPreviewLookup,
 ): ApprovalVerdict {
   const raw = argsOf(call);
   if (raw['verify'] === true || raw['target'] === 'local') return { kind: 'allow' };
   const refresh = raw['refresh'] === true;
   const unit = textOf(raw, 'unit');
   const askedAuthor = textOf(raw, 'author');
-  const found = unit === '' ? null : (preview?.(unit, askedAuthor === '' ? undefined : askedAuthor) ?? null);
+  const lookup =
+    unit === ''
+      ? undefined
+      : preview?.({
+          ...(call.workspace === undefined ? {} : { workspace: call.workspace }),
+          unit,
+          ...(askedAuthor === '' ? {} : { author: askedAuthor }),
+        });
+  if (lookup !== undefined && !lookup.ok) return { kind: 'deny', reason: lookup.reason };
+  const found = lookup?.ok === true ? lookup.preview : null;
   const asked = textOf(raw, 'target');
   const target = refresh
     ? 'market'
@@ -237,7 +256,7 @@ export function stopVerdictFor(call: ApprovalCall, longTaskRuns: LongTaskRunsLoo
 
 export function publishVerdictFor(
   call: ApprovalCall,
-  preview: ((unit: string, author?: string) => PublishApprovalPreview | null) | undefined,
+  preview: ((ask: PublishPreviewAsk) => PublishPreviewLookup) | undefined,
 ): ApprovalVerdict | undefined {
   return publishVerdict(call, preview);
 }

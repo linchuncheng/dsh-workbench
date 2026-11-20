@@ -77,6 +77,21 @@ describe('workbench_diy · status（入口：我手上有什么）', () => {
     expect(result.text).toContain('缺少 0.1.1');
   });
 
+  it('★ 发布预览按这条会话登记的工作区去读（不是写死的工坊路径）', async () => {
+    rig.scaffold('demo');
+    const roots: string[] = [];
+    const { tool } = rig.harness({
+      preview: (root, unit) => {
+        roots.push(`${root} ${unit}`);
+        return null;
+      },
+    });
+
+    await tool(DIY_STATUS_TOOL)?.execute({ unit: 'demo' }, rig.diyExec());
+
+    expect(roots).toEqual([`${rig.WORKSHOP()} demo`]);
+  });
+
   it('★ 没配索引源也没声明 registry：说安装包，不编造仓库', async () => {
     rig.scaffold('demo');
     const { tool } = rig.harness({

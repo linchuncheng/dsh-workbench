@@ -24,7 +24,6 @@ describe('按会话跑的流程', () => {
     createDiyFlowRuns({
       host: createFlowHost(),
       flow: DIY_BOARD_FLOW,
-      workspaceOf: () => '/w/a',
       onEnd: () => {},
     });
 

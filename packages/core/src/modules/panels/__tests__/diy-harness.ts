@@ -219,8 +219,8 @@ export function createDiyRig() {
       record?: RecordStore;
       recordFlow?: RecordFlowPort;
       pact?: string | false;
-      preview?: (unit: string) => PublishPreview | null;
-      authorHint?: (unit: string) => Promise<string | undefined>;
+      preview?: (root: string, unit: string) => PublishPreview | null;
+      authorHint?: (root: string, unit: string) => Promise<string | undefined>;
     } = {},
   ) {
     const specs: string[] = [];

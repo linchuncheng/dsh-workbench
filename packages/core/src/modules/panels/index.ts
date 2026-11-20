@@ -3,7 +3,7 @@ import type { DshHostContext, LongTaskBase, LongTaskRegistry, RecordStore, UnitO
 import { DIY_DEBUG_SERVICE, DIY_RECORD_SERVICE, MCP_TOOLS_SERVICE, TOOLBOX_SERVICE, adaptersOf, createDebugStore, createLongTaskRegistry, createRecordStore, supplyNeedsOf, PANELS_SERVICE, dshHome, seamOf, supplyPortOf, workbenchRoot } from '@dsh-workbench/shared/host';
 import type { McpToolsPort, ToolboxPort, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { basename, join } from 'node:path';
-import { workshopPathOf } from '@/shared/api/host/diy';
+import { registeredWorkspacePathOf } from '@/shared/api/host/workspace-root';
 import { hostSurface } from '@dsh-workbench/shared/host';
 import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
 import { cliCommandOf } from '@dsh-workbench/shared/host';
@@ -124,7 +124,6 @@ export const panelsHost: UnitOwnedFace = {
     const diyRuns = createDiyFlowRuns({
       host: createFlowHost(),
       flow: DIY_BOARD_FLOW,
-      workspaceOf: () => workbenchRoot(),
       onEnd: () => {},
     });
     const toolbox = createToolbox({
@@ -296,8 +295,9 @@ export const panelsHost: UnitOwnedFace = {
           };
         }),
         ...installedPackageRoutes((pkg) => installedPackages.info(pkg)),
-        ...publishPreviewRoutes(workshopPathOf(ctx), (unit) =>
-          inferredAuthorOf(workshopPathOf(ctx), unit),
+        ...publishPreviewRoutes(
+          { registered: (workspace) => registeredWorkspacePathOf(ctx, workspace) },
+          inferredAuthorOf,
         ),
       },
       longTasks: installRuns,
@@ -319,8 +319,8 @@ export const panelsHost: UnitOwnedFace = {
           market,
           panels,
           debug,
-          (unit) => publishPreviewOf(workshopPathOf(ctx), unit),
-          (unit) => inferredAuthorOf(workshopPathOf(ctx), unit),
+          publishPreviewOf,
+          inferredAuthorOf,
           installRuns,
         ),
         ...registerDiyPlanTool(ctx, diyRuns),
@@ -332,8 +332,26 @@ export const panelsHost: UnitOwnedFace = {
       needsApproval: panelsApprovalFor(
         longTaskRuns,
         () => record.live(Date.now()),
-        (unit, author) =>
-          publishPreviewOf(workshopPathOf(ctx), unit, author === undefined ? {} : { author }),
+        ({ workspace, unit, author }) => {
+          const root = workspace === undefined ? null : registeredWorkspacePathOf(ctx, workspace);
+          if (root === null) {
+            return {
+              ok: false,
+              reason:
+                '读不到这条会话的登记工作区，发布不会进行。先在左栏选中这个项目再重试；发布只会写当前工作区。',
+            };
+          }
+          const preview = publishPreviewOf(root, unit, author === undefined ? {} : { author });
+          if (preview === null) {
+            return {
+              ok: false,
+              reason:
+                `当前工作区（${root}）里没有模块「${unit}」，发布不会进行。` +
+                '先用 workbench_diy_status 确认工作区与模块标识；模块在别的项目里，就切到那个项目再发。',
+            };
+          }
+          return { ok: true, preview };
+        },
         marketSources,
         (session) => diyRuns.stepOf(session),
       ),

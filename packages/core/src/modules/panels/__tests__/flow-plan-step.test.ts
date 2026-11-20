@@ -9,7 +9,6 @@ const runsOf = () => {
   const runs = createDiyFlowRuns({
     host: createFlowHost(),
     flow: DIY_BOARD_FLOW,
-    workspaceOf: () => '/w/a',
     onEnd: (session) => ended.push(session),
   });
   return { runs, ended };
