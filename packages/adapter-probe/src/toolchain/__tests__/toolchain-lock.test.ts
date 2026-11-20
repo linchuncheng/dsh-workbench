@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
-import { holdToolchainLock } from '../../index.js';
+import { holdToolchainLock, isLockContention } from '../../index.js';
 
 function lockDir(): string {
   return join(mkdtempSync(join(tmpdir(), 'toolchain-lock-')), 'toolchain');
@@ -48,5 +48,25 @@ describe('holdToolchainLock', () => {
     await expect(holdToolchainLock(dir, async () => '不该跑到', { waitMs: 10 })).rejects.toThrow();
     release.current?.();
     await held;
+  });
+});
+
+describe('取锁失败算不算"别人正拿着"', () => {
+  it('★ Windows 上撞到已存在的锁目录报的是 EPERM（不是 EEXIST），算争用', () => {
+    expect(isLockContention(Object.assign(new Error('EPERM'), { code: 'EPERM' }), true)).toBe(true);
+  });
+
+  it('★ 同样是 EPERM，锁目录不在就是真没权限 —— 照原样抛，不假装在等', () => {
+    expect(isLockContention(Object.assign(new Error('EPERM'), { code: 'EPERM' }), false)).toBe(false);
+  });
+
+  it('proper-lockfile 的 ELOCKED 一直是争用', () => {
+    expect(isLockContention(Object.assign(new Error('locked'), { code: 'ELOCKED' }), false)).toBe(true);
+  });
+
+  it('别的错（ENOENT / 没 code）不当争用', () => {
+    expect(isLockContention(Object.assign(new Error('gone'), { code: 'ENOENT' }), true)).toBe(false);
+    expect(isLockContention(new Error('随便什么'), true)).toBe(false);
+    expect(isLockContention(null, true)).toBe(false);
   });
 });
