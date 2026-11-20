@@ -18,7 +18,7 @@ const STEP_FIELDS: Readonly<Record<string, readonly string[]>> = {
 
 function nextOf(step: string, destination: string | null): string {
   if (step === 'plan') {
-    return destination === 'headless' ? '补上方案四段（用 workbench_diy_plan）' : '补上方案四段与字符画（用 workbench_diy_plan）';
+    return destination === 'headless' ? '补上方案四段（用 workbench_diy_plan）' : '补上方案四段与 ascii（用 workbench_diy_plan）';
   }
   if (step === 'verify' && !hostSurface().capabilities.pageDebug) {
     return '本机没有页面调试能力：按只读取证逐条验证，无法验证的写入 unverified';

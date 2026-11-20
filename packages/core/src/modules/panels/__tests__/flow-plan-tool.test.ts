@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createFlowHost } from '@dsh-workbench/shared/host';
 import type { DshHostContext, DshToolDefinition, DshToolRunContext } from '@dsh-workbench/shared/host';
-import { DIY_BOARD_FLOW } from '../model/flow/definitions';
+import { README_SECTION_KEYS, SHOT_KINDS } from '@dsh-workbench/shared/host';
+import { DIY_BOARD_FLOW, PLAN_DRAFT_PROPERTIES } from '../model/flow/definitions';
 import { registerDiyPlanTool } from '../model/flow/plan-tool';
 import { createDiyFlowRuns } from '../model/flow/runs';
 
@@ -66,6 +67,36 @@ describe('计划工具', () => {
         exec,
       ),
     ).rejects.toThrow(/invalid plan: see\[1\]/);
+  });
+
+  it('★★ 方案四段与字符画都从模块 readme 的接口约定来，不另立一套', () => {
+    const properties = PLAN_DRAFT_PROPERTIES as Record<string, { items?: { properties?: Record<string, unknown> } }>;
+
+    for (const key of README_SECTION_KEYS) {
+      expect(properties[key], key).toBeDefined();
+    }
+    const kind = properties['shots']?.items?.properties?.['kind'] as { enum?: readonly string[] } | undefined;
+    expect(kind?.enum).toEqual([...SHOT_KINDS]);
+  });
+
+  it('★ 字符画的 kind 只认接口约定里的值', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+
+    await expect(
+      tool.execute(
+        {
+          destination: 'board',
+          summary: '盯库存',
+          see: ['一眼'],
+          do: ['一点'],
+          agent: ['一件'],
+          data: ['一处'],
+          shots: [{ kind: 'bogus', caption: '卡片', ascii: '┌─┐' }],
+        },
+        exec,
+      ),
+    ).rejects.toThrow(/shots\[0\]\.kind/);
   });
 
   it('★ 字符画没图注或没内容都当场拒', async () => {
@@ -144,5 +175,104 @@ describe('计划工具', () => {
     await expect(
       tool.execute({ destination: 'board', summary: 'x' }, {} as unknown as DshToolRunContext),
     ).rejects.toThrow(/没有 id/);
+  });
+});
+
+describe('改模块：四段只写变化，没变的写「没变」', () => {
+  const START = { destination: 'tweak', summary: '把卡片分成三组' } as const;
+
+  it('★★ 带类型的条目与「没变」都收，推进到下一步', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+    await tool.execute(START, exec);
+
+    const out = (await tool.execute(
+      {
+        ...START,
+        see: ['修改：卡片从平铺 7 条变成三组'],
+        do: ['新增：点分组标题折叠该组', '删除：整卡刷新按钮'],
+        agent: ['没变'],
+        data: ['没变'],
+      },
+      exec,
+    )) as { step: string };
+
+    expect(out.step).toBe('build');
+  });
+
+  it('★ 条目没写「新增 / 删除 / 修改」当场拒', async () => {
+    const { tool } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+    const exec = { agent: { session: { id: 's-1' } } } as unknown as DshToolRunContext;
+    if (tool === undefined) throw new Error('没有注册上');
+    await tool.execute(START, exec);
+
+    await expect(
+      tool.execute(
+        { ...START, see: ['卡片变成三组'], do: ['没变'], agent: ['没变'], data: ['没变'] },
+        exec,
+      ),
+    ).rejects.toThrow(/要以「新增：」「删除：」「修改：」开头/);
+  });
+
+  it('★ 「没变」混在别的条目里当场拒', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+    await tool.execute(START, exec);
+
+    await expect(
+      tool.execute(
+        {
+          ...START,
+          see: ['修改：卡片变成三组', '没变'],
+          do: ['没变'],
+          agent: ['没变'],
+          data: ['没变'],
+        },
+        exec,
+      ),
+    ).rejects.toThrow(/只写「没变」一条/);
+  });
+
+  it('★ 四段全是「没变」当场拒：这次根本没改东西', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+    await tool.execute(START, exec);
+
+    await expect(
+      tool.execute({ ...START, see: ['没变'], do: ['没变'], agent: ['没变'], data: ['没变'] }, exec),
+    ).rejects.toThrow(/没有任何改动/);
+  });
+  it('★ 四段提到审批屏却没给 approval 图，当场拒', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+    await tool.execute(START, exec);
+
+    await expect(
+      tool.execute(
+        { ...START, see: ['修改：审批屏 多一行「模式」'], do: ['没变'], agent: ['没变'], data: ['没变'] },
+        exec,
+      ),
+    ).rejects.toThrow(/kind: "approval"/);
+  });
+
+  it('★ 给了 approval 图却没写审批屏，也当场拒', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+    await tool.execute(START, exec);
+
+    await expect(
+      tool.execute(
+        {
+          ...START,
+          see: ['修改：卡片从平铺变成三组'],
+          do: ['没变'],
+          agent: ['没变'],
+          data: ['没变'],
+          shots: [{ kind: 'approval', caption: '审批屏 · 改后', ascii: '┌─┐' }],
+        },
+        exec,
+      ),
+    ).rejects.toThrow(/没写审批屏/);
   });
 });

@@ -3,6 +3,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { README_SOURCE_KEYS, SHOT_KINDS } from '@dsh-workbench/shared/host';
+
 import { BIN, fillPendingDesign } from '../lib.mjs';
 
 const TITLE = '文档：init 生成用户 README 与作者 DEVELOPING；design render 两份都更新；绑定与审批图缺了直接红；旧 README 能迁到 DEVELOPING';
@@ -54,6 +56,20 @@ export const checks = [
       try {
         run(['init', 'demo', '--dir', probe, '--template', 'diy']);
         if (!existsSync(sourceFile)) problems.push('init 没生成 readme.json');
+        if (existsSync(sourceFile)) {
+          const source = JSON.parse(read(probe, 'readme.json'));
+          for (const key of README_SOURCE_KEYS) {
+            if (!(key in source)) problems.push(`readme.json 缺接口约定里的 ${key}`);
+          }
+          for (const key of Object.keys(source)) {
+            if (!README_SOURCE_KEYS.includes(key)) problems.push(`readme.json 多了接口约定外的 ${key}`);
+          }
+          for (const [index, shot] of source.shots.entries()) {
+            if (shot.kind !== undefined && !SHOT_KINDS.includes(shot.kind)) {
+              problems.push(`readme.json shots[${index}].kind 不在接口约定里：${shot.kind}`);
+            }
+          }
+        }
         fillPendingDesign(probe);
         run(['design', 'render', '--cwd', probe]);
         run(['design', 'check', '--cwd', probe]);

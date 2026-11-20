@@ -56,6 +56,7 @@ export * from './contract/long-task.js';
 export * from './contract/module-context.js';
 export * from './contract/needs.js';
 export * from './contract/plugin-source.js';
+export * from './contract/readme.js';
 export * from './contract/protocol/boot-ok.js';
 export * from './contract/protocol/bundle-install.js';
 export * from './contract/protocol/config-sync.js';

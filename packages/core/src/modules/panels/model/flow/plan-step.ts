@@ -1,35 +1,29 @@
-import type { FlowNodeStep } from '@dsh-workbench/shared/host';
+import type { FlowNodeStep, ReadmeDraft } from '@dsh-workbench/shared/host';
 import { positionOf, titleOf } from './position';
 import type { DiyFlowRuns } from './runs';
 
 export type Destination = 'ready' | 'once' | 'reroute' | 'board' | 'headless' | 'tweak';
 
-export interface PlanShot {
-  readonly caption: string;
-  readonly ascii: string;
-}
-
-export interface PlanInput {
+export interface PlanInput extends ReadmeDraft {
   readonly destination: Destination;
-  readonly summary: string;
   readonly cells?: string | undefined;
   readonly steps?: string | undefined;
   readonly minutes?: string | undefined;
-  readonly shots?: readonly PlanShot[] | undefined;
-  readonly see?: readonly string[] | undefined;
-  readonly do?: readonly string[] | undefined;
-  readonly agent?: readonly string[] | undefined;
-  readonly data?: readonly string[] | undefined;
 }
 
 const NEXT: Readonly<Record<string, string>> = {
   probe: '站探完成后提交读取到的站点',
-  plan: '补上方案四段与字符画',
+  plan: '补上方案四段与 ascii',
   build: '开始编写模块',
   install: '安装并显示到面板',
   verify: '执行一遍检查',
   ledger: '保存设计记录',
 };
+
+function nextOf(step: string, destination: Destination): string {
+  if (step === 'plan' && destination === 'tweak') return '补上四段变化与改之后的 ascii';
+  return NEXT[step] ?? step;
+}
 
 export interface PlanResult {
   readonly ok: boolean;
@@ -134,8 +128,9 @@ function advanced(step: FlowNodeStep | null, destination: Destination): PlanResu
     total: position.total,
     remaining: position.remaining,
     done: false,
-    text: `停在第 ${position.index}/${position.total} 步（${titleOf(step.id, destination)}）。下一步：${
-      NEXT[step.id] ?? step.id
-    }。`,
+    text: `停在第 ${position.index}/${position.total} 步（${titleOf(step.id, destination)}）。下一步：${nextOf(
+      step.id,
+      destination,
+    )}。`,
   };
 }

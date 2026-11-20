@@ -1,12 +1,24 @@
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { callsProblemOf, describeRecipe, envelopePathOf, readDeclaration, recipeProblemOf, resolveRecipeOf } from '@dsh-workbench/shared/host';
+import {
+  README_COPY_KEYS,
+  README_SECTION_HEADINGS,
+  README_SHOTS_TITLE,
+  README_SOURCE_FILE,
+  SHOT_KINDS,
+  callsProblemOf,
+  describeRecipe,
+  envelopePathOf,
+  readDeclaration,
+  recipeProblemOf,
+  readmeShotLines,
+  resolveRecipeOf,
+} from '@dsh-workbench/shared/host';
 import { readsOf, writesOf } from './datasource-file.mjs';
 import { cardTitleFromMessages } from '../support/messages.mjs';
 
 export const DESIGN_FILE = 'design.json';
 export const DEVELOPING_FILE = 'DEVELOPING.md';
-export const README_SOURCE_FILE = 'readme.json';
 export const START_MARK = '<!-- dsh-wb:design:start -->';
 export const END_MARK = '<!-- dsh-wb:design:end -->';
 
@@ -183,8 +195,6 @@ function pending(value) {
 function asRows(value) {
   return Array.isArray(value) ? value : [];
 }
-
-const SHOT_KINDS = ['card', 'approval', 'state', 'other'];
 
 function itemTextOf(value) {
   return typeof value === 'string' ? text(value) : text(value?.text);
@@ -536,19 +546,13 @@ export function renderUserReadme(source) {
     ? '在市场「已安装」里安装或卸载。安装后，在当前项目的面板里勾选这个模块才会显示；卸载后模块从面板里移除。'
     : source?.install;
   const shots = shotsOf(source);
-  const shotsHeading = text(source?.shotsTitle) || '界面预览';
+  const shotsHeading = text(source?.shotsTitle) || README_SHOTS_TITLE;
   const shotLines = shots.length === 0
     ? []
     : [
         `## ${shotsHeading}`,
         '',
-        ...shots.flatMap((one) => [
-          ...(one.caption === '' ? [] : [`**${one.caption}**`, '']),
-          '```',
-          one.drawing,
-          '```',
-          '',
-        ]),
+        ...readmeShotLines(shots.map((one) => ({ caption: one.caption, ascii: one.drawing }))),
       ];
   const faqLines = faq.length === 0
     ? []
@@ -564,10 +568,10 @@ export function renderUserReadme(source) {
     summary,
     '',
     ...shotLines,
-    ...sectionOf('你会看到什么', source?.see),
-    ...sectionOf('你能做什么', source?.do),
-    ...sectionOf('agent 能做什么', source?.agent),
-    ...sectionOf('数据从哪来', source?.data),
+    ...sectionOf(README_SECTION_HEADINGS.see, source?.see),
+    ...sectionOf(README_SECTION_HEADINGS.do, source?.do),
+    ...sectionOf(README_SECTION_HEADINGS.agent, source?.agent),
+    ...sectionOf(README_SECTION_HEADINGS.data, source?.data),
     ...sectionOf('装和卸', install),
     ...sectionOf('出问题先看', source?.trouble),
     ...faqLines,
@@ -665,7 +669,6 @@ export function userSourceSkeleton(manifest, design, root) {
   };
 }
 
-const USER_COPY_FIELDS = ['title', 'summary', 'see', 'do', 'agent', 'data', 'trouble'];
 const USER_COPY_FORBIDDEN = [
   ['反引号 / 代码片段', /`/],
   ['代码块', /```/],
@@ -776,7 +779,7 @@ export function userCopyProblemsOf(source, design, manifest, options = {}) {
       `title 是「${text(source?.title)}」—— 用户在面板与市场中看到的模块名是「${expectedTitle}」；两处应使用同一个名称`,
     );
   }
-  for (const field of USER_COPY_FIELDS) {
+  for (const field of README_COPY_KEYS) {
     const values = copyTextsOf(source?.[field]);
     if (values.length === 0) problems.push(`${field} 为空 —— README 的「${field}」还没有用户文案`);
     for (const value of values) {

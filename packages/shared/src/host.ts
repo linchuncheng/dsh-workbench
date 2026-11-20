@@ -23,6 +23,7 @@ export * from './api/blocker-table.js';
 export * from './contract/unit-declaration.js';
 export * from './contract/unit-capability.js';
 export * from './contract/plugin-source.js';
+export * from './contract/readme.js';
 export * from './contract/cli.js';
 export * from './api/dsh.js';
 export * from './host/adapters/adapter-contract.js';

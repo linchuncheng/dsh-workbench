@@ -1,4 +1,5 @@
 import type { FlowDefinition, FlowNodeStep } from '@dsh-workbench/shared/host';
+import { README_SECTION_KEYS, SHOT_KINDS } from '@dsh-workbench/shared/host';
 import {
   DIY_RECORD_PREPARE_TOOL,
   DIY_RECORD_STOP_TOOL,
@@ -22,23 +23,43 @@ const schemaOf = (
 
 const isBuild = { $in: [{ $ref: 'in.destination' }, ['board', 'headless']] } as const;
 
-const PLAN_SCHEMA = schemaOf(['see', 'do', 'agent', 'data'], {
-    cells: { type: 'string' },
-    steps: { type: 'string' },
-    minutes: { type: 'string' },
-    shots: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['caption', 'ascii'],
-        properties: { caption: { type: 'string' }, ascii: { type: 'string' } },
+type PlanSectionKey = (typeof README_SECTION_KEYS)[number];
+
+const PLAN_SECTION_HINTS: Readonly<Record<PlanSectionKey, string>> = {
+  see: '用户一眼能看到什么。',
+  do: '用户自己能点击或修改什么。',
+  agent: 'agent 能为用户做什么，执行前是否需要批准。',
+  data: '数据从哪来、用谁的登录，以及只读取还是写入。',
+};
+
+const PLAN_SECTION_PROPERTIES: Record<string, unknown> = Object.fromEntries(
+  README_SECTION_KEYS.map((key) => [
+    key,
+    { type: 'array', items: { type: 'string' }, description: PLAN_SECTION_HINTS[key] },
+  ]),
+);
+
+export const PLAN_DRAFT_PROPERTIES: Record<string, unknown> = {
+  cells: { type: 'string', description: '看板分几格，每格显示什么。' },
+  steps: { type: 'string', description: '从抓取数据到生成卡片一共几步。' },
+  minutes: { type: 'string', description: '用户大约需要等几分钟。' },
+  shots: {
+    type: 'array',
+    description: '一两张界面预览：每张把界面上的真实文案按从上到下的顺序画进 ascii 字段，并配一句图注。无看板时不要提交。',
+    items: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: [...SHOT_KINDS], description: '图的类型：卡片 / 审批 / 状态 / 其他。' },
+        caption: { type: 'string', description: '图注：写清这张图画的是卡片、设置面还是审批屏。' },
+        ascii: { type: 'string', description: 'ascii 内容：用界面上的真实文案，不留占位词。' },
       },
+      required: ['caption', 'ascii'],
     },
-    see: { type: 'array', items: { type: 'string' } },
-    do: { type: 'array', items: { type: 'string' } },
-    agent: { type: 'array', items: { type: 'string' } },
-    data: { type: 'array', items: { type: 'string' } }
-});
+  },
+  ...PLAN_SECTION_PROPERTIES,
+};
+
+const PLAN_SCHEMA = schemaOf([...README_SECTION_KEYS], PLAN_DRAFT_PROPERTIES);
 
 const PROBE_SCHEMA = schemaOf(['sites'], { sites: { type: 'array' } });
 

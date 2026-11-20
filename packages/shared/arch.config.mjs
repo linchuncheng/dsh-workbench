@@ -72,7 +72,7 @@ export default {
     structure: {
       directoryItemLimits: [
         { role: 'lib:components', max: 21 },
-        { role: 'lib:contract', max: 24 },
+        { role: 'lib:contract', max: 25 },
       ],
     },
     customRules: [entryKeepsHostOut, ...kernelRules, testsLiveInFolders],
