@@ -288,13 +288,13 @@ export const checks = [
     },
   },
   {
-    title: '★ 注入的 CSS 里有隐藏 hero 选择工作区的规则',
+    title: '★ hero 的「选择工作区」只在自定义左栏（.wb-root 在场）时藏，官方档还给 dsh',
     run(ctx, report) {
       const { injectedStyles } = ctx;
       report(
-        '★ 注入的 CSS 里有隐藏 hero 选择工作区的规则',
+        '★ hero 的「选择工作区」只在自定义左栏（.wb-root 在场）时藏，官方档还给 dsh',
         typeof injectedStyles[0]?.textContent === 'string' &&
-          injectedStyles[0].textContent.includes('button[class$=_workspace]'),
+          injectedStyles[0].textContent.includes('html:has(.wb-root) button[class$=_workspace]'),
       );
     },
   },

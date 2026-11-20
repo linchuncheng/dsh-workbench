@@ -232,6 +232,6 @@
   position: absolute;
   top: var(--wb-len-neg-3);
   right: var(--wb-len-neg-3);
-}button[class$=_workspace] {
+}html:has(.wb-root) button[class$=_workspace] {
   display: none;
 }
