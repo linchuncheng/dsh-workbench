@@ -536,7 +536,7 @@ export function renderUserReadme(source) {
     ? '在市场「已安装」里安装或卸载。安装后，在当前项目的面板里勾选这个模块才会显示；卸载后模块从面板里移除。'
     : source?.install;
   const shots = shotsOf(source);
-  const shotsHeading = text(source?.shotsTitle) || '长这样';
+  const shotsHeading = text(source?.shotsTitle) || '界面预览';
   const shotLines = shots.length === 0
     ? []
     : [
