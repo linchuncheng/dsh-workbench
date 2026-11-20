@@ -369,27 +369,36 @@ describe('createPreflight', () => {
     const inside = new Promise<void>((resolve) => {
       entered = resolve;
     });
-    const held = holdToolchainLock(dir, async () => {
-      order.push('install-start');
-      entered?.();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      order.push('install-end');
-    });
+    const held = holdToolchainLock(
+      dir,
+      async () => {
+        order.push('install-start');
+        entered?.();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        order.push('install-end');
+      },
+      { pollMs: 10 },
+    );
     await inside;
     const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: 'ok\n' }]);
     const preflight = createPreflight({
       seam: seamFor(fake.shell),
       withToolchainLock: (run) =>
-        holdToolchainLock(dir, async () => {
-          order.push('probe');
-          return run();
-        }),
+        holdToolchainLock(
+          dir,
+          async () => {
+            order.push('probe');
+            return run();
+          },
+          { pollMs: 10 },
+        ),
     });
 
     const snapshot = await preflight.run();
     await held;
 
-    expect(snapshot.phase).toBe('ready');
+    const trail = snapshot.steps.map((one) => `${one.id}=${one.status}:${one.detail ?? ''}`).join(' | ');
+    expect(`${snapshot.phase} (${trail})`).toBe(`ready (${trail})`);
     expect(order).toEqual(['install-start', 'install-end', 'probe']);
   });
 

@@ -6,10 +6,11 @@ import lockfile from 'proper-lockfile';
 export interface ToolchainLockOptions {
   readonly waitMs?: number | undefined;
   readonly staleMs?: number | undefined;
+  readonly pollMs?: number | undefined;
 }
 
 const DEFAULT_WAIT_MS = 90_000;
-const POLL_MS = 500;
+const DEFAULT_POLL_MS = 500;
 
 function isLocked(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'ELOCKED';
@@ -20,6 +21,7 @@ async function acquire(
   dir: string,
   stale: number,
   waitMs: number,
+  pollMs: number,
 ): Promise<() => Promise<void>> {
   const deadline = now() + waitMs;
   for (;;) {
@@ -32,7 +34,7 @@ async function acquire(
       });
     } catch (error) {
       if (!isLocked(error) || now() >= deadline) throw error;
-      await delay(POLL_MS);
+      await delay(pollMs);
     }
   }
 }
@@ -43,7 +45,12 @@ export async function holdToolchainLock<T>(
   options: ToolchainLockOptions = {},
 ): Promise<T> {
   mkdirSync(dir, { recursive: true });
-  const release = await acquire(dir, options.staleMs ?? 120_000, options.waitMs ?? DEFAULT_WAIT_MS);
+  const release = await acquire(
+    dir,
+    options.staleMs ?? 120_000,
+    options.waitMs ?? DEFAULT_WAIT_MS,
+    options.pollMs ?? DEFAULT_POLL_MS,
+  );
   try {
     return await run();
   } finally {
