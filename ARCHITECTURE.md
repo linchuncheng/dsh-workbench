@@ -1117,6 +1117,8 @@ module 包 ──市场安装──► profile（普通依赖 + wb-<unit> 行）
 - 发版另有强制更新日志闸（只对正式版本，`-beta` / `-rc` 预发布跳过）：目标版本必须已在
   `packages/docs/site/desktop/views/changelog.md` 里有一节，
   随 `@dsh-workbench/core` 发布的 `packages/core/CHANGELOG.md` 也要含这一版；`--skip-gate` 无法跳过。
+- 正式版本发布成功后自动部署文档站（`pnpm run deploy:docs` → `gh-pages`），预发布版跳过；
+  部署失败不回滚已发布的包，`pnpm run release:resume` 重试文档部署与 git 收尾。
 - 发布产物零夹具：`check:release-artifacts` 扫 `WB_RELEASE=1` 的临时产物。
 
 ## 10. 门禁

@@ -295,6 +295,10 @@ packages/docs/site/desktop/views/changelog.md 必须已经有目标版本的一�
 packages/core/CHANGELOG.md（随 @dsh-workbench/core 发布）也含这一版。
 单独检查：pnpm run check:changelog -- --version 1.2.10
 
+包发布成功后，正式版本会把文档站部署到 gh-pages（pnpm run deploy:docs），然后才提交、
+打 tag；预发布版跳过这一步。文档部署失败不回滚已发布的包：修好后
+pnpm run release:resume 会重试部署与 git 收尾。
+
 选项：
   --resume          读取 ${STATE_NAME} 续跑，不重新选择版本号（门禁照跑一遍）
   --target <ver>    直接指定目标版本号（跳出版本选择）
@@ -486,7 +490,10 @@ function printPlan(targetVersion, inspect) {
       `\n⚠️  v${targetVersion} 已经有 ${inspect.published.length} 个包在 registry 上，本次只补发剩下的。`,
     );
   }
-  console.log("\n流程：同步版本号 → 构建 → 彩排(dry-run) → 发布 → 部署文档 → 提交/打 tag/推送");
+  const docsStep = stableOf(targetVersion) ? "部署文档站" : "跳过文档站（预发布版）";
+  console.log(
+    `\n流程：同步版本号 → 构建 → 彩排(dry-run) → 发布 → ${docsStep} → 提交/打 tag/推送`,
+  );
 }
 
 function build() {
@@ -614,6 +621,22 @@ async function publish(options, targetVersion) {
   throw new ReleaseError(`发布失败：尝试 ${MAX_PUBLISH_ATTEMPTS} 次后仍有包未发布`);
 }
 
+function deployDocs(targetVersion) {
+  if (!stableOf(targetVersion)) {
+    console.log(`\n📚 文档站：v${targetVersion} 是预发布版，这次不部署（正式版本才部署）`);
+    return;
+  }
+  releaseRun.stage = Stage.DOCS;
+  console.log("\n📚 部署文档站（pnpm run deploy:docs）…");
+  const result = sh("pnpm", ["run", "deploy:docs"], { allowFailure: true });
+  if (result.status !== 0) {
+    throw new ReleaseError(
+      "文档站部署失败：包已经发布，git 收尾还没做。修好后执行 pnpm run release:resume（已发布的包会自动跳过，只重试文档部署与 git 收尾）。",
+    );
+  }
+  console.log("   ✅ 文档站已部署");
+}
+
 function commitAndPush(targetVersion) {
   const message = `chore: 发布版本 v${targetVersion}`;
   const tag = `v${targetVersion}`;
@@ -638,6 +661,7 @@ function commitAndPush(targetVersion) {
 }
 
 async function finish(options, targetVersion) {
+  deployDocs(targetVersion);
   releaseRun.stage = Stage.GIT;
   try {
     commitAndPush(targetVersion);

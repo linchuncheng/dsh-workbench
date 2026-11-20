@@ -99,6 +99,10 @@ after the release build, `packages/core/CHANGELOG.md` (shipped with
 `@dsh-workbench/core`) must contain the same version. Check one version directly with
 `pnpm run check:changelog -- --version <version>`.
 
+正式版本发布成功后，`pnpm release` 会把文档站构建并推到 `gh-pages`（即
+`pnpm run deploy:docs`），再提交、打 tag；预发布版跳过文档部署。
+文档部署失败不回滚已发布的包：修好后 `pnpm run release:resume` 会重试部署与 git 收尾。
+
 `pnpm release` 的 preflight 会跑 `pnpm run check:compat`：有未解决的 `compat` issue 就停。凭据先取
 `GH_TOKEN` / `GITHUB_TOKEN`，都没有就回落 `gh auth token`；再取不到时终端能交互就当场跑 `gh auth login`，
 非交互环境直接 fail-closed，不会静默放行。确需豁免时先跑 `pnpm run check:compat -- --waiver "原因"`，把理由记进发布记录。

@@ -47,6 +47,9 @@ pnpm run deploy:docs              # 构建并推 gh-pages
 pnpm run deploy:docs -- --dry-run # 只构建，不推
 ```
 
+`pnpm release` 在正式版本发布成功后会自己跑一次 `pnpm run deploy:docs`，再提交、打 tag；
+预发布版不部署。
+
 底层是 `gh-pages`：把 `site-dist/` 推到 `gh-pages` 分支，顺带写 `.nojekyll`。第一次推完，
 在仓库 Settings → Pages 里把源指到 `gh-pages` 分支。`publicPath` 为空，所以仓库页子路径
 （`/<repo>/`）也能跑。
