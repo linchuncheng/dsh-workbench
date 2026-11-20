@@ -502,7 +502,9 @@ describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，
     });
 
     expect(install).not.toHaveBeenCalled();
-    expect(commands).toEqual([`'pnpm' add --dir '/tmp/wb-profile' '@t/module-a' --save-exact`]);
+    expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([
+      `'pnpm' add --dir '/tmp/wb-profile' '@t/module-a' --save-exact`,
+    ]);
     expect(syncRows).toHaveBeenCalledTimes(1);
     expect(outcome.change).toMatchObject({ application: 'applied', stage: 'install', changed: true });
     expect(outcome.module).toEqual({ kind: 'module', pkg: '@t/module-a', unit: 'a', version: '1.0.0' });
@@ -521,7 +523,7 @@ describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，
       syncRows: () => {},
     });
 
-    expect(commands).toEqual([
+    expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([
       `'pnpm' add --dir '/tmp/wb-profile' '@t/module-a@1.2.0' --save-exact --registry 'https://npm.example.com/team/'`,
     ]);
   });

@@ -1,7 +1,9 @@
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { removeWorkbenchModule } from '../model/market-remove';
 
 const PROFILE = '/tmp/wb-profile';
+const LINKED = join(PROFILE, 'node_modules', '@t/module-a');
 
 describe('卸载工作台模块：pnpm remove + 删行', () => {
   it('★ 跑一条 pnpm remove，再把行同步掉', async () => {
@@ -22,7 +24,7 @@ describe('卸载工作台模块：pnpm remove + 删行', () => {
     });
 
     expect(lines).toEqual([`'pnpm' remove --dir '${PROFILE}' '@t/module-a'`]);
-    expect(removed).toEqual([`${PROFILE}/node_modules/@t/module-a`]);
+    expect(removed).toEqual([LINKED]);
     expect(syncRows).toHaveBeenCalledTimes(1);
     expect(change).toMatchObject({ application: 'applied', stage: 'remove', changed: true, target: '@t/module-a' });
   });
