@@ -1,6 +1,6 @@
 {
   "name": "@dsh-workbench/adapter-supply",
-  "version": "1.4.2",
+  "version": "1.4.3-rc.0",
   "description": "Workbench supply adapter package.",
   "type": "module",
   "exports": {
