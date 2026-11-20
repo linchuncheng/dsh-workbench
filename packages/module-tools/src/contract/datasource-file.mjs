@@ -25,7 +25,7 @@ export function writesOf(design) {
 function expandedResponseOf(response, envelope) {
   if (response === undefined) return response;
   if (response === null || typeof response !== 'object' || Array.isArray(response)) {
-    throw new Error('response 要是对象');
+    throw new Error('response 必须是对象');
   }
   if ((response.kind ?? 'json') !== 'json') return response;
   const got = envelopePathOf(response.path, envelope);
@@ -39,7 +39,7 @@ function expandedCallsOf(calls, envelope) {
     Object.entries(calls).map(([name, call]) => {
       if (call?.response === undefined || call.response === null) return [name, call];
       if (typeof call.response !== 'object' || Array.isArray(call.response)) {
-        throw new Error(`calls.${name}.response 要是对象`);
+        throw new Error(`calls.${name}.response 必须是对象`);
       }
       if (call.response.path === undefined) return [name, call];
       try {
@@ -97,7 +97,7 @@ export function datasourceEntriesOf(design, sites) {
     });
   const seen = new Set();
   for (const entry of entries) {
-    if (seen.has(entry.key)) throw new Error(`design.json 里 key 重复：${entry.key}（读与写、或两条读不能共用一个 key）`);
+    if (seen.has(entry.key)) throw new Error(`design.json 里 key 重复：${entry.key}（读与写、或两条读不得共用一个 key）`);
     seen.add(entry.key);
   }
   return entries;
@@ -164,17 +164,17 @@ export function datasourceProblemOf(dir, design, sites) {
     entries = datasourceEntriesOf(design, sites);
     expected = renderDatasource(design, sites);
   } catch (error) {
-    return `design.json 里的配方解析不了站点或信封：${error.message}`;
+    return `design.json 里的配方无法解析站点或信封：${error.message}`;
   }
   if (entries.length === 0) {
     if (!existsSync(at)) return undefined;
     return (
-      `${DATASOURCE_FILE} 在，但 design.json 里没有 key + recipe 的读 / 写 —— ` +
-      '补上配方（跑 `dsh-wb-module sync` 刷新），或者删掉这个生成物'
+      `${DATASOURCE_FILE} 存在，但 design.json 中没有带 key + recipe 的读 / 写 —— ` +
+      '请补上配方（运行 `dsh-wb-module sync` 刷新），或删除该生成物'
     );
   }
   if (!existsSync(at)) {
-    return `${DATASOURCE_FILE} 不在 —— design.json 里有 key + recipe 的读 / 写，就该有生成物，跑 \`dsh-wb-module sync\``;
+    return `${DATASOURCE_FILE} 不存在 —— design.json 中有带 key + recipe 的读 / 写，就应有生成物，请运行 \`dsh-wb-module sync\``;
   }
   const strip = (source) => source.replace(/\s+/g, '').replace(/"/g, "'");
   const actual = strip(readFileSync(at, 'utf8'));
@@ -184,7 +184,7 @@ export function datasourceProblemOf(dir, design, sites) {
       .map((entry) => entry.key);
     return (
       `${DATASOURCE_FILE} 的 ${drifting.length === 0 ? '配方' : drifting.join(' / ')} 与 design.json 对不上` +
-      '（生成物过期，或有人手改了它）—— 跑 `dsh-wb-module sync` 刷新。别手改：它是生成的'
+      '（生成物过期，或有人手动修改过）—— 请运行 `dsh-wb-module sync` 刷新。不要手动修改：该文件是生成的'
     );
   }
   return undefined;

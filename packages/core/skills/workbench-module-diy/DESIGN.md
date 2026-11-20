@@ -94,7 +94,7 @@
 ## 5 design.json
 
 三张表 + 状态矩阵 + 数据源 + 验收存模块根的 `design.json`；DEVELOPING.md 对应段由它生成
-（`<!-- dsh-wb:design:start/end -->`，手改判红）。
+（`<!-- dsh-wb:design:start/end -->`，手动修改会判定失败）。
 
 ```bash
 pnpm exec dsh-wb-module design migrate   # 旧模块：旧 README 保存为 DEVELOPING.md，再生成用户 README

@@ -13,7 +13,7 @@ function runCli(root, argv) {
   try {
     execaSync(process.execPath, [CLI, ...argv, '--cwd', root], { stdio: 'inherit' });
   } catch {
-    console.error(`✖ ${argv.join(' ')} 没过 —— 清单先不打印了，把上面那些红字处理掉`);
+    console.error(`✖ ${argv.join(' ')} 失败 —— 清单暂不打印，请先处理上述错误`);
     process.exit(1);
   }
 }
@@ -39,7 +39,7 @@ const normalize = (one) => String(one).replace(/^\.\//, '');
 
 export async function publish({ root }) {
   if (!existsSync(join(root, 'package.json'))) {
-    console.error(`✖ ${root} 里没有 package.json —— 这不是一个包目录`);
+    console.error(`✖ ${root} 中没有 package.json —— 该目录不是包目录`);
     process.exit(2);
   }
   const manifest = readManifest(root);
@@ -51,9 +51,9 @@ export async function publish({ root }) {
     runCli(root, ['build']);
     runCli(root, ['check']);
     if (existsSync(join(root, DESIGN_FILE))) runCli(root, ['design', 'check']);
-    else console.log('○ 没有 design.json（三张表还没落成机器形状）—— 建议先 dsh-wb-module design init');
+    else console.log('○ 没有 design.json（三张表尚未生成）—— 建议先运行 dsh-wb-module design init');
   } else {
-    console.log('○ 这不是一个 wb 模块包（没有 dsh.workbench.unit）—— 跳过判据，只查打包清单');
+    console.log('○ 该包不是 wb 模块包（没有 dsh.workbench.unit）—— 跳过判据，仅检查打包清单');
   }
 
   const packed = packList(root);
@@ -66,31 +66,31 @@ export async function publish({ root }) {
     .map(normalize)
     .filter((one) => one !== '' && !one.endsWith('.css'));
   for (const one of artifacts) {
-    if (!paths.includes(one)) problems.push(`exports 里的 ${one} 不在包里（files 少带了它）`);
+    if (!paths.includes(one)) problems.push(`exports 中的 ${one} 不在包中（files 未包含它）`);
   }
 
   if (isModule && !paths.includes('cordis.patch.yml')) {
-    problems.push('cordis.patch.yml 不在包里 —— 模块是靠它插进 dsh 组合的');
+    problems.push('cordis.patch.yml 不在包中 —— 模块依靠它接入 dsh 组合');
   }
 
   const templateDirs = readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name.startsWith('template'))
     .map((entry) => entry.name);
   for (const one of templateDirs) {
-    if (!declared.includes(one)) problems.push(`模板目录 ${one}/ 不在 files 里（init --template 会当场找不到它）`);
+    if (!declared.includes(one)) problems.push(`模板目录 ${one}/ 不在 files 中（init --template 会立即找不到它）`);
   }
 
   const readmeOnDisk = existsSync(join(root, 'README.md'));
-  if (readmeOnDisk && !paths.includes('README.md')) problems.push('README.md 在盘上却没进包');
-  if (!readmeOnDisk) console.log('○ 包根下没有 README.md —— 发出去的包在源上会是一页空白，建议补一份');
+  if (readmeOnDisk && !paths.includes('README.md')) problems.push('README.md 已存在于项目目录但未进入包中');
+  if (!readmeOnDisk) console.log('○ 包根目录没有 README.md —— 发布后的包在源上会显示为空白，建议补充一份');
 
   const inTemplate = (one) => templateDirs.some((dir) => one.startsWith(`${dir}/`));
   const leftovers = paths.filter((one) => !inTemplate(one) && (one.endsWith('.tpl') || one.includes('.init-')));
-  if (leftovers.length > 0) problems.push(`包里混进了不该发的东西：${leftovers.slice(0, 3).join('、')}`);
+  if (leftovers.length > 0) problems.push(`包中包含了不应发布的文件：${leftovers.slice(0, 3).join('、')}`);
 
   for (const one of declared) {
     const hit = paths.some((path0) => path0 === one || path0.startsWith(`${one}/`));
-    if (!hit) problems.push(`files 里声明了 ${one}，但包里没有它（声明与产物不一致）`);
+    if (!hit) problems.push(`files 中声明了 ${one}，但包中没有它（声明与产物不一致）`);
   }
 
   const listed = packed.entryCount ?? paths.length;
@@ -101,17 +101,17 @@ export async function publish({ root }) {
   if (listed > 12) console.log(`  … 还有 ${listed - 12} 个`);
 
   if (problems.length > 0) {
-    console.error(`✖ 发货前清单 ${problems.length} 条不过：`);
+    console.error(`✖ 发货前清单 ${problems.length} 条未通过：`);
     for (const one of problems) console.error(`  · ${one}`);
     process.exit(1);
   }
 
   if (manifest.private === true) {
-    console.log('✔ 清单干净。包是 `private: true` —— **不会**发到任何源（DIY 的模块都该这样）。');
-    console.log(`  要给别人用：摘掉 private + 写上发布目标，再自己跑 \`npm publish\`（这条命令不会自动发布）。`);
+    console.log('✔ 清单检查通过。包为 `private: true` —— **不会**发布到任何源（DIY 模块都应如此）。');
+    console.log(`  如需供他人使用：移除 private 并声明发布目标，再自行运行 \`npm publish\`（此命令不会自动发布）。`);
     return;
   }
-  console.log('✔ 清单干净。真要发就自己跑（凭据在你手上）：');
+  console.log('✔ 清单检查通过。确需发布时请自行运行（凭据在你手中）：');
   const tag = publishTagOf(manifest.version);
   console.log(
     `  npm publish${manifest.publishConfig?.registry === undefined ? '' : ` --registry ${manifest.publishConfig.registry}`}${tag === undefined ? '' : ` --tag ${tag}`}`,

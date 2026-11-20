@@ -270,7 +270,7 @@ export function emptyCells(design, sites) {
   for (const [key, rule] of Object.entries(ROWS)) {
     const rows = asRows(design?.[key]);
     if (rows.length === 0) {
-      if (rule.mayBeEmpty !== true) cells.push(`${key}（一行都没有）`);
+      if (rule.mayBeEmpty !== true) cells.push(`${key}（没有任何一行）`);
       continue;
     }
     rows.forEach((row, index) => {
@@ -278,7 +278,7 @@ export function emptyCells(design, sites) {
       for (const [field, allowed] of Object.entries(rule.choices ?? {})) {
         const raw = text(row?.[field]);
         if (raw !== '' && !allowed.includes(raw)) {
-          cells.push(`${key}[${index}].${field}（只认 ${allowed.join(' / ')}，收到「${raw}」）`);
+          cells.push(`${key}[${index}].${field}（仅接受 ${allowed.join(' / ')}，收到「${raw}」）`);
         }
       }
     });
@@ -300,7 +300,7 @@ export function emptyCells(design, sites) {
   }
 
   const reads = readsOf(design);
-  if (reads.length === 0) cells.push('数据源（一条读都没写：datasource 或 reads 至少要有一条）');
+  if (reads.length === 0) cells.push('数据源（未编写任何一条读：datasource 或 reads 至少需要一条）');
   reads.forEach((read, index) => {
     const label = reads.length === 1 ? 'datasource' : `reads[${index}]`;
     for (const field of DATASOURCE_FIELDS) need(cells, read?.[field], `${label}.${field}`);
@@ -308,7 +308,7 @@ export function emptyCells(design, sites) {
     const recipe = read?.recipe;
     const custom = read?.custom;
     if (recipe !== undefined && custom !== undefined) {
-      cells.push(`${label}.recipe（recipe 与 custom 只能二选一）`);
+      cells.push(`${label}.recipe（recipe 与 custom 只能选择其中一个）`);
     }
     if (recipe !== undefined) cells.push(...recipeCellProblemsOf(label, recipe, sites, read?.calls));
     if (read?.calls !== undefined) {
@@ -341,7 +341,7 @@ export function emptyCells(design, sites) {
     const recipe = write?.recipe;
     const custom = write?.custom;
     if (recipe !== undefined && custom !== undefined) {
-      cells.push(`${label}.recipe（recipe 与 custom 只能二选一）`);
+      cells.push(`${label}.recipe（recipe 与 custom 只能选择其中一个）`);
     }
     if (recipe !== undefined) cells.push(...recipeCellProblemsOf(label, recipe, sites, undefined));
     if (custom !== undefined && text(custom?.why) === '') cells.push(`${label}.custom.why`);
@@ -394,13 +394,13 @@ export function designWarningsOf(design) {
     if (read?.custom === undefined) return;
     const label = reads.length === 1 ? 'datasource' : `reads[${index}]`;
     const why = text(read.custom?.why);
-    warnings.push(`${label}.custom（${why === '' ? '没写 why' : why}）—— 配方盖不住的读，理由要留在底稿里`);
+    warnings.push(`${label}.custom（${why === '' ? '未写 why' : why}）—— 配方无法覆盖的读，理由需要保留在设计记录中`);
   });
   writes.forEach((write, index) => {
     if (write?.custom === undefined) return;
     const label = writes.length === 1 ? 'write' : `writes[${index}]`;
     const why = text(write.custom?.why);
-    warnings.push(`${label}.custom（${why === '' ? '没写 why' : why}）—— 配方盖不住的写，理由要留在底稿里`);
+    warnings.push(`${label}.custom（${why === '' ? '未写 why' : why}）—— 配方无法覆盖的写，理由需要保留在设计记录中`);
   });
   return warnings;
 }
@@ -436,14 +436,14 @@ export function renderDesign(design, sites) {
       : acceptance.map((one) => `- [${one?.checked === true ? 'x' : ' '}] ${cell(one?.step)}`);
 
   return [
-    '### 表 1 面板：他看什么、他能自己配什么',
+    '### 表 1 面板：用户看什么、能自己配置什么',
     '',
     tableOf('这一格 | 一眼能得出什么结论 | 点击后打开哪里', panel.length === 0
       ? [['（待填）', PENDING, PENDING]]
       : panel.map((one) => [cell(one?.cell), cell(one?.conclusion), soft(one?.link)])),
     '',
     tableOf(
-      '存不存（刷新还在吗） | 能自己配的 | 管什么 | 默认是什么 | 可选值从哪来 | 选错了会怎样',
+      '保存方式（刷新后是否保留） | 可配置项 | 作用 | 默认值 | 可选值来源 | 选错后的表现',
       config.length === 0 ? [['（没有可配项）', '—', '—', '—', '—', '—']] : config.map((one) => [
         persistenceLabel(one?.persistence),
         cell(one?.key),
@@ -454,15 +454,15 @@ export function renderDesign(design, sites) {
       ]),
     ),
     '',
-    '状态矩阵（每种状态：他看到什么 / 他能做什么 / agent 能接着做什么）——',
-    '图号对着「卡片画哪五态」那一节：',
+    '状态矩阵（每种状态：用户看到什么 / 用户能做什么 / agent 能继续做什么）——',
+    '图号对应「卡片如何呈现五种状态」那一节：',
     '',
-    tableOf('# | 状态 | 他看到什么 | 他能做什么 | agent 能接着做什么', stateRows),
+    tableOf('# | 状态 | 用户看到什么 | 用户能做什么 | agent 能继续做什么', stateRows),
     '',
-    '### 表 2 agent：他能替用户做什么、哪几件需要批准',
+    '### 表 2 agent：能做什么、哪些需要批准',
     '',
     tableOf(
-      '能力 | 一句话 | 传什么 / 拿回什么（贴真实调用与返回） | 需要批准吗 | 批准时他看到的"会发生什么"',
+      '能力 | 一句话 | 传入什么 / 返回什么（附真实调用与返回） | 需要批准吗 | 批准时用户看到的"会发生什么"',
       capabilities.length === 0
         ? [['（这份模块故意没有能力）', '—', '—', '—', '—']]
         : capabilities.map((one) => [
@@ -474,9 +474,9 @@ export function renderDesign(design, sites) {
           ]),
     ),
     '',
-    '### 表 3 联动：agent 动完，这个模块哪一格变',
+    '### 表 3 联动：agent 操作后，这个模块哪一个面板格会变化',
     '',
-    tableOf('谁在动 | 面板什么时候变 | 哪一格变（投影 + 最窄那个参数） | 用户看到什么', linkage.length === 0
+    tableOf('谁在操作 | 面板什么时候变化 | 哪一个面板格变化（投影 + 最窄参数） | 用户看到什么', linkage.length === 0
       ? [['（待填）', PENDING, PENDING, PENDING]]
       : linkage.map((one) => [cell(one?.who), cell(one?.when), cell(one?.whatChanges), cell(one?.userSees)])),
     '',
@@ -494,11 +494,11 @@ export function renderDesign(design, sites) {
             ? [...writeRowsOf(writes[0], sites), '']
             : writes.flatMap((one, index) => [`#### 写 ${String(index + 1)}`, '', ...writeRowsOf(one, sites), ''])),
         ]),
-    '### 验收（自己在真卡片上逐条验证后勾选：`dsh-wb-module design accept`）',
+    '### 验收（在真实卡片上逐条验证后勾选：`dsh-wb-module design accept`）',
     '',
     ...acceptanceRows,
     '',
-    `> 这一段由 \`${DESIGN_FILE}\` 生成（\`dsh-wb-module design render\`），别手改。`,
+    `> 这一段由 \`${DESIGN_FILE}\` 生成（\`dsh-wb-module design render\`），不要手动修改。`,
   ].join('\n');
 }
 
@@ -670,8 +670,8 @@ const USER_COPY_FORBIDDEN = [
   ['反引号 / 代码片段', /`/],
   ['代码块', /```/],
   ['源码路径', /\bsrc\//],
-  ['设计底稿文件名', /\bdesign\.json\b/],
-  ['文案底稿文件名', /\breadme\.json\b/],
+  ['设计记录文件名', /\bdesign\.json\b/],
+  ['文案记录文件名', /\breadme\.json\b/],
   ['工具链命令', /\bdsh-wb-module\b/],
   ['运行时名', /\bopencli\b/],
   ['内部错误码', /\bauth-required\b|\bcli-[a-z-]+\b/],
@@ -701,7 +701,7 @@ function coverageOf(problems, items, options) {
   for (const name of options.required) {
     if (!covered.has(name)) {
       problems.push(
-        `${options.noun}「${name}」没有${options.missing ?? '用户文案'} —— 在 ${README_SOURCE_FILE} 的 ${options.where}[] 里给一条绑它的条目`,
+        `${options.noun}「${name}」没有${options.missing ?? '用户文案'} —— 请在 ${README_SOURCE_FILE} 的 ${options.where}[] 中提供一条绑定它的条目`,
       );
     }
   }
@@ -741,14 +741,14 @@ function coverageProblemsOf(source, design, manifest) {
     allowed: new Set(STATE_KEYS),
     required: new Set(requiredStatesOf(design)),
     noun: '状态',
-    hint: `只认 ${STATE_KEYS.join(' / ')}`,
+    hint: `仅接受 ${STATE_KEYS.join(' / ')}`,
     missing: '排障文案',
   });
 
   const shots = shotsOf(source);
   for (const [index, one] of shots.entries()) {
     if (one.kind !== '' && !SHOT_KINDS.includes(one.kind)) {
-      problems.push(`shots[${index}].kind 只认 ${SHOT_KINDS.join(' / ')}，收到「${one.kind}」`);
+      problems.push(`shots[${index}].kind 仅接受 ${SHOT_KINDS.join(' / ')}，收到「${one.kind}」`);
     }
   }
   const writes = writeToolsOf(manifest);
@@ -758,65 +758,65 @@ function coverageProblemsOf(source, design, manifest) {
   if (writes.length > 0 && approvalShots.length === 0) {
     const names = writes.map((one) => text(one?.name)).filter((one) => one !== '').join(' / ');
     problems.push(
-      `有写工具（${names}）却没有审批图 —— 在 shots[] 里加一张 kind: "approval" 的图，照真实审批屏画`,
+      `有写工具（${names}）却没有审批图 —— 请在 shots[] 中添加一张 kind: "approval" 的图，按真实审批屏绘制`,
     );
   }
   if (writes.length === 0 && approvalShots.length > 0) {
-    problems.push('没有写工具，却有审批图 —— 审批屏不会出现；删掉它，或改成别的 kind');
+    problems.push('没有写工具，却有审批图 —— 审批屏不会出现；请删除它，或改成其他 kind');
   }
   return problems;
 }
 
 export function userCopyProblemsOf(source, design, manifest, options = {}) {
   const problems = [];
-  if (source === undefined) return [`没有 ${README_SOURCE_FILE} —— 先跑 dsh-wb-module design init 或 design migrate`];
+  if (source === undefined) return [`没有 ${README_SOURCE_FILE} —— 请先运行 dsh-wb-module design init 或 design migrate`];
   const expectedTitle = text(options.expectedTitle);
   if (expectedTitle !== '' && text(source?.title) !== expectedTitle) {
     problems.push(
-      `title 是「${text(source?.title)}」—— 用户在面板与市场里看到的模块名是「${expectedTitle}」；两边要用同一个词`,
+      `title 是「${text(source?.title)}」—— 用户在面板与市场中看到的模块名是「${expectedTitle}」；两处应使用同一个名称`,
     );
   }
   for (const field of USER_COPY_FIELDS) {
     const values = copyTextsOf(source?.[field]);
-    if (values.length === 0) problems.push(`${field} 是空的 —— README 的「${field}」还没有用户文案`);
+    if (values.length === 0) problems.push(`${field} 为空 —— README 的「${field}」还没有用户文案`);
     for (const value of values) {
-      if (value.includes('（待填')) problems.push(`${field} 还留着「（待填）」`);
+      if (value.includes('（待填')) problems.push(`${field} 仍保留「（待填）」`);
       if (Array.isArray(source?.[field]) && value.length > BULLET_LIMIT) {
-        problems.push(`${field} 有一条 ${String(value.length)} 字 —— 超过 ${String(BULLET_LIMIT)} 字就拆成两条，或者把细节放进图里`);
+        problems.push(`${field} 有一条 ${String(value.length)} 字 —— 超过 ${String(BULLET_LIMIT)} 字应拆成两条，或将细节放入图中`);
       }
     }
   }
   for (const field of ['see', 'do', 'agent', 'data', 'trouble']) {
     const value = source?.[field];
     if (!Array.isArray(value)) {
-      problems.push(`${field} 要是条目数组`);
+      problems.push(`${field} 必须是条目数组`);
       continue;
     }
     for (const [index, one] of value.entries()) {
-      if (itemTextOf(one) === '') problems.push(`${field}[${index}] 是空的`);
+      if (itemTextOf(one) === '') problems.push(`${field}[${index}] 为空`);
     }
   }
   const shots = asRows(source?.shots);
-  if (shots.length === 0) problems.push('shots 是空的 —— 至少画一张卡片布局图');
+  if (shots.length === 0) problems.push('shots 为空 —— 至少绘制一张卡片布局图');
   for (const [index, one] of shots.entries()) {
-    if (text(one?.ascii).includes('（待填')) problems.push(`shots[${index}] 还留着「（待填）」`);
+    if (text(one?.ascii).includes('（待填')) problems.push(`shots[${index}] 仍保留「（待填）」`);
   }
   for (const field of ['title', 'summary', 'see', 'do', 'agent', 'data', 'install', 'trouble']) {
     for (const value of copyTextsOf(source?.[field])) {
       for (const [label, pattern] of USER_COPY_FORBIDDEN) {
-        if (pattern.test(value)) problems.push(`${field} 里有${label} —— 这段只给终端用户看`);
+        if (pattern.test(value)) problems.push(`${field} 里有${label} —— 该段仅面向终端用户`);
       }
     }
   }
   for (const [index, one] of asRows(source?.faq).entries()) {
-    if (text(one?.q) === '') problems.push(`faq[${index}].q 是空的`);
-    if (text(one?.a) === '') problems.push(`faq[${index}].a 是空的`);
+    if (text(one?.q) === '') problems.push(`faq[${index}].q 为空`);
+    if (text(one?.a) === '') problems.push(`faq[${index}].a 为空`);
     if (text(one?.q).includes('（待填') || text(one?.a).includes('（待填')) {
-      problems.push(`faq[${index}] 还留着「（待填）」`);
+      problems.push(`faq[${index}] 仍保留「（待填）」`);
     }
     for (const [label, pattern] of USER_COPY_FORBIDDEN) {
       if (pattern.test(text(one?.q)) || pattern.test(text(one?.a))) {
-        problems.push(`faq[${index}] 里有${label} —— 这段只给终端用户看`);
+        problems.push(`faq[${index}] 里有${label} —— 该段仅面向终端用户`);
       }
     }
   }
@@ -878,7 +878,7 @@ function manifestOf(root) {
 function checkDesign(root) {
   const design = readDesign(root);
   if (design === undefined) {
-    console.error(`✖ 没有 ${DESIGN_FILE} —— 先跑 dsh-wb-module design init`);
+    console.error(`✖ 没有 ${DESIGN_FILE} —— 请先运行 dsh-wb-module design init`);
     process.exit(1);
   }
   const sites = sitesOf(root);
@@ -907,23 +907,23 @@ function checkDesign(root) {
   console.log(`design.json：面板 ${rows('panel')} 行 · 状态 ${STATE_KEYS.length} 态 · 配置 ${rows('config')} 项 · 能力 ${rows('capabilities')} 条 · 联动 ${rows('linkage')} 行 · 验收 ${accepted}/${acceptance.length}`);
   for (const one of warnings) console.log(`⚠ ${one}`);
   if (cells.length > 0) {
-    console.error(`✖ 还空着 ${cells.length} 格（"空着的格就是还没定的事"，别带着空格往下做）：`);
+    console.error(`✖ 还空着 ${cells.length} 格（"空着的格就是尚未确定的事"，不要带着空白继续）：`);
     for (const one of cells) console.error(`  · ${one}`);
   }
   if (developing === '') {
-    console.error(`✖ 没有 ${DEVELOPING_FILE} —— 旧模块先跑 dsh-wb-module design migrate；新模块跑 design init`);
+    console.error(`✖ 没有 ${DEVELOPING_FILE} —— 旧模块请先运行 dsh-wb-module design migrate；新模块请运行 design init`);
   } else if (!fresh) {
-    console.error(`✖ ${DEVELOPING_FILE} 里那一段落后于 design.json（或者没有标记）—— 跑 dsh-wb-module design render`);
+    console.error(`✖ ${DEVELOPING_FILE} 里那一段落后于 design.json（或缺少标记）—— 请运行 dsh-wb-module design render`);
   }
   if (copyProblems.length > 0) {
-    console.error(`✖ ${README_SOURCE_FILE} 还不能生成终端用户 README：`);
+    console.error(`✖ ${README_SOURCE_FILE} 尚不能生成终端用户 README：`);
     for (const one of copyProblems) console.error(`  · ${one}`);
   }
   if (!userFresh) {
-    console.error(`✖ README.md 落后于 ${README_SOURCE_FILE}（或还没生成用户说明）—— 跑 dsh-wb-module design render`);
+    console.error(`✖ README.md 落后于 ${README_SOURCE_FILE}（或尚未生成用户说明）—— 请运行 dsh-wb-module design render`);
   }
   if (cells.length === 0 && fresh && copyProblems.length === 0 && userFresh) {
-    console.log(`✔ 三张表填全了，README 与 ${DEVELOPING_FILE} 都是最新的${accepted === acceptance.length ? '，验收也打完了' : `；验收还差 ${acceptance.length - accepted} 条（自己在真卡片上逐条验证后跑 design accept）`}`);
+    console.log(`✔ 三张表已填写完整，README 与 ${DEVELOPING_FILE} 均为最新${accepted === acceptance.length ? '，验收也已勾选完成' : `；验收还差 ${acceptance.length - accepted} 条（请在真实卡片上逐条验证后运行 design accept）`}`);
   }
   process.exit(cells.length === 0 && fresh && copyProblems.length === 0 && userFresh ? 0 : 1);
 }
@@ -933,7 +933,7 @@ export async function design({ root, args = [] }) {
 
   if (action === 'init') {
     if (existsSync(join(root, DESIGN_FILE))) {
-      console.error(`✖ ${DESIGN_FILE} 已经在了；要重来先删掉它`);
+      console.error(`✖ ${DESIGN_FILE} 已存在；如需重新生成，请先删除它`);
       process.exit(1);
     }
     const manifest = manifestOf(root);
@@ -943,43 +943,43 @@ export async function design({ root, args = [] }) {
     writeUserSource(root, source);
     const how = applyToDeveloping(root, renderDesign(design0, sitesOf(root) ?? undefined));
     writeUserReadme(root, source);
-    console.log(`✔ 写好 ${DESIGN_FILE} 与 ${README_SOURCE_FILE}（工程底稿 + 用户文案骨架）`);
-    console.log(`  ${DEVELOPING_FILE} 的那一段：${how === 'created' ? '新建' : how === 'inserted' ? '插进「需求底稿」那一节' : '已更新'}`);
-    console.log('  接着把两边的空格填成"用户看得见的东西"，然后 dsh-wb-module design check');
+    console.log(`✔ 已写入 ${DESIGN_FILE} 与 ${README_SOURCE_FILE}（工程设计记录 + 用户文案骨架）`);
+    console.log(`  ${DEVELOPING_FILE} 的那一段：${how === 'created' ? '新建' : how === 'inserted' ? '插入「需求底稿」一节' : '已更新'}`);
+    console.log('  接下来将两边的空白填成"用户可见的内容"，然后运行 dsh-wb-module design check');
     return;
   }
 
   if (action === 'render') {
     const design0 = readDesign(root);
     if (design0 === undefined) {
-      console.error(`✖ 没有 ${DESIGN_FILE} —— 先跑 dsh-wb-module design init`);
+      console.error(`✖ 没有 ${DESIGN_FILE} —— 请先运行 dsh-wb-module design init`);
       process.exit(1);
     }
     if (!existsSync(join(root, DEVELOPING_FILE))) {
-      console.error(`✖ 没有 ${DEVELOPING_FILE} —— 旧模块先跑 dsh-wb-module design migrate；新模块跑 design init`);
+      console.error(`✖ 没有 ${DEVELOPING_FILE} —— 旧模块请先运行 dsh-wb-module design migrate；新模块请运行 design init`);
       process.exit(1);
     }
     const source = readUserSource(root);
     if (source === undefined) {
-      console.error(`✖ 没有 ${README_SOURCE_FILE} —— 旧模块先跑 dsh-wb-module design migrate；新模块跑 design init`);
+      console.error(`✖ 没有 ${README_SOURCE_FILE} —— 旧模块请先运行 dsh-wb-module design migrate；新模块请运行 design init`);
       process.exit(1);
     }
     const how = applyToDeveloping(root, renderDesign(design0, sitesOf(root) ?? undefined));
     const user = writeUserReadme(root, source);
-    console.log(`✔ ${DEVELOPING_FILE} 的那一段：${how === 'same' ? '本来就是最新的' : how === 'updated' ? '更新了' : how === 'inserted' ? '插进「需求底稿」那一节' : '已更新'}`);
-    console.log(`  README.md：${user === 'same' ? '本来就是最新的' : user === 'created' ? '新建' : '重生成'}`);
+    console.log(`✔ ${DEVELOPING_FILE} 的那一段：${how === 'same' ? '已是最新' : how === 'updated' ? '已更新' : how === 'inserted' ? '插入「需求底稿」一节' : '已更新'}`);
+    console.log(`  README.md：${user === 'same' ? '已是最新' : user === 'created' ? '新建' : '重新生成'}`);
     return;
   }
 
   if (action === 'accept') {
     const design0 = readDesign(root);
     if (design0 === undefined) {
-      console.error(`✖ 没有 ${DESIGN_FILE} —— 先跑 dsh-wb-module design init`);
+      console.error(`✖ 没有 ${DESIGN_FILE} —— 请先运行 dsh-wb-module design init`);
       process.exit(1);
     }
     const acceptance = asRows(design0.acceptance);
     if (acceptance.length === 0) {
-      console.error('✖ 验收清单是空的 —— 先写清"打开哪 → 看什么 → 点什么 → 应该看到什么"');
+      console.error('✖ 验收清单为空 —— 请先写清"打开哪 → 看什么 → 点击什么 → 应看到什么"');
       process.exit(1);
     }
     design0.acceptance = acceptance.map((one) => ({ ...one, checked: true }));
@@ -988,18 +988,18 @@ export async function design({ root, args = [] }) {
     applyToDeveloping(root, renderDesign(design0, sitesOf(root) ?? undefined));
     const source = readUserSource(root);
     if (source !== undefined) writeUserReadme(root, source);
-    console.log(`✔ ${acceptance.length} 条验收全部打勾（只在真的在真卡片上逐条验证过之后再跑这条）`);
+    console.log(`✔ ${acceptance.length} 条验收已全部勾选（仅在实际于真实卡片上逐条验证后再运行此命令）`);
     return;
   }
 
   if (action === 'migrate') {
     const design0 = readDesign(root);
     if (design0 === undefined) {
-      console.error(`✖ 没有 ${DESIGN_FILE} —— 先跑 dsh-wb-module design init`);
+      console.error(`✖ 没有 ${DESIGN_FILE} —— 请先运行 dsh-wb-module design init`);
       process.exit(1);
     }
     if (existsSync(join(root, DEVELOPING_FILE))) {
-      console.error(`✖ ${DEVELOPING_FILE} 已经在了；拆过的模块不用再 migrate`);
+      console.error(`✖ ${DEVELOPING_FILE} 已存在；拆分过的模块无需再运行 migrate`);
       process.exit(1);
     }
     const readmeFile = join(root, 'README.md');
@@ -1012,8 +1012,8 @@ export async function design({ root, args = [] }) {
     const how = applyToDeveloping(root, renderDesign(design0, sitesOf(root) ?? undefined));
     const user = writeUserReadme(root, source);
     console.log(`✔ ${DEVELOPING_FILE} 的那一段：${how === 'same' ? '本来就是最新的' : how === 'updated' ? '更新了' : '已更新'}`);
-    console.log(`✔ ${README_SOURCE_FILE} 与 README.md 已生成（${user === 'created' ? '新建' : '重生成'}）`);
-    console.log(`  接着把 ${README_SOURCE_FILE} 里的（待填）按终端用户视角填完，再 dsh-wb-module design check`);
+    console.log(`✔ ${README_SOURCE_FILE} 与 README.md 已生成（${user === 'created' ? '新建' : '重新生成'}）`);
+    console.log(`  接下来将 ${README_SOURCE_FILE} 中的（待填）按终端用户视角填写完整，再运行 dsh-wb-module design check`);
     return;
   }
 
@@ -1022,6 +1022,6 @@ export async function design({ root, args = [] }) {
     return;
   }
 
-  console.error(`不认识的 design 动作：${action}（可用：init / migrate / check / render / accept）`);
+  console.error(`无法识别的 design 动作：${action}（可用：init / migrate / check / render / accept）`);
   process.exit(2);
 }

@@ -123,7 +123,7 @@ export const checks = [
         render();
         const bothWrite = check();
         if (!bothWrite.failed) problems.push('写 recipe 与 custom 同时写，design check 还是绿的');
-        else if (!bothWrite.out.includes('二选一')) problems.push('写没有点明 recipe 与 custom 二选一');
+        else if (!bothWrite.out.includes('只能选择其中一个')) problems.push('写没有点明 recipe 与 custom 二选一');
 
         edit((design) => {
           delete design.writes[0].recipe;
@@ -177,7 +177,7 @@ export const checks = [
         render();
         const both = check();
         if (!both.failed) problems.push('recipe 与 custom 同时写，design check 还是绿的');
-        else if (!both.out.includes('二选一')) problems.push('没点明 recipe 与 custom 只能二选一');
+        else if (!both.out.includes('只能选择其中一个')) problems.push('没点明 recipe 与 custom 只能二选一');
 
         edit((design) => {
           delete design.datasource.recipe;

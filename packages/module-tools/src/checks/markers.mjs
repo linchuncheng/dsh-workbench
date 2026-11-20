@@ -25,10 +25,10 @@ function configured() {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { markers: [], problems: [`${MARKERS_ENV} 不是合法 JSON`] };
+    return { markers: [], problems: [`${MARKERS_ENV} 不是合法的 JSON`] };
   }
   if (!Array.isArray(parsed)) {
-    return { markers: [], problems: [`${MARKERS_ENV} 必须是数组：每项 [名字, 正则源码]`] };
+    return { markers: [], problems: [`${MARKERS_ENV} 必须是数组：每项为 [名字, 正则源码]`] };
   }
   const markers = [];
   const problems = [];
@@ -40,7 +40,7 @@ function configured() {
     try {
       markers.push([entry[0], new RegExp(entry[1], 'i')]);
     } catch {
-      problems.push(`${MARKERS_ENV}[${index}] 的正则源码编译不了：${entry[1]}`);
+      problems.push(`${MARKERS_ENV}[${index}] 的正则源码无法编译：${entry[1]}`);
     }
   }
   return { markers, problems };
@@ -63,7 +63,7 @@ export async function run() {
   if (configProblems.length > 0) {
     return {
       status: 'fail',
-      notes: [`（${MARKERS_ENV} 的形状不对，这一轮没有扫）`],
+      notes: [`（${MARKERS_ENV} 形状不正确，本轮未扫描）`],
       problems: configProblems,
     };
   }
@@ -93,22 +93,22 @@ export async function run() {
   if (problems.length > 0) {
     return {
       status: 'fail',
-      notes: ['（发布前扫一遍：内网源地址、内网域名、企业内部名都不该出现在公网包里）'],
+      notes: ['（发布前扫描：私有源地址、内网域名、企业内部名都不应出现在公开包中）'],
       problems,
     };
   }
   if (publicPackages.length === 0) {
     return {
       status: 'skip',
-      notes: [`没有要发出去的公开包（${OWN_SCOPE}* 名下、或声明了 dsh.workbench 的，且 access=public）—— 没有包要扫`],
+      notes: [`没有要发布的公开包（${OWN_SCOPE}* 名下、或声明了 dsh.workbench，且 access=public）—— 没有包需要扫描`],
       problems: [],
     };
   }
   return {
     status: 'pass',
     notes: [
-      `${publicPackages.length} 个 access=public 的包扫过` +
-        (extra.length === 0 ? `（组织特有标识由 ${MARKERS_ENV} 提供；这次没设）` : `（另有 ${extra.length} 条来自 ${MARKERS_ENV}）`),
+      `${publicPackages.length} 个 access=public 的包已扫描` +
+        (extra.length === 0 ? `（组织特有标识由 ${MARKERS_ENV} 提供；本次未设置）` : `（另有 ${extra.length} 条来自 ${MARKERS_ENV}）`),
     ],
     problems: [],
   };

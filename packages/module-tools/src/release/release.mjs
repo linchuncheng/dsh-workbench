@@ -73,7 +73,7 @@ const SCRIPTS = ['typecheck', 'test', 'selfcheck'];
 
 function readManifest(root) {
   const file = join(root, 'package.json');
-  if (!existsSync(file)) throw new ReleaseError(`${root} 里没有 package.json —— 这不是一个包目录`, 2);
+  if (!existsSync(file)) throw new ReleaseError(`${root} 中没有 package.json —— 该目录不是包目录`, 2);
   let manifest;
   try {
     manifest = JSON.parse(readFileSync(file, 'utf8'));
@@ -81,7 +81,7 @@ function readManifest(root) {
     throw new ReleaseError('package.json 不是合法 JSON');
   }
   if (manifest === null || typeof manifest !== 'object' || Array.isArray(manifest)) {
-    throw new ReleaseError('package.json 不是一个对象');
+    throw new ReleaseError('package.json 不是对象');
   }
   return manifest;
 }
@@ -92,7 +92,7 @@ function writeManifest(root, manifest) {
 
 function bumpVersion(version, kind) {
   const next = semver.inc(String(version), kind);
-  if (next === null) throw new ReleaseError(`当前版本号读不出来：${String(version)}`);
+  if (next === null) throw new ReleaseError(`无法读取当前版本号：${String(version)}`);
   return next;
 }
 
@@ -100,9 +100,9 @@ function nextVersion(current, asked, exists) {
   if (asked !== undefined) {
     const version = /^(major|minor|patch)$/.test(asked) ? bumpVersion(current, asked) : asked;
     if (semver.valid(version) === null) {
-      throw new ReleaseError(`--version 只认 patch / minor / major / x.y.z（收到「${asked}」）`);
+      throw new ReleaseError(`--version 仅接受 patch / minor / major / x.y.z（收到「${asked}」）`);
     }
-    if (exists(version)) throw new ReleaseError(`${version} 已经被占了 —— 换一个版本`);
+    if (exists(version)) throw new ReleaseError(`${version} 已被占用 —— 请更换版本`);
     return version;
   }
   if (!exists(current)) return current;
@@ -110,7 +110,7 @@ function nextVersion(current, asked, exists) {
     const version = bumpVersion(current, kind);
     if (!exists(version)) return version;
   }
-  throw new ReleaseError('版本号没法自动加 —— 手动给 --version');
+  throw new ReleaseError('无法自动增加版本号 —— 请手动指定 --version');
 }
 
 function stage(exec, command, argv, { cwd, capture, err, label }) {
@@ -120,7 +120,7 @@ function stage(exec, command, argv, { cwd, capture, err, label }) {
     const text = `${result.stdout}\n${result.stderr}`.trim();
     if (text !== '') err(text.split('\n').slice(-30).join('\n'));
   }
-  throw new ReleaseError(`${label} 没过——先修红字，别发`);
+  throw new ReleaseError(`${label} 失败 —— 请先修复错误，不要发布`);
 }
 
 function runCliStage(exec, root, argv, options) {
@@ -193,7 +193,7 @@ function gitCommitOf(exec, info, version, capture, progress = {}, identity) {
     capture,
     allowFailure: true,
   });
-  if (add.status !== 0) throw new ReleaseError(`git add 没过：${tailOf(`${add.stdout}\n${add.stderr}`)}`);
+  if (add.status !== 0) throw new ReleaseError(`git add 失败：${tailOf(`${add.stdout}\n${add.stderr}`)}`);
   const who = [];
   if (identity !== undefined) {
     who.push('-c', `user.name=${identity.name}`);
@@ -204,10 +204,10 @@ function gitCommitOf(exec, info, version, capture, progress = {}, identity) {
     ['-C', info.toplevel, ...who, 'commit', '-m', `chore(release): ${info.tagOf(version)}`],
     { capture, allowFailure: true },
   );
-  if (commit.status !== 0) throw new ReleaseError(`git commit 没过：${tailOf(`${commit.stdout}\n${commit.stderr}`)}`);
+  if (commit.status !== 0) throw new ReleaseError(`git commit 失败：${tailOf(`${commit.stdout}\n${commit.stderr}`)}`);
   progress.committed = true;
   const tag = exec('git', ['-C', info.toplevel, 'tag', info.tagOf(version)], { capture, allowFailure: true });
-  if (tag.status !== 0) throw new ReleaseError(`git tag 没过：${tailOf(`${tag.stdout}\n${tag.stderr}`)}`);
+  if (tag.status !== 0) throw new ReleaseError(`git tag 失败：${tailOf(`${tag.stdout}\n${tag.stderr}`)}`);
   const head = exec('git', ['-C', info.toplevel, 'rev-parse', 'HEAD'], { capture, allowFailure: true });
   if (head.status !== 0) throw new ReleaseError('无法读取刚提交的 commit');
   return head.stdout.trim();
@@ -220,7 +220,7 @@ function gitPushOf(exec, info, version, capture) {
     { capture, allowFailure: true },
   );
   if (branch.status !== 0) {
-    throw new NeedsUser('git-auth', '推不上去：远端没给这个目录推送权限，或远端有新提交。检查权限/同步后跟我说，我重推。', undefined, {
+    throw new NeedsUser('git-auth', '无法推送：远端没有授予该目录推送权限，或远端有新提交。请检查权限并同步后告知，随后将重新推送。', undefined, {
       target: 'git',
       remote: info.remote,
       tag: info.tagOf(version),
@@ -231,7 +231,7 @@ function gitPushOf(exec, info, version, capture) {
     allowFailure: true,
   });
   if (tag.status !== 0) {
-    throw new NeedsUser('git-auth', '分支推上去了，但 tag 没推上去。检查权限后跟我说，我补推。', undefined, {
+    throw new NeedsUser('git-auth', '分支已推送，但 tag 未推送。请检查权限后告知，随后将补充推送。', undefined, {
       target: 'git',
       remote: info.remote,
       tag: info.tagOf(version),
@@ -244,12 +244,12 @@ function verifyGit(exec, info, version) {
     capture: true,
     allowFailure: true,
   });
-  if (commit.status !== 0) throw new ReleaseError(`发完了，但本地找不到 tag ${info.tagOf(version)}`);
+  if (commit.status !== 0) throw new ReleaseError(`已发布，但本地找不到 tag ${info.tagOf(version)}`);
   const tree = exec('git', ['-C', info.toplevel, 'ls-tree', '-r', '--name-only', info.tagOf(version)], {
     capture: true,
     allowFailure: true,
   });
-  if (tree.status !== 0) throw new ReleaseError(`核不了 tag ${info.tagOf(version)} 的内容`);
+  if (tree.status !== 0) throw new ReleaseError(`无法核对 tag ${info.tagOf(version)} 的内容`);
   const prefix = info.packagePath === '.' ? '' : `${info.packagePath}/`;
   const files = tree.stdout
     .split('\n')
@@ -273,45 +273,45 @@ export async function runRelease({
   const verify = hasFlag(args, '--verify');
   const workspaceOnly = hasFlag(args, '--workspace-only');
   const indexOnly = hasFlag(args, '--index-only');
-  if (workspaceOnly && indexOnly) throw new ReleaseError('--workspace-only 与 --index-only 不能同时用');
+  if (workspaceOnly && indexOnly) throw new ReleaseError('--workspace-only 与 --index-only 不能同时使用');
   const askedAuthor = argValue(args, '--author');
   const explicitAuthor = askedAuthor === undefined ? undefined : askedAuthor.trim();
   if (askedAuthor !== undefined && (explicitAuthor === '' || /[\r\n]/u.test(explicitAuthor))) {
-    throw new ReleaseError('--author 只认一行署名：姓名，或 姓名 <邮箱>');
+    throw new ReleaseError('--author 仅接受一行署名：姓名，或 姓名 <邮箱>');
   }
   const changelogNote = (argValue(args, '--changelog-note') ?? '').trim();
   const changelogKind = (argValue(args, '--changelog-type') ?? 'changed').trim();
   if (!CHANGELOG_KINDS.includes(changelogKind)) {
-    throw new ReleaseError(`--changelog-type 只认 ${CHANGELOG_KINDS.join(' / ')}（收到「${changelogKind}」）`);
+    throw new ReleaseError(`--changelog-type 仅接受 ${CHANGELOG_KINDS.join(' / ')}（收到「${changelogKind}」）`);
   }
   const askedLabels = [...new Set(argValues(args, '--label').map((one) => String(one).trim()))];
   if (askedLabels.some((one) => one === '' || /[\r\n]/u.test(one))) {
-    throw new ReleaseError('--label 只认一行短词：不能是空的');
+    throw new ReleaseError('--label 仅接受一行短词，且不能为空');
   }
   if (askedLabels.length > 2) throw new ReleaseError('--label 最多两个 —— 一个模块的标签是 1–2 个短词');
   const askedCategory = (argValue(args, '--category') ?? '').trim();
   if (askedCategory !== '' && /[\r\n]/u.test(askedCategory)) {
-    throw new ReleaseError('--category 只认一个短词：不能换行');
+    throw new ReleaseError('--category 仅接受一个短词，且不能换行');
   }
   const manifest = readManifest(root);
   const unit = manifest?.dsh?.workbench?.unit;
-  if (typeof unit !== 'string' || unit === '') throw new ReleaseError('这不是一个 wb 模块包（没有 dsh.workbench.unit）');
-  if (typeof manifest.name !== 'string' || manifest.name === '') throw new ReleaseError('package.json 里没有 name');
+  if (typeof unit !== 'string' || unit === '') throw new ReleaseError('该包不是 wb 模块包（没有 dsh.workbench.unit）');
+  if (typeof manifest.name !== 'string' || manifest.name === '') throw new ReleaseError('package.json 中没有 name');
   if (typeof manifest.version !== 'string' || manifest.version === '') {
-    throw new ReleaseError('package.json 里没有 version');
+    throw new ReleaseError('package.json 中没有 version');
   }
   const earlyState = readState(home, unit);
   const resume = hasFlag(args, '--resume') || indexOnly;
   const journal = indexOnly ? readState(home, unit) : resume ? resumableState(home, unit) : undefined;
   if (indexOnly && (journal === undefined || journal.run === undefined)) {
-    throw new ReleaseError('没有可续跑的发布记录 —— 先正常发一次');
+    throw new ReleaseError('没有可继续运行的发布记录 —— 请先正常发布一次');
   }
   if (resume && !indexOnly && journal === undefined) {
-    throw new ReleaseError('没有可续跑的发布记录 —— 去掉 --resume 正常发一次');
+    throw new ReleaseError('没有可继续运行的发布记录 —— 去掉 --resume 后正常发布一次');
   }
   const askedTarget = argValue(args, '--target');
   if (resume && askedTarget !== undefined && askedTarget !== journal?.target) {
-    throw new ReleaseError(`这条续跑记录属于出口 ${String(journal?.target)}，和 --target ${askedTarget} 不一致`);
+    throw new ReleaseError(`这条继续运行的记录属于出口 ${String(journal?.target)}，和 --target ${askedTarget} 不一致`);
   }
   const stateTarget =
     verify && askedTarget === undefined && TARGETS.includes(earlyState?.target) ? earlyState.target : undefined;
@@ -339,7 +339,7 @@ export async function runRelease({
     ? typeof journal?.target === 'string'
       ? journal.target
       : (() => {
-          throw new ReleaseError('发布记录里没有出口 —— 重新发一次');
+          throw new ReleaseError('发布记录中没有出口 —— 请重新发布一次');
         })()
     : (resumeTarget ?? stateTarget ?? targetOf(root, manifest, args, indexPlan));
   if (target === 'local') {
@@ -351,7 +351,7 @@ export async function runRelease({
       version: manifest.version,
       changes: [],
       install: '',
-      text: '没发，留在本机。',
+      text: '未发布，保留在本机。',
     };
     emit(out, json, summary);
     return summary;
@@ -368,15 +368,15 @@ export async function runRelease({
   }
   if (target === 'market') {
     if (indexPlan === undefined) {
-      throw new ReleaseError('没有可写的 git 索引源 —— 用 --index <仓库> 指定，或先在「模块市场 → 发现」里初始化索引');
+      throw new ReleaseError('没有可写的 git 模块来源 —— 请用 --index <仓库> 指定，或先在「模块市场 → 发现」中初始化索引');
     }
     if (indexPlan.policy !== 'artifacts-in-repo') {
       if (indexPlan.policyStated !== true) {
         throw new NeedsUser(
           'index-write',
           indexPlan.origin === 'argument'
-            ? '这个索引仓库默认只当目录。要往里发产物，加 --index-policy artifacts-in-repo 再跑一次。'
-            : '这个索引源还没设为可发布。到「模块市场 → 发现 → 索引源」点「设为可发布」，再发一次。',
+            ? '该索引仓库默认仅作为目录。要向其发布产物，请添加 --index-policy artifacts-in-repo 后重新运行。'
+            : '该模块来源尚未设为可发布。请到「模块市场 → 发现 → 模块来源」点击「设为可发布」，再重新发布。',
           undefined,
           {
             target: 'market',
@@ -386,15 +386,15 @@ export async function runRelease({
           },
         );
       }
-      throw new ReleaseError('这个索引源是 catalog-only：它只收目录、不放产物。用 --index-policy artifacts-in-repo 或换一个可写仓库');
+      throw new ReleaseError('该模块来源是 catalog-only：只接收目录，不存放产物。请使用 --index-policy artifacts-in-repo，或更换为可写仓库');
     }
   }
   const authored = authorChangeOf(root, manifest, exec);
   if (hasFlag(args, '--refresh')) {
-    if (dryRun) throw new ReleaseError('--refresh 没有预览：它只改索引里的标题 / 作者 / 说明 / 标签');
-    if (target !== 'market') throw new ReleaseError('--refresh 只对市场索引有意义（--target market）');
+    if (dryRun) throw new ReleaseError('--refresh 不支持预览：它只修改索引中的标题 / 作者 / 说明 / 标签');
+    if (target !== 'market') throw new ReleaseError('--refresh 仅对市场索引有效（--target market）');
     if (indexPlan === undefined) {
-      throw new ReleaseError('没有可写的 git 索引源 —— 用 --index <仓库> 指定，或先在「模块市场 → 发现」里初始化索引');
+      throw new ReleaseError('没有可写的 git 模块来源 —— 请用 --index <仓库> 指定，或先在「模块市场 → 发现」中初始化索引');
     }
     const cardTitle = cardTitleFromMessages(root, unit);
     const titled = cardTitle === undefined ? manifest : { ...manifest, title: cardTitle };
@@ -409,7 +409,7 @@ export async function runRelease({
       ...(categoryForIndex === '' ? {} : { category: categoryForIndex }),
     });
     if (result.updated !== true && result.reason !== undefined) {
-      throw new ReleaseError(`刷新市集元数据没走通：${result.reason}`);
+      throw new ReleaseError(`刷新市场元数据失败：${result.reason}`);
     }
     const summary = {
       ok: true,
@@ -426,7 +426,7 @@ export async function runRelease({
       changes:
         result.updated === true
           ? [
-              '市集元数据已刷新',
+              '市场元数据已刷新',
               ...(explicitAuthor === undefined ? [] : ['author ← --author']),
               ...(labelsChange === undefined ? [] : [labelsChange]),
               ...(categoryChange === undefined ? [] : [categoryChange]),
@@ -437,8 +437,8 @@ export async function runRelease({
       install: '',
       text:
         result.updated === true
-          ? `已刷新 ${manifest.name} 的市集元数据（版本 ${result.version ?? manifest.version} 不变）`
-          : `${manifest.name} 的市集元数据本来就是这样，没动`,
+          ? `已刷新 ${manifest.name} 的市场元数据（版本 ${result.version ?? manifest.version} 不变）`
+          : `${manifest.name} 的市场元数据本来如此，未修改`,
     };
     emit(out, json, summary);
     return summary;
@@ -489,7 +489,7 @@ export async function runRelease({
     return frozenVersion ?? nextVersion(manifest.version, askedVersion, () => false);
   };
   const releaseVersion = indexOnly ? frozenVersion : verify ? undefined : targetVersionOf();
-  if (indexOnly && releaseVersion === undefined) throw new ReleaseError('发布记录里没有版本号 —— 重新发一次');
+  if (indexOnly && releaseVersion === undefined) throw new ReleaseError('发布记录中没有版本号 —— 请重新发布一次');
   const changelogProblem = verify || dryRun || indexOnly ? undefined : changelogProblemOf(root, releaseVersion);
   if (!indexOnly && changelogProblem !== undefined && changelogNote === '') {
     throw new NeedsUser('changelog', changelogProblem.reason, changelogProblem.command, {
@@ -534,7 +534,7 @@ export async function runRelease({
         url: indexPlan.source.url,
         entry: `${manifestNow.name}@${version}`,
         updated: false,
-        reason: `${target} 不进市场索引`,
+        reason: `${target} 不进入市场索引`,
       };
     }
     return updateMarketIndex({
@@ -565,9 +565,9 @@ export async function runRelease({
     const state = earlyState;
     const version = argValue(args, '--version') ?? state?.version ?? manifest.version;
     if (info.kind === 'market') {
-      if (indexPlan === undefined) throw new ReleaseError('没有可写的 git 索引源，核不了这次的产物');
+      if (indexPlan === undefined) throw new ReleaseError('没有可写的 git 模块来源，无法核对本次产物');
       const commit = typeof state?.commit === 'string' ? state.commit : '';
-      if (commit === '') throw new ReleaseError('没有记录上次发布的 commit —— 先正常发一次再核');
+      if (commit === '') throw new ReleaseError('没有记录上次发布的 commit —— 请先正常发布一次再核对');
       let checked;
       try {
         checked = verifyMarketArtifact({
@@ -715,22 +715,22 @@ export async function runRelease({
     return summary;
   }
   if (!dryRun && !hasFlag(args, '--yes')) {
-    throw new ReleaseError('还没发：确认后加 --yes 真发；只想预览就加 --dry-run');
+    throw new ReleaseError('尚未发布：确认后添加 --yes 执行实际发布；仅需预览请添加 --dry-run');
   }
   if (!resumeMatchesTree) {
     if (!existsSync(join(root, DESIGN_FILE))) {
-      throw new NeedsUser('acceptance', '还没有 design.json。先在真卡片上逐条走通，再 design accept。', undefined, {
+      throw new NeedsUser('acceptance', '还没有 design.json。请先在真实卡片上逐条验证，再运行 design accept。', undefined, {
         target,
       });
     }
     const acceptance = acceptanceOf(root);
     if (acceptance.total === 0) {
-      throw new NeedsUser('acceptance', '验收清单是空的。先在真卡片上逐条走通，再 design accept。', undefined, { target });
+      throw new NeedsUser('acceptance', '验收清单为空。请先在真实卡片上逐条验证，再运行 design accept。', undefined, { target });
     }
     if (acceptance.checked < acceptance.total) {
       throw new NeedsUser(
         'acceptance',
-        `还有 ${acceptance.total - acceptance.checked} 条验收没打勾（${acceptance.checked}/${acceptance.total}）。先在真卡片上走完，确认没问题我再发。`,
+        `还有 ${acceptance.total - acceptance.checked} 条验收未勾选（${acceptance.checked}/${acceptance.total}）。请先在真实卡片上完成验证，确认无误后再发布。`,
         undefined,
         { target },
       );
@@ -750,7 +750,7 @@ export async function runRelease({
     const problem = changelogProblemOf(root, releaseVersion);
     throw new NeedsUser(
       'changelog',
-      problem?.reason ?? `${CHANGELOG_FILE} 里没有 ${String(releaseVersion)} 这一版`,
+      problem?.reason ?? `${CHANGELOG_FILE} 中没有 ${String(releaseVersion)} 这一版`,
       problem?.command,
       { target, version: releaseVersion },
     );
@@ -843,11 +843,11 @@ export async function runRelease({
       const failure = {
         class: index.code === 'git-market-protected' ? 'human' : 'transient',
         code: index.code ?? 'index-write',
-        text: index.reason ?? '没拿到产物 commit',
+        text: index.reason ?? '未获取到产物 commit',
         phase: index.phase ?? 'index',
       };
       if (tracking) interruptRun(home, unit, failure);
-      throw new ResumableError(`发布中断在第 ${String(index.phase ?? 'index')} 步：${failure.text}`, {
+      throw new ResumableError(`发布在第 ${String(index.phase ?? 'index')} 步中断：${failure.text}`, {
         unit,
         target,
         version,
@@ -1035,7 +1035,7 @@ export async function runRelease({
   }
   if (next.private === true) {
     delete next.private;
-    changes.push('摘掉 private');
+    changes.push('移除 private');
   }
   const version = releaseVersion;
   if (version !== next.version) {
@@ -1124,7 +1124,7 @@ export async function release({ root, args = [] }) {
         process.stdout.write(`${JSON.stringify(error.toJSON())}\n`);
       } else {
         console.error(`✖ ${error.message}`);
-        console.error('  这是可继续运行的中断：加 --resume 再次运行。');
+        console.error('  该中断可以继续：添加 --resume 再次运行。');
       }
       process.exit(4);
     }

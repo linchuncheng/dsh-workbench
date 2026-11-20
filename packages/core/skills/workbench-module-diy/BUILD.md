@@ -59,7 +59,7 @@ pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description 
 | `design.json` | 三张表 / 矩阵 / 数据源 / 验收；DEVELOPING.md 段由它生成 |
 
 修改位置：视图改 `src/components/*.tsx` + 同目录 `*.module.css`；逻辑改 `src/model/**`；文案改 `src/messages.ts`；
-`src/client.tsx` 只留注册。宿主侧不 import `src/components/**`（跨运行时，`arch` 判红）。
+`src/client.tsx` 只留注册。宿主侧不 import `src/components/**`（跨运行时，`arch` 判定失败）。
 
 ## 3 命令
 
@@ -114,7 +114,7 @@ export const apply = plugin.apply;
 
 模块需要在宿主侧运行命令（构建、git、打包……）时，用外壳放进 `mount(deps)` 的执行缝门面 `deps.seam`。
 `ctx.get('shell')` / `ctx.get('workbenchShell')` / `ctx.get('seam')`、`runShell` / `shellOf`、裸
-`child_process` 都不给模块用，`check --only seam` 会判红。
+`child_process` 都不给模块用，`check --only seam` 会判定失败。
 
 先在清单里声明要哪几档写入域（只认两档）：
 

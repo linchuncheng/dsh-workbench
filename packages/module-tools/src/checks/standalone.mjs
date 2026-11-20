@@ -18,7 +18,7 @@ export async function run() {
   if (visible === undefined || !existsSync(visible)) {
     return {
       status: 'skip',
-      notes: [`当前目录没有 ${SHELL} 的源码（"不许 @/ 指外壳"那条判据照旧在守）`],
+      notes: [`当前目录没有 ${SHELL} 的源码（"不得用 @/ 指向工作台"那条判据仍然生效）`],
       problems: [],
     };
   }
@@ -37,7 +37,7 @@ export async function run() {
     return {
       status: 'fail',
       notes: [],
-      problems: [`上次没还原干净：${hidden} 还在，手动改名回去再跑。`],
+      problems: [`上次未恢复干净：${hidden} 仍然存在，请手动改回名称后重新运行。`],
     };
   }
 
@@ -75,7 +75,7 @@ export async function run() {
             .slice(0, 2)
             .map((line) => line.trim())
             .join(' | ');
-          problems.push(`${name} ${script} 在外壳源码不在场时失败 —— ${first.slice(0, 220)}`);
+          problems.push(`${name} ${script} 在工作台源码不在场时失败 —— ${first.slice(0, 220)}`);
         }
       }
     }
@@ -87,13 +87,13 @@ export async function run() {
   if (problems.length > 0) {
     return {
       status: 'fail',
-      notes: ['（上面的清单就是"发布出去会散架"的地方：模块只许依赖已发布的接口）'],
+      notes: ['（上述清单即"发布后会失效"的位置：模块只允许依赖已发布的接口）'],
       problems,
     };
   }
   return {
     status: 'pass',
-    notes: [`${modules.length} 个模块包在外壳源码不在场时都能 build + typecheck`],
+    notes: [`${modules.length} 个模块包在工作台源码不在场时均可 build + typecheck`],
     problems: [],
   };
 }

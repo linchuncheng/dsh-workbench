@@ -109,25 +109,25 @@ export function authorTextOf(manifest) {
 export function claimProblemText(name, claim, unit) {
   if (claim.state === 'unit-taken') {
     return (
-      `市场里 ${claim.entry} 已经用了模块 id ${unit} —— 两个模块不能共用一个 id，装在一起会撞。` +
-      '给这个模块换一个 unit（dsh.workbench.unit）再发；那个条目如果已经废弃，让索引维护者删掉或给它换一个 unit。'
+      `市场里 ${claim.entry} 已经用了模块标识 ${unit} —— 两个模块不能共用一个标识，安装在一起会冲突。` +
+      '请为该模块更换一个 unit（dsh.workbench.unit）后重新发布；该条目如果已经废弃，请索引维护者删除或更换它的 unit。'
     );
   }
   if (claim.state === 'path-taken') {
     return (
-      `市场仓库里的 ${marketArtifactRoot(name)} 已经被 ${claim.entry} 占了 —— 一个产物目录只能放一个包。` +
-      '换一个包名再发；那个条目如果已经废弃，让索引维护者先处理掉。'
+      `市场仓库里的 ${marketArtifactRoot(name)} 已被 ${claim.entry} 占用 —— 一个包名对应的产物路径只能由一个条目使用。` +
+      '请更换包名后重新发布；该条目如果已经废弃，请索引维护者先处理。'
     );
   }
   return (
-    `市场里 ${name} 已经有主了（${claim.owner ?? '未署名'}），同一个名字不能再由别人发。` +
-    '要发就换个带团队 scope 的包名；你就是原来的作者（只是换了机器或署名），用 author 参数带上原来的署名再发一次（CLI 是 --author）；' +
-    '确实是接手，让索引维护者把这一条的 owner 改成你。'
+    `市场里 ${name} 已经有主了（${claim.owner ?? '未署名'}），同一个名称不能再由其他人发布。` +
+    '如需发布，请更换为带团队 scope 的包名；如果你是原作者（仅更换机器或署名），请用 author 参数带上原署名重新发布（CLI 为 --author）；' +
+    '确实需要接手，请索引维护者将该条目的 owner 改为你。'
   );
 }
 
 export function missingPublisherText() {
-  return '市场里一个名字要有主人：给 package.json 补上 author，或用 author 参数传一个署名（CLI 是 --author），再发。';
+  return '市场里一个名字要有主人：请给 package.json 补上 author，或用 author 参数传入署名（CLI 为 --author），再发布。';
 }
 
 function unitOf(manifest) {
@@ -175,7 +175,7 @@ function ensureClaimFree(workdir, dir, input) {
 function ensureVersionFree(workdir, dir, input) {
   const entry = readWorktreeIndex(workdir, dir).plugins.find((one) => one.name === input.name);
   if (entry?.versions.some((one) => one.version === input.version) === true) {
-    throw new MarketIndexError(`索引里已经有 ${input.name}@${input.version} —— 换个版本号再发`, 'market-owner');
+    throw new MarketIndexError(`索引里已经有 ${input.name}@${input.version} —— 请更换版本号后重新发布`, 'market-owner');
   }
 }
 
@@ -226,7 +226,7 @@ function syncWorktree(exec, workdir, branch) {
   const fetched = runGit(exec, workdir, ['fetch', 'origin', branch], { allowFailure: true });
   if (fetched.status !== 0) {
     throw new MarketIndexError(
-      `拉不到索引仓库的远端 ${branch}：${tailOf(`${fetched.stdout}\n${fetched.stderr}`)}`,
+      `无法拉取索引仓库的远端 ${branch}：${tailOf(`${fetched.stdout}\n${fetched.stderr}`)}`,
       'git-auth',
       `git -C ${workdir} fetch origin ${branch}`,
     );
@@ -261,7 +261,7 @@ function replicatePush(exec, workdir, branch, base, redo) {
       return {
         ok: false,
         code: 'git-market-rewritten',
-        reason: `远端 ${branch} 的历史被改写过（本地基点不在它的祖先里）—— 不自动合并：${last}`,
+        reason: `远端 ${branch} 的历史被改写过（本地基点不在它的祖先里）—— 不会自动合并：${last}`,
       };
     }
     if (remote === '' || remote === base) {
@@ -272,7 +272,7 @@ function replicatePush(exec, workdir, branch, base, redo) {
       return { ok: false, code: 'index-write', reason: `同步远端失败：${tailOf(reset.stderr)}` };
     }
   }
-  return { ok: false, code: 'index-write', reason: `远端一直在变，重试 3 次没挤进去（${last}）—— 过一会儿再发` };
+  return { ok: false, code: 'index-write', reason: `远端持续变化，重试 3 次仍未成功（${last}）—— 请稍后重新发布` };
 }
 
 export function identityOf(manifest) {
@@ -429,7 +429,7 @@ export function resolveIndexPlan({ args = [], home, exec }) {
   if (plan === undefined) {
     if (asked === 'auto' || asked === '') return undefined;
     throw new MarketIndexError(
-      `这台机器还没配可写的 git 索引源。给我一个能推的 git 仓库（或它在本机的 clone 路径），我配成索引源并建一份 ${MARKET_DIR}/。`,
+      `这台机器尚未配置可写的 git 模块来源。请提供一个可推送的 git 仓库（或它在本机的 clone 路径），将其配置为模块来源并创建一份 ${MARKET_DIR}/。`,
       'index-write',
     );
   }
@@ -454,12 +454,12 @@ function planFromArgument(asked, args, exec) {
     const url = remote.status === 0 ? remote.stdout.trim() : '';
     const plan = planOf({ kind: 'git', url, localPath: asDir }, args, 'artifacts-in-repo', 'argument');
     if (plan === undefined) {
-      throw new MarketIndexError(`--index 指的目录不是 git 仓库或没有 origin：${asDir}`, 'index-write');
+      throw new MarketIndexError(`--index 指向的目录不是 git 仓库或没有 origin：${asDir}`, 'index-write');
     }
     return plan;
   }
   if (!gitUrlOk(asked)) {
-    throw new MarketIndexError(`--index 只认 none / 目录 / git 地址（收到「${asked}」）`, 'index-write');
+    throw new MarketIndexError(`--index 仅接受 none / 目录 / git 地址（收到「${asked}」）`, 'index-write');
   }
   return planOf({ kind: 'git', url: asked }, args, 'catalog-only', 'argument');
 }
@@ -468,10 +468,10 @@ function findBySourceId(payload, id) {
   const found = payload.sources.find((one) => one?.id === id);
   if (found === undefined) {
     const known = payload.sources.map((one) => one?.id).filter((one) => typeof one === 'string').join('、') || '（空）';
-    throw new MarketIndexError(`没有这个索引源：${id}。现有的：${known}`, 'index-write');
+    throw new MarketIndexError(`没有这个模块来源：${id}。现有的：${known}`, 'index-write');
   }
   if (found.kind !== 'git') {
-    throw new MarketIndexError(`索引源 ${id} 是 http 地址，只能读，不能当发布目的地`, 'index-write');
+    throw new MarketIndexError(`模块来源 ${id} 是 http 地址，只能读取，不能作为发布目的地`, 'index-write');
   }
   return found;
 }
@@ -490,7 +490,7 @@ function planFromSources(file, args) {
       found = publishable.find((one) => one.id === payload.selected);
       if (found === undefined) {
         const ids = publishable.map((one) => one.id).join('、');
-        throw new MarketIndexError(`有多个可发布的索引源（${ids}）—— 用 --index-source 指定发到哪一个`, 'index-write');
+        throw new MarketIndexError(`有多个可发布的模块来源（${ids}）—— 请用 --index-source 指定发布到哪一个`, 'index-write');
       }
     } else {
       found = payload.sources.find((one) => one?.id === payload.selected);
@@ -510,7 +510,7 @@ function currentBranch(exec, cwd) {
   const result = runGit(exec, cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
   const branch = result.status === 0 ? result.stdout.trim() : '';
   if (branch === '' || branch === 'HEAD') {
-    throw new MarketIndexError('索引仓库不在一个分支上（detached HEAD）——切回分支再发', 'index-write');
+    throw new MarketIndexError('索引仓库不在一个分支上（detached HEAD）—— 请切回分支后重新发布', 'index-write');
   }
   return branch;
 }
@@ -527,7 +527,7 @@ function worktreeOf(plan, exec, home) {
   if (cloned.status !== 0) {
     rmSync(workdir, { recursive: true, force: true });
     throw new MarketIndexError(
-      `索引仓库克隆不下来：${tailOf(`${cloned.stdout}\n${cloned.stderr}`)}`,
+      `索引仓库无法克隆：${tailOf(`${cloned.stdout}\n${cloned.stderr}`)}`,
       'index-write',
       `git clone ${source.url} ${workdir}`,
     );
@@ -541,7 +541,7 @@ function assertClean(exec, workdir) {
   const dirty = status.stdout.trim();
   if (dirty !== '') {
     throw new MarketIndexError(
-      `索引仓库的工作区不干净（${dirty.split('\n').slice(0, 3).join('、')}）——先提交/暂存，再发`,
+      `索引仓库的工作区不干净（${dirty.split('\n').slice(0, 3).join('、')}）—— 请先提交或暂存，再发布`,
       'index-write',
     );
   }
@@ -549,7 +549,7 @@ function assertClean(exec, workdir) {
 
 function commitOf(exec, workdir, message, identity) {
   const added = runGit(exec, workdir, ['add', '-A'], { allowFailure: true });
-  if (added.status !== 0) throw new MarketIndexError(`git add 没过：${tailOf(`${added.stdout}\n${added.stderr}`)}`);
+  if (added.status !== 0) throw new MarketIndexError(`git add 失败：${tailOf(`${added.stdout}\n${added.stderr}`)}`);
   const who = [];
   if (identity !== undefined) {
     who.push('-c', `user.name=${identity.name}`);
@@ -558,7 +558,7 @@ function commitOf(exec, workdir, message, identity) {
   const committed = runGit(exec, workdir, [...who, 'commit', '-m', message], { allowFailure: true });
   const text = `${committed.stdout}\n${committed.stderr}`;
   if (committed.status !== 0 && !/nothing to commit|no changes added|无文件要提交/i.test(text)) {
-    throw new MarketIndexError(`git commit 没过：${tailOf(text)}`);
+    throw new MarketIndexError(`git commit 失败：${tailOf(text)}`);
   }
   const head = runGit(exec, workdir, ['rev-parse', 'HEAD']);
   return head.status === 0 ? head.stdout.trim() : '';
@@ -575,7 +575,7 @@ function shortOf(value) {
 function remoteHeadOf(exec, workdir, branch) {
   const result = runGit(exec, workdir, ['ls-remote', 'origin', `refs/heads/${branch}`], { allowFailure: true });
   if (result.status !== 0) {
-    throw new MarketIndexError(`核不了远端分支 ${branch}：${tailOf(result.stderr)}`, 'index-write');
+    throw new MarketIndexError(`无法核对远端分支 ${branch}：${tailOf(result.stderr)}`, 'index-write');
   }
   const line = result.stdout.trim().split('\n')[0] ?? '';
   return line.split(/\s+/)[0] ?? '';
@@ -583,7 +583,7 @@ function remoteHeadOf(exec, workdir, branch) {
 
 function copyArtifacts(root, workdir, name, manifest) {
   if (!SAFE_PACKAGE_NAME.test(name)) {
-    throw new MarketIndexError(`包名不是合法 npm 名，没法当产物目录：${JSON.stringify(name)}`, 'index-write');
+    throw new MarketIndexError(`包名不是合法的 npm 名称，无法作为产物路径：${JSON.stringify(name)}`, 'index-write');
   }
   const path = marketArtifactRoot(name);
   const dest = join(workdir, path);
@@ -653,7 +653,7 @@ export function updateMarketIndex(options) {
         const fetched = runGit(exec, workdir, ['fetch', 'origin', branch], { allowFailure: true });
         if (fetched.status !== 0) {
           throw new MarketIndexError(
-            `续跑前拉不到索引仓库的远端 ${branch}：${tailOf(`${fetched.stdout}\n${fetched.stderr}`)} —— 本地镜像可能落后，先让网络/凭据通，再 resume`,
+            `继续运行前无法拉取索引仓库的远端 ${branch}：${tailOf(`${fetched.stdout}\n${fetched.stderr}`)} —— 本地镜像可能落后，请先恢复网络或凭据后再 resume`,
             'git-auth',
             `git -C ${workdir} fetch origin ${branch}`,
           );
@@ -718,7 +718,7 @@ export function updateMarketIndex(options) {
       if (!done.ok) {
         phase = 'artifacts';
         throw new MarketIndexError(
-          `产物提交推不上去（分支保护或权限）：本地 commit ${artifactSha}；去合并/给权限后跟我说，我补索引。${done.reason}`,
+          `产物提交无法推送（分支保护或权限）：本地 commit ${artifactSha}；完成合并或授予权限后请告知，以便补充索引。${done.reason}`,
           done.code,
           `git -C ${workdir} push origin HEAD:refs/heads/${branch}`,
         );
@@ -727,7 +727,7 @@ export function updateMarketIndex(options) {
       source = { type: 'git', url: plan.source.url, commit: artifactSha, path: artifactPath };
     } else {
       source = publishSourceOf(publish ?? {});
-      if (source === undefined) throw new MarketIndexError('这个出口没有可写进索引的 source（tarball 不进索引）', 'index-write');
+      if (source === undefined) throw new MarketIndexError('该出口没有可写入索引的 source（tarball 不进入索引）', 'index-write');
       if (source.type === 'npm' && source.registry === 'https://registry.npmjs.org/') delete source.registry;
     }
     const versionRecord = versionRecordOf({ manifest, version, source, at: now() });
@@ -765,7 +765,7 @@ export function updateMarketIndex(options) {
       phase = 'index';
       throw new MarketIndexError(
         indexed.code === 'git-market-protected' || indexed.code === 'git-auth'
-          ? `模块已进仓库、索引没更新（本地 commit ${indexSha}）：${indexed.reason}`
+          ? `模块已进入仓库、索引未更新（本地 commit ${indexSha}）：${indexed.reason}`
           : indexed.reason,
         indexed.code,
       );
@@ -776,7 +776,7 @@ export function updateMarketIndex(options) {
     if (headSha === '' || remoteHead !== headSha) {
       phase = 'remote-check';
       throw new MarketIndexError(
-        `${plan.policy === 'artifacts-in-repo' ? '两个 commit 没都推上去' : '索引提交没推上去'}：` +
+        `${plan.policy === 'artifacts-in-repo' ? '两个 commit 未能全部推送' : '索引提交未能推送'}：` +
           `远端 ${branch} 是 ${shortOf(remoteHead)}，本地是 ${shortOf(headSha)}`,
         'git-market-pushed',
       );
@@ -817,7 +817,7 @@ export function refreshMarketEntry(options) {
     const index = readWorktreeIndex(workdir, dir);
     const existing = index.plugins.find((one) => one.name === manifest.name);
     if (existing === undefined) {
-      throw new MarketIndexError(`${manifest.name} 还不在索引里 —— 先正常发一版`, 'index-write');
+      throw new MarketIndexError(`${manifest.name} 尚未在索引中 —— 请先正常发布一个版本`, 'index-write');
     }
     const claim = claimOf(index, {
       name: manifest.name,
@@ -854,7 +854,7 @@ export function refreshMarketEntry(options) {
     const done = replicatePush(exec, workdir, branch, baseSha, () => {
       const fresh = readWorktreeIndex(workdir, dir).plugins.find((one) => one.name === manifest.name);
       if (fresh === undefined) {
-        throw new MarketIndexError(`${manifest.name} 还不在索引里 —— 先正常发一版`, 'index-write');
+        throw new MarketIndexError(`${manifest.name} 尚未在索引中 —— 请先正常发布一个版本`, 'index-write');
       }
       const updated = { ...fresh };
       for (const key of ['title', 'description', 'author', 'homepage', 'metadata']) {
@@ -870,7 +870,7 @@ export function refreshMarketEntry(options) {
     if (headSha === '' || remoteHead !== headSha) {
       phase = 'remote-check';
       throw new MarketIndexError(
-        `索引没推上去：远端 ${branch} 是 ${shortOf(remoteHead)}，本地是 ${shortOf(headSha)}`,
+        `索引未能推送：远端 ${branch} 是 ${shortOf(remoteHead)}，本地是 ${shortOf(headSha)}`,
         'git-market-pushed',
       );
     }
@@ -906,7 +906,7 @@ function defaultBranchOf(exec, workdir, url, ref) {
   if (branch !== '') return branch;
   if (isGithub(url)) return 'main';
   throw new MarketIndexError(
-    '空仓库要先知道建哪个分支：用 --ref <分支> 指定（例如 main / master）。',
+    '空仓库需要先确定创建哪个分支：用 --ref <分支> 指定（例如 main / master）。',
     'index-init',
   );
 }
@@ -918,7 +918,7 @@ export function initializeMarketRepo(options) {
   if (dir !== undefined) {
     workdir = resolve(dir);
     if (!existsSync(join(workdir, '.git'))) {
-      throw new MarketIndexError(`不是一个 git 工作区：${workdir}`, 'index-init');
+      throw new MarketIndexError(`不是 git 工作区：${workdir}`, 'index-init');
     }
     const origin = runGit(exec, workdir, ['remote', 'get-url', 'origin'], { allowFailure: true });
     if (origin.status !== 0 || origin.stdout.trim() === '') {
@@ -934,7 +934,7 @@ export function initializeMarketRepo(options) {
   const branch = head ? currentBranch(exec, workdir) : defaultBranchOf(exec, workdir, remote, ref);
   if (!head) {
     const switched = runGit(exec, workdir, ['checkout', '-B', branch], { allowFailure: true });
-    if (switched.status !== 0) throw new MarketIndexError(`建分支 ${branch} 没过：${tailOf(switched.stderr)}`, 'index-init');
+    if (switched.status !== 0) throw new MarketIndexError(`创建分支 ${branch} 失败：${tailOf(switched.stderr)}`, 'index-init');
   }
   const created = migrateLegacyIndex(workdir, indexPath);
   const indexDir = join(workdir, indexPath);
@@ -952,12 +952,12 @@ export function initializeMarketRepo(options) {
   let commit;
   if (created.length > 0) {
     const added = runGit(exec, workdir, ['add', ...created], { allowFailure: true });
-    if (added.status !== 0) throw new MarketIndexError(`git add 没过：${tailOf(added.stderr)}`, 'index-init');
+    if (added.status !== 0) throw new MarketIndexError(`git add 失败：${tailOf(added.stderr)}`, 'index-init');
     commit = commitOf(exec, workdir, 'chore: init market index');
     const pushed = pushOf(exec, workdir, branch);
     if (pushed.status !== 0) {
       throw new MarketIndexError(
-        `初始化提交推不上去：${tailOf(`${pushed.stdout}\n${pushed.stderr}`)}`,
+        `初始化提交无法推送：${tailOf(`${pushed.stdout}\n${pushed.stderr}`)}`,
         'index-init',
         `git -C ${workdir} push origin HEAD:refs/heads/${branch}`,
       );

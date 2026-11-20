@@ -85,7 +85,7 @@ write.send({ ignored, timeoutSeconds, workspace });   // 控件：Field + TextFi
 - 历史、明细默认折叠，露出最近一条；只有一条时不给折叠控件。
 - 状态点只有四种含义：进行中 / 已完成 / 出错 / 未运行。
 - 外链一律 `Link`（`h(Link, { href }, 文案)`；`h` 从 `react` 引）：新窗口 + `rel` + 箭头，唯一形态，
-  没有 `icon` 口子；文案里不自带箭头。手写 `<a>` / `h('a')` 会被 `style` 判据判红。
+  没有 `icon` 口子；文案里不自带箭头。手写 `<a>` / `h('a')` 会被 `style` 判据判定失败。
   例外仅三类非正文链接：图标链、按钮样式的链、整行链。放宽走 `ANCHOR_EXEMPT`，只减不加。
 - 跳整张卡对应的系统 → 卡头 `CardHead.platformHref`；跳具体页面 / 记录 → `Link`；触发动作 → dsh `Button` 或阻断屏 `action`。
 - 标签 + 输入框用 `Field` + `TextField`，不自写 CSS。
@@ -95,7 +95,7 @@ write.send({ ignored, timeoutSeconds, workspace });   // 控件：Field + TextFi
   最重点的数字用最大一档（`--dsw-font-xl-24`），旁注用最小一档；刻度外字面值需在模块 `DEVELOPING.md` 说明。
   成列数字加 `font-variant-numeric: tabular-nums`。
 - 颜色与间距走令牌；名字现查不猜：`workbench_diy_surface` 给 `scope: 'tokens'`（`bucket` 按族、`name` 连浅/深值）。
-  写进 CSS 的令牌名由 `check --only style` 对着现读的清单验，拼错判红。自写 CSS 只写布局（flex / grid / gap / 对齐）。
+  写进 CSS 的令牌名由 `check --only style` 对着现读的清单验，拼写错误会判定失败。自写 CSS 只写布局（flex / grid / gap / 对齐）。
 
 ## 7 状态矩阵
 
@@ -129,7 +129,7 @@ write.send({ ignored, timeoutSeconds, workspace });   // 控件：Field + TextFi
 - 只在浏览器侧引（`src/client.tsx`、`src/components/**`）。
 - `dsh.client.external` 声明 `@deepseek-ai/dsh-client-ui-primitives`；`devDependencies` 用与外壳一致的精确版。
   改完 `pnpm install`。
-- 宿主侧不引：`source` 判据红；宿主 import `src/components/**` 还会被 `arch` 的 S23 判红。
+- 宿主侧不引：`source` 判据失败；宿主 import `src/components/**` 还会被 `arch` 的 S23 判定失败。
 
 kit 优先：kit 跟随外壳主题与语言。
 

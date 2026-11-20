@@ -44,17 +44,17 @@ export function declaredToolsProblemOf(dir, raw) {
   if (!declaredToolsApplies(raw)) return undefined;
   const missing = declaredToolsWithoutKey(raw);
   if (missing.length > 0) {
-    return `清单里 ${missing.join(' / ')} 没有 key —— 有 key 就走生成物那一档，那就每个工具都得有一个`;
+    return `清单里 ${missing.join(' / ')} 没有 key —— 使用 key 就采用生成物方式，每个工具都必须有一个 key`;
   }
   const at = declaredToolsPathOf(dir);
   if (!existsSync(at)) {
-    return `${DECLARED_TOOLS_FILE} 不在 —— 清单里给了 key 就该有生成物，跑 \`dsh-wb-module sync\` 生成`;
+    return `${DECLARED_TOOLS_FILE} 不存在 —— 清单中提供了 key 就应有生成物，请运行 \`dsh-wb-module sync\` 生成`;
   }
   const strip = (text) => text.replace(/\s+/g, '').replace(/"/g, "'");
   if (strip(readFileSync(at, 'utf8')) !== strip(renderDeclaredTools(raw))) {
     return (
-      `${DECLARED_TOOLS_FILE} 与清单对不上（生成物过期，或有人手改了它）—— ` +
-      '跑 `dsh-wb-module sync` 刷新。别手改：它是生成的'
+      `${DECLARED_TOOLS_FILE} 与清单对不上（生成物过期，或有人手动修改过）—— ` +
+      '请运行 `dsh-wb-module sync` 刷新。不要手动修改：该文件是生成的'
     );
   }
   return undefined;

@@ -938,7 +938,7 @@ export const checks = [
         releaseIn(dir, home, fake, ['--index', repo, '--yes', '--json']),
       );
       if (!(error instanceof ReleaseError)) throw new Error(`没拦住：${error?.message ?? error}`);
-      if (!error.message.includes('模块 id')) throw new Error(`拒的理由不对：${error.message}`);
+      if (!error.message.includes('模块标识')) throw new Error(`拒的理由不对：${error.message}`);
       if (!existsSync(join(repo, 'artifacts', '@demo', 'probe', 'package.json'))) {
         throw new Error('旧产物被删了');
       }

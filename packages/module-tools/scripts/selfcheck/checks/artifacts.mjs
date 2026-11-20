@@ -209,7 +209,7 @@ export const checks = [
 
         const redFloor = runKit(false);
         if (!redFloor.failed) throw new Error('负例没被判红：peer 下限 ^0.1.0 比 devDependency ^0.1.8 还旧');
-        if (!redFloor.out.includes('比 devDependency')) throw new Error(`判红了但没说是 peer 下限的事：\n${redFloor.out}`);
+        if (!redFloor.out.includes('低于 devDependency')) throw new Error(`判红了但没说是 peer 下限的事：\n${redFloor.out}`);
 
         writeFileSync(join(dir, 'package.json'), kitManifest('^0.1.8'));
 

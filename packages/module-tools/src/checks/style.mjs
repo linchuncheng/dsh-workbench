@@ -127,31 +127,31 @@ const FORM_EXEMPT = new Map([]);
 const ANCHOR_EXEMPT = new Map([
   [
     '@dsh-workbench/module-demo-anchor-exempt:src/components/IssueRow.tsx',
-    '自检探针：整行链形态的裸 `<a>`（只在这个临时探针包里出现）',
+    '自检探针：整行链接形态的裸 `<a>`（仅在这个临时探针包中出现）',
   ],
   [
     '@pagoda-dsh-workbench/module-argocd:src/components/views/EnvRows.tsx',
-    '图标钮 / 按钮皮 / 整行链：外观与交互沿用既有视图，文字链已走 kit 的 Link',
+    '图标按钮 / 按钮外观 / 整行链接：外观与交互沿用既有视图，文字链接已使用 kit 的 Link',
   ],
   [
     '@pagoda-dsh-workbench/module-argocd:src/components/views/IdentityFields.tsx',
-    '图标钮 / 按钮皮：登录入口沿用既有视图，文字链已走 kit 的 Link',
+    '图标按钮 / 按钮外观：登录入口沿用既有视图，文字链接已使用 kit 的 Link',
   ],
   [
     '@pagoda-dsh-workbench/module-coding-analysis:src/components/views/AnalysisBody.tsx',
-    '图标钮：卡片角上的外链按钮，不是正文文字链',
+    '图标按钮：卡片角上的外链按钮，不是正文文字链接',
   ],
   [
     '@pagoda-dsh-workbench/module-coding-analysis:src/components/views/AnalysisStates.tsx',
-    '按钮皮的链：空态行动区，沿用既有视图',
+    '按钮外观的链接：空态行动区，沿用既有视图',
   ],
   [
     '@pagoda-dsh-workbench/module-coding-analysis:src/components/views/EnvSettings.tsx',
-    '按钮皮的链：设置区行动入口，沿用既有视图',
+    '按钮外观的链接：设置区行动入口，沿用既有视图',
   ],
   [
     '@pagoda-dsh-workbench/module-coding-issues:src/components/IssueRow.tsx',
-    '整行链：缺陷行整行可点，不是正文文字链',
+    '整行链接：缺陷行整行可点击，不是正文文字链接',
   ],
 ]);
 
@@ -317,8 +317,8 @@ export async function run() {
     const dswNames = (tokens.dsw?.entries ?? []).map((one) => one.name);
     const wbNames = (tokens.wb?.entries ?? []).map((one) => one.name);
     const known = new Set([...dswNames, ...wbNames]);
-    const versionOf = (one, label) => (one === null ? `${label}没读到` : `${label} ${one.version ?? '版本未知'}`);
-    const source = `${versionOf(tokens.dsw, 'dsh 主题')} + ${versionOf(tokens.wb, '外壳')}`;
+    const versionOf = (one, label) => (one === null ? `${label}未读取到` : `${label} ${one.version ?? '版本未知'}`);
+    const source = `${versionOf(tokens.dsw, 'dsh 主题')} + ${versionOf(tokens.wb, '工作台')}`;
     const hits = [];
     for (const pkg of modules) {
       for (const file of walk(pkg.dir)) {
@@ -345,18 +345,18 @@ export async function run() {
       const near = nearestTokens(hit.name, pool);
       problems.push(
         `${hit.pkg}: ${hit.file}:${hit.line} 用了 ${hit.name}，令牌清单里没有它 —— ` +
-          (near.length === 0 ? '清单里一个相近的也没有' : `近似的：${near.join(' / ')}`) +
-          `（清单是现读的：${source}）`,
+          (near.length === 0 ? '清单中没有任何相近项' : `相近项：${near.join(' / ')}`) +
+          `（清单为当前读取：${source}）`,
       );
     }
     tokenNote =
       hits.length === 0
         ? null
         : unknown.length > 0
-          ? `${unknown.length} 处令牌名不在现读的清单里（${source}）${unchecked === 0 ? '' : `；另有 ${unchecked} 处没验（那一份没读到）`}`
+          ? `${unknown.length} 处令牌名不在当前读取的清单中（${source}）${unchecked === 0 ? '' : `；另有 ${unchecked} 处未验证（该份未读取到）`}`
           : unchecked > 0
-            ? `令牌名验了 ${checked.length} 处，都在清单里（${source}）；另有 ${unchecked} 处没验（那一份没读到，找过 ${searched.join('、')}）`
-            : `令牌名 ${hits.length} 处都在现读的清单里（${source}）`;
+            ? `令牌名已验证 ${checked.length} 处，均在清单中（${source}）；另有 ${unchecked} 处未验证（该份未读取到，已查找 ${searched.join('、')}）`
+            : `令牌名 ${hits.length} 处均在当前读取的清单中（${source}）`;
   }
   for (const pkg of modules) {
     const contract = contracts.get(pkg.dir);
@@ -372,9 +372,9 @@ export async function run() {
       lines.forEach((line, index) => {
         for (const offender of shellRulesIn(line)) {
           problems.push(
-            `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${index + 1} 定义了外壳类的 CSS 规则 —— ` +
-              `${offender}（这个复合选择器里没有模块自己的类：外壳的类谁渲染谁拥有，` +
-              '要改就跟外壳那位主人说，别在后面覆盖它）',
+            `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${index + 1} 定义了工作台类的 CSS 规则 —— ` +
+              `${offender}（这个复合选择器里没有模块自己的类：工作台的类由渲染它的组件负责，` +
+              '需要修改请与工作台维护者沟通，不要在之后覆盖它）',
           );
         }
       });
@@ -387,7 +387,7 @@ export async function run() {
           if (exemptRows) continue;
           rows.push(
             `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${hit.line} 模块自己管了行距（${hit.selector} 的 ${hit.decl}）—— ` +
-              `行距归 FormRow(s)（行距只有这一档，模块不许自己写）：` +
+              `行距归 FormRow(s)（行距只有这一档，模块不得自行编写）：` +
               `${(lines[hit.line - 1] ?? '').trim().slice(0, 80)}`,
           );
         }
@@ -403,7 +403,7 @@ export async function run() {
         if (exemptAnchors) continue;
         anchors.push(
           `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${hit.line} 手写了裸 <a> —— ` +
-            `正文里的文字链一律用 kit 的 Link（新窗口、noopener、自带那个外链小箭头；样式只有这一份）：` +
+            `正文中的文字链接一律使用 kit 的 Link（新窗口、noopener、自带外链小箭头；样式只有这一份）：` +
             `${(lines[hit.line - 1] ?? '').trim().slice(0, 80)}`,
         );
       }
@@ -411,7 +411,7 @@ export async function run() {
         for (const hit of bareControlsIn(text)) {
           controls.push(
             `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${hit.line} 手写了裸 <${hit.tag}>（${hit.what}）—— ` +
-              `用 ${hit.use}（手写的拿到的是浏览器默认样式：悬停、禁用、焦点环、色板都得自己抄，还不跟主题）：` +
+              `使用 ${hit.use}（手写版本使用浏览器默认样式：悬停、禁用、焦点环、色板都需要自行实现，且不跟随主题）：` +
               `${(lines[hit.line - 1] ?? '').trim().slice(0, 80)}`,
           );
         }
@@ -424,7 +424,7 @@ export async function run() {
           if (exemptRows) continue;
           rows.push(
             `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${hit.line} 手写的「标签 + 控件」行（标签在 ${hit.labelLine} 行，控件是 ${hit.control}）—— ` +
-              `用 FormRow：标签归它（面 → 行 → 控件，中间那层归 FormRow(s)）：` +
+              `使用 FormRow：标签归它（面 → 行 → 控件，中间那层归 FormRow(s)）：` +
               `${(lines[hit.line - 1] ?? '').trim().slice(0, 80)}`,
           );
         }
@@ -436,8 +436,8 @@ export async function run() {
         actionAreaHits.add(actionKey);
         if (exemptActions) return;
         actionAreas.push(
-          `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${index + 1} 手写了操作区（借了外壳的槽类 wb-formActions）—— ` +
-            `用 kit 的 FormActions（主操作在右、一个区一颗 primary、danger 紧挨它左侧且有二次确认、` +
+          `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${index + 1} 手写了操作区（借了工作台的槽类 wb-formActions）—— ` +
+            `使用 kit 的 FormActions（主操作在右、一个区一个 primary、danger 紧挨其左侧且有二次确认、` +
             '间距与窄容器换行都归它）：' +
             `${line.trim().slice(0, 80)}`,
         );
@@ -449,8 +449,8 @@ export async function run() {
         if (exemptForms) continue;
         forms.push(
           `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${hit.line} 手写了裸 <form> —— ` +
-            '改用 kit 的 Form（fields 进、其余全归它：行的排布 / 校验时机 / 错误摆哪 / 提交怎么被挡住 / ' +
-            '第一处错误怎么找 / 操作区怎么排）：' +
+            '改用 kit 的 Form（fields 传入，其余全部归它：行的排布 / 校验时机 / 错误位置 / 提交如何被阻止 / ' +
+            '第一处错误如何定位 / 操作区如何排列）：' +
             `${(lines[hit.line - 1] ?? '').trim().slice(0, 80)}`,
         );
       }
@@ -460,8 +460,8 @@ export async function run() {
         formHits.add(formKey);
         if (exemptForms) return;
         forms.push(
-          `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${index + 1} 手写了表单的行（借了外壳的槽类 ${slot[0]}）—— ` +
-            '改用 kit 的 Form（面 → 行 → 控件：标签 + 控件这一行归 FormRow(s)，整张表单的面归 Form）：' +
+          `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${index + 1} 手写了表单的行（借了工作台的槽类 ${slot[0]}）—— ` +
+            '改用 kit 的 Form（面 → 行 → 控件：标签 + 控件这一行归 FormRow(s)，整张表单归 Form）：' +
             `${line.trim().slice(0, 80)}`,
         );
       });
@@ -499,7 +499,7 @@ export async function run() {
           if (names.has(use[1])) continue;
           bindings.push(
             `${pkg.manifest.name}: ${relative(pkg.dir, file)} 用了 ${bind}.${use[1]}，` +
-              `${relative(pkg.dir, resolve(dirname(file), hit[2]))} 里没有这个类`,
+              `${relative(pkg.dir, resolve(dirname(file), hit[2]))} 中没有这个类`,
           );
         }
       }
@@ -512,7 +512,7 @@ export async function run() {
     const owner = key.slice(0, key.indexOf(':'));
     if (!present.has(owner) || formRowHits.has(key)) continue;
     staleRows.push(
-      `${key} 还在 FORM_ROW_EXEMPT 里，但一处都不再命中 —— 按棘轮删掉这一行（原由：${reason}）`,
+      `${key} 仍在 FORM_ROW_EXEMPT 中，但已不再命中任何一处 —— 按棘轮删除这一行（原由：${reason}）`,
     );
   }
   const staleActionRows = [];
@@ -520,7 +520,7 @@ export async function run() {
     const owner = key.slice(0, key.indexOf(':'));
     if (!present.has(owner) || actionAreaHits.has(key)) continue;
     staleActionRows.push(
-      `${key} 还在 FORM_ACTIONS_EXEMPT 里，但一处都不再命中 —— 按棘轮删掉这一行（原由：${reason}）`,
+      `${key} 仍在 FORM_ACTIONS_EXEMPT 中，但已不再命中任何一处 —— 按棘轮删除这一行（原由：${reason}）`,
     );
   }
   const staleFormRows = [];
@@ -528,7 +528,7 @@ export async function run() {
     const owner = key.slice(0, key.indexOf(':'));
     if (!present.has(owner) || formHits.has(key)) continue;
     staleFormRows.push(
-      `${key} 还在 FORM_EXEMPT 里，但一处都不再命中 —— 按棘轮删掉这一行（原由：${reason}）`,
+      `${key} 仍在 FORM_EXEMPT 中，但已不再命中任何一处 —— 按棘轮删除这一行（原由：${reason}）`,
     );
   }
   const staleAnchorRows = [];
@@ -536,7 +536,7 @@ export async function run() {
     const owner = key.slice(0, key.indexOf(':'));
     if (!present.has(owner) || anchorHits.has(key)) continue;
     staleAnchorRows.push(
-      `${key} 还在 ANCHOR_EXEMPT 里，但一处都不再命中 —— 按棘轮删掉这一行（原由：${reason}）`,
+      `${key} 仍在 ANCHOR_EXEMPT 中，但已不再命中任何一处 —— 按棘轮删除这一行（原由：${reason}）`,
     );
   }
 
@@ -547,89 +547,89 @@ export async function run() {
     if (tokenNote !== null) notes.push(tokenNote);
     if (bindings.length > 0) {
       notes.push(
-        `${bindings.length} 处是「样式绑定指向了 CSS 里不存在的类」：（CSS Modules 的哈希类名靠"同一份文件、同一个导出"配对：` +
-          '调用点拿到的会是 undefined，真机上渲染成 class="undefined" —— 元素整片没样式，而且控制台一声不响）',
+        `${bindings.length} 处是「样式绑定指向了 CSS 中不存在的类」：（CSS Modules 的哈希类名依靠"同一份文件、同一个导出"配对：` +
+          '调用点得到的是 undefined，实际渲染为 class="undefined" —— 元素完全没有样式，而且控制台没有任何提示）',
       );
     }
     if (problems.length > 0) {
       notes.push(
-        `${problems.length} 处是「模块不许定义外壳类（wb-*）的 CSS 规则」：（wb-* 是外壳的命名空间：` +
-          '两份同名规则按注入顺序互相覆盖，用户看到的是随机的那个。判据看**复合选择器** —— ' +
-          '`:global(.wb-x)` 与 `.row :global(.wb-x)` 都算，只有同一个复合选择器里带了模块自己的类才放行）',
+        `${problems.length} 处是「模块不得定义工作台类（wb-*）的 CSS 规则」：（wb-* 是工作台的命名空间：` +
+          '两份同名规则按注入顺序互相覆盖，用户看到的会是随机生效的那一份。判据检查**复合选择器** —— ' +
+          '`:global(.wb-x)` 与 `.row :global(.wb-x)` 都算，只有同一个复合选择器中包含模块自己的类才允许）',
       );
     }
     if (borrowed.length > 0) {
       notes.push(
-        `${borrowed.length} 处是「模块借用了契约里没有的 wb-* 类」：模块只许借外壳出货的 board.css 里有的类。` +
-          '没有的那个要么是拼错/改了名漏改，要么本该进 board.css —— 空类名在真机上就是没样式，而且没人会报错。' +
-          '名单是**外壳出货的那份**（`@dsh-workbench/core/dist/board.css` + 外壳组件自己的样式表）',
+        `${borrowed.length} 处是「模块借用了契约中没有的 wb-* 类」：模块只允许借用工作台发布的 board.css 中存在的类。` +
+          '缺少的类要么是拼写错误或改名后遗漏，要么本应进入 board.css —— 空类名在实际渲染中没有样式，而且不会产生报错。' +
+          '名单是**工作台发布的那份**（`@dsh-workbench/core/dist/board.css` + 工作台组件自己的样式表）',
       );
     }
     if (anchors.length > 0) {
       notes.push(
-        `${anchors.length} 处是「手写了裸 <a>」：（**正文里的文字链**用 kit 的 Link —— 样式只有一份，` +
-          '改一处全局一致；裸 <a> 拿到的是浏览器默认样式，看着和卡片其它地方不是一套。' +
-          '三种不算"绕过"的形态 —— 图标链 / 按钮皮的链 / 整行链 —— 逐文件收在 `ANCHOR_EXEMPT` 里，' +
-          '口径见 style.mjs 里 `BARE_ANCHOR` 那一段注释与 README 的 `style` 那一行）',
+        `${anchors.length} 处是「手写了裸 <a>」：（**正文中的文字链接**使用 kit 的 Link —— 样式只有一份，` +
+          '修改一处即可全局一致；裸 <a> 使用浏览器默认样式，外观与卡片其他区域不一致。' +
+          '三种不属于"绕过"的形态 —— 图标链接 / 按钮外观的链接 / 整行链接 —— 逐文件收在 `ANCHOR_EXEMPT` 中，' +
+          '口径见 style.mjs 中 `BARE_ANCHOR` 那一段注释与 README 的 `style` 那一行）',
       );
     }
     if (controls.length > 0) {
       notes.push(
         `${controls.length} 处是「手写了裸 <button>/<input>/<select>」：（kit 与 dsh 原语里都有对应形态 —— ` +
-          'Button / TextField / SelectField / ChoiceGroup；手写的那份拿到浏览器默认样式，' +
-          '悬停、禁用、焦点环、字号都得自己抄一遍，还不跟主题。只有多行输入 <textarea> 与 ' +
-          '`type="hidden"` / `type="file"` 例外：那两种形态两处都没有）',
+          'Button / TextField / SelectField / ChoiceGroup；手写版本使用浏览器默认样式，' +
+          '悬停、禁用、焦点环、字号都需要自行实现，且不跟随主题。只有多行输入 <textarea> 与 ' +
+          '`type="hidden"` / `type="file"` 例外：这两种形态在两处都不存在）',
       );
     }
     if (rows.length > 0) {
       notes.push(
         `${rows.length} 处是「手写的标签+控件行 或 模块自己管的行距」：（面 → 行 → 控件，` +
           '中间那层归 `FormRow(s)`。行里自己写 `<span className=…label>` 配 `SelectField` / `TextField` / ' +
-          '`ChoiceGroup` / `Input`、或给 field/form 容器设 `gap` / 上下 `margin`，就是这一层没有主人的信号 —— ' +
-          '换 `<FormRow label={…}>{控件}</FormRow>`，行距一起归它。窄口径与已知漏报见 style.mjs 里那两段注释）',
+          '`ChoiceGroup` / `Input`、或给 field/form 容器设置 `gap` / 上下 `margin`，就是这一层缺少归属的信号 —— ' +
+          '请换成 `<FormRow label={…}>{控件}</FormRow>`，行距一并归它。窄口径与已知漏报见 style.mjs 中那两段注释）',
       );
     }
     if (actionAreas.length > 0) {
       notes.push(
-        `${actionAreas.length} 处是「手写了操作区（借了外壳的槽类 wb-formActions）」：（` +
-          '操作区那一层归 `FormActions` —— 顺序（主操作在右、danger 紧挨它左侧）、一个区一颗 `primary`、' +
-          '间距、窄容器换行都由组件定；调用点只给"有哪些动作、哪个是主要、点了做什么"。' +
-          '`wb-formActions` 这个槽类只为操作区存在，出现它就是自己摆了一套：换 `<FormActions actions={…} />`。' +
-          '窄口径与已知漏报见 style.mjs 里那一段注释）',
+        `${actionAreas.length} 处是「手写了操作区（借了工作台的槽类 wb-formActions）」：（` +
+          '操作区那一层归 `FormActions` —— 顺序（主操作在右、danger 紧挨其左侧）、一个区一个 `primary`、' +
+          '间距、窄容器换行都由组件决定；调用点只提供"有哪些动作、哪个是主要、点击后做什么"。' +
+          '`wb-formActions` 这个槽类只为操作区存在，出现它就说明自行排版了一套：请换成 `<FormActions actions={…} />`。' +
+          '窄口径与已知漏报见 style.mjs 中那一段注释）',
       );
     }
     if (forms.length > 0) {
       notes.push(
-        `${forms.length} 处是「手写了整张表单（裸 <form> 元素，或借了外壳的槽类 wb-formRow / wb-formRows / wb-field）」：（` +
-          '表单那一层归 `Form` —— fields 进、其余全归它：行的排布、校验的时机（还没提交过时一格错都不显示）、' +
-          '错误摆哪、提交怎么被挡住、第一处错误怎么带进视口、操作区怎么排都由组件定，调用点只给数据与语义。' +
-          '`wb-formRow` / `wb-formRows` / `wb-field` 这三个槽类只为"行 / 字段"这一层存在，出现它们就是自己摆了一套：' +
+        `${forms.length} 处是「手写了整张表单（裸 <form> 元素，或借了工作台的槽类 wb-formRow / wb-formRows / wb-field）」：（` +
+          '表单那一层归 `Form` —— fields 传入，其余全部归它：行的排布、校验的时机（尚未提交时一格错误都不显示）、' +
+          '错误位置、提交如何被阻止、第一处错误如何带入视口、操作区如何排列都由组件决定，调用点只提供数据与语义。' +
+          '`wb-formRow` / `wb-formRows` / `wb-field` 这三个槽类只为"行 / 字段"这一层存在，出现它们就说明自行排版了一套：' +
           '改用 kit 的 `Form`（`<Form fields={…} onSubmit={…} submit={…} />`）。' +
-          '窄口径与已知漏报见 style.mjs 里那一段注释）',
+          '窄口径与已知漏报见 style.mjs 中那一段注释）',
       );
     }
     if (staleRows.length > 0) {
       notes.push(
-        `${staleRows.length} 条 FORM_ROW_EXEMPT 已经不命中了：（棘轮：迁完一处删一行 —— ` +
-          '一个包迁完 FormRow 之后，它那几行豁免要跟着删，别留着让表长起来）',
+        `${staleRows.length} 条 FORM_ROW_EXEMPT 已不再命中：（棘轮：迁移一处删除一行 —— ` +
+          '一个包迁移完 FormRow 之后，对应几行豁免要随之删除，不要保留使表格增长）',
       );
     }
     if (staleActionRows.length > 0) {
       notes.push(
-        `${staleActionRows.length} 条 FORM_ACTIONS_EXEMPT 已经不命中了：（棘轮：迁完一处删一行 —— ` +
-          '一个包迁完 FormActions 之后，它那几行豁免要跟着删，别留着让表长起来）',
+        `${staleActionRows.length} 条 FORM_ACTIONS_EXEMPT 已不再命中：（棘轮：迁移一处删除一行 —— ` +
+          '一个包迁移完 FormActions 之后，对应几行豁免要随之删除，不要保留使表格增长）',
       );
     }
     if (staleFormRows.length > 0) {
       notes.push(
-        `${staleFormRows.length} 条 FORM_EXEMPT 已经不命中了：（棘轮：迁完一处删一行 —— ` +
-          '一个包迁完 Form 之后，它那几行豁免要跟着删，别留着让表长起来）',
+        `${staleFormRows.length} 条 FORM_EXEMPT 已不再命中：（棘轮：迁移一处删除一行 —— ` +
+          '一个包迁移完 Form 之后，对应几行豁免要随之删除，不要保留使表格增长）',
       );
     }
     if (staleAnchorRows.length > 0) {
       notes.push(
-        `${staleAnchorRows.length} 条 ANCHOR_EXEMPT 已经不命中了：（棘轮：迁完一处删一行 —— ` +
-          '一个文件里的裸 <a> 都迁成 Link（或那个文件没了）之后，它那一行豁免要跟着删，别留着让表长起来）',
+        `${staleAnchorRows.length} 条 ANCHOR_EXEMPT 已不再命中：（棘轮：迁移一处删除一行 —— ` +
+          '一个文件中的裸 <a> 都迁移为 Link（或该文件已删除）之后，对应那一行豁免要随之删除，不要保留使表格增长）',
       );
     }
 
@@ -656,7 +656,7 @@ export async function run() {
   if (modules.length === 0) {
     return {
       status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有样式要查归属'],
+      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有样式需要检查归属'],
       problems: [],
     };
   }
@@ -668,8 +668,8 @@ export async function run() {
     return {
       status: 'skip',
       notes: [
-        '找不到外壳出货的那份契约（`@dsh-workbench/core/dist/board.css` 与 `@dsh-workbench/shared` 的组件样式表都不在）' +
-          '—— 模块借的 wb-* 类这一项这次一条都没查，不是"没问题"',
+        '找不到工作台发布的那份契约（`@dsh-workbench/core/dist/board.css` 与 `@dsh-workbench/shared` 的组件样式表都不存在）' +
+          '—— 模块借用的 wb-* 类这一项本次均未检查，不代表没有问题',
         ...(tokenNote === null ? [] : [tokenNote]),
       ],
       problems: [],
@@ -677,20 +677,20 @@ export async function run() {
   }
   const contractNote =
     noContract.length === 0
-      ? '借用的类都在契约里（外壳出货的 board.css + 外壳组件自己的样式表）'
-      : `${noContract.join(' / ')} 那一边找不到外壳的契约，借用这一项没查`;
+      ? '借用的类都在契约中（工作台发布的 board.css + 工作台组件自己的样式表）'
+      : `${noContract.join(' / ')} 一侧找不到工作台的契约，借用这一项未检查`;
   const exemptNote =
     formRowHits.size === 0
-      ? '没有手写的「标签+控件」行，也没有模块自己管的行距'
-      : `表单「行」这一层还有 ${formRowHits.size} 个文件在 FORM_ROW_EXEMPT 里等外壳发版后迁（棘轮：迁一处删一行）`;
+      ? '没有手写的「标签 + 控件」行，也没有模块自行管理的行距'
+      : `表单「行」这一层还有 ${formRowHits.size} 个文件在 FORM_ROW_EXEMPT 中等待工作台发版后迁移（棘轮：迁移一处删除一行）`;
   const actionNote =
     actionAreaHits.size === 0
       ? '没有手写的操作区'
-      : `操作区这一层还有 ${actionAreaHits.size} 个文件在 FORM_ACTIONS_EXEMPT 里等外壳发版后迁（棘轮：迁一处删一行）`;
+      : `操作区这一层还有 ${actionAreaHits.size} 个文件在 FORM_ACTIONS_EXEMPT 中等待工作台发版后迁移（棘轮：迁移一处删除一行）`;
   const formNote =
     formHits.size === 0
-      ? '没有手写的整张表单（没有裸 <form>，也没有借表单槽类手摆行）'
-      : `表单这一层还有 ${formHits.size} 个文件在 FORM_EXEMPT 里等外壳发版后迁（棘轮：迁一处删一行）`;
+      ? '没有手写的整张表单（没有裸 <form>，也没有借用表单槽类自行排列行）'
+      : `表单这一层还有 ${formHits.size} 个文件在 FORM_EXEMPT 中等待工作台发版后迁移（棘轮：迁移一处删除一行）`;
 
   const fontScale = fontScaleOf(SHELL_FONT_SCALE_FILES, dshTokens);
   const fontNotes = fontScaleNotes(
@@ -701,7 +701,7 @@ export async function run() {
   return {
     status: 'pass',
     notes: [
-      `${modules.length} 个模块都没有定义外壳前缀（wb-*）的 CSS 规则；${contractNote}；${exemptNote}；${actionNote}；${formNote}`,
+      `${modules.length} 个模块均未定义工作台前缀（wb-*）的 CSS 规则；${contractNote}；${exemptNote}；${actionNote}；${formNote}`,
       ...(tokenNote === null ? [] : [tokenNote]),
       ...fontNotes,
     ],

@@ -308,7 +308,7 @@ export const checks = [
           now: () => 1760000000000,
         });
         if (market.updated !== false) throw new Error('推失败却报成功');
-        if (typeof market.reason !== 'string' || !market.reason.includes('索引没更新')) {
+        if (typeof market.reason !== 'string' || !market.reason.includes('索引未更新')) {
           throw new Error(`没说清索引没更新：${market.reason}`);
         }
       });
@@ -335,7 +335,7 @@ export const checks = [
           now: () => 1760000000000,
         });
         if (market.updated !== false) throw new Error('远端没对上却报成功');
-        if (!String(market.reason).includes('没都推上去')) throw new Error(`没说清两个 commit：${market.reason}`);
+        if (!String(market.reason).includes('未能全部推送')) throw new Error(`没说清两个 commit：${market.reason}`);
       });
     },
   },
@@ -431,7 +431,7 @@ export const checks = [
         } catch (error) {
           missing = error instanceof MarketIndexError ? error.message : String(error);
         }
-        if (!missing.includes('没有这个索引源')) throw new Error(`不存在的源没拦住：${missing}`);
+        if (!missing.includes('没有这个模块来源')) throw new Error(`不存在的源没拦住：${missing}`);
       });
     },
   },
@@ -560,7 +560,7 @@ export const checks = [
         });
         if (market.updated !== false) throw new Error('居然发了');
         if (market.code !== 'market-owner') throw new Error(`code 不对：${String(market.code)}`);
-        if (!String(market.reason).includes('模块 id')) throw new Error(`理由不对：${String(market.reason)}`);
+        if (!String(market.reason).includes('模块标识')) throw new Error(`理由不对：${String(market.reason)}`);
         if (existsSync(join(repo, 'packages', '@demo', 'market-probe'))) throw new Error('被拒了还写了产物');
         if (indexTextOf(repo) !== before) throw new Error('被拒了还改了索引');
       });
@@ -629,7 +629,7 @@ export const checks = [
         });
         if (market.updated !== false) throw new Error('拉不到远端还当成发出去了');
         if (market.code !== 'git-auth') throw new Error(`code 不对：${String(market.code)}`);
-        if (!String(market.reason).includes('续跑前拉不到')) throw new Error(`理由不对：${String(market.reason)}`);
+        if (!String(market.reason).includes('继续运行前无法拉取')) throw new Error(`理由不对：${String(market.reason)}`);
       });
     },
   },

@@ -14,7 +14,7 @@ function walk(dir, acc = []) {
   return acc;
 }
 
-export const title = '模块不指外壳';
+export const title = '模块不指向工作台';
 
 export async function run() {
   const modules = discoverModulePackages({ root: process.cwd() });
@@ -36,7 +36,7 @@ export async function run() {
           if (!own && !selfPlatform) {
             problems.push(
               `${pkg.manifest.name}: ${relative(pkg.dir, file)}:${index + 1} 用了 ${specifier} —— ` +
-                `模块只许引自己的 @/modules/${unit}/*；共享代码走包名，平台知识走包名或本包的 @/platforms/*（用了平台包就不许再用）`,
+                `模块只允许引用自己的 @/modules/${unit}/*；共享代码通过包名引用，平台知识通过包名或本包的 @/platforms/* 引入（使用平台包后不得再使用）`,
             );
           }
         }
@@ -50,13 +50,13 @@ export async function run() {
   if (modules.length === 0) {
     return {
       status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码要查 @/'],
+      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码需要检查 @/'],
       problems: [],
     };
   }
   return {
     status: 'pass',
-    notes: [`${modules.length} 个模块的 src 里没有指向外壳的 @/`],
+    notes: [`${modules.length} 个模块的 src 里没有指向工作台的 @/`],
     problems: [],
   };
 }

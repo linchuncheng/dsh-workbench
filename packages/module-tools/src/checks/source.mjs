@@ -115,22 +115,22 @@ function sharedProblem(name, rel, specifier, side, dynamic) {
       side === 'host'
         ? '宿主侧改从 @dsh-workbench/shared/host 引'
         : side === 'client'
-          ? '浏览器侧改从 kit（@dsh-workbench/core/client）引；kit 里没有的，先看它是不是该补进 kit'
+          ? '浏览器侧改从 kit（@dsh-workbench/core/client）引入；kit 中没有的，先确认是否需要补充进 kit'
           : side === 'both'
-            ? '这个文件两个入口都到得了：宿主要的走 /host、浏览器要的走 kit —— 两边的运行值挤在一个文件里就拆开'
-            : '这个文件两个入口都到不了（可能是死代码），证明不了它在哪一侧；挪进真正的面再引';
+            ? '这个文件两个入口都到得了：宿主侧需要的通过 /host 引入，浏览器侧需要的通过 kit 引入 —— 两边的运行值混在一个文件里就拆分'
+            : '这个文件两个入口都到不了（可能是死代码），无法证明它属于哪一侧；请移入实际所属的面后再引用';
     return (
       `${name}: ${rel} 里${what} —— 根入口是浏览器 barrel` +
       `（组件 + 它们自己的样式），两侧都不该从这里取运行值：浏览器侧会打进第二份实例、宿主侧会让 ` +
-      `dist/host.js 在 Node 里 import 不进来（实测：一路拉到 dsh 的浏览器件）。${fix}。` +
+      `dist/host.js 在 Node 里无法 import（实际验证：会一路加载到 dsh 的浏览器组件）。${fix}。` +
       `只取类型就写 \`import type\`（编译期擦除、两侧都行）`
     );
   }
   if (side === 'host') return undefined;
   return (
     `${name}: ${rel} 里${what} —— 宿主入口里有 node:crypto / node:fs，` +
-    `只有宿主侧能引（这个文件${SIDE_TEXT[side]}）；浏览器产物装不下它。` +
-    `浏览器侧要的纯函数走 kit（@dsh-workbench/core/client）或自己写一个；只取类型就写 \`import type\``
+    `只有宿主侧能引用（这个文件${SIDE_TEXT[side]}）；浏览器产物无法包含它。` +
+    `浏览器侧需要的纯函数通过 kit（@dsh-workbench/core/client）获取，或自行实现一个；只取类型就写 \`import type\``
   );
 }
 
@@ -225,7 +225,7 @@ export async function run() {
 
     if (viaPlatform && existsSync(join(srcDir, 'platforms'))) {
       problems.push(
-        `${name}: 已经改用平台包了，src/platforms/ 就别再留一份 —— 平台知识两处都有，改平台要改两处`,
+        `${name}: 已经改用平台包，src/platforms/ 不要再保留一份 —— 平台知识存在两处，修改平台需要改两处`,
       );
     }
 
@@ -262,43 +262,43 @@ export async function run() {
               side === 'both'
                 ? '这个文件**两个入口都到得了** —— 它会被拖进宿主产物'
                 : side === 'orphan'
-                  ? '这个文件两个入口都到不了（可能是死代码），证明不了它只在客户端侧'
+                  ? '这个文件两个入口都到不了（可能是死代码），无法证明它仅在客户端侧'
                   : '这个文件在宿主侧可达';
             problems.push(
               `${name}: ${rel} 里 import 了 ${specifier}（dsh 的浏览器包，是平台种子词）—— ${why}，` +
-                `而它只在浏览器侧存在。把它挪到只被 dsh.workbenchFaces.client 可达的文件里`,
+                `而它只在浏览器侧存在。请将其移到仅被 dsh.workbenchFaces.client 可达的文件中`,
             );
             continue;
           }
           problems.push(
             `${name}: ${rel} 里 import 了 ${specifier} —— 它不是平台种子词，模块表里没有它，` +
-              `浏览器侧要用 dsh 的组件只能 import 种子词那几个；其余平台契约按需自己声明`,
+              `浏览器侧需要使用 dsh 的组件时，只能 import 种子词中的那几个；其余平台契约按需自行声明`,
           );
           continue;
         }
         if (specifier === '@/app' || specifier.startsWith('@/app/')) {
           problems.push(
-            `${name}: ${rel} 里 import 了 ${specifier} —— 模块不许伸进外壳的入口/外壳层，只能走 kit 与 mount(deps)`,
+            `${name}: ${rel} 里 import 了 ${specifier} —— 模块不得访问工作台的入口层，只能通过 kit 与 mount(deps)`,
           );
           continue;
         }
         const cross = /^@\/modules\/([^/]+)\//.exec(specifier);
         if (cross !== null && cross[1] !== unit) {
           problems.push(
-            `${name}: ${rel} 里 import 了 ${specifier} —— 模块之间不许互相 import（另一个套件没装就没有这份源码）`,
+            `${name}: ${rel} 里 import 了 ${specifier} —— 模块之间不得互相 import（另一个模块未安装就没有这份源码）`,
           );
           continue;
         }
         const platform = /^@\/platforms\/([^/]+)\/(.+)$/.exec(specifier);
         if (platform !== null && viaPlatform) {
           problems.push(
-            `${name}: ${rel} 里 import 了 ${specifier} —— 这个模块已经改用平台包了，平台知识走包名` +
-              `（比如 @acme-dsh-workbench/platform），不许再用 @/platforms/*`,
+            `${name}: ${rel} 里 import 了 ${specifier} —— 这个模块已经改用平台包了，平台知识通过包名` +
+              `（例如 @acme-dsh-workbench/platform），不得再使用 @/platforms/*`,
           );
         } else if (platform !== null && !existsSync(join(srcDir, 'platforms', `${platform[2]}.ts`))) {
           problems.push(
             `${name}: ${rel} 里 import 了 ${specifier}，但本包 src/platforms/${platform[2]}.ts 不存在 —— ` +
-              `平台知识要么放在自己包里的 src/platforms/，要么整个走平台包，两条只能选一条`,
+              `平台知识要么放在自己包中的 src/platforms/，要么完全使用平台包，两条路径只能选择一条`,
           );
         }
       }
@@ -319,7 +319,7 @@ export async function run() {
         const line = text.split('\n').findIndex((one) => entry.pattern.test(one)) + 1;
         problems.push(
           `${name}: ${rel}:${String(line < 1 ? 1 : line)} 手写了 ${entry.capability} —— ${entry.why}` +
-            `（首选 ${entry.preferred}；import 它，或把这件事交给外壳）`,
+            `（首选 ${entry.preferred}；import 它，或把这件事交给工作台）`,
         );
       }
     }
@@ -331,17 +331,17 @@ export async function run() {
   if (modulePackages.length === 0) {
     return {
       status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码要查边界'],
+      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码需要检查边界'],
       problems: [],
     };
   }
   return {
     status: 'pass',
     notes: [
-      `${scanned} 个源文件 · 不伸进外壳 app/ · 不跨模块 · ` +
-        `平台知识要么在自己包里、要么走平台包（不许两样都有）· ` +
+      `${scanned} 个源文件 · 不进入工作台 app/ · 不跨模块 · ` +
+        `平台知识要么在自己包中、要么通过平台包提供（不得两者兼有）· ` +
         `dsh 的浏览器包只在客户端侧可用（${seedUsers} 处）· ` +
-        `共享包根入口只取类型、/host 只在宿主侧取运行值 · 不手写进程/锁/原子写`,
+        `共享包根入口只取类型、/host 只在宿主侧取运行值 · 不手写进程 / 锁 / 原子写`,
     ],
     problems: [],
   };

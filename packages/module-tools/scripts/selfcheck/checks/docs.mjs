@@ -92,7 +92,7 @@ export const checks = [
           ['漏掉设置文案时', { dropBound: ['do', 'limit'] }, '设置「limit」没有用户文案'],
           ['漏掉空态排障时', { dropBound: ['trouble', 'empty'] }, '状态「empty」没有排障文案'],
           ['有写工具却没画审批屏时', { dropApproval: true }, '没有审批图'],
-          ['标题与卡片名不一致时', { title: '别的名字' }, '两边要用同一个词'],
+          ['标题与卡片名不一致时', { title: '别的名字' }, '两处应使用同一个名称'],
         ];
         for (const [label, operation, needle] of redCases) {
           expectRed((source) => applyRed(source, operation), needle, label);
@@ -112,7 +112,7 @@ export const checks = [
         run(['design', 'render', '--cwd', probe]);
         run(['design', 'check', '--cwd', probe]);
 
-        if (!developing.includes('## 生成出来的形状')) problems.push('DEVELOPING 缺开发者章节');
+        if (!developing.includes('## 生成后的结构')) problems.push('DEVELOPING 缺开发者章节');
         if (!developing.includes('<!-- dsh-wb:design:start -->')) problems.push('DEVELOPING 缺 design 标记');
         if (!developing.includes('### 表 1 面板')) problems.push('DEVELOPING 缺 design 表');
 

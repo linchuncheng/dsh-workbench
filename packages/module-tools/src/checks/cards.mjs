@@ -255,7 +255,7 @@ function loadFace(clientFile, makeKit) {
     if (id === 'react/jsx-runtime' || id === 'react/jsx-dev-runtime') return fakeJsxRuntime();
     if (id === '@dsh-workbench/core/client') return { kit: makeKit() };
     if (id.startsWith('@deepseek-ai/')) return fakeDshPackage();
-    throw new Error(`产物 require 了没桩的外部：${id}`);
+    throw new Error(`产物 require 了没有桩的外部依赖：${id}`);
   };
   const produced = captured.factory(fakeRequire);
   return { id: captured.id, exports: produced ?? module.exports };
@@ -293,7 +293,7 @@ function render(node, depth, budget) {
   }
   const children = [...(node.children ?? [])];
   if (typeof node.type === 'function') {
-    if (depth > 40) throw new Error('组件递归超过 40 层（自引用？）');
+    if (depth > 40) throw new Error('组件递归超过 40 层（可能存在自引用）');
     const out = node.type({ ...(node.props ?? {}), children });
     return 1 + render(out, depth + 1, budget);
   }
@@ -377,7 +377,7 @@ const PROBE_LONG_TASKS = [
     steps: ['等确认'],
     intervention: {
       title: '去控制台确认发布',
-      hint: '发布会话还等着你点「确认」',
+      hint: '发布会话仍在等待你点击「确认」',
       actions: [
         { kind: 'open-url', url: 'https://example.test/console' },
         { kind: 'copy', text: 'release-session-123' },
@@ -462,7 +462,7 @@ function runSchemaProbe(modulePackages, shellDictionaries, problems, rows, footn
   }
   const shellClient = schemaProbeShell(modulePackages);
   if (shellClient === undefined || !existsSync(shellClient)) {
-    footnotes.push('schema 卡探针跳过：找不到外壳 client.js');
+    footnotes.push('schema 卡探针跳过：找不到工作台 client.js');
     return false;
   }
 
@@ -475,11 +475,11 @@ function runSchemaProbe(modulePackages, shellDictionaries, problems, rows, footn
     });
     kit = shellKitOf(shellClient, { react: fakeReact(), dshPackage: fakeDshPackage() });
   } catch (error) {
-    footnotes.push(`schema 卡探针跳过：取不出外壳（${error instanceof Error ? error.message : String(error)}）`);
+    footnotes.push(`schema 卡探针跳过：取不出工作台（${error instanceof Error ? error.message : String(error)}）`);
     return false;
   }
   if (typeof schemaCard !== 'function') {
-    footnotes.push('schema 卡探针跳过：这份外壳还没导出 schemaCard');
+    footnotes.push('schema 卡探针跳过：这份工作台尚未导出 schemaCard');
     return false;
   }
 
@@ -525,7 +525,7 @@ function runSchemaProbe(modulePackages, shellDictionaries, problems, rows, footn
           onSummary: () => {},
         });
       } catch (error) {
-        problems.push(`schema 卡: ${where} 抛了 —— ${error.message}`);
+        problems.push(`schema 卡: ${where} 抛出异常 —— ${error.message}`);
         continue;
       }
 
@@ -534,11 +534,11 @@ function runSchemaProbe(modulePackages, shellDictionaries, problems, rows, footn
         count = render(tree, 0, budget);
       } catch (error) {
         const stack = (error.stack ?? '').split('\n').slice(1, 4).join(' | ');
-        problems.push(`schema 卡: ${where} 渲染抛了 —— ${error.message}\n      ${stack}`);
+        problems.push(`schema 卡: ${where} 渲染时抛出异常 —— ${error.message}\n      ${stack}`);
         continue;
       }
       if (count <= 1) {
-        problems.push(`schema 卡: ${where} 只画出 ${count} 个节点 —— 这一态下卡体会没跑`);
+        problems.push(`schema 卡: ${where} 只渲染出 ${count} 个节点 —— 该状态下卡片主体未渲染`);
         continue;
       }
       counts.get(snapshot.name).push(count);
@@ -549,7 +549,7 @@ function runSchemaProbe(modulePackages, shellDictionaries, problems, rows, footn
       textsBySnapshot.set(snapshot.name, bucket);
       for (const hit of forbiddenHitsOf(budget.texts)) {
         problems.push(
-          `schema 卡: ${where} 屏上出现了 ${hit.token} —— 命中的那串：${hit.text.slice(0, 120)}`,
+          `schema 卡: ${where} 界面上出现了 ${hit.token} —— 命中的文本：${hit.text.slice(0, 120)}`,
         );
       }
     }
@@ -557,23 +557,23 @@ function runSchemaProbe(modulePackages, shellDictionaries, problems, rows, footn
 
   if (missing.length > 0) {
     const keys = [...new Set(missing.map((one) => `${one.language}:${one.key}`))];
-    problems.push(`schema 卡: 探针文案缺落点 —— ${keys.join('、')}`);
+    problems.push(`schema 卡: 探针文案缺少对应项 —— ${keys.join('、')}`);
   }
   if (!(classNames.has('wb-card') || stubs.has('Card'))) {
-    problems.push('schema 卡: 探针没套外壳的卡壳（wb-card / Card）');
+    problems.push('schema 卡: 探针没有套用工作台的卡片外框（wb-card / Card）');
     return true;
   }
 
   const per = SNAPSHOTS.map(
     (snapshot) => `${snapshot.name} ${counts.get(snapshot.name).join('/') || '—'}`,
   ).join(' · ');
-  rows.push(`schema 卡: ${SNAPSHOTS.length} 态 × zh/en 都画得出 —— ${per} 个节点`);
+  rows.push(`schema 卡: ${SNAPSHOTS.length} 态 × zh/en 均可渲染 —— ${per} 个节点`);
 
   const shapes = new Set(
     SNAPSHOTS.map((snapshot) => [...new Set(textsBySnapshot.get(snapshot.name) ?? [])].sort().join('\n')),
   );
   if (shapes.size === 1) {
-    footnotes.push('schema 卡: 8 个快照渲染出来的文本完全一样 —— 只当线索');
+    footnotes.push('schema 卡: 8 个快照渲染出的文本完全一致 —— 仅作线索');
   }
   return true;
 }
@@ -644,7 +644,7 @@ export async function run() {
     shellDictionaries = undefined;
     footnotes.push(
       `（取不出 @dsh-workbench/shared 的字典：${error instanceof Error ? error.message : String(error)}）` +
-        ' —— 逐态那半跳过（单次全桩渲染照旧跑），因为裸键名判定要模块 ∪ 外壳两份字典',
+        ' —— 逐态部分跳过（单次全桩渲染仍会运行），因为裸键名判定需要模块与工作台两份字典',
     );
   }
 
@@ -652,7 +652,7 @@ export async function run() {
     const name = pkg.manifest.name;
     const clientFile = join(pkg.dir, 'client.js');
     if (!existsSync(clientFile)) {
-      problems.push(`${name}: 没有 client.js —— 先 build`);
+      problems.push(`${name}: 没有 client.js —— 请先运行 build`);
       continue;
     }
 
@@ -693,7 +693,7 @@ export async function run() {
       const loaded = loadFace(clientFile, makeKit);
       face = loaded.exports;
     } catch (error) {
-      problems.push(`${name}: 产物加载不起来 —— ${error.message}`);
+      problems.push(`${name}: 产物无法加载 —— ${error.message}`);
       continue;
     }
 
@@ -717,13 +717,13 @@ export async function run() {
     };
     const apply = face?.apply ?? face?.default?.apply;
     if (typeof apply !== 'function') {
-      problems.push(`${name}: 产物没有导出 apply（外壳挂不上这个模块）`);
+      problems.push(`${name}: 产物没有导出 apply（工作台无法挂载该模块）`);
       continue;
     }
     try {
       apply(ctx);
     } catch (error) {
-      problems.push(`${name}: apply 抛了 —— ${error.message}`);
+      problems.push(`${name}: apply 抛出异常 —— ${error.message}`);
       continue;
     }
 
@@ -739,11 +739,11 @@ export async function run() {
         );
         continue;
       }
-      rows.push(`${name}: 清单写的是 "card": null —— 这个模块没有卡片，产物里也确实没登记（跳过渲染判定）`);
+      rows.push(`${name}: 清单写的是 "card": null —— 该模块没有卡片，产物中也未登记（跳过渲染判定）`);
       continue;
     }
     if (typeof card !== 'function' && !hasView) {
-      problems.push(`${name}: 清单写了 card，apply 之后却没登记卡片 / view（registerUnit 没拿到 card）`);
+      problems.push(`${name}: 清单声明了 card，但 apply 之后没有登记卡片 / view（registerUnit 未取得 card）`);
       continue;
     }
 
@@ -769,8 +769,8 @@ export async function run() {
     if (hasView && schemaCard === undefined) {
       const why =
         shellProblem !== undefined
-          ? `取不出这份外壳的 schema 探针（${shellClient ?? '没有外壳'}）—— ${shellProblem}`
-          : '这份外壳还没导出 schemaCard 探针';
+          ? `取不出这份工作台的 schema 探针（${shellClient ?? '没有工作台'}）—— ${shellProblem}`
+          : '这份工作台还没导出 schemaCard 探针';
       footnotes.push(`${name}: ${why} —— schema 卡逐态渲染跳过`);
       rows.push(`${name}: schema 卡没有探针，单次全桩渲染也跳过`);
       degraded += 1;
@@ -802,19 +802,19 @@ export async function run() {
     if (realKit === undefined) {
       const why =
         shellProblem !== undefined
-          ? `取不出这份外壳的 kit（${shellClient}）—— ${shellProblem}`
+          ? `取不出这份工作台的 kit（${shellClient}）—— ${shellProblem}`
           : shellDictionaries === undefined
             ? '取不出 @dsh-workbench/shared 的字典'
-            : '没装外壳（@dsh-workbench/core）';
+            : '未安装工作台（@dsh-workbench/core）';
       let tree;
       try {
         tree = renderCard(props);
       } catch (error) {
-        problems.push(`${name}: 空数据下卡片抛了 —— ${error.message}`);
+        problems.push(`${name}: 空数据下卡片抛出异常 —— ${error.message}`);
         continue;
       }
       if (tree === null || tree === undefined) {
-        problems.push(`${name}: 空数据下卡片返回空（界面上就是一片空白）`);
+        problems.push(`${name}: 空数据下卡片返回空（界面上显示为空白）`);
         continue;
       }
       const budget = { left: 20000, maxDepth: 0, classNames: new Set(), stubs: new Set(), texts: [] };
@@ -823,22 +823,22 @@ export async function run() {
         count = render(tree, 0, budget);
       } catch (error) {
         const where = (error.stack ?? '').split('\n').slice(1, 4).join(' | ');
-        problems.push(`${name}: 卡片体内的组件抛了 —— ${error.message}\n      ${where}`);
+        problems.push(`${name}: 卡片体内的组件抛出异常 —— ${error.message}\n      ${where}`);
         continue;
       }
       if (count <= 1) {
-        problems.push(`${name}: 卡片只画出一个节点 —— 卡片体没跑（或什么都没画）`);
+        problems.push(`${name}: 卡片只渲染出一个节点 —— 卡片主体未渲染（或没有绘制任何内容）`);
         continue;
       }
       if (!(budget.classNames.has('wb-card') || budget.stubs.has('Card'))) {
         problems.push(
-          `${name}: 卡片没套外壳的卡壳 —— 用 kit.components.Card（推荐），或自己写契约类 wb-card + ` +
-            `wb-cardBody；裸内容在面板里看起来就"不是一张卡片"`,
+          `${name}: 卡片没有套用工作台的卡片外框 —— 使用 kit.components.Card（推荐），或自行写契约类 wb-card + ` +
+            `wb-cardBody；裸内容在面板中不会显示为卡片`,
         );
         continue;
       }
-      footnotes.push(`${name}: ${why} —— 逐态渲染跳过，只跑了单次全桩渲染`);
-      rows.push(`${name}: 空数据下画得出 ${count} 个节点（最深 ${budget.maxDepth} 层）`);
+      footnotes.push(`${name}: ${why} —— 逐态渲染跳过，仅执行单次全桩渲染`);
+      rows.push(`${name}: 空数据下渲染出 ${count} 个节点（最深 ${budget.maxDepth} 层）`);
       degraded += 1;
       continue;
     }
@@ -868,11 +868,11 @@ export async function run() {
         try {
           tree = renderCard(props);
         } catch (error) {
-          problems.push(`${name}: ${where} 卡片抛了 —— ${error.message}`);
+          problems.push(`${name}: ${where} 卡片抛出异常 —— ${error.message}`);
           continue;
         }
         if (tree === null || tree === undefined) {
-          problems.push(`${name}: ${where} 卡片返回空 —— 这一态下卡片没画出来（界面上就是一片空白）`);
+          problems.push(`${name}: ${where} 卡片返回空 —— 该状态下卡片未渲染（界面上显示为空白）`);
           continue;
         }
         let count;
@@ -880,12 +880,12 @@ export async function run() {
           count = render(tree, 0, budget);
         } catch (error) {
           const stack = (error.stack ?? '').split('\n').slice(1, 4).join(' | ');
-          problems.push(`${name}: ${where} 卡片体内的组件抛了 —— ${error.message}\n      ${stack}`);
+          problems.push(`${name}: ${where} 卡片体内的组件抛出异常 —— ${error.message}\n      ${stack}`);
           continue;
         }
         if (count <= 1) {
           problems.push(
-            `${name}: ${where} 卡片只画出 ${count} 个节点 —— 这一态下卡片体没跑（或只剩一层空壳）`,
+            `${name}: ${where} 卡片只渲染出 ${count} 个节点 —— 该状态下卡片主体未渲染（或仅剩一层占位结构）`,
           );
           continue;
         }
@@ -897,8 +897,8 @@ export async function run() {
         textsBySnapshot.set(snapshot.name, bucket);
         for (const hit of forbiddenHitsOf(budget.texts)) {
           problems.push(
-            `${name}: ${where} 屏上出现了 ${hit.token} —— 这一态下卡片把它摆到了文字上。` +
-              `命中的那串：${hit.text.slice(0, 120)}`,
+            `${name}: ${where} 界面上出现了 ${hit.token} —— 该状态下卡片将其显示在文字中。` +
+              `命中的文本：${hit.text.slice(0, 120)}`,
           );
         }
       }
@@ -914,17 +914,17 @@ export async function run() {
       }
       for (const entry of grouped.values()) {
         problems.push(
-          `${name}: t('${entry.key}') 在 ${entry.language} 里没有落点（问它的快照：` +
-            `${entry.snapshots.join('、')}）—— 屏上会显示原始键名。` +
-            '命中判定 = 模块 messages ∪ 外壳 dictionaries',
+          `${name}: t('${entry.key}') 在 ${entry.language} 里缺少对应项（读取它的快照：` +
+            `${entry.snapshots.join('、')}）—— 界面上会显示原始键名。` +
+            '命中判定 = 模块 messages ∪ 工作台 dictionaries',
         );
       }
     }
 
     if (!(classNames.has('wb-card') || stubs.has('Card'))) {
       problems.push(
-        `${name}: 卡片没套外壳的卡壳 —— 用 kit.components.Card（推荐），或自己写契约类 wb-card + ` +
-          `wb-cardBody；裸内容在面板里看起来就"不是一张卡片"`,
+        `${name}: 卡片没有套用工作台的卡片外框 —— 使用 kit.components.Card（推荐），或自行写契约类 wb-card + ` +
+          `wb-cardBody；裸内容在面板中不会显示为卡片`,
       );
       continue;
     }
@@ -932,15 +932,15 @@ export async function run() {
     const per = SNAPSHOTS.map(
       (snapshot) => `${snapshot.name} ${counts.get(snapshot.name).join('/') || '—'}`,
     ).join(' · ');
-    rows.push(`${name}: ${SNAPSHOTS.length} 态 × zh/en 都画得出 —— ${per} 个节点`);
+    rows.push(`${name}: ${SNAPSHOTS.length} 态 × zh/en 均可渲染 —— ${per} 个节点`);
 
     const shapes = new Set(
       SNAPSHOTS.map((snapshot) => [...new Set(textsBySnapshot.get(snapshot.name) ?? [])].sort().join('\n')),
     );
     if (shapes.size === 1) {
       footnotes.push(
-        `${name}: ${SNAPSHOTS.length} 个快照渲染出来的文本完全一样 —— 不判红，只当线索：它的取数可能没走 ` +
-          'kit.hooks.useApiResource，或这张卡片本来就不随态分叉',
+        `${name}: ${SNAPSHOTS.length} 个快照渲染出的文本完全一致 —— 不判定失败，仅作线索：其数据读取可能未使用 ` +
+          'kit.hooks.useApiResource，或这张卡片本身就不随状态变化',
       );
     }
   }
@@ -962,17 +962,17 @@ export async function run() {
   return {
     status: 'pass',
     notes: [
-      `${modulePackages.length} 个模块${schemaProbeRan ? ' + 1 条 schema 探针' : ''}过了卡片这一关：` +
+      `${modulePackages.length} 个模块${schemaProbeRan ? ' + 1 条 schema 探针' : ''}通过卡片判据：` +
         (degraded === 0
           ? `${SNAPSHOTS.length} 态 × zh/en 各渲染一遍`
-          : `逐态那半这次有 ${degraded} 个模块跳过（没装外壳 / 取不出外壳，见下），其余 ${SNAPSHOTS.length} 态 × zh/en 各渲染一遍`) +
+          : `逐态部分本次有 ${degraded} 个模块跳过（未安装工作台或无法读取工作台，见下），其余 ${SNAPSHOTS.length} 态 × zh/en 各渲染一遍`) +
         ' —— 不抛、非空白、文字里没有 ' +
-        'undefined / NaN / [object Object] / null、没有裸键名、套了外壳的卡壳；名字来自清单顶层的 title（协议判据管它中英都有）。' +
-        `（断言的是"${SNAPSHOTS.length} 种外壳侧输入下都退化得漂亮"，不是"画的是哪一态那一屏" —— 屏的对错归模块自己的 ` +
+        'undefined / NaN / [object Object] / null、没有裸键名、套用了工作台的卡片外框；名字来自清单顶层的 title（协议判据负责检查中英都有）。' +
+        `（断言的是"${SNAPSHOTS.length} 种工作台侧输入下均能正常降级"，而非"渲染的是哪个状态、哪个界面" —— 界面对错归模块自己的 ` +
         'card-states.test.ts 与 design.json 状态矩阵）',
       ...(shellClients.length === 0
         ? []
-        : [`逐态用的真壳（模块仓里装的那份 client.js）：${shellClients.join('、')}`]),
+        : [`逐态使用的真实工作台（模块仓里安装的 client.js）：${shellClients.join('、')}`]),
       ...rows,
       ...footnotes,
     ],

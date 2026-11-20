@@ -24,7 +24,7 @@ export async function migrate({ root, args = [] }) {
   const dsh = manifest.dsh;
   const workbench = dsh?.workbench;
   if (workbench === undefined) {
-    console.error('这个包没声明 dsh.workbench：先 cd 到模块目录再跑（或加 --cwd <模块目录>）');
+    console.error('该包未声明 dsh.workbench：请先 cd 到模块目录再运行（或添加 --cwd <模块目录>）');
     process.exit(2);
   }
 
@@ -35,35 +35,35 @@ export async function migrate({ root, args = [] }) {
   }
 
   if (dsh.workbenchFaces === undefined) {
-    changes.push(`dsh.workbenchFaces：补默认 ${DEFAULT_FACES.host} / ${DEFAULT_FACES.client}`);
+    changes.push(`dsh.workbenchFaces：补充默认值 ${DEFAULT_FACES.host} / ${DEFAULT_FACES.client}`);
     dsh.workbenchFaces = { ...DEFAULT_FACES };
   } else {
     for (const [kind, fallback] of Object.entries(DEFAULT_FACES)) {
       if (typeof dsh.workbenchFaces[kind] === 'string' && dsh.workbenchFaces[kind] !== '') continue;
-      changes.push(`dsh.workbenchFaces.${kind}：补 ${fallback}`);
+      changes.push(`dsh.workbenchFaces.${kind}：补充 ${fallback}`);
       dsh.workbenchFaces[kind] = fallback;
     }
   }
 
   for (const [kind, rel] of Object.entries(dsh.workbenchFaces)) {
     if (!existsSync(join(root, rel))) {
-      console.warn(`⚠ workbenchFaces.${kind} 指的 ${rel} 不存在 —— 先把这个入口建出来`);
+      console.warn(`⚠ workbenchFaces.${kind} 指向的 ${rel} 不存在 —— 请先创建该入口`);
     }
   }
 
   if (changes.length === 0) {
-    console.log('已经是当前代：清单不用改。');
+    console.log('已是当前版本：清单无需修改。');
   } else if (dryRun) {
-    console.log(`会改 ${String(changes.length)} 处（--dry-run 没写）：`);
+    console.log(`将修改 ${String(changes.length)} 处（--dry-run 未写入）：`);
     for (const one of changes) console.log(`  · ${one}`);
   } else {
     writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
-    console.log(`改好 ${String(changes.length)} 处：`);
+    console.log(`已修改 ${String(changes.length)} 处：`);
     for (const one of changes) console.log(`  · ${one}`);
   }
 
   if (workbench.card === null || workbench.card === undefined) {
-    console.log('清单 card 是 null / 缺：如果 client.js 真登记了卡，跑 `check --only cards` 看 —— 补 `"card": { "order": … }` 或去掉那张卡的登记。');
+    console.log('清单 card 为 null / 缺失：如果 client.js 实际登记了卡片，请运行 `check --only cards` 查看 —— 补充 `"card": { "order": … }` 或移除该卡片的登记。');
   }
-  console.log('源码类迁移不自动改：`check` 会逐条点名（kit 成员、裸控件、apiVersion 之外的协议字段），照提示改源码。');
+  console.log('源码类迁移不会自动修改：`check` 会逐项指出（kit 成员、裸控件、apiVersion 之外的协议字段），请按提示修改源码。');
 }

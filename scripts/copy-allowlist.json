@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "file": "packages/module-tools/src/contract/design.mjs",
+    "term": "底稿",
+    "contains": "## 需求底稿"
+  }
+]

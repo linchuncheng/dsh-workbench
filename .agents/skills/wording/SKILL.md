@@ -46,27 +46,27 @@ description: 写或改任何文案时用：界面、agent 工具面、日志/CLI
 
 | 场景 | 谁写 | 谁读 | 语域 | 规则 |
 |---|---|---|---|---|
-| 启动检查 `env.*` | 外壳 | 用户；失败细节给开发 | 界面 + 技术 | [FOR-USER](FOR-USER.md) + [FOR-DEV](FOR-DEV.md) |
-| 项目 / 会话 / 侧栏版本 `project.*` `session.*` `sidebarEdition.*` | 外壳 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
-| 右栏 / 面板 / 市场 `rightbar.*` `panels.*` | 外壳 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
-| 阻断 / 登录 `blocker.*` | 外壳 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
-| 配置同步 `configSync.*` | 外壳 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
-| 调试 / 录制底栏 `debug.*` `record.*` | 外壳 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
-| 状态 / 时间 `status.*` `time.*` | 外壳 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
+| 启动检查 `env.*` | 工作台 | 用户；失败细节给开发 | 界面 + 技术 | [FOR-USER](FOR-USER.md) + [FOR-DEV](FOR-DEV.md) |
+| 项目 / 会话 / 侧栏版本 `project.*` `session.*` `sidebarEdition.*` | 工作台 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
+| 右栏 / 面板 / 市场 `rightbar.*` `panels.*` | 工作台 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
+| 阻断 / 登录 `blocker.*` | 工作台 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
+| 配置同步 `configSync.*` | 工作台 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
+| 调试 / 录制底栏 `debug.*` `record.*` | 工作台 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
+| 状态 / 时间 `status.*` `time.*` | 工作台 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
 | 模块界面 / 配置 | 模块 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
-| 审批屏 | 外壳 / 模块 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
+| 审批屏 | 工作台 / 模块 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
 | agent 回复 / 附注 | agent | 用户 | 交代 | [FOR-USER](FOR-USER.md) |
 | 文档 / README / 更新日志 | 全部 | 用户 / 作者 | 文档 | 本文件 + `writing-*` |
-| 工具描述 / schema | 外壳 / 模块 | agent | 技术 | [FOR-AGENT](FOR-AGENT.md) |
-| 工具返回 | 外壳 / 模块 | agent（可被引用） | 技术 | [FOR-AGENT](FOR-AGENT.md) |
-| 工具错误 / `reason` / `{blocked}` | 外壳 / 模块 | agent | 技术 | [FOR-AGENT](FOR-AGENT.md) |
-| 中断通知（调试 / 录制 / 长任务） | 外壳 | agent | 技术 | [FOR-AGENT](FOR-AGENT.md) |
+| 工具描述 / schema | 工作台 / 模块 | agent | 技术 | [FOR-AGENT](FOR-AGENT.md) |
+| 工具返回 | 工作台 / 模块 | agent（可被引用） | 技术 | [FOR-AGENT](FOR-AGENT.md) |
+| 工具错误 / `reason` / `{blocked}` | 工作台 / 模块 | agent | 技术 | [FOR-AGENT](FOR-AGENT.md) |
+| 中断通知（调试 / 录制 / 长任务） | 工作台 | agent | 技术 | [FOR-AGENT](FOR-AGENT.md) |
 | `context.render` | 模块 | agent | 技术 | [FOR-AGENT](FOR-AGENT.md) |
 | CLI 输出（check / design / lint） | 工具链 | agent + 开发 | 技术 | [FOR-DEV](FOR-DEV.md) |
 | 日志 / stderr / 堆栈 | 全部 | 开发 | 技术 | [FOR-DEV](FOR-DEV.md) |
 | `detail` / 折叠原文 | 全部 | 开发；用户可展开 | 技术 | [FOR-DEV](FOR-DEV.md) |
-| 安装命令 | 外壳 | 用户复制 | 界面 + 技术 | [FOR-DEV](FOR-DEV.md) + [FOR-USER](FOR-USER.md) |
-| a11y / placeholder / tooltip | 外壳 / 模块 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
+| 安装命令 | 工作台 | 用户复制 | 界面 + 技术 | [FOR-DEV](FOR-DEV.md) + [FOR-USER](FOR-USER.md) |
+| a11y / placeholder / tooltip | 工作台 / 模块 | 用户 | 界面 | [FOR-USER](FOR-USER.md) |
 
 ## 硬规则
 

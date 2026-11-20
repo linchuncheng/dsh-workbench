@@ -58,7 +58,7 @@ export function debugOffBoardText(held: DebugState, situation: BoardSituation = 
   const where = held.title === '' ? '该场调试所在的工作区' : `「${held.title}」`;
   const what =
     situation === 'off-workspace'
-      ? `用户当前不在${where}（外壳选中的是其他工作区）`
+      ? `用户当前不在${where}（工作台选中的是其他工作区）`
       : situation === 'panel-closed'
         ? '工作台面板未显示在页面上（右栏已收起，或该列已让给其他面板）'
         : `当前页面显示的不是${where}的面板`;

@@ -162,7 +162,7 @@ export const checks = [
         );
       try {
         const human = run([]);
-        for (const needle of ['装机：', '外壳钉的：', 'kit 里已有', 'Button']) {
+        for (const needle of ['已安装：', '工作台钉的：', 'kit 里已有', 'Button']) {
           if (!human.includes(needle)) return report(title, false, `清单里没有 ${needle}：${tail(human)}`);
         }
         if (!/Icon[A-Za-z0-9_]+Regular/.test(human)) {

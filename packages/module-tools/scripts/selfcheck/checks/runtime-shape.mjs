@@ -149,7 +149,7 @@ export function apply(ctx) {
         writeFileSync(join(probe, 'dist/host.js'), faceSource('{ start: () => ({}) }'));
         const badShape = runContracts();
         if (!badShape.failed) throw new Error('注册表缺方法，居然没被判红');
-        if (!badShape.out.includes('缺方法')) {
+        if (!badShape.out.includes('缺少方法')) {
           throw new Error(`判红了，但没说清注册表缺方法：\n${badShape.out}`);
         }
 
@@ -161,7 +161,7 @@ export function apply(ctx) {
         );
         const noStop = runContracts();
         if (!noStop.failed) throw new Error('注册表只缺 stop，居然没被判红');
-        if (!noStop.out.includes('缺方法 stop')) {
+        if (!noStop.out.includes('缺少方法 stop')) {
           throw new Error(`判红了，但没点出缺的是 stop：\n${noStop.out}`);
         }
 
@@ -173,7 +173,7 @@ export function apply(ctx) {
         );
         const noLive = runContracts();
         if (!noLive.failed) throw new Error('注册表只缺 live，居然没被判红');
-        if (!noLive.out.includes('缺方法 live')) {
+        if (!noLive.out.includes('缺少方法 live')) {
           throw new Error(`判红了，但没点出缺的是 live：\n${noLive.out}`);
         }
         report(title, true);

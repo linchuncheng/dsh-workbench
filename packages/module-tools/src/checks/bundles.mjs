@@ -49,7 +49,7 @@ export async function run() {
     for (const artifact of artifacts) {
       const full = join(pkg.dir, artifact.file);
       if (!existsSync(full)) {
-        problems.push(`${name}: 找不到${artifact.what} ${artifact.file} —— 先 build 再 check`);
+        problems.push(`${name}: 找不到${artifact.what} ${artifact.file} —— 请先运行 build，再运行 check`);
         continue;
       }
       checked += 1;
@@ -58,7 +58,7 @@ export async function run() {
         if (pattern.test(source)) {
           problems.push(
             `${name}: ${artifact.what} ${artifact.file} 里出现了${label} —— ` +
-              `两个运行时混了（判据是能力：浏览器侧不许碰宿主传输层，宿主侧不许碰 DOM/react）`,
+              `两个运行时发生混用（判据按能力判断：浏览器侧不得接触宿主传输层，宿主侧不得接触 DOM/react）`,
           );
         }
       }
@@ -67,8 +67,8 @@ export async function run() {
         const hits = fixtureMarkersIn(source);
         problems.push(
           `${name}: ${artifact.what} ${artifact.file} 里有夹具（${hits.slice(0, 4).join(' · ')}）—— ` +
-            '模块不带夹具：夹具只服务工作台开发者的调试（发布产物里没有它），' +
-            '模块自己的 vitest 把几态各喂一遍就够。',
+            '模块不携带夹具：夹具只服务工作台开发者的调试（发布产物中没有它），' +
+            '模块自己的 vitest 覆盖各状态即可。',
         );
       }
 
@@ -76,10 +76,10 @@ export async function run() {
         const inlined = inlinedShellRules(source);
         if (inlined.length > 0) {
           problems.push(
-            `${name}: ${artifact.what} ${artifact.file} 里内联了 ${inlined.length} 条外壳的 CSS 规则` +
-              `（${inlined.slice(0, 3).join(' · ')}）—— 外壳的组件样式只有一份：` +
-              'React 原语从 \'react\' 拿、外壳给的东西从 kit 拿（`@dsh-workbench/shared` 根入口是浏览器 barrel，' +
-              '它会急切地把 components/** 连样式一起拉进来）。',
+            `${name}: ${artifact.what} ${artifact.file} 里内联了 ${inlined.length} 条工作台的 CSS 规则` +
+              `（${inlined.slice(0, 3).join(' · ')}）—— 工作台的组件样式只有一份：` +
+              'React 原语从 \'react\' 获取，工作台提供的内容从 kit 获取（`@dsh-workbench/shared` 根入口是浏览器 barrel，' +
+              '它会立即将 components/** 连同样式一起加载进来）。',
           );
         }
       }
@@ -92,13 +92,13 @@ export async function run() {
   if (modulePackages.length === 0) {
     return {
       status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有产物可查'],
+      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有产物需要检查'],
       problems: [],
     };
   }
   return {
     status: 'pass',
-    notes: [`${checked} 份产物 · 浏览器侧无 node 内置 · 宿主侧无 DOM/react · 浏览器侧没有内联的外壳 CSS`],
+    notes: [`${checked} 份产物 · 浏览器侧无 node 内置模块 · 宿主侧无 DOM/react · 浏览器侧没有内联的工作台 CSS`],
     problems: [],
   };
 }

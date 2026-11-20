@@ -8,7 +8,7 @@ import { shellClientPathOf, shellKitOf } from './shell-artifact.mjs';
 const SHELL = '@dsh-workbench/core';
 const KIT_SPECIFIER = '@dsh-workbench/core/client';
 
-export const title = '外壳 kit 面';
+export const title = '工作台 kit 面';
 
 function kitUsageOf(text) {
   const bindings = new Set();
@@ -56,10 +56,10 @@ function below(a, b) {
 function faceNotes(asked, shells) {
   const faceShell = shells[shells.length - 1] ?? shellClientPathOf(process.cwd());
   if (!asked) {
-    return { notes: ['（想知道这份外壳的 kit 里有什么：dsh-wb-module check --only kit）'] };
+    return { notes: ['（查看这份工作台的 kit 内容：dsh-wb-module check --only kit）'] };
   }
   if (faceShell === undefined || !existsSync(faceShell)) {
-    return { notes: ['（没找到外壳的 client.js，列不出 kit 面：先确认 node_modules 里装着 @dsh-workbench/core）'] };
+    return { notes: ['（没有找到工作台的 client.js，无法列出 kit 面：请先确认 node_modules 中安装了 @dsh-workbench/core）'] };
   }
   try {
     const kit = shellKitOf(faceShell);
@@ -67,7 +67,7 @@ function faceNotes(asked, shells) {
       .filter((bucket) => typeof kit[bucket] === 'object' && kit[bucket] !== null)
       .sort();
     if (buckets.length === 0) {
-      return { notes: [`（${faceShell} 里没取出 kit：外壳版本可能太旧）`] };
+      return { notes: [`（${faceShell} 中未读取到 kit：工作台版本可能过旧）`] };
     }
     const every = new Map();
     for (const bucket of buckets) {
@@ -78,27 +78,27 @@ function faceNotes(asked, shells) {
     const { roots, files, missing } = memberFilesOf(faceShell, [...every.keys()]);
     const rootLine =
       Object.entries(roots).length === 0
-        ? '  类型面：读不到（外壳包里没有 dist/types，@dsh-workbench/shared 也没装）'
+        ? '  类型面：无法读取（工作台包中没有 dist/types，@dsh-workbench/shared 也未安装）'
         : `  类型面（绝对路径）：${Object.entries(roots).map(([pkg, dir]) => `${pkg} → ${dir}`).join(' ｜ ')}` +
-          ` （某个名字的文件：--file <名字>，或 --files | grep <名字>）`;
+          ` （按名称查找文件：--file <名字>，或 --files | grep <名字>）`;
 
-    const notes = [`这份外壳（${faceShell}）的 kit 面 —— 只能用这些，别自己造：`, rootLine];
+    const notes = [`这份工作台（${faceShell}）的 kit 面 —— 只能使用这些，不要自行创建：`, rootLine];
     if (one !== undefined) {
       const file = files.get(one);
       notes.push(
         file === undefined
-          ? `  --file ${one}：不在这份清单里（用 --files | grep ${one} 找找近似的名字）`
-          : `  --file ${one}：${file} （打开看它的 JSDoc 与 prop：sed -n '1,60p' 那一份）`,
+          ? `  --file ${one}：不在该清单中（用 --files | grep ${one} 查找相近的名称）`
+          : `  --file ${one}：${file} （请打开查看其 JSDoc 与 prop：sed -n '1,60p' 该文件）`,
       );
     }
     if (flags.includes('--files')) {
       notes.push(
-        `  名字 → 类型文件（绝对路径，全表 ${every.size} 条、会被 tool-result-pruner 裁中间：用 --files | grep <名字> 取一件）`,
+        `  名称 → 类型文件（绝对路径，全表 ${every.size} 条，会被 tool-result-pruner 截断中间部分：用 --files | grep <名字> 获取一项）`,
       );
       for (const name of [...every.keys()].sort()) {
-        notes.push(`    ${name} → ${files.get(name) ?? '（没扫到，见上面那两棵根）'}`);
+        notes.push(`    ${name} → ${files.get(name) ?? '（未扫描到，见上面两个根目录）'}`);
       }
-      if (missing.length > 0) notes.push(`  ${missing.length} 个没扫到：${missing.join('、')}`);
+      if (missing.length > 0) notes.push(`  ${missing.length} 个未扫描到：${missing.join('、')}`);
     } else if (one === undefined) {
       for (const bucket of buckets) {
         const names = Object.keys(kit[bucket]);
@@ -106,7 +106,7 @@ function faceNotes(asked, shells) {
         notes.push(`  ${bucket}(${names.length})：${only.length === 0 ? '（全部来自下面的共用面）' : only.join(', ')}`);
       }
       const shared = [...every.entries()].filter(([, count]) => count > 1).map(([name]) => name).sort();
-      notes.push(`  共用面(${shared.length})：每个桶里都有 —— ${shared.join(', ')}`);
+      notes.push(`  共用面(${shared.length})：每个桶中都存在 —— ${shared.join(', ')}`);
     }
     return {
       notes,
@@ -119,7 +119,7 @@ function faceNotes(asked, shells) {
       },
     };
   } catch (error) {
-    return { notes: [`（取不出这份外壳的 kit 面：${error instanceof Error ? error.message : String(error)}）`] };
+    return { notes: [`（无法读取这份工作台的 kit 面：${error instanceof Error ? error.message : String(error)}）`] };
   }
 }
 
@@ -154,8 +154,8 @@ export async function run() {
           kit = shellKitOf(shellClient);
         } catch (error) {
           problems.push(
-            `${name}: 取不出这份外壳的 kit（${shellClient}）—— ${error instanceof Error ? error.message : String(error)}。` +
-              `执行产物是这份判据唯一可信的取数方式；看不懂就别放着不管`,
+            `${name}: 无法读取这份工作台的 kit（${shellClient}）—— ${error instanceof Error ? error.message : String(error)}。` +
+              `执行产物是这份判据唯一可信的数据来源；无法理解时不要搁置不管`,
           );
           kit = undefined;
         }
@@ -169,10 +169,10 @@ export async function run() {
           }
           if (missing.length > 0) {
             problems.push(
-              `${name}: 产物用了这份外壳（${shellClient}）里没有的 ${missing.join('、')} —— ` +
-                `顶层解构不会抛（拿到 undefined），卡片首帧渲染才炸 "Element type is invalid"；` +
-                `外壳会把这张卡收进错误态（只炸这一张，但用户看到的是错误页而不是你的卡）。` +
-                `要么去掉/换掉这些成员，要么把 peer 下限提到真正需要的那版`,
+              `${name}: 产物用了这份工作台（${shellClient}）里没有的 ${missing.join('、')} —— ` +
+                `顶层解构不会抛出异常（得到 undefined），卡片首帧渲染时才报错 "Element type is invalid"；` +
+                `工作台会把这张卡收进错误态（仅影响这一张，但用户看到的是错误页而不是你的卡）。` +
+                `要么移除或替换这些成员，要么将 peer 下限提升到实际需要的那版`,
             );
           }
         }
@@ -183,9 +183,9 @@ export async function run() {
     const devFloor = floorOf(pkg.manifest.devDependencies?.[SHELL]);
     if (peerFloor !== undefined && devFloor !== undefined && below(peerFloor, devFloor) && override === undefined) {
       problems.push(
-        `${name}: peer 下限 ${pkg.manifest.peerDependencies[SHELL]} 比 devDependency ${pkg.manifest.devDependencies[SHELL]} 还旧 —— ` +
-          `你对用户承诺的那版外壳，产物从没对着验过。把 peer 下限提到与 devDependency 同档；` +
-          `确实要支持更旧的外壳，就用 DSH_WB_CORE_CLIENT=<那版外壳的 client.js> 跑一遍 check --only kit 证明面够用`,
+        `${name}: peer 下限 ${pkg.manifest.peerDependencies[SHELL]} 低于 devDependency ${pkg.manifest.devDependencies[SHELL]} —— ` +
+          `你对用户承诺的那版工作台，产物从未针对该版本验证。请将 peer 下限提升到与 devDependency 相同的版本；` +
+          `确实需要支持更旧的工作台，请用 DSH_WB_CORE_CLIENT=<那版工作台的 client.js> 运行一次 check --only kit，验证 kit 面足够`,
       );
     }
   }
@@ -203,16 +203,16 @@ export async function run() {
   if (inspected === 0) {
     const why =
       modulePackages.length === 0
-        ? '没有模块包（没有声明 dsh.workbench 的包）—— 没有产物可对'
-        : `${noArtifact} 个还没建产物（跳过）`;
+        ? '没有模块包（没有声明 dsh.workbench 的包）—— 没有产物可对账'
+        : `${noArtifact} 个尚未构建产物（跳过）`;
     return { status: 'skip', notes: [why, ...face.notes], problems: [], ...payload };
   }
 
   const notes = [
-    `${inspected} 个模块的产物对过外壳 kit 面`,
-    override === undefined ? '（按各自装的那份外壳）' : `（DSH_WB_CORE_CLIENT=${override}）`,
+    `${inspected} 个模块的产物已核对过工作台 kit 面`,
+    override === undefined ? '（按各自装的那份工作台）' : `（DSH_WB_CORE_CLIENT=${override}）`,
   ];
-  if (noArtifact > 0) notes.push(`${noArtifact} 个还没建产物（跳过）`);
-  if (noShell > 0) notes.push(`${noShell} 个没装外壳（跳过面差）`);
+  if (noArtifact > 0) notes.push(`${noArtifact} 个尚未构建产物（跳过）`);
+  if (noShell > 0) notes.push(`${noShell} 个未安装工作台（跳过面差）`);
   return { status: 'pass', notes: [...notes, ...face.notes], problems: [], ...payload };
 }

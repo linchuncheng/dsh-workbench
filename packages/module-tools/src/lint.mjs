@@ -48,11 +48,11 @@ const DEFAULT_IGNORES = [
 const COLOR_LITERAL = {
   selector:
     'Literal[value=/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/], Literal[value=/^(?:rgba?|hsla?)\\(/]',
-  message: '颜色字面量：引用 dsh 的 --dsw-* 令牌，别写死颜色',
+  message: '颜色字面量：引用 dsh 的 --dsw-* 令牌，不要使用固定颜色值',
 };
 const BANG_IMPORTANT = {
   selector: 'Literal[value=/!important/]',
-  message: '!important：只许在 src/components/vendor/** 里覆盖第三方样式',
+  message: '!important：仅允许在 src/components/vendor/** 中覆盖第三方样式',
 };
 const PLATFORM_READ = {
   selector:
@@ -61,7 +61,7 @@ const PLATFORM_READ = {
     "MemberExpression[object.name='window'][property.name='dshDesktop'], " +
     "MemberExpression[object.name='navigator'][property.name='userAgent']",
   message:
-    '平台/外壳差异走能力面：宿主面读 deps.surface（HostSurface），浏览器面读 kit.hooks.usePlatform()；' +
+    '平台 / 工作台差异通过能力面处理：宿主面读取 deps.surface（HostSurface），浏览器面读取 kit.hooks.usePlatform()；' +
     '模块源码不直接读 process.platform / versions.electron / dshDesktop / navigator.userAgent',
 };
 

@@ -8,11 +8,11 @@ export const title = '模块架构（分层 / 边界 / 设计系统）';
 const CONFIG_FILE = 'arch.config.mjs';
 
 const HOW_TO_JOIN =
-  `在模块包里放一份 ${CONFIG_FILE}，内容一行就够：\n` +
+  `在模块包里放一份 ${CONFIG_FILE}，内容一行即可：\n` +
   `    import { moduleArch } from '@dsh-workbench/module-tools/arch';\n` +
   '    export default moduleArch();\n' +
   '  形状（层序表 / 两个运行时 / 阈值）见 @dsh-workbench/module-tools/arch 的文档与 README；' +
-  '要开口子就从 moduleArch() 的参数进（deps / layers / roles / exceptions）。';
+  '需要添加例外时，通过 moduleArch() 的参数配置（deps / layers / roles / exceptions）。';
 
 const severityIndex = (rules) => new Map(rules.map((rule) => [rule.id, rule.severity]));
 
@@ -29,7 +29,7 @@ export async function run() {
   if (modulePackages.length === 0) {
     return {
       status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码要判结构'],
+      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码需要判定结构'],
       problems: [],
     };
   }
@@ -39,7 +39,7 @@ export async function run() {
     return {
       status: 'skip',
       notes: [
-        `${modulePackages.length} 个模块包都没有 ${CONFIG_FILE} —— 没有架构声明就无从判定（不是"没问题"）。` +
+        `${modulePackages.length} 个模块包都没有 ${CONFIG_FILE} —— 没有架构声明就无法判定（不代表没有问题）。` +
           `\n  ${HOW_TO_JOIN}`,
       ],
       problems: [],
@@ -68,8 +68,8 @@ export async function run() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       problems.push(
-        `${name}: ${CONFIG_FILE} 跑不起来 —— ${message}（先确认这份配置能 import、没有语法错，` +
-          '再确认它 import 的东西在工作区里解析得到）',
+        `${name}: ${CONFIG_FILE} 无法运行 —— ${message}（请先确认这份配置可以 import、没有语法错误，` +
+          '再确认它 import 的内容在工作区内可以解析）',
       );
       continue;
     }
@@ -87,7 +87,7 @@ export async function run() {
     return {
       status: 'fail',
 
-      notes: [`红了怎么修：先看位置与规则号，再决定"改代码"还是"在 ${CONFIG_FILE} 里开口子"。`],
+      notes: [`未通过时如何修复：先看位置与规则号，再决定"修改代码"还是"在 ${CONFIG_FILE} 中添加例外"。`],
       problems,
     };
   }
@@ -95,10 +95,10 @@ export async function run() {
   return {
     status: 'pass',
     notes: [
-      `${declared.length}/${modulePackages.length} 个模块包带 ${CONFIG_FILE} · ${files} 个源文件 · ` +
+      `${declared.length}/${modulePackages.length} 个模块包带有 ${CONFIG_FILE} · ${files} 个源文件 · ` +
         `${ranRules.size} 条规则已执行` +
         (warnings === 0 ? '' : ` · ${warnings} 条 warn（不挡门禁）`) +
-        (declared.length === modulePackages.length ? '' : `；其余 ${modulePackages.length - declared.length} 个没声明（不适用）`),
+        (declared.length === modulePackages.length ? '' : `；其余 ${modulePackages.length - declared.length} 个未声明（不适用）`),
     ],
     problems: [],
   };

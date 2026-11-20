@@ -150,25 +150,25 @@ function detailOf(hit, verdict) {
 export function fontScaleNotes(report, scale, { doc, dshMissing = false }) {
   const sizes = [...scale].sort((a, b) => a - b).map(formatSize).join(' / ');
   const source = dshMissing
-    ? '外壳 --wb-font-* 的定义（dsh 主题没读到，--dsw-font-* 未纳入）'
-    : '外壳 --wb-font-* 与 dsh --dsw-font-* 的定义';
+    ? '工作台 --wb-font-* 的定义（dsh 主题未读取到，--dsw-font-* 未纳入）'
+    : '工作台 --wb-font-* 与 dsh --dsw-font-* 的定义';
   const head =
-    `字号口径（黄，不判红）：刻度 ${sizes}（从 ${source}读出来，` +
+    `字号口径（提醒级，不计入未通过）：刻度 ${sizes}（从 ${source}读取，` +
     `出处见 ${doc}）；引用令牌 ${report.refs.length} 处 / ${report.refFiles.size} 文件（合规，不列）；` +
     `刻度外字面值 ${report.offScale.length} 处 / ${report.litFiles.size} 文件；` +
-    `刻度上字面值 ${report.onScale.length} 处；相对单位（em/%）判不了 ${report.relative.length} 处`;
+    `刻度上字面值 ${report.onScale.length} 处；相对单位（em/%）无法判定 ${report.relative.length} 处`;
   const all = [
     ...report.offScale.map((hit) => detailOf(hit, 'off')),
     ...report.onScale.map((hit) => detailOf(hit, 'on')),
   ];
   if (all.length === 0) {
-    return [`${head} —— 面板的字号全走令牌，一处刻度外的字面值都没有`];
+    return [`${head} —— 面板字号全部使用令牌，没有一处刻度外的字面值`];
   }
   const notes = [head, ...all.slice(0, DETAIL_LIMIT)];
   if (all.length > DETAIL_LIMIT) {
     notes.push(
       `…另有 ${all.length - DETAIL_LIMIT} 处（刻度外 ${report.offScale.length} / 刻度上 ${report.onScale.length}）` +
-        `没列出（这里最多列 ${DETAIL_LIMIT} 行）；口径与出处见 ${doc}`,
+        `未列出（这里最多列 ${DETAIL_LIMIT} 行）；口径与出处见 ${doc}`,
     );
   }
   return notes;

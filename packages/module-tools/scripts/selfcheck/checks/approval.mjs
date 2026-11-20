@@ -156,7 +156,7 @@ export function apply(ctx) {
               `    approvalDetail: (call) => (call.arguments?.confirm === true ? ${DETAIL} : undefined),`,
           ),
         );
-        if (expectGreen('参数表里声明了 confirm 时，探针验到真正那一次').includes('判据只能验到这一步')) {
+        if (expectGreen('参数表里声明了 confirm 时，探针验到真正那一次').includes('判据只能验证到这一步')) {
           throw new Error('探针已经把 confirm 给上了，却还在说"只能验到这一步"—— 那句话该只留给够不着的那一档');
         }
 
@@ -169,7 +169,7 @@ export function apply(ctx) {
           ),
         );
         const denied = expectGreen('说"这一通跑不成"（deny）也是合法口径');
-        if (!denied.includes('判据只能验到这一步')) {
+        if (!denied.includes('判据只能验证到这一步')) {
           throw new Error('deny 过关了却没把"判据验不了什么"写进 notes —— 作者会以为它已经被验过');
         }
 
@@ -200,7 +200,7 @@ export function apply(ctx) {
         );
         expectGreen('模块在拿不到 shell 时会降级（判据的假 deps 要给 shell）');
 
-        if (!conditional.includes('判据只能验到这一步')) {
+        if (!conditional.includes('判据只能验证到这一步')) {
 
           throw new Error('依赖参数的合法口径过了，但没有把"判据验不了什么"写进 notes');
         }

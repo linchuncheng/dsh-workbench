@@ -72,7 +72,7 @@ function collect(file, origin, acc, depth) {
 
 export function surfaceOf(typesDir) {
   const entry = join(typesDir, 'index.d.ts');
-  if (!existsSync(entry)) throw new Error(`类型面不在：${entry}`);
+  if (!existsSync(entry)) throw new Error(`类型面不存在：${entry}`);
   const found = new Map();
   collect(entry, 'root', found, 0);
   const iconsEntry = join(typesDir, 'icons', 'index.d.ts');

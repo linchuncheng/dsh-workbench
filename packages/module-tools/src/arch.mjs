@@ -106,7 +106,7 @@ const modelStaysPure = createRule({
   title: '模块核心（model / messages）不碰宿主、UI 与运行时',
   hint:
     'model / messages 是模块里最底的一层：只放纯逻辑、状态机、文案。' +
-    'React、kit、dsh、opencli、node:*、组件与两个面都不许 import；要用类型就从 core/contract 取 import type。',
+    'React、kit、dsh、opencli、node:*、组件与两个面都不得 import；需要使用类型时从 core/contract 取 import type。',
   run(ctx) {
     const findings = [];
     for (const record of ctx.records) {
@@ -128,7 +128,7 @@ const componentsStayBrowser = createRule({
   severity: 'error',
   title: '模块视图不碰宿主面',
   hint:
-    'components 只消费 props：可以拿 kit 与纯数据，不许 import 宿主入口、shared/host、dsh 原语或 node:*。' +
+    'components 只消费 props：可以使用 kit 与纯数据，不得 import 宿主入口、shared/host、dsh 原语或 node:*。' +
     '取数、写、路由都在两个面与 model 里。',
   run(ctx) {
     const findings = [];
@@ -154,10 +154,10 @@ const protocolsStayCanonical = createRule({
   domain: 'structure',
   level: 'L2',
   severity: 'error',
-  title: '模块不本地重声明外壳协议',
+  title: '模块不本地重声明工作台协议',
   hint:
     '协议类型只有一份：`@dsh-workbench/core/contract`。删掉本地 interface / type，改成 `import type`；' +
-    '本地重声明会让外壳更新时模块静默对不上。',
+    '本地重声明会让工作台更新时模块静默对不上。',
   run(ctx) {
     const findings = [];
     for (const record of ctx.records) {

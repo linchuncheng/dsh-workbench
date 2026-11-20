@@ -489,7 +489,7 @@ export const checks = [
         const exempt = run();
         if (exempt.failed) {
           problems.push(`ANCHOR_EXEMPT 里登记过的文件还是红的（豁免没生效）：${tail(exempt.out)}`);
-        } else if (exempt.out.includes('已经不命中')) {
+        } else if (exempt.out.includes('已不再命中')) {
           problems.push(`豁免生效了，但棘轮说那一行不再命中（命中集没记上）：${tail(exempt.out)}`);
         }
 

@@ -60,15 +60,15 @@ export async function marketInit({ args }) {
     if (result.changed) {
       console.log(`✔ 市场索引已初始化：${result.url}`);
       console.log(`  分支：${result.branch} · commit：${shortSha(result.commit)}`);
-      console.log(`  写了：${result.created.join('、')}`);
+      console.log(`  已写入：${result.created.join('、')}`);
       console.log('  下一步：在工作台「模块市场 → 发现」里添加这个地址');
       if (result.firstBranch) {
-        console.log(`  提示：这是空仓库的第一个分支；如果 ${result.branch} 不是仓库默认分支，去仓库设置里把默认分支改成它`);
+        console.log(`  提示：这是空仓库的第一个分支；如果 ${result.branch} 不是仓库默认分支，请在仓库设置中将默认分支改为它`);
       }
       return;
     }
     console.log(`✔ 市场索引已就绪：${result.url}`);
-    console.log(`  分支：${result.branch} · HEAD：${shortSha(result.commit)} —— 没改动`);
+    console.log(`  分支：${result.branch} · HEAD：${shortSha(result.commit)} —— 无改动`);
   } catch (error) {
     if (error instanceof MarketIndexError) {
       console.error(`✖ ${error.message}`);

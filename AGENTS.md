@@ -1,7 +1,7 @@
 # dsh-workbench
 
 基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 **Agent 工作台**：
-一个 dsh 插件包，给 dsh 换外壳（左栏 + 常驻对话 + 自研右侧数据面板），**不改 dsh 本身**。
+一个 dsh 插件包，在 dsh 之上提供工作台（左栏 + 常驻对话 + 自研右侧数据面板），**不改 dsh 本身**。
 两种装法：`setup` 出来的**独立实例**（与 `dsh web` 并存），或**直接装进 `dsh web` 自己的
 profile**（插件页一条龙，见 ADR-0037）。
 
@@ -14,9 +14,9 @@ profile**（插件页一条龙，见 ADR-0037）。
 
 | 路径 | 是什么 |
 |---|---|
-| **`packages/core/`** | **外壳**（发布为 `@dsh-workbench/core`）。`src/**`、`scripts/**`、`bin/**`、`arch.config.mjs` 都指这个包里；下面的命令也在这个包目录里跑 |
-| `packages/shared/` | 共享包（`@dsh-workbench/shared`，三个入口：`@dsh-workbench/shared`（浏览器侧）/ `@dsh-workbench/shared/host`（宿主侧）/ `@dsh-workbench/shared/testing`（测试）；另有 `@dsh-workbench/shared/contract/*` 类型子路径）：契约类型 · 纯 lib · i18n · 哑组件 · 平台解析 · host 工厂。收录判据三条（无模块级可变状态 / 不依赖外壳运行时 / 不产生全局副作用），自带 `check-state` 判据 |
-| `packages/module-tools/` | 模块工具包（`@dsh-workbench/module-tools`）：`build` · `check`（十四条判据，`--only <name>` 单跑）· `lint` · `init`，以及 `arch` / `lint` 两个方言入口 |
+| **`packages/core/`** | **工作台**（发布为 `@dsh-workbench/core`）。`src/**`、`scripts/**`、`bin/**`、`arch.config.mjs` 都指这个包里；下面的命令也在这个包目录里跑 |
+| `packages/shared/` | 共享包（`@dsh-workbench/shared`，三个入口：`@dsh-workbench/shared`（浏览器侧）/ `@dsh-workbench/shared/host`（宿主侧）/ `@dsh-workbench/shared/testing`（测试）；另有 `@dsh-workbench/shared/contract/*` 类型子路径）：契约类型 · 纯 lib · i18n · 哑组件 · 平台解析 · host 工厂。收录判据三条（无模块级可变状态 / 不依赖工作台运行时 / 不产生全局副作用），自带 `check-state` 判据 |
+| `packages/module-tools/` | 模块工具包（`@dsh-workbench/module-tools`）：`build` · `check`（十四条判据，`--only <name>` 单跑）· `lint` · `init`，以及 `arch` / `lint` 两个规则入口 |
 | `packages/module-hello/` | 最小可安装模块样本（`@dsh-workbench/module-hello`），同时是模块包模板 |
 | `packages/adapter-runtime/` | opencli、浏览器读、DataReader |
 | `packages/adapter-supply/` | 供给、已安装模块、插件来源、registry |
@@ -26,7 +26,7 @@ profile**（插件页一条龙，见 ADR-0037）。
 | `packages/adapter-fixture/` | 最小 `AdapterSet` 夹具，只给集成测试（私有，不发布） |
 | `packages/adapters-chrome-mcp/` | 实验的第二份适配器集合（私有，stdio + 仓内 stub MCP server） |
 | `packages/docs/` | 文档站（Pagoda CLI，私有包，不出货）：`site/desktop/views/*.md` 是页面，`views/index.vue` 是首页；`pnpm run dev:docs` 起站、`pnpm run build:docs` 出 `site-dist/` |
-| `ARCHITECTURE.md` | 仓库与外壳的架构：层序、两个运行时、单元协议、槽位、数据通路、门禁 |
+| `ARCHITECTURE.md` | 仓库与工作台的架构：层序、两个运行时、单元协议、槽位、数据通路、门禁 |
 | `private-docs/`（私有仓，不入库） | 内部 ADR（`docs/adr/`）与 `.scratch/` 工单；公开构建不需要它 |
 | `CONTRIBUTING.md` | 环境、门禁纪律、提交约定 |
 

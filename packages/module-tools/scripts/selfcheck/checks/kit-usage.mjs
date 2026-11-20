@@ -173,7 +173,7 @@ export const checks = [
         );
         const bad = check();
         if (!bad.failed) return report(title, false, '产物里内联了 kit 的 CSS 规则，居然没红');
-        if (!bad.out.includes('内联了 1 条外壳的 CSS 规则')) {
+        if (!bad.out.includes('内联了 1 条工作台的 CSS 规则')) {
           return report(title, false, `红是红了，但没说清内联了几条：${tail(bad.out)}`);
         }
         if (!bad.out.includes('.wb-activityBlock')) {

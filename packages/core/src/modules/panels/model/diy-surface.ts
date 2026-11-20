@@ -24,12 +24,12 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
   return {
     name: DIY_SURFACE_TOOL,
     description:
-      '查询外壳提供的能力：kit、原语、令牌、宿主能力与 deps。',
+      '查询工作台提供的能力：kit、原语、令牌、dsh 进程能力与 deps。',
     parameters: {
       type: 'object',
       properties: {
         name: { type: 'string', description: '要查询的名称（如 Card；以 --dsw- 开头时连同取值返回）。' },
-        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform', 'deps'], description: 'kit=组件 / primitives=原语 / tokens=令牌 / platform=宿主能力 / deps=宿主依赖；默认 kit 与 primitives。' },
+        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform', 'deps'], description: 'kit=组件 / primitives=原语 / tokens=令牌 / platform=dsh 进程能力 / deps=依赖；默认 kit 与 primitives。' },
         bucket: { type: 'string', description: '只列某一分组并展开全部（例 components）。' },
         all: { type: 'boolean', description: '列出全表；默认每组前 12 个。' },
       },

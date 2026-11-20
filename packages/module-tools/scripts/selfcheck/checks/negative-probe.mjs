@@ -77,7 +77,7 @@ export const checks = [
 
         expectRed('contracts', ['./nope-a.yml', './nope-b.yml']);
         expectRed('source', ['在宿主侧可达', '两个入口都到得了', '不是平台种子词']);
-        expectRed('primitives', ['没声明它', '没有 client.js', '宿主产物 dist/host.js 里出现了']);
+        expectRed('primitives', ['未声明', '没有 client.js', '宿主产物 dist/host.js 中出现了']);
 
         writeFileSync(join(negDir, 'package.json'), manifest(['@deepseek-ai/dsh-client-ui-primitives']));
         writeFileSync(join(negDir, 'src/plugin.host.ts'), "import { shared } from './shared';\nexport const host = shared;\n");
@@ -141,7 +141,7 @@ export const checks = [
         expectGreen('source', '还原之后');
 
         writeFileSync(join(negDir, 'src/scope.module.css'), ':global(.wb-cardBody) {\n  padding: 0;\n}\n');
-        expectRed('style', ['定义了外壳类的 CSS 规则', ':global(.wb-cardBody)']);
+        expectRed('style', ['定义了工作台类的 CSS 规则', ':global(.wb-cardBody)']);
         writeFileSync(join(negDir, 'src/scope.module.css'), '.row:global(.wb-cardBody) {\n  padding: 0;\n}\n');
         const styleGreen = run('style');
         if (styleGreen.failed) {
@@ -163,7 +163,7 @@ export const checks = [
           join(negDir, 'client.js'),
           loader('._a1b2c3_row {\n  color: red;\n}\n.wb-cardBody {\n  padding: 12px;\n}\n'),
         );
-        expectRed('bundles', ['内联了 1 条外壳的 CSS 规则', '.wb-cardBody']);
+        expectRed('bundles', ['内联了 1 条工作台的 CSS 规则', '.wb-cardBody']);
         writeFileSync(join(negDir, 'client.js'), loader('._a1b2c3_row.wb-cardBody {\n  padding: 0;\n}\n'));
         const bundlesGreen = run('bundles');
         if (bundlesGreen.failed) {

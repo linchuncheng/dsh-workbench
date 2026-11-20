@@ -413,7 +413,7 @@ function fakeWorkspaceRegistry() {
 function fakeDataReader() {
   const missing = async () => ({
     ok: false,
-    error: { code: 'invalid-request', message: 'gate: 没有注入 DataReader（模块只能走 deps.data 读数据）' },
+    error: { code: 'invalid-request', message: 'gate: 没有注入 DataReader（模块只能通过 deps.data 读取数据）' },
   });
   return {
     read: missing,
@@ -547,14 +547,14 @@ function headlineProblemsOf(name, toolName, verdict, facts, when = '', scale = 1
   const segments = [
     ['明细（approvalDetail）', 'detail', hasDetail ? text(facts.zh) : '', hasDetail ? text(facts.en) : ''],
     ['问句（question）', 'question', text(verdict?.question?.zh), text(verdict?.question?.en)],
-    ['兜底句（fallback）', 'fallback', text(verdict?.fallback?.zh), text(verdict?.fallback?.en)],
+    ['回退句（fallback）', 'fallback', text(verdict?.fallback?.zh), text(verdict?.fallback?.en)],
   ];
   for (const [label, key, zh, en] of segments) {
     if (zh === '' && en === '') continue;
     if (/\n|\r/.test(zh) || /\n|\r/.test(en)) {
       problems.push(
         `${name}: 写工具 ${toolName} 的${label}${when}里有换行 —— 审批头行是纯文本、没有 white-space，` +
-          `换行会被塌成空格，屏幕上就是一坨。压成一句，长内容放 approval.render（卡上那一格详情）`,
+          `换行会被合并为空格，屏幕上会挤成一行。请压缩成一句，长内容放入 approval.render（卡片上的该格详情）`,
       );
     }
     const cap = HEAD_BUDGETS[key] * scale;
@@ -563,13 +563,13 @@ function headlineProblemsOf(name, toolName, verdict, facts, when = '', scale = 1
       problems.push(
         `${name}: 写工具 ${toolName} 的${label}${when}太长（${zh.length} 字 > 预算 ${cap} 字）：「${zh}」—— ` +
           `头行三段各有预算（明细 ≤${HEAD_BUDGETS.detail} / 问句 ≤${HEAD_BUDGETS.question} / ` +
-          `兜底句 ≤${HEAD_BUDGETS.fallback} 字），其余（列表 / 正文 / 多字段 / 可变长内容）放进 approval.render 那一格`,
+          `回退句 ≤${HEAD_BUDGETS.fallback} 字），其余（列表 / 正文 / 多字段 / 可变长内容）放入 approval.render 该格`,
       );
     }
     if (en.length > enCap) {
       problems.push(
         `${name}: 写工具 ${toolName} 的${label}${when}（英文）太长（${en.length} 字符 > 预算 ${enCap}）：「${en}」—— ` +
-          `英文侧按中文的 ${EN_RATIO} 倍算，超了同样挪进 approval.render`,
+          `英文侧按中文的 ${EN_RATIO} 倍计算，超出时同样移入 approval.render`,
       );
     }
   }
@@ -601,8 +601,8 @@ function reconcileTools(name, manifest, toolNames) {
   return [
     `${name}: dsh.workbench 声明的能力与代码真正注册的对不上 —— ` +
       `清单 [${declared.join(', ')}]、代码 [${actual.join(', ')}]。` +
-      `清单是工具面的**唯一**来源（外壳按它算收窄、市场按它画花名册）：` +
-      `漏声明 = 那个工具不会被收起也不会进花名册；多声明 = 花名册里有个永远不存在的工具`,
+      `清单是工具面的**唯一**来源（工作台按它限制范围、市场按它生成花名册）：` +
+      `漏声明 = 该工具不会被收起也不会进入花名册；多声明 = 花名册中存在一个永远不会出现的工具`,
   ];
 }
 
@@ -660,10 +660,10 @@ export async function run() {
 
     const unit = dsh.workbench.unit;
     if (typeof unit !== 'string' || !UNIT_ID.test(unit)) {
-      problems.push(`${name}: dsh.workbench.unit 形状不对 —— ${JSON.stringify(unit)}（要小写连字符）`);
+      problems.push(`${name}: dsh.workbench.unit 形状不对 —— ${JSON.stringify(unit)}（应为小写连字符）`);
     } else if (units.has(unit)) {
       problems.push(
-        `${name}: 单元 id ${JSON.stringify(unit)} 与 ${units.get(unit)} 撞了 —— ` +
+        `${name}: 单元 id ${JSON.stringify(unit)} 与 ${units.get(unit)} 重复 —— ` +
           `两个包声明了同一个单元；安装后注册表会立即抛出错误（id 会写入持久化配置）`,
       );
     } else {
@@ -671,8 +671,8 @@ export async function run() {
       const shellPkg = packages.find((item) => item.manifest.name === SHELL);
       if (shellPkg !== undefined && existsSync(join(shellPkg.dir, 'src/modules', unit, 'unit.ts'))) {
         problems.push(
-          `${name}: 单元 ${JSON.stringify(unit)} 在外壳里还有一份（${SHELL}/src/modules/${unit}/）—— ` +
-            `同一个单元不能同时存在于两边：两份事实来源，安装模块时注册表会立即抛出错误`,
+          `${name}: 单元 ${JSON.stringify(unit)} 在工作台里还有一份（${SHELL}/src/modules/${unit}/）—— ` +
+            `同一个单元不能同时存在于两边：存在两份事实来源，安装模块时注册表会立即抛出错误`,
         );
       }
     }
@@ -698,8 +698,8 @@ export async function run() {
       if (literals.length > 0) {
         problems.push(
           `${name}: 工具名的字面量又写回了源码 —— ${literals.join(' / ')}。` +
-            `清单里已经有 key，代码该引用生成物（\`DECLARED_TOOLS.<key>.name\`）：` +
-            `名字只有清单一处写者，写两遍就会漂，而漂了没有任何编译错`,
+            `清单里已经有 key，代码应引用生成物（\`DECLARED_TOOLS.<key>.name\`）：` +
+            `名称只有清单这一个写入来源，写两遍会产生不一致，且不一致不会引起编译错误`,
         );
       }
       if (bare.length > 0) {
@@ -712,7 +712,7 @@ export async function run() {
       if (typeof rel !== 'string') {
         problems.push(
           `${name}: dsh.workbenchFaces.${face} 没声明 —— 这两个源码入口是工具链字段` +
-            `（不在 dsh.workbench 协议里）：source 判据靠它们判"哪一半"，缺了它判不了` +
+            `（不在 dsh.workbench 协议里）：source 判据靠它们判定"属于哪一半"，缺少后无法判定` +
             `（\`dsh-wb-module migrate\` 会补默认的 ${DEFAULT_FACES[face]}）`,
         );
       } else if (!existsSync(join(pkg.dir, rel))) {
@@ -725,14 +725,14 @@ export async function run() {
     const isPublic = pkg.manifest.publishConfig?.access === 'public';
     if (publishable && !isPublic && (typeof registry !== 'string' || registry.includes('registry.npmjs.org'))) {
       problems.push(
-        `${name}: 它不是 private，却既没声明 publishConfig.access=public、也没有指向内网源的 registry —— ` +
-          `发布目标必须显式写出来（公网 / 内网），否则等于把私有模块发到公共源`,
+        `${name}: 该包不是 private，但既未声明 publishConfig.access=public，也没有指向私有源的 registry —— ` +
+          `必须显式声明发布目标（公网 / 私有源），否则等于把私有模块发布到公共源`,
       );
     }
 
     if (pkg.manifest.peerDependencies?.[SHELL] === undefined) {
       problems.push(
-        `${name}: 没有对 ${SHELL} 的 peer 依赖 —— 模块跑在外壳交出来的服务上，装的时候必须能说清版本`,
+        `${name}: 没有对 ${SHELL} 的 peer 依赖 —— 模块运行在工作台提供的服务上，安装时必须能声明版本`,
       );
     }
 
@@ -740,7 +740,7 @@ export async function run() {
       if (pkg.manifest.scripts?.[script] === undefined) {
         problems.push(
           `${name}: 没有 ${script} 脚本 —— 模块包必须自带整套门禁：` +
-            `外壳的 arch / 覆盖率 / 运行时边界都只扫自己的 src/，模块出包之后没人替它跑`,
+            `工作台的 arch / 覆盖率 / 运行时边界都只扫描自己的 src/，模块出包后没有其他环节代为运行`,
         );
       }
     }
@@ -766,19 +766,19 @@ export async function run() {
     if (manifest !== undefined) {
       if (face === undefined) {
         problems.push(
-          `${name}: 声明了 ${manifest.tools.length} 个能力，但宿主面挂不起来（dist/host.js 缺、或 apply 抛了）` +
-            `—— 声明的能力对不了账，先把面修好`,
+          `${name}: 声明了 ${manifest.tools.length} 个能力，但宿主面无法挂载（dist/host.js 缺失，或 apply 抛出异常）` +
+            `—— 声明的能力无法对账，请先修复宿主面`,
         );
       } else if (mountError !== undefined) {
         problems.push(
-          `${name}: 宿主面 mount(deps) 抛了 —— ${mountError}。` +
-            `先修 mount 里用到的那份 deps（宿主交的服务）与初始化，能力才对得了账`,
+          `${name}: 宿主面 mount(deps) 抛出异常 —— ${mountError}。` +
+            `请先修复 mount 中用到的 deps（宿主提供的服务）与初始化，能力才能完成对账`,
         );
       } else {
         try {
           mounted?.registerTools();
         } catch (error) {
-          problems.push(`${name}: registerTools() 抛了 —— ${String(error)}`);
+          problems.push(`${name}: registerTools() 抛出异常 —— ${String(error)}`);
         }
         problems.push(
           ...reconcileTools(
@@ -808,8 +808,8 @@ export async function run() {
         const knownList = [...known].sort();
         problems.push(
           `${name}: needs 里第 ${index} 条 extension（${pluginName}）声明的命令 ${missing.join(' / ')} 在插件里找不到 —— ` +
-            `它真有这些：${knownList.slice(0, 8).join(' / ')}${knownList.length > 8 ? ' …' : ''}。` +
-            `命令名写错的话，用户那边的"缺命令"永远补不上（用 \`opencli ${pluginName} --help\` 看原名）`,
+            `插件实际包含这些：${knownList.slice(0, 8).join(' / ')}${knownList.length > 8 ? ' …' : ''}。` +
+            `命令名写错时，用户端的"缺少命令"状态永远无法解除（用 \`opencli ${pluginName} --help\` 查看原名）`,
         );
       });
 
@@ -823,9 +823,9 @@ export async function run() {
                 if (declaredPlugins.has(literal)) continue;
                 problems.push(
                   `${name}: ${relative(pkg.dir, file)}:${index + 1} 里的插件名「${literal}」不在清单的 ` +
-                    `needs（kind=extension）里（清单里是 ${[...declaredPlugins].join(' / ')}）—— 改了清单没改代码` +
-                    '（或反过来）会让外壳按错的名字去装 / 去探那个插件。插件名只有一处真相：' +
-                    '能获取 deps.manifest 的地方就使用它；无法获取的地方至少与清单保持一致',
+                    `needs（kind=extension）里（清单里是 ${[...declaredPlugins].join(' / ')}）—— 修改清单但未同步代码` +
+                    '（或反之）会让工作台按错误的名称安装或探测该插件。插件名只有一个来源：' +
+                    '能获取 deps.manifest 的地方应使用它；无法获取的地方至少与清单保持一致',
                 );
               }
             });
@@ -841,8 +841,8 @@ export async function run() {
         !usesLibPort
       ) {
         problems.push(
-          `${name}: 声明了 lib 类 need 却既没用 libInstallCommand，也没走 core 的 LibReader（libs.load）—— ` +
-            `lib 没装好时用户只看到"没装"，没有能照做的那条安装命令`,
+          `${name}: 声明了 lib 类 need 却既没有使用 libInstallCommand，也没有使用 core 的 LibReader（libs.load）—— ` +
+            `lib 未安装时用户只会看到"未安装"，没有可照做的安装命令`,
         );
       }
     }
@@ -853,14 +853,14 @@ export async function run() {
     const declaredPrefs = (configRows ?? []).some((one) => text(one?.['persistence']) === 'prefs');
     if (declaredPrefs && !wiredPrefs) {
       problems.push(
-        `${name}: 设计表里有一行写着"存起来"（config[].persistence = 'prefs'），产物里却没有接 prefs —— ` +
-          '用户改完刷新就回到默认，等于没存。接法：mount 返回 `prefs: { resource, handle }`，handle 里用 deps.store 落盘',
+        `${name}: 设计表里有一行声明持久化（config[].persistence = 'prefs'），产物里却没有接入 prefs —— ` +
+          '用户修改后刷新会回到默认值，等于没有保存。接入方式：mount 返回 `prefs: { resource, handle }`，handle 中使用 deps.store 写入',
       );
     }
     if (wiredPrefs && !declaredPrefs) {
       problems.push(
-        `${name}: 产物里接了 prefs（能给用户配东西），设计表的 config[] 里却没有一行 persistence = 'prefs' —— ` +
-          '代码里能配、表上没写，下一个读表的人就不知道它刷新还在',
+        `${name}: 产物里接入了 prefs（可以供用户配置），设计表的 config[] 里却没有一行 persistence = 'prefs' —— ` +
+          '代码支持配置，但设计表未记录；后续阅读设计表的人无法得知刷新后是否保留',
       );
     }
 
@@ -896,13 +896,13 @@ export async function run() {
         problems.push(
           siteName === '' && !hasOrigin
             ? `${name}: design.json 的配方要有 origin 或 site 至少一个`
-            : `${name}: design.json 的配方指向了没声明的站点 ${siteName}（${resolved.problem.message}）`,
+            : `${name}: design.json 的配方指向了未声明的站点 ${siteName}（${resolved.problem.message}）`,
         );
         continue;
       }
       const problem = recipeProblemOf(resolved.value);
       if (problem !== undefined) {
-        problems.push(`${name}: design.json 的配方不合法（${problem}）—— 跑 \`dsh-wb-module design check\` 看点名`);
+        problems.push(`${name}: design.json 的配方不合法（${problem}）—— 运行 \`dsh-wb-module design check\` 查看具体项`);
       }
     }
 
@@ -928,7 +928,7 @@ export async function run() {
           usedSites.add(siteName);
           if (!Object.hasOwn(sites, siteName)) {
             problems.push(
-              `${name}: ${relative(pkg.dir, file)} 里引用了没声明的站点 ${siteName}（静态扫描）—— ` +
+              `${name}: ${relative(pkg.dir, file)} 里引用了未声明的站点 ${siteName}（静态扫描）—— ` +
                 '在清单 dsh.workbench.host.sites 里补上，或改成已声明的站点',
             );
           }
@@ -946,7 +946,7 @@ export async function run() {
         if (!usedSites.has(siteName) && !dynamicSites) {
           problems.push(
             `${name}: 站点表里的 ${siteName} 没有被任何配方 / 计划 / 源码引用 —— ` +
-              '多半是探了没用或名字写错了；不用就从 host.sites 删掉',
+              '通常是探测后未使用或名称写错；不使用时从 host.sites 删除',
           );
         }
       }
@@ -963,7 +963,7 @@ export async function run() {
             continue;
           }
           if (canonical !== origin) {
-            warnings.push(`${name}: host.origins 里的 ${JSON.stringify(one)} 会按 ${canonical} 归一`);
+            warnings.push(`${name}: host.origins 里的 ${JSON.stringify(one)} 会按 ${canonical} 规范化`);
           }
           if (normalized.has(canonical)) problems.push(`${name}: host.origins 里重复了 ${canonical}`);
           normalized.add(canonical);
@@ -972,7 +972,7 @@ export async function run() {
         for (const origin of normalized) {
           if (!siteOrigins.has(origin)) {
             warnings.push(
-              `${name}: host.origins 里的 ${origin} 不属于任何站点 —— 建议补进 host.sites，或从 origins 删掉`,
+              `${name}: host.origins 里的 ${origin} 不属于任何站点 —— 建议补入 host.sites，或从 origins 删除`,
             );
           }
         }
@@ -986,15 +986,15 @@ export async function run() {
       for (const name0 of inDesign.filter((one) => !inDeclaration.includes(one))) {
         problems.push(
           `${name}: design.json 的能力行里有「${name0}」，清单的 tools[] 里却没有它 —— ` +
-            '能力只有清单那一处能出货（装机预检 / 市场 / 外壳都读它），底稿写了也是一句空话：' +
-            `要么把它补进 \`dsh.workbench.tools\`，要么从底稿里删掉`,
+            '能力只有清单这一个出货来源（安装预检 / 市场 / 工作台都读取它），设计记录写入了也不会生效：' +
+            `要么补入 \`dsh.workbench.tools\`，要么从设计记录中删除`,
         );
       }
       for (const name0 of inDeclaration.filter((one) => !inDesign.includes(one))) {
         problems.push(
           `${name}: 清单的 tools[] 里声明了「${name0}」，design.json 的能力行里却没有它 —— ` +
-            '底稿是给人读的那半（它干嘛、要不要批准，`design render` 拿它出 DEVELOPING.md）：' +
-            `要么在 design.json 的 capabilities[] 里为「${name0}」补一行，要么把它从清单里删掉`,
+            '设计记录是供人阅读的部分（用途、是否需要批准，`design render` 据此生成 DEVELOPING.md）：' +
+            `要么在 design.json 的 capabilities[] 里为「${name0}」补一行，要么从清单中删除`,
         );
       }
     }
@@ -1005,22 +1005,22 @@ export async function run() {
         const missing = LONG_TASK_METHODS.filter((method) => typeof registry[method] !== 'function');
         if (missing.length > 0) {
           problems.push(
-            `${name}: 长任务注册表缺方法 ${missing.join(' / ')} —— 外壳按它给这个单元投影出 /runs 路由（停止 / 我处理完了 / 回执三颗钮也按它发），` +
-              `kit 的 useLongTask 与左栏会话行那颗 loading 点读的也是它（后者走 \`live()\`；注册表用 ` +
+            `${name}: 长任务注册表缺少方法 ${missing.join(' / ')} —— 工作台据此为该单元生成 /runs 路由（停止 / 已处理 / 回执三个按钮也据此发送），` +
+              `kit 的 useLongTask 与左栏会话行中的该 loading 指示点读取的也是它（后者使用 \`live()\`；注册表用 ` +
               `@dsh-workbench/shared/host 的 createLongTaskRegistry 建）`,
           );
         }
       }
       for (const options of created) {
         if (text(options?.key) === '') {
-          problems.push(`${name}: longTasks.create 没给 key —— 一个单元可以有好几件跑一会儿的事，key 是它们的名字`);
+          problems.push(`${name}: longTasks.create 未提供 key —— 一个单元可以有多项长时间运行的任务，key 是它们的名称`);
         }
         if (typeof options?.run !== 'function') {
-          problems.push(`${name}: longTasks.create({key:'${String(options?.key ?? '')}'}) 没给 run —— 那它跑什么`);
+          problems.push(`${name}: longTasks.create({key:'${String(options?.key ?? '')}'}) 未提供 run —— 它运行什么`);
         }
         if (typeof options?.view !== 'function') {
           problems.push(
-            `${name}: longTasks.create({key:'${String(options?.key ?? '')}'}) 没给 view —— 卡片上那行要渲染的快照没处来`,
+            `${name}: longTasks.create({key:'${String(options?.key ?? '')}'}) 未提供 view —— 卡片上该行需要渲染的快照没有来源`,
           );
         }
       }
@@ -1030,7 +1030,7 @@ export async function run() {
       if (!LONG_TASK_RENDERERS.some((one) => clientText.includes(one))) {
         problems.push(
           `${name}: 注册了长任务，但客户端产物里没有 ${LONG_TASK_RENDERERS.join(' / ')}（kit 里那套）—— ` +
-            `用户点完只看得到"没反应"，看不到进行中 / 等人处理 / 要登录 / 停下的 / 完成 / 出错`,
+            `用户点击后只会看到"无反应"，看不到进行中 / 等待处理 / 需要登录 / 已停止 / 已完成 / 出错`,
         );
       }
     }
@@ -1038,7 +1038,7 @@ export async function run() {
     if (mounted !== undefined) {
       const factsOf = mounted.factsOf;
       if (factsOf !== undefined && typeof factsOf !== 'function') {
-        problems.push(`${name}: factsOf 不是函数 —— 外壳调它的时候会当场抛`);
+        problems.push(`${name}: factsOf 不是函数 —— 工作台调用时会立即抛出异常`);
       } else if (typeof factsOf === 'function') {
         let claimed;
         try {
@@ -1052,7 +1052,7 @@ export async function run() {
         if (!ok) {
           problems.push(
             `${name}: factsOf 要么回 undefined（这次跟面板无关）、要么回一串非空的事实名 —— ` +
-              `现在回的是 ${JSON.stringify(claimed)}（事实名用 factOfRoute('<unit>/<路由>') 起，别自己拼）`,
+              `现在返回的是 ${JSON.stringify(claimed)}（事实名用 factOfRoute('<unit>/<路由>') 生成，不要自行拼接）`,
           );
         }
       }
@@ -1062,11 +1062,11 @@ export async function run() {
         const kinds = context.kinds;
         if (!Array.isArray(kinds) || kinds.length === 0 || kinds.some((one) => text(one) === '')) {
           problems.push(
-            `${name}: context.kinds 要是非空的一串类别名 —— agent 引用你这一格时，认哪几类由它决定`,
+            `${name}: context.kinds 应为非空的类别名列表 —— agent 引用该面板格时，识别哪几类由它决定`,
           );
         }
         if (typeof context.render !== 'function') {
-          problems.push(`${name}: context.render 不是函数 —— agent 引用你这一格时没人把它渲染成人话`);
+          problems.push(`${name}: context.render 不是函数 —— agent 引用该面板格时没有代码将其渲染为可读文本`);
         }
       }
 
@@ -1088,7 +1088,7 @@ export async function run() {
             );
           if (!ok) {
             problems.push(
-              `${name}: warmReads() 要回一串 [['<unit>', '<target>']] —— 现在回的是 ${JSON.stringify(reads)}`,
+              `${name}: warmReads() 应返回 [['<unit>', '<target>']] 形式的列表 —— 现在返回的是 ${JSON.stringify(reads)}`,
             );
           }
         }
@@ -1100,8 +1100,8 @@ export async function run() {
       if (mounted === undefined) {
         if (mountError === undefined) {
           problems.push(
-            `${name}: 清单里有会写的工具，但宿主面挂不起来（apply / mount 抛了）—— ` +
-              `这条审批口径验不了，先把挂载依赖修好（模块自己的 smoke 也是这么挂的）`,
+            `${name}: 清单里有写入工具，但宿主面无法挂载（apply / mount 抛出异常）—— ` +
+              `无法验证这条审批口径，请先修复挂载依赖（模块自己的 smoke 也按此方式挂载）`,
           );
         }
         continue;
@@ -1118,7 +1118,7 @@ export async function run() {
         if (typeof mounted.needsApproval !== 'function') {
           problems.push(
             `${name}: 工具 ${tool.name} 的清单里写着 writes:true，但 mount() 的返回值里没有 needsApproval —— ` +
-              `外壳每次调用前都问它"这次要不要批准"，没有它就只有一句"没认领"，**每一次调用都当场被拒**。` +
+              `工作台每次调用前都会询问它"这次是否需要批准"，缺少它时只有"没有明确口径"，**每次调用都会被立即拒绝**。` +
               `做法：mount() 返回的对象里加 needsApproval(call)，认出这把工具再给 verdict：` +
               `{ kind: 'read' }（这次不用问）或 { kind: 'ask', reason, question: {zh,en}, fallback: {zh,en} }（要问，且问得清）`,
           );
@@ -1129,7 +1129,7 @@ export async function run() {
           verdict = mounted.needsApproval(call);
         } catch (error) {
           problems.push(
-            `${name}: 工具 ${tool.name} 的 needsApproval 在合成调用 ${JSON.stringify(call.arguments)} 上抛了 —— ${String(error)}`,
+            `${name}: 工具 ${tool.name} 的 needsApproval 在合成调用 ${JSON.stringify(call.arguments)} 上抛出异常 —— ${String(error)}`,
           );
           continue;
         }
@@ -1148,9 +1148,9 @@ export async function run() {
           problems.push(
             `${name}: 工具 ${tool.name} 的清单里写着 writes:true，但 needsApproval 对合成调用 ` +
               `${JSON.stringify(call.arguments)} 没给出合法口径 —— ` +
-              `要么 { kind: 'read' }（这件事不用问），要么 { kind: 'deny', reason }（这一通根本跑不成，` +
+              `要么 { kind: 'read' }（这件事不用询问），要么 { kind: 'deny', reason }（本次操作无法执行，` +
               `理由原样交给 agent），要么 { kind: 'ask', reason, question: {zh,en}, ` +
-              `fallback: {zh,en} }（要问，且问得清）。别的返回值外壳会当场 deny${cannotShape}`,
+              `fallback: {zh,en} }（需要询问，且询问清楚）。其他返回值会被工作台立即 deny${cannotShape}`,
           );
           continue;
         }
@@ -1202,25 +1202,25 @@ export async function run() {
         }
         if (facts === undefined || 'blocked' in facts) {
           headlineNotes.push(
-            `${name}: 写工具 ${tool.name} 的 approvalDetail 在合成调用上没有明细（要真的计划/预览过才有）—— ` +
-              `头行预算只验到问句与兜底句那一截；明细那一句作者自己按「一句话、≤${HEAD_BUDGETS.detail} 字」看一眼：` +
-              `超了就把长内容放进 approval.render 那一格`,
+            `${name}: 写工具 ${tool.name} 的 approvalDetail 在合成调用上没有明细（需要实际生成计划或预览后才有）—— ` +
+              `头行预算仅验证到问句与回退句部分；明细那一句请作者按「一句话、≤${HEAD_BUDGETS.detail} 字」自行检查：` +
+              `超出时就把长内容放入 approval.render 该格`,
           );
         }
         if (!described) {
           problems.push(
             `${name}: 写工具 ${tool.name} 的 needsApproval 对合成调用回了 ask（需要批准），` +
-              `但 approvalDetail 没说清"这次会发生什么"（zh/en 或 {blocked}）—— ` +
-              `审批屏上用户只能看到一句通用问句，看不到会动什么${cannotShape}`,
+              `但 approvalDetail 没有说明"本次会发生什么"（zh/en 或 {blocked}）—— ` +
+              `审批屏上用户只能看到一句通用问句，看不到会影响什么${cannotShape}`,
           );
         }
       }
       if (readOnProbe.length > 0) {
         probeNotes.push(
-          `写工具 ${readOnProbe.join(' / ')} 按合成调用回了"这次不用问"（kind: 'read' 或 'deny'）—— ` +
-            `判据只能验到这一步：它是不是"参数里带 confirm 才真的写" / "这一通真跑不成"那种**合法**口径，` +
-            `合成调用看不出来（必填项给的是占位值，不是真实写入参数）。作者自己确认一次：` +
-            `真的调用会不会 ask、ask 时 approvalDetail 说没说清`,
+          `写工具 ${readOnProbe.join(' / ')} 按合成调用返回了"这次不用询问"（kind: 'read' 或 'deny'）—— ` +
+            `判据只能验证到这一步：它是否属于"参数中带 confirm 才实际写入" / "本次操作确实无法执行"这类**合法**口径，` +
+            `合成调用无法体现（必填项给的是占位值，不是真实写入参数）。请作者自行确认一次：` +
+            `实际调用是否会 ask、ask 时 approvalDetail 是否说明清楚`,
         );
       }
     }
@@ -1248,7 +1248,7 @@ export async function run() {
       if (hit !== null) {
         problems.push(
           `${SHELL}: ${relative(ROOT, file)} 里点名了模块包 ${hit[0]} —— ` +
-            `外壳不许认识任何模块（那等于把"中央清单"搬进外壳）；模块靠服务名挂进来`,
+            `工作台不得认识任何模块（那等于把"中央清单"搬进工作台）；模块通过服务名挂载`,
         );
       }
     }
@@ -1262,9 +1262,8 @@ export async function run() {
     const bare = [...unresolvedIn].filter(barePackage);
     if (bare.length > 0) {
       notes.push(
-        `上面有 ${bare.length} 个包是**裸**的：它上面没有 pnpm-workspace.yaml、自己也没有 node_modules —— ` +
-          `那几条 inject/external 正是因为找不到任何同伴包才落不到图里。` +
-          `它上面既没有 pnpm-workspace.yaml、自己也没有 node_modules —— 所以找不到任何同伴包。`,
+        `上述 ${bare.length} 个包处于**孤立**状态：上层没有 pnpm-workspace.yaml，自身也没有 node_modules —— ` +
+          `那几条 inject/external 正是因为找不到任何同伴包，才无法解析到依赖图中。`,
       );
     }
     return { status: 'fail', notes: [...notes, ...warnings.map((one) => `（警告）${one}`)], problems };
@@ -1274,8 +1273,8 @@ export async function run() {
     status: 'pass',
     notes: [
       `${declared} 个带 dsh 声明的包（${modules} 个模块）· bundle 落点存在 · ` +
-        `inject/external 都能落到图里 · 单元 id 唯一 · 面文件与 peer 都在 · 各有接线自检`,
-      '（test 不在这儿跑：状态级的东西在模块自己的 vitest 里 —— 四个脚本自己跑一遍）',
+        `inject/external 都能解析到依赖图 · 单元 id 唯一 · 面文件与 peer 均存在 · 各自带有接线自检`,
+      '（测试不在此处运行：状态级内容在模块自己的 vitest 中 —— 请自行运行四个脚本）',
       `单元：${unitList}`,
       ...probeNotes,
       ...headlineNotes,

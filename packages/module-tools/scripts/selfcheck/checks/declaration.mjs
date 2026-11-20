@@ -71,7 +71,7 @@ export const checks = [
         const noShell = run();
         if (noShell.failed) {
           problems.push(`找不到契约时应该 skip（不是抛异常）：${tail(noShell.out)}`);
-        } else if (!noShell.out.includes('一条都没查')) {
+        } else if (!noShell.out.includes('本次均未检查')) {
           problems.push(`skip 了但没说清"不是没问题"：${tail(noShell.out)}`);
         }
       } catch (error) {

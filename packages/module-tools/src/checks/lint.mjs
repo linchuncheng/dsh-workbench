@@ -13,12 +13,12 @@ export const CONFIG_FILE = 'eslint.config.mjs';
 const MAX_PROBLEMS = 40;
 
 const HOW_TO_JOIN =
-  `在模块包里放一份 ${CONFIG_FILE}，内容两行就够（与模板里那份逐字一致）：\n` +
+  `在模块包里放一份 ${CONFIG_FILE}，内容两行即可（与模板中的那份逐字一致）：\n` +
   `    import { moduleLint } from '@dsh-workbench/module-tools/lint';\n` +
   '    export default moduleLint({ rootDir: import.meta.dirname });\n' +
   '  `rootDir` 是给 typescript-eslint 钉 tsconfigRootDir 的（一个进程里同时有多份 eslint 配置时必需；\n' +
-  '  模块自己单独跑一份配置时可以省）。规则与阈值只有这一份（随 @dsh-workbench/module-tools 同代）；\n' +
-  '  要开口子就从 moduleLint({ ignores, rules, rootDir }) 的参数进。';
+  '  模块单独运行一份配置时可以省略）。规则与阈值只有这一份（随 @dsh-workbench/module-tools 同代）；\n' +
+  '  需要添加例外时，通过 moduleLint({ ignores, rules, rootDir }) 的参数配置。';
 
 const messageOf = (error) => (error instanceof Error ? error.message : String(error));
 
@@ -110,8 +110,8 @@ async function loadConfig(pkg) {
   } catch (error) {
     return {
       error:
-        `${pkg.manifest.name}: ${CONFIG_FILE} 跑不起来 —— ${messageOf(error)}` +
-        '（先确认这份配置能 import、没有语法错，再确认它 import 的东西在工作区里解析得到）',
+        `${pkg.manifest.name}: ${CONFIG_FILE} 无法运行 —— ${messageOf(error)}` +
+        '（请先确认这份配置可以 import、没有语法错误，再确认它 import 的内容在工作区内可以解析）',
     };
   }
 
@@ -120,14 +120,14 @@ async function loadConfig(pkg) {
     return {
       error:
         `${pkg.manifest.name}: ${CONFIG_FILE} 的默认导出不是 flat config 数组 —— ` +
-        `这份配置不是 moduleLint() 来的。\n  ${HOW_TO_JOIN}`,
+        `这份配置不是由 moduleLint() 生成的。\n  ${HOW_TO_JOIN}`,
     };
   }
   if (!hasDialectTrace(config)) {
     return {
       error:
         `${pkg.manifest.name}: ${CONFIG_FILE} 里没有 ${FINGERPRINT} 那几块 —— ` +
-        `这份配置不是 moduleLint() 来的（要加规则请展开 moduleLint() 再追加一块，别手写一份自己的方言）。` +
+        `这份配置不是由 moduleLint() 生成的（要添加规则，请展开 moduleLint() 再追加一块，不要手写一份自己的规则集）。` +
         `\n  ${HOW_TO_JOIN}`,
     };
   }
@@ -135,10 +135,10 @@ async function loadConfig(pkg) {
   if (diverged.length > 0) {
     return {
       error:
-        `${pkg.manifest.name}: ${CONFIG_FILE} 里的方言与 moduleLint() 产出的不一致 —— ` +
-        `${diverged.join('；')}。要开口子请走 moduleLint({ rules, ignores })（rules 落在 ` +
+        `${pkg.manifest.name}: ${CONFIG_FILE} 里的规则集与 moduleLint() 产出的不一致 —— ` +
+        `${diverged.join('；')}。需要添加例外时请使用 moduleLint({ rules, ignores })（rules 落在 ` +
         `${FINGERPRINT}/overrides 那块、ignores 加在全局 ignores 那块）或展开 moduleLint() ` +
-        '再追加自己的一块，别改方言那几块。',
+        '再追加自己的一块，不要修改规则集那几块。',
     };
   }
   return { config };
@@ -178,7 +178,7 @@ export async function lintPackage(pkg, { fix = false } = {}) {
     }
     results = await runOnce(false);
   } catch (error) {
-    return { name, error: `${name}: ${CONFIG_FILE} 跑不起来 —— ${messageOf(error)}` };
+    return { name, error: `${name}: ${CONFIG_FILE} 无法运行 —— ${messageOf(error)}` };
   }
 
   const problems = [];
@@ -213,7 +213,7 @@ export async function run() {
   if (modulePackages.length === 0) {
     return {
       status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码要判卫生'],
+      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码需要判定代码卫生'],
       problems: [],
     };
   }
@@ -223,7 +223,7 @@ export async function run() {
     return {
       status: 'skip',
       notes: [
-        `${modulePackages.length} 个模块包都没有 ${CONFIG_FILE} —— 没有这份配置就没有规则可跑（不是"没问题"）。` +
+        `${modulePackages.length} 个模块包都没有 ${CONFIG_FILE} —— 没有这份配置就没有规则可运行（不代表没有问题）。` +
           `\n  ${HOW_TO_JOIN}`,
       ],
       problems: [],
@@ -254,17 +254,17 @@ export async function run() {
     const only = process.env.DSH_WB_ONLY === 'lint' || process.env.DSH_WB_PACKAGE_FILTER !== '';
     const shown = only ? problems : problems.slice(0, MAX_PROBLEMS);
     const notes = [
-      '红了怎么修：先看位置与规则名，再决定"改代码"还是"就地 eslint-disable-next-line"；' +
-        '要整体放开就展开 moduleLint() 再追加一块（别把方言换掉）。',
+      '未通过时如何修复：先看位置与规则名，再决定"修改代码"还是"就地 eslint-disable-next-line"；' +
+        '需要整体放开时，展开 moduleLint() 再追加一块（不要替换规则集）。',
     ];
     if (shown.length < problems.length) {
-      notes.push(`还有 ${problems.length - shown.length} 条没列出来（跑 dsh-wb-module check --only lint 看全）。`);
+      notes.push(`还有 ${problems.length - shown.length} 条未列出（运行 dsh-wb-module check --only lint 查看全部）。`);
     }
     return { status: 'fail', notes, problems: shown };
   }
 
   const notes = [
-    `${declared.length}/${modulePackages.length} 个模块包带 ${CONFIG_FILE} · ${files} 个文件 · ` +
+    `${declared.length}/${modulePackages.length} 个模块包带有 ${CONFIG_FILE} · ${files} 个文件 · ` +
       `${errors} error · ${warnings} warn`,
   ];
   if (warnLines.length > 0 && process.env.DSH_WB_ONLY === 'lint') {

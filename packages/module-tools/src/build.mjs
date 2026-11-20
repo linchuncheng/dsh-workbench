@@ -29,7 +29,7 @@ function aliasResolver({ root, unit }) {
       context.onResolve({ filter: /^@\// }, (args) => {
         if (SINGLETON.test(args.path)) {
           throw new Error(
-            `${args.path} 必须从 kit 拿（运行时要单例），不能内联进模块包 —— 内联就是第二份实例`,
+            `${args.path} 必须从 kit 获取（运行时需要单例），不能内联进模块包 —— 内联就是第二份实例`,
           );
         }
         let base;
@@ -41,7 +41,7 @@ function aliasResolver({ root, unit }) {
         }
         if (base === undefined) {
           throw new Error(
-            `${args.path} 指向外壳源码，模块不许这样引 —— 改从包名引（@dsh-workbench/shared 或 /host）；` +
+            `${args.path} 指向工作台源码，模块不得这样引用 —— 请改从包名引入（@dsh-workbench/shared 或 /host）；` +
               `模块自己的文件用 @/modules/${unit ?? '<unit>'}/… 或相对路径`,
           );
         }
@@ -108,7 +108,7 @@ function cssInjector({ root }) {
 export async function build({ root }) {
   const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const id = manifest.name;
-  if (typeof id !== 'string' || id === '') throw new Error('package.json 里没有 name，认不出模块 id');
+  if (typeof id !== 'string' || id === '') throw new Error('package.json 中没有 name，无法识别模块标识');
   const unit = manifest.dsh?.workbench?.unit;
   const declared = manifest.dsh?.client?.external ?? [];
   const plugins = [aliasResolver({ root, unit })];
@@ -155,7 +155,7 @@ export async function build({ root }) {
   if (inlinedDsh.length > 0) {
     throw new Error(
       `${id}: dsh 的包被打进了浏览器产物 —— ${inlinedDsh.join('、')}\n` +
-        '这些应当由外壳的模块表提供（标成 external 才是"用外壳那一份"）。',
+        '这些应当由工作台的模块表提供（标成 external 才是"用工作台那一份"）。',
     );
   }
 
@@ -164,7 +164,7 @@ export async function build({ root }) {
     .map((line) => (line === '' ? line : `    ${line}`))
     .join('\n');
 
-  const wrapped = `// ⚠️ 本文件由 dsh-wb-module build 生成，请勿手改。改 src/ 后跑：dsh-wb-module build\nwindow.__ModuleLoader__.load({\n  id: ${JSON.stringify(id)},\n  factory(require) {\n    const module = { exports: {} };\n    const exports = module.exports;\n${indented}\n    return module.exports;\n  },\n});\n`;
+  const wrapped = `// ⚠️ 本文件由 dsh-wb-module build 生成，请勿手动修改。修改 src/ 后运行：dsh-wb-module build\nwindow.__ModuleLoader__.load({\n  id: ${JSON.stringify(id)},\n  factory(require) {\n    const module = { exports: {} };\n    const exports = module.exports;\n${indented}\n    return module.exports;\n  },\n});\n`;
 
   writeFileSync(join(root, 'client.js'), wrapped);
 

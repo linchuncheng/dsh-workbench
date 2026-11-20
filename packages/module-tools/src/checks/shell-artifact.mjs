@@ -42,7 +42,7 @@ function loadShellExports(clientPath, options = {}) {
       }
       if (specifier.startsWith('@deepseek-ai/')) return seed;
       if (specifier === SHELL) return exports;
-      throw new Error(`外壳产物里出现了一个不认识的 require("${specifier}")`);
+      throw new Error(`工作台产物里出现了一个不认识的 require("${specifier}")`);
     });
   };
   const window = { __ModuleLoader__: { load } };

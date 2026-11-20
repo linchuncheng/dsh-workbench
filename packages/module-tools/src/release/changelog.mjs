@@ -11,8 +11,8 @@ import {
 } from '@dsh-workbench/shared/host';
 
 const USAGE = `用法：
-  changelog check [版本]   查这一版有没有记录（省略版本用 package.json 的）
-发布时把这一版写进去：release --changelog-note "这一版改了什么"（文件不在会先建）`;
+  changelog check [版本]   检查该版本是否有记录（省略版本时使用 package.json 中的版本）
+发布时写入该版本：release --changelog-note "这一版改了什么"（文件不存在时会先创建）`;
 
 function positional(args, at) {
   const value = args[at];
@@ -44,13 +44,13 @@ export function changelogProblemOf(root, version) {
   const text = readChangelogText(root);
   if (text.trim() === '') {
     return {
-      reason: `包里还没有 ${CHANGELOG_FILE} —— 更新日志要随包发布`,
+      reason: `包中还没有 ${CHANGELOG_FILE} —— 更新日志需要随包发布`,
       command: 'dsh-wb-module release --yes --changelog-note "这一版改了什么"',
     };
   }
   if (!changelogHasEntry(text, version)) {
     return {
-      reason: `${CHANGELOG_FILE} 里没有 ${version} 这一版的内容 —— 发布时把这一版写进去`,
+      reason: `${CHANGELOG_FILE} 中没有 ${version} 这一版的内容 —— 发布时请写入该版本`,
       command: 'dsh-wb-module release --yes --changelog-note "这一版改了什么"',
     };
   }
@@ -68,7 +68,7 @@ export class ChangelogError extends Error {
 export function applyChangelog(root, { version, kind = 'changed', note, date }) {
   const wanted = changelogVersion(version === undefined || version === '' ? manifestVersionOf(root) : version);
   if (!isValidVersion(wanted)) {
-    throw new ChangelogError(`版本要写成 x.y.z（收到「${String(version)}」）—— 也可以省略，用 package.json 里的`);
+    throw new ChangelogError(`版本必须写成 x.y.z（收到「${String(version)}」）—— 也可以省略，使用 package.json 中的版本`);
   }
   const plan = planChangelog(readChangelogText(root), {
     version: wanted,
@@ -84,7 +84,7 @@ export function applyChangelog(root, { version, kind = 'changed', note, date }) 
 function runCheck(root, args) {
   const version = changelogVersion(positional(args, 1) ?? manifestVersionOf(root));
   if (!isValidVersion(version)) {
-    console.error('changelog check 要知道查哪一版：给一个 x.y.z，或先让 package.json 有 version');
+    console.error('changelog check 需要确定检查哪个版本：请提供 x.y.z，或先让 package.json 包含 version');
     process.exit(2);
   }
   const problem = changelogProblemOf(root, version);
@@ -100,7 +100,7 @@ function runCheck(root, args) {
     console.log(`✔ ${CHANGELOG_FILE} 里有 ${version} 的更新日志`);
   } else {
     console.error(`✖ ${problem.reason}`);
-    console.error(`  补上：${problem.command}`);
+    console.error(`  补充命令：${problem.command}`);
   }
   if (problem !== undefined) process.exit(1);
 }
@@ -108,7 +108,7 @@ function runCheck(root, args) {
 export async function changelog({ root, args = [] }) {
   const sub = args[0];
   if (sub === 'check') return runCheck(root, args);
-  console.error(`不认识的 changelog 子命令：${String(sub)}`);
+  console.error(`无法识别的 changelog 子命令：${String(sub)}`);
   console.error(USAGE);
   process.exit(2);
 }

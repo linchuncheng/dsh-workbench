@@ -13,16 +13,16 @@ const RAW_SEAM = [
   { pattern: /\bshellOf\b/, what: '用了原始 shell 的 shellOf（导入或调用）' },
   {
     pattern: /ctx\s*\.\s*get\s*\(\s*['"`](shell|workbenchShell|seam)['"`]/,
-    what: '从外壳服务里取了原始执行缝',
+    what: '从工作台服务里取了原始执行缝',
   },
   { pattern: /['"](?:node:)?child_process['"]/, what: '直接引了 child_process' },
-  { pattern: /['"]execa['"]/, what: '直接引了 execa（模块不许自己起进程）' },
+  { pattern: /['"]execa['"]/, what: '直接引了 execa（模块不得自行启动进程）' },
   { pattern: /kind\s*:\s*['"]host['"]/, what: '请求了宿主写入域（模块只有 unit / workspace 两档）' },
 ];
 
 const SEAM_FIX =
-  '模块起子进程只走门面：mount(deps) 里的 `deps.seam.run({ scope: "unit" | "workspace", command })`，' +
-  '清单里用 `dsh.workbench.host.writes` 声明要哪几档（写法见 `@dsh-workbench/core` 的 ' +
+  '模块启动子进程只通过门面：mount(deps) 中的 `deps.seam.run({ scope: "unit" | "workspace", command })`，' +
+  '清单中用 `dsh.workbench.host.writes` 声明需要哪几档（写法见 `@dsh-workbench/core` 的 ' +
   '`skills/workbench-module-diy/BUILD.md`）';
 
 const WRITE_SCOPES = ['unit', 'workspace'];
@@ -57,7 +57,7 @@ export function declaredWritesProblemsOf(name, workbench) {
   const writes = host.writes;
   if (!Array.isArray(writes)) {
     return [
-      `${name}: dsh.workbench.host.writes 要是一串写入域（"unit" / "workspace"），` +
+      `${name}: dsh.workbench.host.writes 应为写入域列表（"unit" / "workspace"），` +
         `现在是 ${JSON.stringify(writes)}`,
     ];
   }
@@ -66,8 +66,8 @@ export function declaredWritesProblemsOf(name, workbench) {
   return [
     `${name}: dsh.workbench.host.writes 里有不认的写入域 ` +
       `${outside.map((scope) => JSON.stringify(scope)).join(' / ')} —— ` +
-      '只认 "unit"（模块自己的数据目录，<运行时根>/units/<unit>）与 "workspace"（当前会话工作区）两档；' +
-      '模块无法获取产品域与任意路径；不要写其他名字（不写 = 不提供执行缝门面）',
+      '仅接受 "unit"（模块自己的数据目录，<运行时根>/units/<unit>）与 "workspace"（当前会话工作区）两档；' +
+      '模块无法获取产品域与任意路径；不要写其他名称（不写 = 不提供执行缝门面）',
   ];
 }
 
@@ -81,8 +81,8 @@ export function writesUseProblemsOf(name, rel, text, declared) {
     seen.add(scope);
     problems.push(
       `${name}: ${rel}:${lineOf(text, match.index)} 请求了 ${scope} 档，但清单 ` +
-        `dsh.workbench.host.writes 没声明它 —— 外壳不会把门面交给这个模块（deps.seam 是 undefined）：` +
-        `清单里补 "writes": ["${scope}"]，或这一档别请求`,
+        `dsh.workbench.host.writes 没声明它 —— 工作台不会把门面交给这个模块（deps.seam 是 undefined）：` +
+        `请在清单中补充 "writes": ["${scope}"]，或不要请求这一档`,
     );
   }
   return problems;
@@ -117,7 +117,7 @@ export async function run() {
   if (modulePackages.length === 0) {
     return {
       status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有执行缝用法要查'],
+      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有执行缝用法需要检查'],
       problems: [],
     };
   }
@@ -126,8 +126,8 @@ export async function run() {
     status: 'pass',
     notes: [
       `${modulePackages.length} 个模块包 · ${scannedUnits} 个宿主面 · ${scanned} 个宿主侧源文件 · ` +
-        `${seamUnits} 个模块声明了写入域（不取原始 shell / 不裸 child_process；` +
-        '请求的写入域都在清单里）',
+        `${seamUnits} 个模块声明了写入域（不直接取原始 shell / 不直接使用 child_process；` +
+        '请求的写入域均在清单中）',
     ],
     problems: [],
   };

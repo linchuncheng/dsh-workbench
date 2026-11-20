@@ -144,7 +144,7 @@ export function registerLongTaskTools(
   ctx: DshHostContext,
   longTaskRuns?: LongTaskRunsLookup | undefined,
 ): Array<() => void> {
-  const tools = toolRegistryOf(ctx, '跳过外壳长任务工具注册');
+  const tools = toolRegistryOf(ctx, '跳过工作台长任务工具注册');
   if (tools === undefined) return [];
 
   const listTool: DshToolDefinition = {

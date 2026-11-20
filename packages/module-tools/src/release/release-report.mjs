@@ -52,16 +52,16 @@ export function emit(out, json, value) {
 
 export function human(out, summary) {
   if (summary.target === 'local') {
-    out('没发，留在本机。');
+    out('未发布，保留在本机。');
     return;
   }
   if (summary.dryRun === true) {
-    out(`○ 只到预览（dry-run）：${summary.name}@${summary.version} → ${summary.target}`);
-    if (summary.changes.length > 0) out(`  会改：${summary.changes.join('；')}`);
+    out(`○ 仅预览（dry-run）：${summary.name}@${summary.version} → ${summary.target}`);
+    if (summary.changes.length > 0) out(`  将修改：${summary.changes.join('；')}`);
     if (summary.files !== undefined) out(`  包内容：${summary.files.join(' · ')}`);
-    if (summary.market?.planned === true) out(`  会更新市场索引：${summary.market.url} → ${summary.market.entry}`);
+    if (summary.market?.planned === true) out(`  将更新市场索引：${summary.market.url} → ${summary.market.entry}`);
     if (summary.install !== '') out(`  安装：${summary.install}`);
-    out('  什么都没写');
+    out('  未写入任何内容');
     return;
   }
   if (summary.target === 'market') {
@@ -71,11 +71,11 @@ export function human(out, summary) {
         `（${market.branch === undefined ? '默认分支' : market.branch}）`,
     );
     out(`  产物：${String(market.path ?? '').replace(/^\/*/, '')} · commit ${shortSha(market.commit)}`);
-    out('  提交：产物与索引条目两个 commit 都已推上去');
-    if (summary.changes.length > 0) out(`  改了：${summary.changes.join('；')}`);
+    out('  提交：产物与索引条目两个 commit 均已推送');
+    if (summary.changes.length > 0) out(`  已修改：${summary.changes.join('；')}`);
     if (summary.files !== undefined) out(`  包内容：${summary.files.join(' · ')}`);
     out(`  安装：${summary.install}`);
-    out('  已从仓库侧核过产物');
+    out('  已从仓库侧核对产物');
     return;
   }
   const where =
@@ -85,15 +85,15 @@ export function human(out, summary) {
         ? `${summary.git.url}（tag ${summary.git.tag}）`
         : summary.registry;
   out(`✔ 已发布 ${summary.name}@${summary.version} → ${where}`);
-  if (summary.changes.length > 0) out(`  改了：${summary.changes.join('；')}`);
+  if (summary.changes.length > 0) out(`  已修改：${summary.changes.join('；')}`);
   if (summary.files !== undefined) out(`  包内容：${summary.files.join(' · ')}`);
   if (summary.market !== undefined) {
     out(
       summary.market.updated === true
         ? `  市场索引：${summary.market.url}${summary.market.branch === undefined ? '' : `（${summary.market.branch}）`} · ${summary.market.entry}`
-        : `  市场索引没更新：${summary.market.reason ?? '（未说明）'}`,
+        : `  市场索引未更新：${summary.market.reason ?? '（未说明）'}`,
     );
   }
   out(`  安装：${summary.install}`);
-  out('  已从出口侧核过包内容');
+  out('  已从发布出口核对包内容');
 }

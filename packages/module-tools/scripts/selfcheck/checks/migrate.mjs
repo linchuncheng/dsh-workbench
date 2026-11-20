@@ -51,7 +51,7 @@ export const checks = [
 
         const again = run(['migrate']);
         if (again.failed) problems.push(`第二次 migrate 起不来：${again.out}`);
-        else if (!again.out.includes('已经是当前代')) problems.push('第二次 migrate 没报「已经是当前代」（不幂等）');
+        else if (!again.out.includes('已是当前版本')) problems.push('第二次 migrate 没报「已经是当前代」（不幂等）');
       } catch (error) {
         problems.push(String(error?.message ?? error).split('\n')[0]);
       } finally {

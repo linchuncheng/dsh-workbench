@@ -113,14 +113,14 @@ export function defaultExec(command, argv, { cwd, capture = false, allowFailure 
     });
   } catch (error) {
     if (allowFailure) return { status: 1, stdout: '', stderr: String(error) };
-    throw new ReleaseError(`跑不起 ${command}：${String(error)}`);
+    throw new ReleaseError(`无法运行 ${command}：${String(error)}`);
   }
   const status = result.exitCode ?? 1;
   const stdout = typeof result.stdout === 'string' ? result.stdout : '';
   const stderr = typeof result.stderr === 'string' ? result.stderr : '';
   if (status !== 0 && !allowFailure) {
     const text = tailOf(`${stdout}\n${stderr}`);
-    throw new ReleaseError(`${command} ${argv.join(' ')} 没过${text === '' ? '' : `：${text}`}`);
+    throw new ReleaseError(`${command} ${argv.join(' ')} 失败${text === '' ? '' : `：${text}`}`);
   }
   return { status, stdout, stderr };
 }

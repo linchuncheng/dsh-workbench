@@ -139,7 +139,7 @@ export const checks = [
         const write = (file, text) => writeFileSync(join(diyDir, file), text);
         const drop = (file) => rmSync(join(diyDir, file), { force: true });
 
-        expectGreen('模板开箱', ['1/1 个模块包带 eslint.config.mjs', '0 error']);
+        expectGreen('模板开箱', ['1/1 个模块包带有 eslint.config.mjs', '0 error']);
 
         write('src/model/noisy.ts', NOISY);
         expectRed('src 里的 console.log', [/src\/model\/noisy\.ts:2:\d+ no-console/, 'no-console']);
@@ -191,7 +191,7 @@ export const checks = [
           {
             what: '手写的空配置',
             text: DIALECT_CONFIGS.empty,
-            needs: ['不是 moduleLint() 来的', 'moduleLint'],
+            needs: ['不是由 moduleLint() 生成的', 'moduleLint'],
           },
           {
             what: '只抄一个同名的空块',
@@ -242,7 +242,7 @@ export const checks = [
         writeFileSync(configPath, diyConfig);
 
         writeFileSync(configPath, 'export default [\n');
-        expectRed('跑不起来的配置', ['eslint.config.mjs 跑不起来']);
+        expectRed('跑不起来的配置', ['eslint.config.mjs 无法运行']);
         writeFileSync(configPath, diyConfig);
 
         rmSync(configPath, { force: true });

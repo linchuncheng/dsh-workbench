@@ -1,4 +1,4 @@
-// ⚠️ 本文件由 dsh-wb-module build 生成，请勿手改。改 src/ 后跑：dsh-wb-module build
+// ⚠️ 本文件由 dsh-wb-module build 生成，请勿手动修改。修改 src/ 后运行：dsh-wb-module build
 window.__ModuleLoader__.load({
   id: "@dsh-workbench/module-hello",
   factory(require) {

@@ -62,7 +62,7 @@ export const checks = [
         write(cardSource, messagesSource);
         const out = run();
         if (!out.failed) return `居然没红：${tail(out.out)}`;
-        const tally = /✖ 卡片渲染 (\d+) 条不过/.exec(out.out);
+        const tally = /✖ 卡片渲染 (\d+) 条未通过/.exec(out.out);
         if (tally === null) return `红了，但不是卡片判据红的：${tail(out.out)}`;
         if (Number(tally[1]) !== count) {
           return `红了 ${tally[1]} 条（应该只有 ${count} 条 —— 多了说明顺带踩红了别的断言）：${tail(out.out)}`;
@@ -105,7 +105,7 @@ export const checks = [
         return h(kit.components.Card, head(props), h('p', null, props.t('demo.body')));
       }`,
           messagesFor(),
-          ['loading（zh）', '卡片抛了'],
+          ['loading（zh）', '卡片抛出异常'],
         ],
         [
           '冒 undefined（拼进 hint）',
@@ -115,7 +115,7 @@ export const checks = [
         return h(kit.components.Card, head(props), h(kit.components.CenteredState, { icon: null, title: props.t('demo.body'), hint: String(payload.missing), compact: true }));
       }`,
           messagesFor(),
-          ['屏上出现了 undefined', 'idle（zh）'],
+          ['界面上出现了 undefined', 'idle（zh）'],
         ],
         [
           '冒 NaN（点出来的数没值）',
@@ -125,21 +125,21 @@ export const checks = [
         return h(kit.components.Card, head(props), h('p', null, props.t('demo.body') + ' ' + n));
       }`,
           messagesFor(),
-          ['屏上出现了 NaN', 'ready（en）'],
+          ['界面上出现了 NaN', 'ready（en）'],
         ],
         [
           '裸键名：zh 缺',
           1,
           `(props) => h(kit.components.Card, head(props), h('p', null, props.t('demo.missingInZh')))`,
           messagesFor('', ", 'demo.missingInZh': 'fixed only in en'"),
-          ["t('demo.missingInZh') 在 zh 里没有落点", 'idle'],
+          ["t('demo.missingInZh') 在 zh 里缺少对应项", 'idle'],
         ],
         [
           '裸键名：en 缺',
           1,
           `(props) => h(kit.components.Card, head(props), h('p', null, props.t('demo.missingInEn')))`,
           messagesFor(", 'demo.missingInEn': '只在中文里有'"),
-          ["t('demo.missingInEn') 在 en 里没有落点", 'idle'],
+          ["t('demo.missingInEn') 在 en 里缺少对应项", 'idle'],
         ],
         [
           'loading 与刷新那一帧 return null（两态 × 两语）',
@@ -162,7 +162,7 @@ export const checks = [
           1,
           `(props) => h('section', null, h('p', null, props.t('demo.body')), h('span', null, 'x'))`,
           messagesFor(),
-          ['没套外壳的卡壳'],
+          ['没有套用工作台的卡片外框'],
         ],
         [
           '刷新那一帧才崩（有旧值时把旧值当新值解引用）',
@@ -173,7 +173,7 @@ export const checks = [
         return h(kit.components.Card, head(props), h('p', null, props.t('demo.body')));
       }`,
           messagesFor(),
-          ['loading（刷新：保留旧值）（zh）', 'loading（刷新：保留旧值）（en）', '卡片抛了'],
+          ['loading（刷新：保留旧值）（zh）', 'loading（刷新：保留旧值）（en）', '卡片抛出异常'],
         ],
         [
           '刷新那一帧才冒 NaN（拿旧值点出来的数没值）',
@@ -184,7 +184,7 @@ export const checks = [
         return h(kit.components.Card, head(props), h('p', null, props.t('demo.body') + ' ' + n));
       }`,
           messagesFor(),
-          ['屏上出现了 NaN', 'loading（刷新：保留旧值）（zh）'],
+          ['界面上出现了 NaN', 'loading（刷新：保留旧值）（zh）'],
         ],
         [
           '刷新那一帧才露裸键名（zh 缺，且只在那一帧问）',
@@ -195,7 +195,7 @@ export const checks = [
         return h(kit.components.Card, head(props), h('p', null, props.t(stale ? 'demo.refreshOnly' : 'demo.body')));
       }`,
           messagesFor('', ", 'demo.refreshOnly': 'stale frame'"),
-          ["t('demo.refreshOnly') 在 zh 里没有落点", 'loading（刷新：保留旧值）'],
+          ["t('demo.refreshOnly') 在 zh 里缺少对应项", 'loading（刷新：保留旧值）'],
         ],
         [
           '两条能力闸里才冒 undefined（读阻断里没有的那一格；缺插件 / 缺命令各一）',
@@ -205,7 +205,7 @@ export const checks = [
           ),
           messagesFor(),
           [
-            '屏上出现了 undefined',
+            '界面上出现了 undefined',
             'unreadable（能力闸：缺插件）（zh）',
             'unreadable（能力闸：缺命令）（zh）',
           ],
@@ -218,7 +218,7 @@ export const checks = [
           ),
           messagesFor(),
           [
-            '屏上出现了 NaN',
+            '界面上出现了 NaN',
             'unreadable（能力闸：缺插件）（en）',
             'unreadable（能力闸：缺命令）（en）',
           ],
@@ -228,7 +228,7 @@ export const checks = [
           1,
           gateCard(`return h(kit.components.Card, head(props), h('p', null, props.t('demo.gateOnly')));`),
           messagesFor(", 'demo.gateOnly': '只在中文里有'"),
-          ["t('demo.gateOnly') 在 en 里没有落点", 'unreadable（能力闸：缺插件）', 'unreadable（能力闸：缺命令）'],
+          ["t('demo.gateOnly') 在 en 里缺少对应项", 'unreadable（能力闸：缺插件）', 'unreadable（能力闸：缺命令）'],
         ],
         [
           '刷新那一帧的 at 在场时才崩（旧时间戳是这一相的一部分）',
@@ -239,7 +239,7 @@ export const checks = [
         return h(kit.components.Card, head(props), h('p', null, props.t('demo.body')));
       }`,
           messagesFor(),
-          ['loading（刷新：保留旧值）（zh）', 'loading（刷新：保留旧值）（en）', '卡片抛了'],
+          ['loading（刷新：保留旧值）（zh）', 'loading（刷新：保留旧值）（en）', '卡片抛出异常'],
         ],
         [
           '刷新那一帧的 at 在场时才冒 undefined',
@@ -250,7 +250,7 @@ export const checks = [
         return h(kit.components.Card, head(props), h(kit.components.CenteredState, { icon: null, title: props.t('demo.body'), hint, compact: true }));
       }`,
           messagesFor(),
-          ['屏上出现了 undefined', 'loading（刷新：保留旧值）（zh）'],
+          ['界面上出现了 undefined', 'loading（刷新：保留旧值）（zh）'],
         ],
         [
           '刷新那一帧的 at 在场时才冒 NaN',
@@ -261,7 +261,7 @@ export const checks = [
         return h(kit.components.Card, head(props), h('p', null, props.t('demo.body') + ' ' + text));
       }`,
           messagesFor(),
-          ['屏上出现了 NaN', 'loading（刷新：保留旧值）（en）'],
+          ['界面上出现了 NaN', 'loading（刷新：保留旧值）（en）'],
         ],
         [
           '刷新那一帧的 at 在场时才露裸键名（zh 缺，且只在那一帧问）',
@@ -271,14 +271,14 @@ export const checks = [
         return h(kit.components.Card, head(props), h('p', null, props.t(resource.at === undefined ? 'demo.body' : 'demo.atOnly')));
       }`,
           messagesFor('', ", 'demo.atOnly': 'stale timestamp frame'"),
-          ["t('demo.atOnly') 在 zh 里没有落点", 'loading（刷新：保留旧值）'],
+          ["t('demo.atOnly') 在 zh 里缺少对应项", 'loading（刷新：保留旧值）'],
         ],
         [
           '缺命令那一帧才崩（升级命令那条动作在场时）',
           2,
           cmdCard(`throw new Error('缺命令那一帧带上了可复制的升级命令');`),
           messagesFor(),
-          ['unreadable（能力闸：缺命令）（zh）', 'unreadable（能力闸：缺命令）（en）', '卡片抛了'],
+          ['unreadable（能力闸：缺命令）（zh）', 'unreadable（能力闸：缺命令）（en）', '卡片抛出异常'],
         ],
         [
           '缺命令那一帧才冒 undefined（复制动作里没有的那一格）',
@@ -287,7 +287,7 @@ export const checks = [
             `return h(kit.components.Card, head(props), h(kit.components.CenteredState, { icon: null, title: props.t('demo.body'), hint: String(copy.missingField), compact: true }));`,
           ),
           messagesFor(),
-          ['屏上出现了 undefined', 'unreadable（能力闸：缺命令）（zh）'],
+          ['界面上出现了 undefined', 'unreadable（能力闸：缺命令）（zh）'],
         ],
         [
           '缺命令那一帧才冒 NaN（把复制动作里没有的那一格当数字）',
@@ -296,14 +296,14 @@ export const checks = [
             `const n = Number(copy.missingField).toFixed(1); return h(kit.components.Card, head(props), h('p', null, props.t('demo.body') + ' ' + n));`,
           ),
           messagesFor(),
-          ['屏上出现了 NaN', 'unreadable（能力闸：缺命令）（en）'],
+          ['界面上出现了 NaN', 'unreadable（能力闸：缺命令）（en）'],
         ],
         [
           '缺命令那一帧才露裸键名（en 缺，且只在那一帧问）',
           1,
           cmdCard(`return h(kit.components.Card, head(props), h('p', null, props.t('demo.cmdOnly')));`),
           messagesFor(", 'demo.cmdOnly': '只在中文里有'"),
-          ["t('demo.cmdOnly') 在 en 里没有落点", 'unreadable（能力闸：缺命令）'],
+          ["t('demo.cmdOnly') 在 en 里缺少对应项", 'unreadable（能力闸：缺命令）'],
         ],
       ];
       try {
@@ -448,14 +448,14 @@ export function apply(ctx) {
         state('prefs', false);
         const missing = run(['check', '--only', 'contracts']);
         if (!missing.failed) problems.push('表里写着"存起来"、产物里没接 prefs，居然没红');
-        else if (!missing.out.includes('没有接 prefs')) {
+        else if (!missing.out.includes('没有接入 prefs')) {
           problems.push(`判红了但没点明是没接 prefs：${tail(missing.out)}`);
         }
 
         state('view', true);
         const unwritten = run(['check', '--only', 'contracts']);
         if (!unwritten.failed) problems.push('产物里接了 prefs、设计表里没写，居然没红');
-        else if (!unwritten.out.includes('表上没写')) {
+        else if (!unwritten.out.includes('设计表未记录')) {
           problems.push(`判红了但没点明是表里没写：${tail(unwritten.out)}`);
         }
 
@@ -466,7 +466,7 @@ export function apply(ctx) {
         state('whatever', true);
         const bogus = run(['design', 'check']);
         if (!bogus.failed) problems.push('persistence 写成枚举外的值，design check 居然没红');
-        else if (!bogus.out.includes('只认 prefs / view')) {
+        else if (!bogus.out.includes('仅接受 prefs / view')) {
           problems.push(`没点明可选值：${tail(bogus.out)}`);
         }
       } finally {

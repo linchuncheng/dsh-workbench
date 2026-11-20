@@ -47,6 +47,25 @@ const COLLOQUIAL = [
   ['重跑', '重新运行'],
   ['已拍', '已截图'],
   ['卡在', '受阻于'],
+  ['真跑', '实际运行'],
+  ['跑门禁', '运行自动检查'],
+  ['跑起来', '运行'],
+  ['跑一次', '运行一次'],
+  ['跑通', '运行成功'],
+  ['判红', '判定失败'],
+  ['报红', '判定失败'],
+  ['全绿', '全部通过'],
+  ['落红', '判定失败'],
+  ['手搓', '手写'],
+  ['堆进', '堆积在'],
+  ['漂了', '不一致'],
+  ['别手改', '不要手动修改'],
+  ['盖回去', '覆盖'],
+  ['收口', '统一'],
+  ['写死', '固定'],
+  ['拍板', '确定'],
+  ['塞进', '写入'],
+  ['塞私货', '写入未定义的键'],
 ];
 
 const INTERNAL_UI = [
@@ -73,6 +92,20 @@ const INTERNAL_UI = [
   ['收窄', '限制'],
   ['落盘', '写入'],
   ['兜底', '默认处理'],
+  ['外壳', '工作台'],
+  ['方言', '规则集'],
+  ['门禁', '自动检查'],
+  ['判据', '检查项'],
+  ['执行缝', '命令执行入口'],
+  ['门面', '统一入口'],
+  ['契约', '接口约定'],
+  ['棘轮', '只减不增'],
+  ['豁免表', '例外清单'],
+  ['归因', '定位来源'],
+  ['生字段', '未知字段'],
+  ['五态', '五种状态'],
+  ['底稿', '设计记录'],
+  ['空壳', '空模板'],
 ];
 
 const TERMINOLOGY = [
@@ -82,6 +115,11 @@ const TERMINOLOGY = [
   ['产物目录', '打包文件位置'],
   ['体检', '启动检查'],
   ['适配器集合', '后台适配组件'],
+  ['外壳', '工作台'],
+  ['方言', '规则集'],
+  ['空壳', '空模板'],
+  ['五态', '五种状态'],
+  ['底稿', '设计记录'],
 ];
 
 const allowlist = JSON.parse(readFileSync(join(ROOT, 'scripts/copy-allowlist.json'), 'utf8'));
@@ -176,17 +214,24 @@ const I18N = [
   'packages/module-hello/src/messages.ts',
 ];
 const TOOLS = walk('packages/core/src/modules', new Set(['__tests__', 'dist', 'node_modules'])).filter((file) => file.endsWith('.ts'));
+const MODULE_TOOLS = [
+  ...walk('packages/module-tools/src', new Set(['__tests__', 'dist', 'node_modules'])).filter((file) => file.endsWith('.mjs')),
+  ...walk('packages/module-tools/bin', new Set(['node_modules'])).filter((file) => file.endsWith('.mjs')),
+];
 const SKILLS = walk('packages/core/skills', new Set(['node_modules'])).filter(
   (file) => file.endsWith('.md') && !file.endsWith('/COPY.md'),
 );
 const DOCS = [
   'README.md',
+  'packages/module-tools/README.md',
+  ...walk('packages/module-tools/template-diy', new Set(['node_modules'])).filter((file) => file.endsWith('.md')),
   'packages/core/README.md',
   ...walk('packages/docs/site/desktop/views', new Set(['node_modules'])).filter((file) => file.endsWith('.md')),
 ];
 
 if (SCOPE === 'all' || SCOPE === 'ui') I18N.forEach(scanI18n);
 if (SCOPE === 'all' || SCOPE === 'tools') TOOLS.forEach(scanCode);
+if (SCOPE === 'all' || SCOPE === 'tools') MODULE_TOOLS.forEach(scanCode);
 if (SCOPE === 'all' || SCOPE === 'docs') {
   SKILLS.forEach((file) => scanMarkdown(file, 'warn'));
   DOCS.forEach((file) => scanMarkdown(file, 'warn'));

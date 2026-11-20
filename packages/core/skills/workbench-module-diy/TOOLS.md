@@ -79,7 +79,7 @@
 清单 `tools[]` 一条（`writes: true` + `key`），加 `needsApproval(call)` 与 `approvalDetail(call)`。
 
 - `key` 用 lowerCamelCase；执行 `dsh-wb-module sync` 生成 `src/declared-tools.ts`，代码里使用
-  `DECLARED_TOOLS.rebuild.name`。工具名字面量只保留在清单里一处；键名错误会导致编译错误，生成物过期、只写一半或又出现字面量都会判红。
+  `DECLARED_TOOLS.rebuild.name`。工具名字面量只保留在清单里一处；键名错误会导致编译错误，生成物过期、只写一半或又出现字面量都会失败。
 - `needsApproval` 返回：
   `{ kind: 'read' }` 不问；`{ kind: 'ask', reason, question, fallback }` 要问；
   `{ kind: 'deny', reason }` 拒绝（reason 交给 agent；只放策略同步可判的事实）。`writes: true` 未认领 = deny。
@@ -150,13 +150,13 @@
   这样编排与面板使用同一份 opencli（同一套插件、同一份登录状态）。不写 `runs` 时，按库自己的 PATH 查找。
   库版本太旧、没有 `setOpencliRunner` 时，外壳只记录一条 warn，仍按 PATH 运行；用 `version` 限定那一版即可。
 - `extension` 的 `sources[].kind` 只有 `npm` / `git` / `local`；`lib` 只认 `npm`。
-  未知 `kind` 或 `source.kind` 判红；need 里未知字段只警告，`x-` 前缀忽略。
+  未知 `kind` 或 `source.kind` 会失败；need 里未知字段只警告，`x-` 前缀忽略。
 - 未安装完成的文案由模块写：`deps.libInstallCommand({ need, source })` 拼好源与缓存目录，
   原样输出；放进失败态。
 - `contracts` 判据：`apiVersion` 必须是 3；`needs` 走同一份 `NEED_KINDS` 注册表校验（`purpose` 必填、
   `bin`/`env` 不许带 `sources`（`bin` 需要代为安装就写 `install`）、`lib` 只认 npm 源）；
   声明了 `lib` 必须用 `deps.libInstallCommand`。
-  未知 `runtime` 不判红：探针会给「这个运行时工作台还不认识」的 `unchecked`，等运行时 provider 补上。
+  未知 `runtime` 不报错：探针会给「这个运行时工作台还不认识」的 `unchecked`，等运行时 provider 补上。
 
 ## 9 长任务
 

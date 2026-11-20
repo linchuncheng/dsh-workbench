@@ -69,7 +69,7 @@ function configuredRegistry(root, manifest) {
 export function targetOf(root, manifest, args, indexPlan) {
   const asked = argValue(args, '--target');
   if (asked !== undefined) {
-    if (!TARGETS.includes(asked)) throw new ReleaseError(`--target 只认 ${TARGETS.join(' / ')}`);
+    if (!TARGETS.includes(asked)) throw new ReleaseError(`--target 仅接受 ${TARGETS.join(' / ')}`);
     return asked;
   }
   if (hasFlag(args, '--public')) return 'public';
@@ -96,7 +96,7 @@ export function licenseOf(root, manifest, target, args) {
   const file = licenseFileOf(root);
   if (file !== undefined) return `SEE LICENSE IN ${file}`;
   if (target === 'public') {
-    throw new NeedsUser('license', '公开发布需要一个许可证。用 MIT、Apache-2.0，还是仓库里已有的 LICENSE？', undefined, {
+    throw new NeedsUser('license', '公开发布需要一个许可证。请选择 MIT、Apache-2.0，或使用仓库中已有的 LICENSE。', undefined, {
       target,
     });
   }
@@ -127,12 +127,12 @@ export function checkLogin(exec, info) {
   if (/ENEEDAUTH|not logged in|401|Unauthorized|E401|E403|403/i.test(text)) {
     throw new NeedsUser(
       'login',
-      `${info.target === 'public' ? 'npm' : '团队源'}还没登录。请在终端跑 \`${loginCommandOf(info.registry)}\`，走完登录/验证器再跟我说「好了」，我接着发。`,
+      `${info.target === 'public' ? 'npm' : '团队源'}尚未登录。请在终端运行 \`${loginCommandOf(info.registry)}\`，完成登录与验证后告知，随后将继续发布。`,
       loginCommandOf(info.registry),
       { target: info.target, registry: info.registry },
     );
   }
-  throw new ReleaseError(`连不上源（${info.registry}）：${tailOf(text)}`);
+  throw new ReleaseError(`无法连接源（${info.registry}）：${tailOf(text)}`);
 }
 
 export function registryInfoOf(root, manifest, args, target, fallbackRegistry) {
@@ -140,7 +140,7 @@ export function registryInfoOf(root, manifest, args, target, fallbackRegistry) {
   const askedNpmrc = argValue(args, '--npmrc');
   const sourceNpmrc = askedNpmrc === undefined ? findNpmrc(root) : resolve(askedNpmrc);
   if (askedNpmrc !== undefined && !existsSync(sourceNpmrc)) {
-    throw new ReleaseError(`--npmrc 指的文件不存在：${sourceNpmrc}`);
+    throw new ReleaseError(`--npmrc 指向的文件不存在：${sourceNpmrc}`);
   }
   const npmrc = askedNpmrc !== undefined ? sourceNpmrc : hasAuth(sourceNpmrc) ? sourceNpmrc : undefined;
   const flagged = normalizeRegistry(argValue(args, '--registry'));
@@ -148,7 +148,7 @@ export function registryInfoOf(root, manifest, args, target, fallbackRegistry) {
   if (target === 'public') {
     registry = flagged || 'https://registry.npmjs.org/';
     if (!isPublicRegistry(registry)) {
-      throw new ReleaseError('public 目标要公网源；团队私有源用 --target team');
+      throw new ReleaseError('public 目标需要公网源；团队私有源请使用 --target team');
     }
   } else {
     registry =
@@ -160,18 +160,18 @@ export function registryInfoOf(root, manifest, args, target, fallbackRegistry) {
     if (registry === '') {
       throw new NeedsUser(
         'registry',
-        '这台机器还没配团队源。让公司把 registry 和 token 写进 `.npmrc`；或者我先给你打一个安装包。',
+        '这台机器尚未配置团队源。请让公司把 registry 和 token 写入 `.npmrc`；或者改为生成安装包。',
         undefined,
         { target },
       );
     }
     if (isPublicRegistry(registry)) {
-      throw new ReleaseError('这个源是公共 npm —— 用 --target public 明确公开发布');
+      throw new ReleaseError('该源是公共 npm —— 请用 --target public 明确公开发布');
     }
   }
   const access = argValue(args, '--access') ?? manifest.publishConfig?.access ?? (target === 'public' ? 'public' : 'restricted');
   if (access !== 'restricted' && access !== 'public') {
-    throw new ReleaseError(`--access 只认 restricted / public（收到「${access}」）`);
+    throw new ReleaseError(`--access 仅接受 restricted / public（收到「${access}」）`);
   }
   if (target === 'public' && access !== 'public') throw new ReleaseError('public 目标只接受 --access public');
   return { target, kind: 'registry', name, registry, access, npmrc };
@@ -197,7 +197,7 @@ function gitInfoOf(root, manifest, args, exec) {
   if (top.status !== 0) {
     throw new NeedsUser(
       'git-remote',
-      '这个模块目录还不是 git 仓库。先给它一个仓库/配好权限，或改打一个安装包。',
+      '该模块目录还不是 git 仓库。请先创建仓库并配置权限，或改为生成安装包。',
       undefined,
       { target: 'git' },
     );
@@ -209,14 +209,14 @@ function gitInfoOf(root, manifest, args, exec) {
   });
   const branch = branchResult.status === 0 ? branchResult.stdout.trim() : '';
   if (branch === '' || branch === 'HEAD') {
-    throw new NeedsUser('git-branch', '这个仓库现在不在一个分支上（detached HEAD）。先切回一个分支，再发。', undefined, {
+    throw new NeedsUser('git-branch', '该仓库当前不在一个分支上（detached HEAD）。请先切回一个分支，再发布。', undefined, {
       target: 'git',
     });
   }
   const remote = argValue(args, '--git') ?? 'origin';
   const remoteResult = exec('git', ['-C', toplevel, 'remote', 'get-url', remote], { capture: true, allowFailure: true });
   if (remoteResult.status !== 0 || remoteResult.stdout.trim() === '') {
-    throw new NeedsUser('git-remote', `这个仓库没有可推送的远端 ${remote}。先加一个远端，或改打一个安装包。`, undefined, {
+    throw new NeedsUser('git-remote', `该仓库没有可推送的远端 ${remote}。请先添加远端，或改为生成安装包。`, undefined, {
       target: 'git',
       remote,
     });
@@ -243,7 +243,7 @@ function gitInfoOf(root, manifest, args, exec) {
   if (dirty.length > 0) {
     throw new NeedsUser(
       'git-dirty',
-      `工作区还有别的未提交改动（${dirty.slice(0, 3).join('、')}）。先提交/暂存，再发；或改用安装包。`,
+      `工作区还有其他未提交改动（${dirty.slice(0, 3).join('、')}）。请先提交或暂存，再发布；或改用安装包。`,
       undefined,
       { target: 'git', paths: dirty.slice(0, 3) },
     );
