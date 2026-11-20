@@ -75,6 +75,22 @@ describe('aggregate：交叉依赖并进结论', () => {
   });
 });
 
+describe('extensionStateOf：装的时候按计划步骤跑', () => {
+  it('★ 缺插件 → 那条 need 带上整份计划（可选卸载、宿主通道都还在），不只一行拼起来的命令', () => {
+    const need = extensionNeedOf('inventory', {
+      sources: [{ kind: 'git', url: 'git@x:demo.git' }],
+    });
+
+    const state = extensionStateOf({ need, command: 'opencli', sources: need.sources ?? [] });
+
+    expect(state.status).toBe('missing');
+    expect(state.steps).toEqual([
+      { kind: 'run', line: "'opencli' plugin install 'git@x:demo.git'", host: true },
+    ]);
+    expect(state.command).toBe("'opencli' plugin install 'git@x:demo.git'");
+  });
+});
+
 describe('extensionStateOf：升级命令一律带引号', () => {
   it('缺命令 → plugin update <名字>（引号是命令的一部分）', () => {
     const state = extensionStateOf({

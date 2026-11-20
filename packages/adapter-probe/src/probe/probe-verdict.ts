@@ -51,11 +51,16 @@ function firstResolvable(
   need: ExtensionNeed,
   command: string,
   sources: readonly SupplySource[],
-): { readonly provision: NeedState['provision']; readonly command?: string } {
+): {
+  readonly provision: NeedState['provision'];
+  readonly plan?: { readonly command: string; readonly steps: NeedState['steps'] };
+} {
   let problem: NeedState['provision'] = 'not-declared';
   for (const source of sources) {
     const resolved = resolvePluginSource(source, process.env, { command, plugin: need.name });
-    if (resolved.ok) return { provision: 'ready', command: resolved.line };
+    if (resolved.ok) {
+      return { provision: 'ready', plan: { command: resolved.line, steps: resolved.steps } };
+    }
     problem = resolved.problem;
   }
   return { provision: problem };
@@ -80,7 +85,7 @@ export function extensionStateOf(options: {
       status: 'missing',
       detail: `已装插件里没有 ${options.need.name}`,
       provision: resolved.provision,
-      ...(resolved.command === undefined ? {} : { command: resolved.command }),
+      ...(resolved.plan === undefined ? {} : resolved.plan),
     };
   }
   const available = new Set(

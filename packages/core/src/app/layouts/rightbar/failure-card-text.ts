@@ -14,6 +14,7 @@ export interface FailureCardModel {
 const TITLE_KEY: Readonly<Record<InstallFailure['kind'], string>> = {
   permission: 'panels.market.failure.permission',
   'disk-full': 'panels.market.failure.diskFull',
+  auth: 'panels.market.failure.auth',
   sandbox: 'panels.market.failure.sandbox',
   unknown: 'panels.market.failure.unknown',
 };
@@ -53,6 +54,33 @@ export function shellPath(path: string): string {
 
 export function ownerLabel(uid: number): string {
   return uid === 0 ? 'root' : `uid ${uid}`;
+}
+
+function failureReasonOf(failure: InstallFailure, t: Translate): string {
+  const summary = failure.summary?.trim() ?? '';
+  if (summary !== '') return summary;
+  const line = failure.output
+    .split('\n')
+    .map((one) => one.trim())
+    .find((one) => one !== '');
+  return line ?? t('panels.market.failure.noReason');
+}
+
+function agentCardOf(
+  failure: InstallFailure,
+  t: Translate,
+  text: { readonly title: string; readonly fact: string; readonly fix: string },
+): FailureCardModel {
+  return {
+    title: text.title,
+    fact: text.fact,
+    fixLabel: t(ASK_AGENT_KEY),
+    fix: text.fix,
+    copiedHint: t('panels.market.failure.askAgentHint'),
+    command: failure.command,
+    output: failure.output,
+    exitCode: failure.exitCode,
+  };
 }
 
 export function failureCardOf(failure: InstallFailure, t: Translate): FailureCardModel {
@@ -102,18 +130,35 @@ export function failureCardOf(failure: InstallFailure, t: Translate): FailureCar
       exitCode: failure.exitCode,
     };
   }
-  return {
+  const code = failure.exitCode === null ? '?' : String(failure.exitCode);
+  if (failure.kind === 'auth') {
+    const registry = failure.registry ?? t('panels.market.failure.thisSource');
+    return agentCardOf(failure, t, {
+      title: t(TITLE_KEY[failure.kind]),
+      fact: t('panels.market.failure.factAuth', { registry }),
+      fix: t('panels.market.failure.askAgentAuth', {
+        command: failure.command,
+        registry,
+        code,
+        reason: failureReasonOf(failure, t),
+      }),
+    });
+  }
+  if (failure.kind === 'unknown') {
+    return agentCardOf(failure, t, {
+      title: t(TITLE_KEY[failure.kind]),
+      fact: t('panels.market.failure.factUnknown', { code }),
+      fix: t('panels.market.failure.askAgentUnknown', {
+        command: failure.command,
+        code,
+        reason: failureReasonOf(failure, t),
+      }),
+    });
+  }
+  const where = path === '' ? t('panels.market.failure.nowhere') : path;
+  return agentCardOf(failure, t, {
     title: t(TITLE_KEY[failure.kind]),
-    fact: t('panels.market.failure.factStuck', { path: path === '' ? t('panels.market.failure.nowhere') : path }),
-    fixLabel: t(ASK_AGENT_KEY),
-    fix: t('panels.market.failure.askAgentText', {
-      command: failure.command,
-      path: path === '' ? t('panels.market.failure.nowhere') : path,
-      code: failure.exitCode === null ? '?' : String(failure.exitCode),
-    }),
-    copiedHint: t('panels.market.failure.askAgentHint'),
-    command: failure.command,
-    output: failure.output,
-    exitCode: failure.exitCode,
-  };
+    fact: t('panels.market.failure.factStuck', { path: where }),
+    fix: t('panels.market.failure.askAgentText', { command: failure.command, path: where, code }),
+  });
 }

@@ -26,7 +26,7 @@ export interface CommandReader {
   run(request: CommandRequest): Promise<CommandResult>;
 }
 
-export const INSTALL_FAILURE_KINDS = ['permission', 'disk-full', 'sandbox', 'unknown'] as const;
+export const INSTALL_FAILURE_KINDS = ['permission', 'disk-full', 'auth', 'sandbox', 'unknown'] as const;
 
 export type InstallFailureKind = (typeof INSTALL_FAILURE_KINDS)[number];
 
@@ -41,6 +41,8 @@ export interface InstallFailure {
   readonly command: string;
   readonly exitCode: number | null;
   readonly output: string;
+  readonly summary?: string | undefined;
+  readonly registry?: string | undefined;
   readonly path?: string | undefined;
   readonly mode?: string | undefined;
   readonly owner?: { readonly uid: number; readonly gid: number } | undefined;

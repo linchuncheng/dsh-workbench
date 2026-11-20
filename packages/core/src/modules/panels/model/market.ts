@@ -310,7 +310,8 @@ export function createMarketService(options: {
           throw new Error(`没有可执行的安装命令（${state.detail}）`);
         }
         if (state.kind === 'lib') supply.beforeLibInstall();
-        await run(state.command);
+        if (state.steps === undefined || state.steps.length === 0) await run(state.command);
+        else await runAll(state.steps);
         supply.afterLibInstall();
       }
       await probeSharing({ action: 'install', unit });

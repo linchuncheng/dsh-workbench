@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   classifyInstallFailure,
+  diagnoseInstallFailure,
   installFailureOf,
   installTargets,
   installVerbAt,
   installWriteProblem,
+  registryIn,
   writeStateOf,
 } from '../install-failure.js';
 
@@ -33,8 +38,28 @@ describe('classifyInstallFailure', () => {
     expect(classifyInstallFailure('ENOSPC: no space left on device')).toBe('disk-full');
   });
 
+  it('★ 私有源 401/403 是凭据问题，不是写权限（pnpm 原文照认）', () => {
+    expect(
+      classifyInstallFailure(
+        'ERR_PNPM_FETCH_401  GET https://r.invalid/opencli-plugin-cmdb: Unauthorized - 401\n\nNo authorization header was set for the request.',
+      ),
+    ).toBe('auth');
+    expect(classifyInstallFailure('ERR_PNPM_FETCH_403 GET https://r.invalid/x: Forbidden - 403')).toBe('auth');
+    expect(classifyInstallFailure('npm error code ENEEDAUTH')).toBe('auth');
+  });
+
   it('认不出来就说认不出来', () => {
     expect(classifyInstallFailure('')).toBe('unknown');
+  });
+});
+
+describe('registryIn（从安装命令里取出源地址）', () => {
+  it('认出 pnpm add 的 --registry，带不带引号都行', () => {
+    expect(registryIn("'pnpm' add --dir '/x' 'opencli-plugin-cmdb@latest' --registry 'https://r.invalid/x/'")).toBe(
+      'https://r.invalid/x/',
+    );
+    expect(registryIn('pnpm add --dir /x foo --registry https://r.invalid/')).toBe('https://r.invalid/');
+    expect(registryIn('pnpm add --dir /x foo')).toBeUndefined();
   });
 });
 
@@ -86,6 +111,24 @@ describe('installFailureOf（从现场推到修法）', () => {
     expect(failure.fix).toEqual({ kind: 'handoff' });
   });
 
+  it('★ 源拒绝（401）→ 不猜 chown/chmod，也不说写不进去：交给 agent 补凭据', () => {
+    const failure = installFailureOf({
+      command: "pnpm add --dir /x 'opencli-plugin-cmdb@latest' --registry 'https://r.invalid/x/'",
+      exitCode: 1,
+      output: 'ERR_PNPM_FETCH_401 GET https://r.invalid/x/opencli-plugin-cmdb: Unauthorized - 401',
+      registry: 'https://r.invalid/x/',
+      path: '/x',
+      mode: '755',
+      writable: false,
+      current: CURRENT,
+    });
+
+    expect(failure.kind).toBe('auth');
+    expect(failure.fix).toEqual({ kind: 'handoff' });
+    expect(failure.registry).toBe('https://r.invalid/x/');
+    expect(failure.summary).toContain('ERR_PNPM_FETCH_401');
+  });
+
   it('盘满 → 指向精简的命令，而不是 chown', () => {
     const failure = installFailureOf({
       command: 'npm i --prefix /x foo@1',
@@ -109,6 +152,24 @@ describe('installFailureOf（从现场推到修法）', () => {
 
     expect(failure.kind).toBe('unknown');
     expect(failure.fix).toEqual({ kind: 'handoff' });
+  });
+});
+
+describe('diagnoseInstallFailure（源拒绝时别指错地方）', () => {
+  it('★ 401 现场：认成 auth，带上源地址与输出摘要，路径只是安装落点', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-auth-'));
+    const command = `'pnpm' add --dir '${dir}' 'opencli-plugin-cmdb@latest' --registry 'https://r.invalid/x/'`;
+
+    const failure = diagnoseInstallFailure({
+      command,
+      exitCode: 1,
+      output: 'ERR_PNPM_FETCH_401 GET https://r.invalid/x/opencli-plugin-cmdb: Unauthorized - 401',
+    });
+
+    expect(failure.kind).toBe('auth');
+    expect(failure.registry).toBe('https://r.invalid/x/');
+    expect(failure.summary).toContain('Unauthorized');
+    expect(failure.path).toBe(dir);
   });
 });
 

@@ -130,6 +130,30 @@ describe('createMarketService：install', () => {
     expect(onInstalled).toHaveBeenCalledWith('issues');
   });
 
+  it('★ 探测给了计划步骤 → 按步骤跑：可选的那步失败不挡安装（新用户第一次装没有旧插件可卸）', async () => {
+    const fake = createFakeShell([
+      { exitCode: 1, stderr: 'Plugin "demo" is not installed.' },
+      { stdout: '' },
+    ]);
+    const steps = [
+      { kind: 'run' as const, line: "'opencli' plugin uninstall 'demo'", optional: true as const },
+      { kind: 'run' as const, line: "'opencli' plugin install '/x/node_modules/demo'" },
+    ];
+    const market = createMarketService({
+
+      command: 'opencli',      manifests: [unit('issues')],
+      probe: probeWith({ issues: { unit: 'issues', status: 'missing', needs: [missingState('demo', { steps })] } }),
+      seam: fakeSeamOf(fake.shell),
+    });
+
+    await market.install('issues');
+
+    expect(fake.commands()).toEqual([
+      "'opencli' plugin uninstall 'demo'",
+      "'opencli' plugin install '/x/node_modules/demo'",
+    ]);
+  });
+
   it('本来就能用（幂等早返回）也要通知 —— 用户按的是"安装"，但一条命令都不跑', async () => {
     const onInstalled = vi.fn();
     const fake = createFakeShell([{ stdout: '' }]);

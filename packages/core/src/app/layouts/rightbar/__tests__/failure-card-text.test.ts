@@ -86,6 +86,60 @@ describe('failureCardOf（卡片上那三行 + 能照抄的那条）', () => {
     expect(card.fix).toContain('255');
   });
 
+  it('★ 私有源拒绝（401）→ 主句说没凭据，复制给 agent 的话点名源地址与真实输出', () => {
+    const withParams: Translate = (key, params) =>
+      params === undefined ? key : `${key} ${JSON.stringify(params)}`;
+    const card = failureCardOf(
+      failure({
+        kind: 'auth',
+        fix: { kind: 'handoff' },
+        registry: 'https://r.invalid/x/',
+        output: 'ERR_PNPM_FETCH_401 GET https://r.invalid/x/opencli-plugin-cmdb: Unauthorized - 401',
+        summary: 'ERR_PNPM_FETCH_401 GET https://r.invalid/x/opencli-plugin-cmdb: Unauthorized - 401',
+      }),
+      withParams,
+    );
+
+    expect(card.title).toBe('panels.market.failure.auth');
+    expect(card.fact).toBe('panels.market.failure.factAuth {"registry":"https://r.invalid/x/"}');
+    expect(card.fixLabel).toBe('panels.market.failure.askAgent');
+    expect(card.fix).toContain('panels.market.failure.askAgentAuth');
+    expect(card.fix).toContain('https://r.invalid/x/');
+    expect(card.fix).toContain('Unauthorized');
+  });
+
+  it('★ 认不出原因 → 不再说"无法写入某个路径"：事实就是认不出，复制的话带输出摘要', () => {
+    const withParams: Translate = (key, params) =>
+      params === undefined ? key : `${key} ${JSON.stringify(params)}`;
+    const card = failureCardOf(
+      failure({
+        kind: 'unknown',
+        fix: { kind: 'handoff' },
+        path: '/x/plugins-npm',
+        exitCode: 1,
+        output: 'Plugin "cmdb" is not installed.',
+        summary: 'Plugin "cmdb" is not installed.',
+      }),
+      withParams,
+    );
+
+    expect(card.title).toBe('panels.market.failure.unknown');
+    expect(card.fact).toBe('panels.market.failure.factUnknown {"code":"1"}');
+    expect(card.fix).toContain('panels.market.failure.askAgentUnknown');
+    expect(card.fix).toContain('is not installed');
+  });
+
+  it('认不出原因又没有摘要 → 退到输出的第一行，别把理由空着', () => {
+    const withParams: Translate = (key, params) =>
+      params === undefined ? key : `${key} ${JSON.stringify(params)}`;
+    const card = failureCardOf(
+      failure({ kind: 'unknown', fix: { kind: 'handoff' }, exitCode: null, output: '\n  something odd\n' }),
+      withParams,
+    );
+
+    expect(card.fix).toContain('something odd');
+  });
+
   it('盘满 → 给一条能看出谁占了地方的命令', () => {
     const card = failureCardOf(failure({ kind: 'disk-full', fix: { kind: 'space', path: '/x' } }), t);
 

@@ -1,8 +1,12 @@
 import { accessSync, constants, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { InstallFailure, InstallFailureKind } from '../../contract/command.js';
+import { failureSummaryOf } from '../platform/ops/shell-text.js';
 
 const TARGET_FLAGS = ['--prefix', '--cache', '--dir', '--store-dir'];
+
+const AUTH_HINT =
+  /err_pnpm_fetch_40[13]|\be40[13]\b|\beneedauth\b|unauthorized|no authorization header was set|forbidden/;
 
 const PACKAGE_MANAGER = /^(?:pnpm|npm)(?:\.c?m?js|\.cmd|\.exe)?$/;
 
@@ -49,6 +53,16 @@ export function installTargets(command: string): string[] {
     if (TARGET_FLAGS.includes(tokens[index] ?? '')) targets.push(tokens[index + 1] ?? '');
   }
   return targets.filter((target) => target !== '');
+}
+
+export function registryIn(command: string): string | undefined {
+  const tokens = commandTokens(command);
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (tokens[index] !== '--registry') continue;
+    const value = tokens[index + 1] ?? '';
+    if (value !== '') return value;
+  }
+  return undefined;
 }
 
 export function failurePathIn(output: string): string | undefined {
@@ -105,6 +119,7 @@ export function currentUser(): { readonly uid: number; readonly gid: number } {
 export function classifyInstallFailure(output: string): InstallFailureKind {
   const text = output.toLowerCase();
   if (/enospc|no space left/.test(text)) return 'disk-full';
+  if (AUTH_HINT.test(text)) return 'auth';
   if (/eacces|eperm|permission denied|operation not permitted|access is denied/.test(text)) return 'permission';
   return 'unknown';
 }
@@ -114,6 +129,7 @@ export interface InstallFailureFacts {
   readonly exitCode: number | null;
   readonly output: string;
   readonly kind?: InstallFailureKind | undefined;
+  readonly registry?: string | undefined;
   readonly path?: string | undefined;
   readonly mode?: string | undefined;
   readonly owner?: { readonly uid: number; readonly gid: number } | undefined;
@@ -124,10 +140,13 @@ export interface InstallFailureFacts {
 export function installFailureOf(facts: InstallFailureFacts): InstallFailure {
   const kind = facts.kind ?? classifyInstallFailure(facts.output);
   const path = facts.path;
+  const summary = failureSummaryOf(facts.output);
   const base = {
     command: facts.command,
     exitCode: facts.exitCode,
     output: facts.output,
+    ...(summary === '' ? {} : { summary }),
+    ...(facts.registry === undefined ? {} : { registry: facts.registry }),
     ...(path === undefined ? {} : { path }),
     ...(facts.mode === undefined ? {} : { mode: facts.mode }),
     ...(facts.owner === undefined ? {} : { owner: facts.owner }),
@@ -135,6 +154,9 @@ export function installFailureOf(facts: InstallFailureFacts): InstallFailure {
   };
   if (kind === 'disk-full') {
     return { ...base, kind, fix: path === undefined ? { kind: 'handoff' } : { kind: 'space', path } };
+  }
+  if (kind === 'auth') {
+    return { ...base, kind, fix: { kind: 'handoff' } };
   }
   if (kind === 'permission' && path !== undefined) {
     const owner = facts.owner;
@@ -158,6 +180,7 @@ export function diagnoseInstallFailure(input: {
   readonly fallback?: string | undefined;
 }): InstallFailure {
   const current = currentUser();
+  const registry = registryIn(input.command);
   const candidates = [
     failurePathIn(input.output),
     ...installTargets(input.command),
@@ -172,6 +195,7 @@ export function diagnoseInstallFailure(input: {
       command: input.command,
       exitCode: input.exitCode,
       output: input.output,
+      ...(registry === undefined ? {} : { registry }),
       path: dir,
       mode: facts.mode,
       owner: facts.owner,
@@ -183,6 +207,7 @@ export function diagnoseInstallFailure(input: {
     command: input.command,
     exitCode: input.exitCode,
     output: input.output,
+    ...(registry === undefined ? {} : { registry }),
     current,
   });
 }

@@ -1,5 +1,5 @@
 import type { Need, NeedKind } from './needs.js';
-import type { ProvisionProblem } from './plugin-source.js';
+import type { PluginPlanStep, ProvisionProblem } from './plugin-source.js';
 
 /**
  * 一条 need 探出来的样子：状态、给人看的一句、以及能照做的修法。
@@ -11,6 +11,7 @@ export interface NeedState {
   readonly status: 'ok' | 'missing' | 'outdated' | 'unsatisfied' | 'unchecked';
   readonly detail: string;
   readonly command?: string;
+  readonly steps?: readonly PluginPlanStep[];
   readonly missing?: readonly string[];
   readonly installed?: string;
   readonly latest?: string;
