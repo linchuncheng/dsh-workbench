@@ -6,6 +6,12 @@ import { DIY_BOARD_FLOW, PLAN_DRAFT_PROPERTIES } from '../model/flow/definitions
 import { registerDiyPlanTool } from '../model/flow/plan-tool';
 import { createDiyFlowRuns } from '../model/flow/runs';
 
+async function atPlan(runs: ReturnType<typeof rig>['runs']): Promise<void> {
+  runs.start('s-1', { destination: 'board', summary: '盯库存' });
+  runs.provide('s-1', { sites: [] });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 function rig() {
   const registered: DshToolDefinition[] = [];
   const ctx = {
@@ -32,12 +38,12 @@ function rig() {
 }
 
 describe('计划工具', () => {
-  it('★★ 判成看板：递两步，回话说停在第几步', async () => {
+  it('★★ 判成看板：第一次只交去向，停在查看数据来源', async () => {
     const { tool, exec } = rig();
     if (tool === undefined) throw new Error('没有注册上');
 
     const out = (await tool.execute(
-      { destination: 'board', summary: '盯库存低于 10 的', cells: '3', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] },
+      { destination: 'board', summary: '盯库存低于 10 的', cells: '3' },
       exec,
     )) as { step: string; done: boolean; text: string };
 
@@ -45,6 +51,18 @@ describe('计划工具', () => {
     expect(out.done).toBe(false);
     expect(out.text).toContain('查看数据来源');
     expect(out.text).toContain('第 1/6 步');
+  });
+
+  it('★★ 还没到确认方案就带方案：当场拒，并说清先交什么', async () => {
+    const { tool, exec } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+
+    await expect(
+      tool.execute(
+        { destination: 'board', summary: '盯库存', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] },
+        exec,
+      ),
+    ).rejects.toThrow(/现在还没到「确认方案」/);
   });
 
   it('★ 方案里留空的一条当场拒，不静默吞掉', async () => {
@@ -80,8 +98,9 @@ describe('计划工具', () => {
   });
 
   it('★ 字符画的 kind 只认接口约定里的值', async () => {
-    const { tool, exec } = rig();
+    const { tool, exec, runs } = rig();
     if (tool === undefined) throw new Error('没有注册上');
+    await atPlan(runs);
 
     await expect(
       tool.execute(
@@ -100,8 +119,9 @@ describe('计划工具', () => {
   });
 
   it('★ 字符画没图注或没内容都当场拒', async () => {
-    const { tool, exec } = rig();
+    const { tool, exec, runs } = rig();
     if (tool === undefined) throw new Error('没有注册上');
+    await atPlan(runs);
 
     await expect(
       tool.execute(
@@ -124,14 +144,7 @@ describe('计划工具', () => {
     if (tool === undefined) throw new Error('没有注册上');
 
     const out = (await tool.execute(
-      {
-        destination: 'board',
-        summary: '盯库存',
-        see: ['一眼'],
-        do: ['一点'],
-        agent: ['一件'],
-        data: ['一处'],
-      },
+      { destination: 'board', summary: '盯库存' },
       exec,
     )) as { index: number; total: number; remaining: number };
 
@@ -180,6 +193,25 @@ describe('计划工具', () => {
 
 describe('改模块：四段只写变化，没变的写「没变」', () => {
   const START = { destination: 'tweak', summary: '把卡片分成三组' } as const;
+
+  it('★★ 改模块第一步就是确认方案：一次交齐直接进创建模块', async () => {
+    const { tool, exec, runs } = rig();
+    if (tool === undefined) throw new Error('没有注册上');
+
+    const out = (await tool.execute(
+      {
+        ...START,
+        see: ['修改：卡片从平铺 7 条变成三组'],
+        do: ['没变'],
+        agent: ['没变'],
+        data: ['没变'],
+      },
+      exec,
+    )) as { step: string };
+
+    expect(out.step).toBe('build');
+    expect(runs.stepOf('s-1')?.id).toBe('build');
+  });
 
   it('★★ 带类型的条目与「没变」都收，推进到下一步', async () => {
     const { tool, exec } = rig();

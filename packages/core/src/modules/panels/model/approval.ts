@@ -23,7 +23,6 @@ import {
   PANELS_SHOW_TOOL,
   DIY_RECORD_PREPARE_TOOL,
   DIY_PUBLISH_TOOL,
-  DIY_PLAN_TOOL,
 } from '../unit';
 import type { MarketSourceConfig, PublishPreview } from '@dsh-workbench/shared/contract/protocol/market-index';
 import type { LongTaskRunsLookup } from './long-task-tools';
@@ -47,7 +46,7 @@ function pad(token: string): string {
   return token.startsWith('[') ? ` ${token} ` : token;
 }
 
-function pair(zh: string, en: string): ApprovalDetail {
+export function pair(zh: string, en: string): ApprovalDetail {
   return { zh, en };
 }
 
@@ -87,12 +86,12 @@ function boardName(scope: string | undefined): Pair {
     : { zh: '当前项目的面板', en: "this project's panel" };
 }
 
-function argsOf(call: ApprovalCall): Record<string, unknown> {
+export function argsOf(call: ApprovalCall): Record<string, unknown> {
   const raw = call.arguments;
   return typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
 }
 
-function askOf(reason: string, question: ApprovalDetail, fallback: ApprovalDetail): ApprovalVerdict {
+export function askOf(reason: string, question: ApprovalDetail, fallback: ApprovalDetail): ApprovalVerdict {
   return { kind: 'ask', reason, question, fallback };
 }
 
@@ -234,23 +233,6 @@ export type MarketSourceLookup = (id: string | undefined) => MarketSourceConfig 
 
 export function stopVerdictFor(call: ApprovalCall, longTaskRuns: LongTaskRunsLookup | undefined): ApprovalVerdict | undefined {
   return stopVerdict(call, longTaskRuns);
-}
-
-function planBodyOf(raw: Readonly<Record<string, unknown>>): boolean {
-  const see = raw['see'];
-  const shots = raw['shots'];
-  return (Array.isArray(see) && see.length > 0) || (Array.isArray(shots) && shots.length > 0);
-}
-
-export function confirmVerdictFor(call: ApprovalCall): ApprovalVerdict | undefined {
-  if (call.name !== DIY_PLAN_TOOL) return undefined;
-  const raw = argsOf(call);
-  const destination = raw['destination'];
-  if (destination !== 'board' && destination !== 'headless' && destination !== 'tweak') return { kind: 'allow' };
-  const summary = textOf(raw, 'summary');
-  if (summary === '' || !planBodyOf(raw)) return { kind: 'allow' };
-  const title = pair('模块设计方案', 'Module design');
-  return askOf('diy plan: build a board card once the user approves the plan', title, title);
 }
 
 export function publishVerdictFor(

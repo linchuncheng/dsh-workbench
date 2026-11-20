@@ -10,12 +10,12 @@ import type { LongTaskRunsLookup } from './long-task-tools';
 import { recordRefusalText } from './diy-record-text';
 import {
   approvalVerdict,
-  confirmVerdictFor,
   publishVerdictFor,
   stopVerdictFor,
   type MarketSourceLookup,
   type PublishApprovalPreview,
 } from './approval';
+import { confirmVerdictFor, type PlanFlowStepOf } from './approval-plan';
 
 export const panelsApproval: ApprovalPolicy = (call) => approvalVerdict(call);
 
@@ -36,6 +36,7 @@ export function panelsApprovalFor(
   recording?: (() => RecordState | null) | undefined,
   publishPreview?: ((unit: string, author?: string) => PublishApprovalPreview | null) | undefined,
   marketSources?: MarketSourcesStore | undefined,
+  planStepOf?: PlanFlowStepOf | undefined,
 ): ApprovalPolicy {
   const sourceOf: MarketSourceLookup | undefined =
     marketSources === undefined
@@ -47,7 +48,7 @@ export function panelsApprovalFor(
         };
   return (call) => {
     if (call.name === LONG_TASKS_STOP_TOOL) return stopVerdictFor(call, longTaskRuns);
-    if (call.name === DIY_PLAN_TOOL) return confirmVerdictFor(call);
+    if (call.name === DIY_PLAN_TOOL) return confirmVerdictFor(call, planStepOf);
     if (call.name === DIY_PUBLISH_TOOL) return publishVerdictFor(call, publishPreview);
     return recordHeldVerdict(call, recording) ?? approvalVerdict(call, sourceOf);
   };

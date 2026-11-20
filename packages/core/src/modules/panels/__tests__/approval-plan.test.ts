@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { confirmVerdictFor } from '../model/approval-plan';
 import { panelsApprovalFor } from '../model/approval-policy';
 import { DIY_PLAN_TOOL } from '../unit';
 
@@ -61,6 +62,38 @@ describe('判成看板才问一句，其余去向不问', () => {
     const verdict = panelsApprovalFor()(
       call('board', { see: [], do: [], shots: [{ caption: '卡片', ascii: '┌──┐' }] }),
     );
+
+    expect(verdict?.kind).toBe('ask');
+  });
+});
+
+describe('审批只问会真正记下的那一次', () => {
+  const at = (step: { readonly id: string; readonly title?: string } | null) =>
+    panelsApprovalFor(undefined, undefined, undefined, undefined, () => step);
+
+  it('★★ 还没开始流程就带方案：不弹，直接拒，并说清先交什么', () => {
+    const verdict = at(null)(call('board'));
+
+    expect(verdict?.kind).toBe('deny');
+    expect(verdict?.kind === 'deny' ? verdict.reason : '').toContain('确认方案');
+  });
+
+  it('★ 停在查看数据来源：拒，并点名当前这一步', () => {
+    const verdict = at({ id: 'probe', title: '查看数据来源' })(call('board'));
+
+    expect(verdict?.kind).toBe('deny');
+    expect(verdict?.kind === 'deny' ? verdict.reason : '').toContain('查看数据来源');
+  });
+
+  it('★★ 停在确认方案：才弹', () => {
+    const verdict = at({ id: 'plan', title: '确认方案' })(call('board'));
+
+    expect(verdict?.kind).toBe('ask');
+    expect(confirmVerdictFor(call('board'), () => ({ id: 'plan', title: '确认方案' }))?.kind).toBe('ask');
+  });
+
+  it('★★ 改模块第一步就是确认方案：第一次带方案也要问', () => {
+    const verdict = at(null)(call('tweak'));
 
     expect(verdict?.kind).toBe('ask');
   });

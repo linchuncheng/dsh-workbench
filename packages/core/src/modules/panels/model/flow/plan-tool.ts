@@ -15,9 +15,14 @@ import { PROGRESS_OUTPUT } from './progress-output';
 import type { DiyFlowRuns } from './runs';
 
 const DESTINATIONS: readonly Destination[] = ['ready', 'once', 'reroute', 'board', 'headless', 'tweak'];
+const BUILDABLE: readonly Destination[] = ['board', 'headless', 'tweak'];
 
 function asText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function hasPlanContent(record: Readonly<Record<string, unknown>>): boolean {
+  return ['shots', 'see', 'do', 'agent', 'data'].some((key) => Array.isArray(record[key]));
 }
 
 function asShots(value: unknown): ReadmeShot[] {
@@ -115,6 +120,7 @@ function planToolOf(runs: DiyFlowRuns): DshToolDefinition {
     description:
       '需要为用户创建或修改面板模块时，在动手之前使用：先说清用户要什么（先询问、等回答），再判断去向。' +
       '一次性任务、使用现成模块、只是提问都不要调用。' +
+      '新建模块时第一次只提交去向与一句话复述，走到「确认方案」再提交四段（有看板时再加 ascii）；改模块从「确认方案」起步，可以一次提交完整方案。' +
       '建模块（board / headless）时四段（see/do/agent/data）讲清这个模块是什么，再加一两张 shots；' +
       '改模块（tweak）时四段只写这次的变化：每条以「新增：」「删除：」「修改：」开头，没变的段只写一条「没变」' +
       '（不用解释它原本是什么），shots 只给改之后的图（不用画改前）；动了审批屏就四段都按审批屏写，' +
@@ -148,10 +154,20 @@ function planToolOf(runs: DiyFlowRuns): DshToolDefinition {
       }
       const summary = asText(record['summary']);
       if (summary === '') throw new Error('summary 不能为空：用用户的原话复述一遍');
-      const atPlan = runs.stepOf(session)?.id === 'plan';
-      const sections = atPlan ? validatedSections(record) : {};
+      const current = runs.stepOf(session);
+      const willStartAtPlan = current === null && destination === 'tweak';
+      const hasContent = hasPlanContent(record);
+      const submittingPlan = current?.id === 'plan' || (willStartAtPlan && hasContent);
+      const sections = submittingPlan ? validatedSections(record) : {};
       const shots = asShots(record['shots']);
-      if (atPlan && destination === 'tweak') validatedChanges(sections, shots);
+      if (!submittingPlan && BUILDABLE.includes(destination) && hasContent) {
+        throw new Error(
+          current === null
+            ? '现在还没到「确认方案」：先只提交去向与一句话复述；查看数据来源提交完后，在「确认方案」那一步再提交四段（有看板时再加 ascii）。'
+            : `现在停在「${current.title ?? current.id}」；这一步用 workbench_diy_step 提交，方案四段（有看板时再加 ascii）只在「确认方案」那一步提交。`,
+        );
+      }
+      if (submittingPlan && destination === 'tweak') validatedChanges(sections, shots);
 
       const result = await planStep(runs, session, {
         destination,

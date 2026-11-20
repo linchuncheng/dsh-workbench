@@ -335,6 +335,7 @@ export const panelsHost: UnitOwnedFace = {
         (unit, author) =>
           publishPreviewOf(workshopPathOf(ctx), unit, author === undefined ? {} : { author }),
         marketSources,
+        (session) => diyRuns.stepOf(session),
       ),
       gate: {
         deniedTools: (context) => {

@@ -78,7 +78,23 @@ export async function planStep(
   }
 
   runs.start(session, { destination: input.destination, summary: input.summary });
-  return advanced(runs.stepOf(session), input.destination);
+  const first = runs.stepOf(session);
+  if (first?.id === 'plan' && hasPlanValue(input)) {
+    const planned = await runs.advance(session, planValue(input));
+    if (!planned.ok) return refused(input, planned.problem ?? '方案未提交');
+    return advanced(planned.step, input.destination);
+  }
+  return advanced(first, input.destination);
+}
+
+function hasPlanValue(input: PlanInput): boolean {
+  return (
+    input.shots !== undefined ||
+    input.see !== undefined ||
+    input.do !== undefined ||
+    input.agent !== undefined ||
+    input.data !== undefined
+  );
 }
 
 function planValue(input: PlanInput): Record<string, unknown> {

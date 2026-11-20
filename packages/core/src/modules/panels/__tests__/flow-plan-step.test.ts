@@ -117,6 +117,21 @@ describe('计划工具推进流程', () => {
     expect(runs.stepOf('s-1')?.id).toBe('build');
   });
 
+  it('★★ 改已有模块：第一次把方案交齐，一步到创建模块', async () => {
+    const { runs } = runsOf();
+    const first = await planStep(runs, 's-1', {
+      destination: 'tweak',
+      summary: '库存阈值改成 20',
+      see: ['修改：阈值改成 20'],
+      do: ['没变'],
+      agent: ['没变'],
+      data: ['没变'],
+    });
+
+    expect(first.step).toBe('build');
+    expect(runs.stepOf('s-1')?.id).toBe('build');
+  });
+
   it('★ 范围变了重新计划：旧流程被停掉，新流程从查看数据来源开始', async () => {
     const { runs } = runsOf();
     await planStep(runs, 's-1', { destination: 'board', summary: '第一版', see: ['一眼'], do: ['一点'], agent: ['一件'], data: ['一处'] });
