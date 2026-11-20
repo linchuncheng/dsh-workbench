@@ -1,7 +1,7 @@
 {
   "name": "@dsh-workbench/core",
   "version": "1.4.3-rc.0",
-  "description": "个人工作台：Agent 工作台（左栏 + 常驻对话 + 自研右侧数据面板）。",
+  "description": "DeepSeek Harness 的 Agent 工作台插件：左栏项目与会话，中间常驻对话，右侧一列自定义看板。",
   "type": "module",
   "icon": "./icon.svg",
   "exports": {
