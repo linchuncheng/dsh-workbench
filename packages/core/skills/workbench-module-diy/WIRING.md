@@ -59,7 +59,7 @@ DIY 族仅在选了 DIY 模式的会话出现（按模式，不按工作区）�
 
 - 宿主侧 → `dist/host.js`：秒级热换，不重启、不刷新。
 - 客户端侧 → `client.js`：刷新页面；`*.module.css` 就地改写 `<style>`，刷新生效。
-- 改 `cordis.patch.yml`、`package.json` 的 `dsh.client` / `exports["./client"]`：需重启（安装声明变更）。
+- 改 `package.json` 的 `dsh.client` / `exports["./client"]`：需重启（安装声明变更）。
 - 必须重启时说明原因与重启对象。
 
 ## 5 发布

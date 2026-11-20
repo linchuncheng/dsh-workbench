@@ -111,7 +111,7 @@ describe('profile 里装了哪些工作台模块（unit → 包名，卸载前�
     return root;
   }
 
-  it('按 dsh.profile.bundles 走，只留声明了 dsh.workbench 的包', () => {
+  it('bundles 与依赖合起来看，只留声明了 dsh.workbench 的包', () => {
     const root = profile(
       ['@deepseek-ai/dsh-base', '@dsh-workbench/core', '@dsh-workbench/module-hello'],
       { '@dsh-workbench/module-hello': '^0.1.2' },
@@ -126,6 +126,38 @@ describe('profile 里装了哪些工作台模块（unit → 包名，卸载前�
     );
     expect(profileModules(root)).toEqual([
       { pkg: '@dsh-workbench/module-hello', unit: 'hello', version: '0.1.2', local: false, fromRegistry: true },
+    ]);
+  });
+
+  it('★ bundles 非空时，装在依赖里但没进 bundles 的模块也算', () => {
+    const root = profile(
+      ['@deepseek-ai/dsh-base', '@dsh-workbench/core'],
+      { '@dsh-workbench/core': '^1.0.0', '@dsh-workbench/module-hello': '^0.1.2' },
+      {
+        '@dsh-workbench/core': { name: '@dsh-workbench/core', version: '1.0.0' },
+        '@dsh-workbench/module-hello': {
+          name: '@dsh-workbench/module-hello',
+          version: '0.1.2',
+          dsh: { workbench: { unit: 'hello' } },
+        },
+      },
+    );
+    expect(profileModules(root)).toEqual([
+      { pkg: '@dsh-workbench/module-hello', unit: 'hello', version: '0.1.2', local: false, fromRegistry: true },
+    ]);
+  });
+
+  it('★ 包里还声明着 dsh.bundle → 带上 shipsBundle（迁移没做完，别写行）', () => {
+    const root = profile(
+      ['@deepseek-ai/dsh-base', '@dsh-workbench/core'],
+      { '@dsh-workbench/core': '^1.0.0', '@a/old': '^1.0.0' },
+      {
+        '@dsh-workbench/core': { name: '@dsh-workbench/core', version: '1.0.0' },
+        '@a/old': { name: '@a/old', version: '1.0.0', dsh: { bundle: { patch: './p.yml' }, workbench: { unit: 'old' } } },
+      },
+    );
+    expect(profileModules(root)).toEqual([
+      { pkg: '@a/old', unit: 'old', version: '1.0.0', local: false, fromRegistry: true, shipsBundle: true },
     ]);
   });
 

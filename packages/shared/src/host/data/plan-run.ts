@@ -11,6 +11,8 @@ export interface PlanRunDeps {
   readonly intent: ExecIntent;
   readonly timeoutMs?: number | undefined;
   readonly check?: ((step: PluginPlanStep) => void) | undefined;
+  readonly collect?: ((output: string) => void) | undefined;
+  readonly signal?: AbortSignal | undefined;
 }
 
 export type HostRunStep = Extract<PluginPlanStep, { readonly kind: 'run' }> & { readonly host: true };
@@ -51,6 +53,19 @@ export class PlanStepError extends Error {
   }
 }
 
+/**
+ * 安装计划被取消：用户点了取消，或调用方撤了 signal。
+ */
+export class PlanCancelledError extends Error {
+  readonly step: PluginPlanStep;
+
+  constructor(step: PluginPlanStep) {
+    super(`计划被取消，停在：${planStepText(step)}`);
+    this.name = 'PlanCancelledError';
+    this.step = step;
+  }
+}
+
 function applyFileStep(step: Exclude<PluginPlanStep, { readonly kind: 'run' }>): void {
   if (step.kind === 'remove') {
     removePath(step.path);
@@ -67,16 +82,20 @@ function applyFileStep(step: Exclude<PluginPlanStep, { readonly kind: 'run' }>):
   copyDirInto(step.from, step.to);
 }
 
-async function runCommandStep(step: Extract<PluginPlanStep, { readonly kind: 'run' }>, deps: PlanRunDeps): Promise<void> {
+async function runCommandStep(step: Extract<PluginPlanStep, { readonly kind: 'run' }>, deps: PlanRunDeps): Promise<string> {
   const env = envOf(step, deps.seam);
   const outcome = await deps.seam.run({
     command: step.line,
     intent: isHostStep(step) ? { kind: 'host' } : deps.intent,
     ...(deps.timeoutMs === undefined ? {} : { timeoutMs: deps.timeoutMs }),
     ...(env === undefined ? {} : { env }),
+    ...(deps.signal === undefined ? {} : { signal: deps.signal }),
   });
-  if (step.optional === true) return;
+  if (outcome.aborted) throw new PlanCancelledError(step);
+  const output = `${outcome.stdout}${outcome.stderr}`;
+  if (step.optional === true) return output;
   if (outcome.exitCode !== 0) throw new PlanStepError(step, outcome.exitCode, outcome.stderr || outcome.stdout);
+  return output;
 }
 
 /**
@@ -85,13 +104,17 @@ async function runCommandStep(step: Extract<PluginPlanStep, { readonly kind: 'ru
  * `optional` 只豁免「命令非零退出」，执行缝自己抛的错（沙箱拒绝一类）照旧冒出去。
  * @param steps - 计划步骤。
  * @param deps - 执行缝、写入域、超时，以及每一步的前置检查。
- * @returns 全部步骤完成。
+ * @returns 全部步骤跑完后，命令步的输出按顺序拼在一起。
  */
-export async function runPlan(steps: readonly PluginPlanStep[], deps: PlanRunDeps): Promise<void> {
+export async function runPlan(steps: readonly PluginPlanStep[], deps: PlanRunDeps): Promise<string> {
+  const parts: string[] = [];
   for (const step of steps) {
+    if (deps.signal?.aborted === true) throw new PlanCancelledError(step);
     deps.check?.(step);
     if (step.kind === 'run') {
-      await runCommandStep(step, deps);
+      const output = await runCommandStep(step, deps);
+      deps.collect?.(output);
+      parts.push(output);
       continue;
     }
     try {
@@ -100,4 +123,5 @@ export async function runPlan(steps: readonly PluginPlanStep[], deps: PlanRunDep
       throw new PlanStepError(step, null, error instanceof Error ? error.message : String(error));
     }
   }
+  return parts.join('\n');
 }

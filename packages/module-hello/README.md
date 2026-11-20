@@ -8,13 +8,11 @@
 
 ## 安装
 
-在模块市场的「已安装」里找到「示例模块」并安装；也可以在终端安装到工作台的 profile：
+在工作台的「模块市场」里添加 `@dsh-workbench/module-hello`。工作台把它装成 profile 的
+普通依赖，再在 profile 的 `cordis.patch.yml` 里写一行（`wb-hello`）把它挂上；它**不会**出现在
+dsh 的插件页。安装后即启用，没有单独的开关。
 
-```bash
-dsh plugin --profile workbench add @dsh-workbench/module-hello
-```
-
-安装完成后，在当前项目的面板里勾选它，卡片才会出现。
+安装完成后在右侧面板的「面板模块」里勾选「示例模块」，卡片才会出现。
 
 ## agent 能做什么
 
@@ -26,12 +24,7 @@ dsh plugin --profile workbench add @dsh-workbench/module-hello
 
 ## 卸载
 
-在模块市场卸载，或：
-
-```bash
-dsh plugin --profile workbench remove @dsh-workbench/module-hello
-```
-
+在模块市场卸载：工作台跑 `pnpm remove` 把包从 profile 拿掉，并删掉 `wb-hello` 那一行。
 卸载后卡片消失，不影响其他模块。
 
 ## 出问题先看

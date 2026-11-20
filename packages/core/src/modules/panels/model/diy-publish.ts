@@ -143,7 +143,7 @@ function successPayloadOf(
                 : [
                     `已发布 ${name}@${released} → ${registry}`,
                     `换台机器安装：${install}`,
-                    '包内容已经从源上核过（dist/host.js / client.js / cordis.patch.yml 都在）。',
+                    '包内容已经从源上核过（dist/host.js / client.js / package.json 都在）。',
                   ].join('\n');
   const changelog = asRecord(payload['changelog']);
   const changelogLine =

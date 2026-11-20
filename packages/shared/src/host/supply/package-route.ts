@@ -1,11 +1,11 @@
 import { now } from '../runtime/time.js';
 import type { Seam } from '../seam/run.js';
 import { VERSION_CHECK_TTL_MS } from '../../config/constants.js';
-import { dshMarkersOf, splitNpmSpec, verdictOf, type PackageVerdict } from './package-kind.js';
+import { dshRouteKindOf, splitNpmSpec, verdictOf, type PackageVerdict } from './package-kind.js';
 import { withPackageDir } from './package-content.js';
 import { localDirOf } from '../unit/local-declaration.js';
 
-export type PackageRouteKind = 'runtime-plugin' | 'dsh-bundle' | 'neither';
+export type PackageRouteKind = 'runtime-plugin' | 'dsh-bundle' | 'dsh-module' | 'neither';
 
 export interface PackageRoute {
   readonly kind: PackageRouteKind;
@@ -17,6 +17,9 @@ function routeOfVerdict(verdict: PackageVerdict, fallback?: string): PackageRout
   const pkg = verdict.pkg ?? fallback;
   if (verdict.kind === 'neither') return { kind: 'neither', ...(pkg === undefined ? {} : { pkg }) };
   if (verdict.kind === 'dsh-bundle' || verdict.kind === 'both') return { kind: 'dsh-bundle' };
+  if (verdict.kind === 'workbench-module') {
+    return { kind: 'dsh-module', ...(pkg === undefined ? {} : { pkg }) };
+  }
   return {
     kind: 'runtime-plugin',
     ...(pkg === undefined ? {} : { pkg }),
@@ -87,8 +90,11 @@ async function routeOf(
       ? { readable: false, raw: undefined }
       : await options.dshLookup({ seam, name: routeOptions.spec, registry });
   let route: PackageRoute | undefined;
-  if (found.readable && dshMarkersOf(found.raw)) {
+  const remoteKind = found.readable ? dshRouteKindOf(found.raw) : undefined;
+  if (remoteKind === 'dsh-bundle') {
     route = { kind: 'dsh-bundle' };
+  } else if (remoteKind === 'workbench-module') {
+    route = { kind: 'dsh-module' };
   } else {
     const scratchRoot = scratchRootOf(options.scratchRoot, seam);
     const verdict = await withPackageDir(

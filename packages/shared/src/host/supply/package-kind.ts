@@ -2,10 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 export { splitNpmSpec } from '../data/spec.js';
 export type { NpmRef } from '../data/spec.js';
+import { asRecord } from '../../contract/guards.js';
 import { dshRecordOf, packageManifestOf, packageNameOf } from '../unit/local-declaration.js';
 import { pluginAt } from './plugin.js';
 
-export type PackageKind = 'runtime-plugin' | 'dsh-bundle' | 'both' | 'neither';
+export type PackageKind = 'runtime-plugin' | 'dsh-bundle' | 'workbench-module' | 'both' | 'neither';
 
 export interface PackageVerdict {
   readonly kind: PackageKind;
@@ -13,8 +14,19 @@ export interface PackageVerdict {
   readonly pluginName?: string;
 }
 
-function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  return typeof value === 'object' && value !== null ? (value as Readonly<Record<string, unknown>>) : undefined;
+/**
+ * 按包自己声明的 `dsh` 判它走哪条装载路径：有 `dsh.bundle` 就是组合包；只有 `dsh.workbench.unit`
+ * 才是工作台模块（行装载）；两者都没有、或 `dsh.workbench` 里连 unit 都没写，都不算。
+ * @param raw - 包 `package.json` 的 `dsh` 段（本地读到的或源上读到的同一份形状）。
+ * @returns `dsh-bundle` / `workbench-module`；不像 dsh 扩展包时 `undefined`。
+ */
+export function dshRouteKindOf(raw: unknown): 'dsh-bundle' | 'workbench-module' | undefined {
+  const record = asRecord(raw);
+  if (record === undefined) return undefined;
+  if ('bundle' in record) return 'dsh-bundle';
+  const workbench = asRecord(record['workbench']);
+  const unit = workbench?.['unit'];
+  return typeof unit === 'string' && unit.trim() !== '' ? 'workbench-module' : undefined;
 }
 
 export function isCommandFile(name: string): boolean {
@@ -42,16 +54,19 @@ export function hasCommandFile(dir: string): boolean {
 }
 
 export function dshMarkersOf(raw: unknown): boolean {
-  const record = asRecord(raw);
-  return record !== undefined && ('bundle' in record || 'workbench' in record);
+  return dshRouteKindOf(raw) !== undefined;
 }
 
 export function verdictOf(dir: string, manifestFile: string): PackageVerdict | undefined {
   const plugin = pluginAt(dir, manifestFile);
   if (packageManifestOf(dir) === undefined && plugin === undefined) return undefined;
-  const dsh = dshMarkersOf(dshRecordOf(dir));
+  const route = dshRouteKindOf(dshRecordOf(dir));
   const kind: PackageKind =
-    plugin !== undefined && dsh ? 'both' : plugin !== undefined ? 'runtime-plugin' : dsh ? 'dsh-bundle' : 'neither';
+    plugin !== undefined && route !== undefined
+      ? 'both'
+      : plugin !== undefined
+        ? 'runtime-plugin'
+        : (route ?? 'neither');
   const pkg = packageNameOf(dir);
   return {
     kind,

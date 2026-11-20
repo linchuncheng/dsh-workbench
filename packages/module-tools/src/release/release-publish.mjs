@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { NeedsUser, ReleaseError, publishTagOf, tailOf } from './release-util.mjs';
 import { npmrcArgs } from './release-target.mjs';
 
-const REQUIRED_FILES = ['dist/host.js', 'client.js', 'cordis.patch.yml', 'package.json', 'CHANGELOG.md'];
+const REQUIRED_FILES = ['dist/host.js', 'client.js', 'package.json', 'CHANGELOG.md'];
 
 function parseJson(text) {
   const raw = String(text ?? '');

@@ -273,7 +273,7 @@ dsh-wb-module design accept   # 在真实卡片上逐条验证后勾选
 
 | 段 | 是什么 | 谁读 |
 |---|---|---|
-| `dsh.bundle.patch` | 把自己插进 profile 组合图的 cordis 补丁 | dsh 的组合器（装载） |
+| `dsh.bundle.patch` | 只有**组合包**才需要：把自己插进 profile 组合图的 cordis 补丁。工作台模块不再声明它（由市场装成 profile 依赖 + 一行） | dsh 的组合器（装载） |
 | `dsh.client{platform,inject,external}` | 浏览器侧接线 | dsh 的客户端组合器（dsh 不校验，错误的声明要等到浏览器 `require` 时才报错，因此由 `contracts` 检查） |
 | `dsh.workbench` | **模块声明协议** | 门禁 · 市场 · 工作台 |
 | `dsh.workbenchFaces{host,client}` | **工具链元数据**（不在协议里）：两个面的源码入口 | 门禁：`source` 拿它算可达性、`contracts` 查它在位；运行期不读 |

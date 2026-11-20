@@ -3,6 +3,7 @@ import { provideWorkbenchSeam } from '@/shared/api/host/workbench-seam';
 import { holdHostLock } from '@/shared/api/host/host-lock';
 import { holdHostLeaseEffect, waitOutReinstall } from '@/shared/api/host/host-lease';
 import { bootChores, seedRuntime } from '@/shared/api/host/boot-chores';
+import { diagnoseModuleRows } from '@/shared/api/host/module-rows-sync';
 import { bootOkAction } from '@/shared/api/host/boot-ok';
 import { provideGitProcessSeam } from '@/shared/api/host/git-process';
 import { browserExtensionDir, shippedAdapterSet } from '@/shared/api/host/shipped-adapter-set';
@@ -11,9 +12,9 @@ import { assembleHostUnits } from '@/app/units/host';
 import { createPostChannels } from '@/shared/api/host/post-channels';
 import { takeHeldNotices, type AgentsLookup } from '@/shared/api/host/diy-debug-act';
 import { registerDiyActs } from '@/shared/api/host/diy-acts';
+import type { PostWrite, RouteTable } from '@dsh-workbench/shared/host';
 import {
   capabilityHandler, dshHome, hostSurface, registerApi, registerPanelState, runningVersionOf, workbenchRoot,
-  type PostWrite, type RouteTable,
 } from '@dsh-workbench/shared/host';
 import { PANEL_STATE_SERVICE, createFactLog, createPanelStateStore, toolUnits, wroteNow } from '@dsh-workbench/shared/host';
 
@@ -31,11 +32,7 @@ import { liveLongTaskRows } from '@/shared/api/host/long-tasks';
 import { createContextInjector, installContextInject, type ContextRenderer } from '@/shared/api/host/context-inject';
 import type { DshHostContext, DshPromptAssembly, LongTaskBase, LongTaskRegistry, UnitCall, UnitMountResult, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { applyPlanFailures, declaredNotesOf, mountUnits, failureReasonOf, type UnitsPlan } from '@/kernel/host/mount-units';
-import {
-  createUnitRegistry,
-  installableUnitsOf,
-  type HostUnit,
-} from '@/kernel/host/unit-registry';
+import { createUnitRegistry, installableUnitsOf, type HostUnit } from '@/kernel/host/unit-registry';
 import { bindRosterFacts } from '@/shared/api/host/unit-roster-facts';
 import { createDraftStore, createWorkspaceStore, withLibRunners } from '@dsh-workbench/shared/host';
 import { CONFIG_SYNC_ROUTE } from '@/kernel/contract/config-sync';
@@ -105,6 +102,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   routes.health = async (search) => ({
     ...((await baseHealth?.(search)) as Record<string, unknown>),
     capabilities,
+    moduleRows: diagnoseModuleRows(profileDir),
     runtimeProfile, surface,
     adapterSet: {
       configured: adapterSpec,

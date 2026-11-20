@@ -424,6 +424,20 @@ async function packageOverride(
     ...(seam === undefined ? {} : { seam }),
     ...(registry === undefined ? {} : { registry }),
   });
+  if (route !== undefined && route.kind === 'dsh-module') {
+    if (inspection.status === 'accepted') return undefined;
+    const ref = supply.splitNpmSpec(spec);
+    const pkg = route.pkg ?? ref?.name ?? spec.trim();
+    const local = spec.startsWith('/') || /^[A-Za-z]:[\\/]/.test(spec);
+    return {
+      status: 'accepted',
+      kind: local ? 'path' : 'registry',
+      name: pkg,
+      ...(ref?.version === undefined ? {} : { version: ref.version }),
+      bundle: false,
+      registry: registry ?? null,
+    };
+  }
   if (route !== undefined && route.kind === 'runtime-plugin') {
     if (inspection.status !== 'refused') return undefined;
     const ref = supply.splitNpmSpec(spec);

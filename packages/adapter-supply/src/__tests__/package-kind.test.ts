@@ -46,14 +46,20 @@ describe('按内容认一个包：opencli 插件与工作台模块', () => {
     });
   });
 
-  it('★ 只有 package.json 里的 dsh.bundle / dsh.workbench → dsh 扩展包', () => {
+  it('★ 只有 package.json 里的 dsh.bundle → 组合包；只有 dsh.workbench → 工作台模块', () => {
     const bundle = dirOf('dsh-bundle');
     put(bundle, 'package.json', { name: '@t/plain-bundle', dsh: { bundle: {} } });
     const workbench = dirOf('dsh-workbench');
     put(workbench, 'package.json', { name: '@t/module-a', dsh: { workbench: { unit: 'a' } } });
 
     expect(verdictOf(bundle, OPENCLI_MANIFEST_FILE)).toEqual({ kind: 'dsh-bundle', pkg: '@t/plain-bundle' });
-    expect(verdictOf(workbench, OPENCLI_MANIFEST_FILE)).toEqual({ kind: 'dsh-bundle', pkg: '@t/module-a' });
+    expect(verdictOf(workbench, OPENCLI_MANIFEST_FILE)).toEqual({ kind: 'workbench-module', pkg: '@t/module-a' });
+  });
+
+  it('dsh.workbench 里没写 unit → 不算工作台模块', () => {
+    const empty = dirOf('dsh-workbench-empty');
+    put(empty, 'package.json', { name: '@t/empty', dsh: { workbench: {} } });
+    expect(verdictOf(empty, OPENCLI_MANIFEST_FILE)).toEqual({ kind: 'neither', pkg: '@t/empty' });
   });
 
   it('★ 两样都有 → both（路由那一侧按 dsh 走，不许装两遍）', () => {

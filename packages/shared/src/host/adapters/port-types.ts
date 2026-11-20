@@ -36,7 +36,7 @@ export interface ProfilePort {
 export type SupplyPluginSource = ResolvedPluginSource;
 
 export interface SupplyPackageRoute {
-  readonly kind: PluginPackageKind | 'dsh-bundle' | 'neither';
+  readonly kind: PluginPackageKind | 'dsh-bundle' | 'dsh-module' | 'neither';
   readonly pkg?: string;
   readonly pluginName?: string;
 }

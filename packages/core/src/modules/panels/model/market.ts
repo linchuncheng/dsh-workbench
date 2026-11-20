@@ -1,16 +1,15 @@
 import { basename } from 'node:path';
-import type { Need, UnitManifest } from '@dsh-workbench/shared';
+import type { UnitManifest } from '@dsh-workbench/shared';
 import { needsOf as needsOfManifest } from '@dsh-workbench/shared/host';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
 import type { BundleManager } from '@dsh-workbench/shared/host';
 import type { InstalledModule, LibNeed, ProfileModule, ProfilePackage } from '@dsh-workbench/shared/host';
 import type { RegistryNotebook } from '@dsh-workbench/shared/host';
-import type { UnitCapability } from '@dsh-workbench/shared/host';
-import { requireSupply, type SupplyPort, type UnitMountDeps } from '@dsh-workbench/shared/host';
+import { hasModuleRow, requireSupply, type SupplyPort, type UnitMountDeps } from '@dsh-workbench/shared/host';
 import type { Seam } from '@dsh-workbench/shared/host';
 import { quoteShellArg, runningVersionOf } from '@dsh-workbench/shared/host';
 import { dshVersionIn } from '@dsh-workbench/shared/host';
-import { createInstallRunner } from './market-install-run';
+import { createInstallControl, createInstallRunner } from './market-install-run';
 import { mergeInstallCommands } from './market-batch';
 import {
   affectedUnitsOf,
@@ -23,17 +22,16 @@ import {
 } from './market-dependency';
 import { installRouted, replaceDshBundle, type ReplaceBundleDeps } from './market-route';
 import { updateModuleBundle } from './market-update-bundle';
-import { removeDshBundle } from './market-remove';
+import { removeDshBundle, removeWorkbenchModule } from './market-remove';
+import { routeDepsOf, syncModuleRowsOf } from './market-route-deps';
+import { createMarketEntries } from './market-entry';
 import { supplyUpdateStillBehind } from './market-verify';
 import { updateDependencyRow as runDependencyUpdate } from './market-dependency-update';
 import type { SelfUpdateRequest, SelfUpdateStart } from '@dsh-workbench/shared/host';
 import { updateWorkbenchOnce } from './market-workbench-update';
 import { createWorkbenchFollowUps, type WorkbenchFollowUpDeps } from './market-follow-up';
 import { createEnvDropper } from './market-env';
-import {
-  rememberInstalledSource,
-  type RegistryFixDeps,
-} from './market-registry';
+import type { RegistryFixDeps } from './market-registry';
 import { createPluginActions, type PluginReferences } from './plugin-actions';
 import { restartLogLine } from './market-restart';
 import type { PluginLedger } from './plugin-ledger';
@@ -107,41 +105,12 @@ export function createMarketService(options: {
   const command = options.command;
   const catalog = (): readonly UnitManifest[] => manifestsNow?.() ?? manifests;
 
-  function requireEntry(unit: string): UnitManifest {
-    const manifest = catalog().find((item) => item.id === unit);
-    if (manifest === undefined) {
-      throw new Error(`市场里没有这个模块：${unit}（可安装：${catalog().map((item) => item.id).join(', ') || '（空）'}）`);
-    }
-    return manifest;
-  }
+  const { capabilityOf, needsOf, entryOf } = createMarketEntries({
+    catalog,
+    ...(probe === undefined ? {} : { probe }),
+  });
 
-  async function capabilityOf(unit: string, force = false): Promise<UnitCapability> {
-    const probed = await probe?.(unit, { force });
-    return (
-      probed ?? {
-        unit,
-        status: 'unchecked',
-        needs: [],
-        detail: '没有探测能力（缺少执行缝或探测服务）',
-      }
-    );
-  }
-
-  function needsOf(unit: string): readonly Need[] {
-    return needsOfManifest(requireEntry(unit));
-  }
-
-  async function entryOf(unit: string, force = false): Promise<MarketEntry> {
-    const manifest = requireEntry(unit);
-    return {
-      unit,
-      titleKey: manifest.titleKey,
-      needs: needsOfManifest(manifest),
-      capability: await capabilityOf(unit, force),
-    };
-  }
-
-  const { run, runAll } = createInstallRunner({ seam, supply });
+  const { run, runAll, outputOf } = createInstallRunner({ seam, supply });
 
   async function probeSharing(request: {
     readonly action: MarketAction;
@@ -241,23 +210,14 @@ export function createMarketService(options: {
     ...(logger === undefined ? {} : { logger }),
   };
 
-  function routeDeps(manager: BundleManager): ReplaceBundleDeps {
-    return {
-      manager,
-      command,
-      supply,
-      runAll,
-      rememberSource: (manager, pkg, registry, version) =>
-        rememberInstalledSource(registryFix, manager, pkg, registry, version),
-      supplyAfter,
-      remove: (pkg) =>
-        removeDshBundle({ manager, pkg, profileDir, registryFix, ...(logger === undefined ? {} : { logger }) }),
+  const routeDeps = (manager: BundleManager): ReplaceBundleDeps =>
+    routeDepsOf({
+      manager, command, supply, runAll, outputOf, registryFix, supplyAfter, profileDir,
       ...(seam === undefined ? {} : { seam }),
       ...(installed === undefined ? {} : { installed }),
       ...(ledger === undefined ? {} : { ledger }),
       ...(logger === undefined ? {} : { logger }),
-    };
-  }
+    });
 
   const plugins = createPluginActions({
     ...(ledger === undefined ? {} : { ledger }),
@@ -271,18 +231,25 @@ export function createMarketService(options: {
     supply,
   });
 
+  const installControl = createInstallControl();
+
   async function installByRoute(spec: string, options?: BundleInstallOptions): Promise<BundleInstallOutcome> {
     const manager = requireBundles();
     const registry = options?.registry ?? (await manager.registries().catch(() => null))?.resolved ?? undefined;
-    const outcome = await installRouted({
-      ...routeDeps(manager),
-      spec,
-      ...(options === undefined ? {} : { options }),
-      ...(registry === undefined ? {} : { registry }),
-    });
-    const restart = restartLogLine(outcome?.change);
-    if (restart !== undefined) logger?.info?.(restart);
-    return outcome;
+    const watched = installControl.attach(options?.requestId, options);
+    try {
+      const outcome = await installRouted({
+        ...routeDeps(manager),
+        spec,
+        ...(watched === undefined ? {} : { options: watched }),
+        ...(registry === undefined ? {} : { registry }),
+      });
+      const restart = restartLogLine(outcome?.change);
+      if (restart !== undefined) logger?.info?.(restart);
+      return outcome;
+    } finally {
+      installControl.release(options?.requestId);
+    }
   }
 
   const service: MarketService = {
@@ -409,13 +376,23 @@ export function createMarketService(options: {
       const roster = catalog();
       const manifest = unit === undefined ? undefined : roster.find((item) => item.id === unit);
       const before = unit === undefined ? undefined : await capabilityOf(unit, true);
-      const change = await removeDshBundle({
-        manager,
-        pkg,
-        profileDir,
-        registryFix,
-        ...(logger === undefined ? {} : { logger }),
-      });
+      const rowModule =
+        profileDir !== undefined && profileDir !== null && module.kind === 'module' && hasModuleRow(profileDir, pkg);
+      const change = rowModule
+        ? await removeWorkbenchModule({
+            profileDir,
+            pkg,
+            runAll,
+            syncRows: syncModuleRowsOf(profileDir, supply),
+            ...(logger === undefined ? {} : { logger }),
+          })
+        : await removeDshBundle({
+            manager,
+            pkg,
+            profileDir,
+            registryFix,
+            ...(logger === undefined ? {} : { logger }),
+          });
       if (change.application !== 'applied' || unit === undefined) return { change, keptFor: [] };
       const keptFor =
         manifest === undefined || before === undefined
@@ -427,7 +404,7 @@ export function createMarketService(options: {
     },
 
     async cancelInstall(requestId) {
-      return requireBundles().cancel(requestId);
+      return installControl.cancel(requestId) ?? requireBundles().cancel(requestId);
     },
 
     async updateBundle(unit) {

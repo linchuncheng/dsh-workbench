@@ -69,8 +69,8 @@ export async function publish({ root }) {
     if (!paths.includes(one)) problems.push(`exports 中的 ${one} 不在包中（files 未包含它）`);
   }
 
-  if (isModule && !paths.includes('cordis.patch.yml')) {
-    problems.push('cordis.patch.yml 不在包中 —— 模块依靠它接入 dsh 组合');
+  if (isModule && manifest.dsh?.bundle !== undefined && !paths.includes('cordis.patch.yml')) {
+    problems.push('cordis.patch.yml 不在包中 —— 声明了 dsh.bundle 的包依靠它接入 dsh 组合');
   }
 
   const templateDirs = readdirSync(root, { withFileTypes: true })

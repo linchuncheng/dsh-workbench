@@ -484,3 +484,190 @@ describe('接线：市场那条路交给路由，且没有插件管理器时还�
     expect(fake.commands()).toEqual([`'opencli' plugin install '${at}'`]);
   });
 });
+
+describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，不叫 dsh 的安装器', () => {
+  function moduleSupply(route: unknown): SupplyPort {
+    return pluginSupply(() => route);
+  }
+
+  it('★ pnpm add --dir <profile>，装完同步行，dsh 的安装管理器一次也不叫', async () => {
+    const { deps, install, commands } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+    const syncRows = vi.fn();
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: '/tmp/wb-profile',
+      syncRows,
+      installed: (pkg) => ({ kind: 'module', pkg, unit: 'a', version: '1.0.0' }),
+    });
+
+    expect(install).not.toHaveBeenCalled();
+    expect(commands).toEqual([`'pnpm' add --dir '/tmp/wb-profile' '@t/module-a' --save-exact`]);
+    expect(syncRows).toHaveBeenCalledTimes(1);
+    expect(outcome.change).toMatchObject({ application: 'applied', stage: 'install', changed: true });
+    expect(outcome.module).toEqual({ kind: 'module', pkg: '@t/module-a', unit: 'a', version: '1.0.0' });
+  });
+
+  it('带 registry 时把 --registry 写进同一条命令', async () => {
+    const { deps, commands } = rig({
+      spec: '@t/module-a@1.2.0',
+      supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }),
+    });
+
+    await installRouted({
+      ...deps,
+      registry: 'https://npm.example.com/team/',
+      profileDir: '/tmp/wb-profile',
+      syncRows: () => {},
+    });
+
+    expect(commands).toEqual([
+      `'pnpm' add --dir '/tmp/wb-profile' '@t/module-a@1.2.0' --save-exact --registry 'https://npm.example.com/team/'`,
+    ]);
+  });
+
+  it('没有 profile 目录 → 失败，不跑命令', async () => {
+    const { deps, commands } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+
+    const outcome = await installRouted(deps);
+
+    expect(commands).toEqual([]);
+    expect(outcome.change.application).toBe('failed');
+    expect(outcome.change.errorDetail).toContain('profile');
+  });
+
+  it('★ 装上了但写行失败 → 不算生效：报 module-row-failed，并说清怎么修', async () => {
+    const { deps, commands } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+    const warn = vi.fn();
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: '/tmp/wb-profile',
+      syncRows: () => {
+        throw new Error('patch 写不进去');
+      },
+      logger: { warn },
+    });
+
+    expect(commands).toHaveLength(1);
+    expect(warn.mock.calls[0]?.[0]).toContain('模块行没有写入');
+    expect(outcome.change).toMatchObject({ application: 'failed', errorCode: 'module-row-failed' });
+    expect(outcome.change.errorDetail).toContain('cordis.patch.yml');
+  });
+});
+
+describe('模块安装遇到被拦的构建脚本：记账、可批准、批准后重跑', () => {
+  function moduleSupply(route: unknown): SupplyPort {
+    return pluginSupply(() => route);
+  }
+
+  function profileWith(text?: string): string {
+    const dir = dirOf('profile');
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'p', dependencies: {} }), 'utf8');
+    fs.writeFileSync(
+      path.join(dir, 'pnpm-workspace.yaml'),
+      text ?? 'packages:\n  - .\n',
+      'utf8',
+    );
+    return dir;
+  }
+
+  function policyOf(dir: string): string {
+    return fs.readFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'utf8');
+  }
+
+  it('★ pnpm 非零退出且报了被忽略的构建 → build-blocked，待批清单写进 profile 的策略文件', async () => {
+    const profileDir = profileWith();
+    const { deps } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir,
+      runAll: async () => {
+        throw new Error('pnpm failed\nIgnored build scripts: sharp, esbuild');
+      },
+      outputOf: () => '',
+      syncRows: () => {},
+    });
+
+    expect(outcome.change).toMatchObject({ application: 'failed', errorCode: 'build-blocked' });
+    expect(outcome.change.pendingBuilds).toEqual(['sharp', 'esbuild']);
+    expect(policyOf(profileDir)).toContain('sharp: set this to true or false');
+  });
+
+  it('★ 装成功但输出里说构建被跳过 → 仍算安装成功，但把待批清单带出来（不装作一切正常）', async () => {
+    const profileDir = profileWith();
+    const { deps } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+    const warn = vi.fn();
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir,
+      runAll: async () => undefined,
+      outputOf: () => 'Progress: resolved 12\nIgnored build scripts: sharp',
+      syncRows: () => {},
+      logger: { warn, info: () => {} },
+    });
+
+    expect(outcome.change).toMatchObject({ application: 'applied', stage: 'install' });
+    expect(outcome.change.pendingBuilds).toEqual(['sharp']);
+    expect(warn.mock.calls[0]?.[0]).toContain('构建脚本没有运行');
+  });
+
+  it('★ 带 approvedBuilds 重装：先把策略改成允许，再跑 pnpm', async () => {
+    const profileDir = profileWith('packages:\n  - .\nallowBuilds:\n  sharp: set this to true or false\n');
+    const { deps } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir,
+      options: { approvedBuilds: ['sharp'] },
+      runAll: async () => undefined,
+      outputOf: () => 'Done in 3.1s',
+      syncRows: () => {},
+    });
+
+    expect(policyOf(profileDir)).toContain('sharp: true');
+    expect(outcome.change.application).toBe('applied');
+  });
+
+  it('批准的名字不在待批清单里 → 失败，pnpm 一次都不跑（防手抖批量放行）', async () => {
+    const profileDir = profileWith('packages:\n  - .\nallowBuilds:\n  sharp: set this to true or false\n');
+    const { deps, commands } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir,
+      options: { approvedBuilds: ['sharp', '手抖写错'] },
+      runAll: async () => undefined,
+      syncRows: () => {},
+    });
+
+    expect(commands).toEqual([]);
+    expect(outcome.change.application).toBe('failed');
+    expect(outcome.change.errorDetail).toContain('手抖写错');
+  });
+});
+
+describe('模块安装可以被取消', () => {
+  it('★ 取消后 pnpm 那一步回 aborted → 结果是 cancelled，不算失败', async () => {
+    const control = new AbortController();
+    const { deps } = rig({ spec: '@t/module-a', supply: pluginSupply(() => ({ kind: 'dsh-module', pkg: '@t/module-a' })) });
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: '/tmp/wb-profile',
+      options: { requestId: 'r1', signal: control.signal },
+      runAll: async () => {
+        control.abort();
+        const { PlanCancelledError } = await import('@dsh-workbench/shared/host');
+        throw new PlanCancelledError({ kind: 'run', line: 'pnpm add' });
+      },
+      syncRows: () => {
+        throw new Error('取消了就不该写行');
+      },
+    });
+
+    expect(outcome.change).toMatchObject({ application: 'cancelled', stage: 'install', changed: false });
+  });
+});

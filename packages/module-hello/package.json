@@ -10,7 +10,6 @@
   "files": [
     "dist",
     "client.js",
-    "cordis.patch.yml",
     "DEVELOPING.md",
     "CHANGELOG.md"
   ],
@@ -25,9 +24,6 @@
     "lint": "dsh-wb-module lint"
   },
   "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
     "client": {
       "platform": "web",
       "inject": [

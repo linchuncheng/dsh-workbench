@@ -1,6 +1,7 @@
+import { join } from 'node:path';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
-import type { BundleManager } from '@dsh-workbench/shared/host';
-import { forgetPackageSource, packageSourceOf, scopeOf } from '@dsh-workbench/shared/host';
+import type { BundleManager, PluginPlanStep } from '@dsh-workbench/shared/host';
+import { forgetPackageSource, hostCommandStep, packageSourceOf, profilePnpmCommand, quoteShellArg, scopeOf } from '@dsh-workbench/shared/host';
 import { retryAfterRegistryFix, type RegistryFixDeps } from './market-registry';
 
 export interface RemoveBundleOptions {
@@ -78,4 +79,50 @@ export function removeDshBundle(options: RemoveBundleOptions): Promise<BundleCha
       }
     }
   });
+}
+
+export interface RemoveModuleRowOptions {
+  readonly profileDir: string;
+  readonly pkg: string;
+  readonly runAll: (steps: readonly PluginPlanStep[]) => Promise<void>;
+  readonly syncRows: () => void;
+  readonly logger?: { warn?(message: string): void } | undefined;
+}
+
+export async function removeWorkbenchModule(options: RemoveModuleRowOptions): Promise<BundleChange> {
+  const pnpm = profilePnpmCommand(options.profileDir);
+  const prefix = [pnpm.command, ...pnpm.args].map(quoteShellArg).join(' ');
+  const store = pnpm.storeDir === undefined ? '' : ` --store-dir ${quoteShellArg(pnpm.storeDir)}`;
+  const line = `${prefix} remove --dir ${quoteShellArg(options.profileDir)}${store} ${quoteShellArg(options.pkg)}`;
+  const linked = join(options.profileDir, 'node_modules', options.pkg);
+  try {
+    await options.runAll([
+      hostCommandStep({ kind: 'run', line }),
+      { kind: 'remove', path: linked },
+    ]);
+  } catch (error) {
+    return {
+      application: 'failed',
+      stage: 'remove',
+      changed: false,
+      target: options.pkg,
+      errorCode: 'operation-error',
+      errorDetail: error instanceof Error ? error.message : String(error),
+    };
+  }
+  try {
+    options.syncRows();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    options.logger?.warn?.(`[dsh-workbench] ${options.pkg} 已从 profile 卸载，但模块行没有删除：${detail}`);
+    return {
+      application: 'failed',
+      stage: 'remove',
+      changed: true,
+      target: options.pkg,
+      errorCode: 'module-row-failed',
+      errorDetail: `包已从工作台配置移除，但 profile 的 cordis.patch.yml 没改成功：${detail}。修好这个文件再重启工作台。`,
+    };
+  }
+  return { application: 'applied', stage: 'remove', changed: true, target: options.pkg };
 }

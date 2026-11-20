@@ -182,3 +182,47 @@ describe('源上的裸包名怎么判', () => {
     await expect(router.packageRouteOf({ spec: 'opencli-plugin-hello' })).resolves.toBeUndefined();
   });
 });
+
+describe('工作台模块（没有 dsh.bundle）走单独一条路由', () => {
+  it('★ 本地目录里只有 dsh.workbench → dsh-module，不当组合包', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-module-route-'));
+    made.push(dir);
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: '@t/module-a', version: '1.0.0', dsh: { workbench: { unit: 'a' } } }),
+      'utf8',
+    );
+    const router = createPackageRouter({ manifestFile: 'opencli-plugin.json' });
+
+    await expect(router.packageRouteOf({ spec: dir })).resolves.toEqual({
+      kind: 'dsh-module',
+      pkg: '@t/module-a',
+    });
+  });
+
+  it('源上读到的 dsh 里只有 workbench → dsh-module', async () => {
+    const router = createPackageRouter({
+      manifestFile: 'opencli-plugin.json',
+      dshLookup: async () => ({ readable: true, raw: { workbench: { unit: 'a' } } }),
+    });
+    const { root } = makeRoot();
+    const { shell } = shellThat();
+
+    await expect(
+      router.packageRouteOf({ spec: '@t/module-a', seam: seamUnder(root, shell), registry: 'https://registry.npmjs.org/' }),
+    ).resolves.toEqual({ kind: 'dsh-module' });
+  });
+
+  it('源上读到的 dsh 里有 bundle → 还是组合包', async () => {
+    const router = createPackageRouter({
+      manifestFile: 'opencli-plugin.json',
+      dshLookup: async () => ({ readable: true, raw: { bundle: { patch: './cordis.patch.yml' } } }),
+    });
+    const { root } = makeRoot();
+    const { shell } = shellThat();
+
+    await expect(
+      router.packageRouteOf({ spec: '@t/bundle-a', seam: seamUnder(root, shell), registry: 'https://registry.npmjs.org/' }),
+    ).resolves.toEqual({ kind: 'dsh-bundle' });
+  });
+});

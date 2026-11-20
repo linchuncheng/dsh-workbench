@@ -29,6 +29,7 @@ export interface ProfileModule {
   readonly registry?: string;
   readonly local?: boolean;
   readonly fromRegistry?: boolean;
+  readonly shipsBundle?: boolean;
 }
 
 export interface ProfilePackage {

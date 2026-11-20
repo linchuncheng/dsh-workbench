@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { BundleManager, Seam, SupplyPort } from '@dsh-workbench/shared/host';
-import { PLUGIN_ID, profileBundlesOf, quoteShellArg, requireSupply, storeMismatchIn } from '@dsh-workbench/shared/host';
+import { PLUGIN_ID, hasModuleRow, profileBundlesOf, quoteShellArg, requireSupply, storeMismatchIn } from '@dsh-workbench/shared/host';
 import type { InstalledModule, ProfileModule } from '@dsh-workbench/shared/host';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
 import { replaceDshBundle, type ReplaceBundleDeps } from './market-route';
@@ -142,7 +142,10 @@ export async function updateModuleBundle(
     }
   }
   const spec = latest === undefined ? pkg : `${pkg}@${latest}`;
+  const rowModule =
+    deps.profileDir !== undefined && deps.profileDir !== null && hasModuleRow(deps.profileDir, pkg);
   const delegated =
+    !rowModule &&
     latest !== undefined &&
     registry !== undefined &&
     found.fromRegistry !== false &&

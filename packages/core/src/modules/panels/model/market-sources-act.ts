@@ -4,7 +4,7 @@ import type {
 } from '@dsh-workbench/shared/contract/protocol/market-index';
 import { MARKET_SOURCES_RESOURCE, MARKET_SOURCES_ROUTE } from '@dsh-workbench/shared/contract/protocol/market-index';
 import type { RouteTable } from '@dsh-workbench/shared/host';
-import { marketBranchOk, parseSourceConfig } from '@dsh-workbench/shared/host';
+import { asRecord, marketBranchOk, parseSourceConfig } from '@dsh-workbench/shared/host';
 import type { MarketSourceInitializer } from '@/shared/api/host/market-source-init';
 import type { MarketSourcesStore } from '@/shared/api/host/market-sources-store';
 
@@ -14,10 +14,6 @@ export function marketSourcesRoutes(store: MarketSourcesStore): RouteTable {
   return {
     [MARKET_SOURCES_ROUTE]: async () => ({ ok: true, ...store.read() }),
   };
-}
-
-function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  return typeof value === 'object' && value !== null ? (value as Readonly<Record<string, unknown>>) : undefined;
 }
 
 export function parseMarketSourcesAction(payload: unknown): MarketSourcesAction {

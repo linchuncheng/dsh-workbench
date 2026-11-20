@@ -8,7 +8,7 @@
     ".": "./dist/host.js",
     "./client": "./client.js"
   },
-  "files": ["dist", "client.js", "cordis.patch.yml", "DEVELOPING.md", "CHANGELOG.md"],
+  "files": ["dist", "client.js", "DEVELOPING.md", "CHANGELOG.md"],
   "scripts": {
     "build": "dsh-wb-module build",
     "typecheck": "tsc --noEmit",
@@ -22,7 +22,6 @@
     "prepack": "dsh-wb-module build"
   },
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
     "client": {
       "platform": "web",
       "inject": ["@dsh-workbench/core"],

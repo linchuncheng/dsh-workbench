@@ -2,7 +2,10 @@ import type { PluginPlanStep, Seam } from '@dsh-workbench/shared/host';
 import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bundle-install';
 import type { BundleManager } from '@dsh-workbench/shared/host';
 import type { InstalledModule } from '@dsh-workbench/shared/host';
-import { refusalReason, splitNpmSpec, WorkbenchDataError } from '@dsh-workbench/shared/host';
+import {
+  approveBuilds, hostCommandStep, PlanCancelledError, profilePnpmCommand, quoteShellArg, recordPendingBuilds,
+  refusalReason, splitNpmSpec, WorkbenchDataError,
+} from '@dsh-workbench/shared/host';
 import { requireSupply, localDirOf, type SupplyPort } from '@dsh-workbench/shared/host';
 import { sourceProblemText } from './market-dependency';
 import { pluginNameOf, type PluginFiles } from './plugin-name';
@@ -20,7 +23,7 @@ export interface BundleInstallDeps {
   readonly installed?: ((pkg: string) => InstalledModule) | undefined;
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
   readonly ledger?: PluginLedger | undefined;
-  readonly runAll: (steps: readonly PluginPlanStep[]) => Promise<void>;
+  readonly runAll: (steps: readonly PluginPlanStep[], options?: { readonly signal?: AbortSignal | undefined }) => Promise<void>;
   readonly supplyAfter: (module: InstalledModule, change: BundleChange) => Promise<BundleSupply>;
   readonly rememberSource: (
     manager: BundleManager,
@@ -29,6 +32,21 @@ export interface BundleInstallDeps {
     version?: string | undefined,
   ) => Promise<void>;
   readonly remove?: ((pkg: string) => Promise<BundleChange>) | undefined;
+  readonly profileDir?: string | null | undefined;
+  readonly syncRows?: (() => void) | undefined;
+  readonly outputOf?: (() => string) | undefined;
+}
+
+function moduleInstallLine(options: {
+  readonly spec: string;
+  readonly profileDir: string;
+  readonly registry?: string | undefined;
+}): string {
+  const pnpm = profilePnpmCommand(options.profileDir);
+  const prefix = [pnpm.command, ...pnpm.args].map(quoteShellArg).join(' ');
+  const store = pnpm.storeDir === undefined ? '' : ` --store-dir ${quoteShellArg(pnpm.storeDir)}`;
+  const registry = options.registry === undefined ? '' : ` --registry ${quoteShellArg(options.registry)}`;
+  return `${prefix} add --dir ${quoteShellArg(options.profileDir)} ${quoteShellArg(options.spec)} --save-exact${store}${registry}`;
 }
 
 function packageNameInPath(path: string): string | undefined {
@@ -88,15 +106,42 @@ function failureDetailOf(error: unknown): string {
   return lines.join('\n');
 }
 
-function routedFailure(deps: BundleInstallDeps, pkg: string, errorDetail: string): BundleInstallOutcome {
+function outputOfError(error: unknown): string {
+  const failure = error instanceof WorkbenchDataError ? error.failure : undefined;
+  const record = typeof failure === 'object' && failure !== null ? (failure as Record<string, unknown>) : {};
+  return [failureDetailOf(error), typeof record['output'] === 'string' ? record['output'] : ''].join('\n');
+}
+
+function routedCancelled(deps: BundleInstallDeps, pkg: string): BundleInstallOutcome {
+  return outcomeOf(deps, pkg, { application: 'cancelled', stage: 'install', changed: false, target: pkg });
+}
+
+function routedFailure(
+  deps: BundleInstallDeps,
+  pkg: string,
+  errorDetail: string,
+  pendingBuilds: readonly string[] = [],
+): BundleInstallOutcome {
   return outcomeOf(deps, pkg, {
     application: 'failed',
     stage: 'install',
     changed: false,
     target: pkg,
-    errorCode: 'operation-error',
+    errorCode: pendingBuilds.length === 0 ? 'operation-error' : 'build-blocked',
     errorDetail,
+    ...(pendingBuilds.length === 0 ? {} : { pendingBuilds }),
   });
+}
+
+function pendingFrom(deps: BundleInstallDeps, output: string): readonly string[] {
+  try {
+    return recordPendingBuilds(deps.profileDir ?? null, output);
+  } catch (error) {
+    deps.logger?.warn?.(
+      `[dsh-workbench] 构建脚本的待批清单没有记下来：${error instanceof Error ? error.message : String(error)}`,
+    );
+    return [];
+  }
 }
 
 export async function installDshBundle(
@@ -167,6 +212,62 @@ async function settle(
   return { change, module, supply: await deps.supplyAfter(module, change) };
 }
 
+async function installModuleRow(
+  deps: BundleInstallDeps,
+  spec: string,
+  pkg: string,
+): Promise<BundleInstallOutcome> {
+  const profileDir = deps.profileDir;
+  if (profileDir === undefined || profileDir === null) {
+    return routedFailure(deps, pkg, '这份工作台配置里没有 profile 目录，无法安装模块。');
+  }
+  const line = moduleInstallLine({ spec, profileDir, ...(deps.registry === undefined ? {} : { registry: deps.registry }) });
+  const signal = deps.options?.signal;
+  const approved = deps.options?.approvedBuilds;
+  if (approved !== undefined && approved.length > 0) {
+    try {
+      approveBuilds(profileDir, approved);
+    } catch (error) {
+      return routedFailure(deps, pkg, error instanceof Error ? error.message : String(error));
+    }
+  }
+  let output: string;
+  try {
+    await deps.runAll([hostCommandStep({ kind: 'run', line })], signal === undefined ? undefined : { signal });
+    output = deps.outputOf?.() ?? '';
+  } catch (error) {
+    if (error instanceof PlanCancelledError) return routedCancelled(deps, pkg);
+    const pending = pendingFrom(deps, outputOfError(error));
+    return routedFailure(deps, pkg, failureDetailOf(error), pending);
+  }
+  try {
+    deps.syncRows?.();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已安装到 profile，但模块行没有写入：${detail}`);
+    return outcomeOf(deps, pkg, {
+      application: 'failed',
+      stage: 'install',
+      changed: true,
+      target: pkg,
+      errorCode: 'module-row-failed',
+      errorDetail: `包已装进工作台配置，但 profile 的 cordis.patch.yml 没写进去：${detail}。修好这个文件再重启工作台，模块才会挂上。`,
+    });
+  }
+  const skipped = pendingFrom(deps, output);
+  if (skipped.length > 0) {
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已安装到工作台配置，但这些包的构建脚本没有运行：${skipped.join('、')}`);
+  }
+  deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装：profile 依赖 + 一条 patch 行`);
+  return outcomeOf(deps, pkg, {
+    application: 'applied',
+    stage: 'install',
+    changed: true,
+    target: pkg,
+    ...(skipped.length === 0 ? {} : { pendingBuilds: skipped }),
+  });
+}
+
 export async function installRouted(deps: BundleInstallDeps): Promise<BundleInstallOutcome> {
   const { spec, options, registry, seam } = deps;
   const supply = deps.supply ?? requireSupply();
@@ -175,6 +276,9 @@ export async function installRouted(deps: BundleInstallDeps): Promise<BundleInst
     ...(seam === undefined ? {} : { seam }),
     ...(registry === undefined ? {} : { registry }),
   });
+  if (route?.kind === 'dsh-module') {
+    return installModuleRow(deps, spec, route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim());
+  }
   if (route === undefined || route.kind === 'dsh-bundle') return installDshBundle(deps, spec, options);
 
   const pkg = route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim();

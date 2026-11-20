@@ -400,3 +400,79 @@ describe('模块更新那一跳：跑完重新读盘对账', () => {
     expect(outcome?.module).toMatchObject({ kind: 'module', version: '0.1.0' });
   });
 });
+
+describe('行加载的模块：更新只走 profile，不叫 dsh 的插件管理器', () => {
+  function profileOf(bundles: readonly string[], rows: readonly string[]): string {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-update-row-'));
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ name: 'p', dependencies: { [PKG]: '1.2.0' }, dsh: { profile: { bundles: [...bundles] } } }),
+      'utf8',
+    );
+    writeFileSync(
+      join(dir, 'cordis.patch.yml'),
+      rows.length === 0 ? '' : `- insert:\n${rows.map((name) => `    - id: wb-mod\n      name: '${name}'\n`).join('')}`,
+      'utf8',
+    );
+    return dir;
+  }
+
+  function supplyWith(latest: string): SupplyPort {
+    return {
+      latestVersion: async () => latest,
+      registryDeclarationOf: async () => undefined,
+      declarationRefusalOf: () => [],
+      packageRouteOf: async () => ({ kind: 'dsh-module', pkg: PKG }),
+      modules: { isolatedRoot: () => '/tmp/wb-row-root', isolatedHome: () => '/tmp/wb-row-home' },
+    } as unknown as SupplyPort;
+  }
+
+  it('★ 装的是 wb- 行（不在 bundle 名单里）→ 不调 updateBundle，改走 profile 安装', async () => {
+    let version = '1.2.0';
+    const updated: string[] = [];
+    const installed = [
+      { kind: 'module' as const, pkg: PKG, unit: 'mod', version, registry: 'https://r.example.com/' },
+    ];
+    const deps = depsOf({
+      installed: () => ({ kind: 'module', pkg: PKG, unit: 'mod', version }),
+      install: async () => {
+        version = '1.3.0';
+        return change();
+      },
+      updateBundle: async (pkg) => {
+        updated.push(pkg);
+        return null;
+      },
+      profileDir: profileOf([CORE], [PKG]),
+      seam: {} as unknown as Seam,
+      supply: supplyWith('1.3.0'),
+    });
+
+    const outcome = await updateModuleBundle(
+      'mod',
+      { ...deps, installed: () => installed[0] as InstalledModule },
+    );
+
+    expect(updated).toEqual([]);
+    expect(outcome?.change.application).toBe('applied');
+  });
+
+  it('包在 bundle 名单里 → 照旧先叫 dsh 的插件管理器', async () => {
+    const updated: string[] = [];
+    const deps = depsOf({
+      installed: () => ({ kind: 'module', pkg: PKG, unit: 'mod', version: '1.3.0', registry: 'https://r.example.com/' }),
+      install: async () => change(),
+      updateBundle: async (pkg) => {
+        updated.push(pkg);
+        return null;
+      },
+      profileDir: profileOf([CORE, PKG], []),
+      seam: {} as unknown as Seam,
+      supply: supplyWith('1.3.0'),
+    });
+
+    await updateModuleBundle('mod', deps);
+
+    expect(updated).toEqual([PKG]);
+  });
+});

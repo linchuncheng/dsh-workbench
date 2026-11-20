@@ -47,12 +47,22 @@ export function declaresPackage(profileDir: string | null, pkg: string): boolean
   return Array.isArray(bundles) && bundles.includes(pkg);
 }
 
+function declaresBundle(profileDir: string, pkg: string): boolean {
+  try {
+    const record = asRecord(JSON.parse(fs.readFileSync(path.join(profileDir, 'node_modules', pkg, 'package.json'), 'utf8')));
+    const dsh = asRecord(record?.['dsh']);
+    return dsh !== undefined && 'bundle' in dsh;
+  } catch {
+    return false;
+  }
+}
+
 export function profileModules(profileDir: string | null): readonly ProfileModule[] {
   const record = profileManifestOf(profileDir);
-  if (record === undefined) return [];
+  if (record === undefined || profileDir === null) return [];
   const bundles = stringsOf(asRecord(asRecord(record.dsh)?.profile)?.bundles);
   const dependencies = asRecord(record.dependencies) ?? {};
-  const names = bundles.length > 0 ? bundles : Object.keys(dependencies);
+  const names = [...new Set([...bundles, ...Object.keys(dependencies)])];
   const found: ProfileModule[] = [];
   const lock = lockLookupOf(profileDir);
   for (const pkg of names) {
@@ -66,6 +76,7 @@ export function profileModules(profileDir: string | null): readonly ProfileModul
         ...(read.registry === undefined ? {} : { registry: read.registry }),
         local: isLocalCopySpec(profileDir, spec),
         fromRegistry: isRegistryDependencySpec(spec),
+        ...(declaresBundle(profileDir, read.pkg) ? { shipsBundle: true } : {}),
       });
     }
   }

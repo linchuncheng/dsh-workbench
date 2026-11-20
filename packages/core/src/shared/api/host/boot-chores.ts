@@ -15,6 +15,7 @@ import {
 import { resumeQueuedSelfUpdate } from './self-update-resume';
 import { settlePendingSelfUpdate } from './self-update-settle';
 import { warn } from './host-args';
+import { syncModuleRows } from './module-rows-sync';
 
 export interface BootNoteInput {
   readonly version?: string | undefined;
@@ -23,7 +24,7 @@ export interface BootNoteInput {
 
 export interface BootChoresInput extends BootNoteInput {
   readonly ctx: DshHostContext;
-  readonly supply: Pick<ModulePort, 'startSelfUpdate'> | undefined;
+  readonly supply: Pick<ModulePort, 'startSelfUpdate' | 'profileModules'> | undefined;
   readonly home: string;
   readonly profileDir: string | null;
 }
@@ -63,6 +64,23 @@ export function bootChores(input: BootChoresInput): string | undefined {
       ensureReleaseAge({ dir: input.profileDir });
     } catch (error) {
       input.log?.(`放行发布龄没做成：${textOf(error)}`);
+    }
+    if (input.supply !== undefined) {
+      try {
+        const sync = syncModuleRows({ profileDir: input.profileDir, modules: input.supply.profileModules(input.profileDir) });
+        if (sync.added.length > 0 || sync.removed.length > 0) {
+          input.log?.(
+            `[dsh-workbench] 模块行已同步：添加 ${sync.added.join('、') || '无'}；移除 ${sync.removed.join('、') || '无'}`,
+          );
+        }
+        if (sync.stuck.length > 0) {
+          input.log?.(
+            `[dsh-workbench] ${sync.stuck.join('、')} 还声明着 dsh.bundle，没给它写行：先在模块自己的仓库去掉这个字段并重发，再迁移`,
+          );
+        }
+      } catch (error) {
+        input.log?.(`模块行没有同步：${textOf(error)}`);
+      }
     }
   }
   try {

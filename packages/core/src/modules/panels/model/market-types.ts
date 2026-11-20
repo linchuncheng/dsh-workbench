@@ -25,6 +25,7 @@ export interface BundleInstallOptions {
   readonly registry?: string | undefined;
   readonly approvedBuilds?: readonly string[] | undefined;
   readonly requestId?: string | undefined;
+  readonly signal?: AbortSignal | undefined;
 }
 
 export type BundleSupply =

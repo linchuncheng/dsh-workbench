@@ -29,14 +29,18 @@ function matched(text: string, pattern: RegExp): string | undefined {
   return found === null ? undefined : found[1];
 }
 
+export function nestedIdsOf(body: string): readonly string[] {
+  return body.split('\n').flatMap((line) => {
+    const one = matched(line, NESTED_ID);
+    return one === undefined ? [] : [one];
+  });
+}
+
 function blockOf(body: string, index: number): PatchBlock {
   const lines = body.split('\n');
   const first = lines[0] ?? '';
   const id = matched(first, ID_LINE);
-  const nested = lines.flatMap((line) => {
-    const one = matched(line, NESTED_ID);
-    return one === undefined ? [] : [one];
-  });
+  const nested = nestedIdsOf(body);
   const insert = id === undefined && INSERT_LINE.test(first);
   const label = id ?? nested.join(', ');
   const key = id !== undefined ? `id:${id}` : insert ? `insert:${nested.join(', ')}` : `block:${String(index)}`;

@@ -596,16 +596,18 @@ export function createAdapterSet(ctx): AdapterSet {
 
 ### 5.1 模块与单元
 
-- **模块**：独立 dsh 插件包，有 npm 包名、`package.json`、构建产物。
+- **模块**：有 npm 包名、`package.json`、构建产物的工作台包；**不是** dsh 插件页里的组合包。
+  它装成 profile 的普通依赖，并在 profile 的 `cordis.patch.yml` 里占一行（`wb-<unit>`）被装载；
+  包里不声明 `dsh.bundle`，因此 dsh 的插件页不出现它。
 - **单元**：模块在外壳里的那一格：id、卡片（可选）、工具、挂载面。
 
-一个包 = 一个单元；一个单元在宿主与浏览器各有一半。
+一个包 = 一个单元；一个单元在宿主与浏览器各有一半。安装后即启用，不提供启用/停用，只能卸载
+（删行 + `pnpm remove`）。
 
 ### 5.2 静态清单
 
 ```jsonc
 "dsh": {
-  "bundle": { "patch": "./cordis.patch.yml" },
   "client": {
     "platform": "web",
     "inject": ["@dsh-workbench/core"],
@@ -635,6 +637,7 @@ export function createAdapterSet(ctx): AdapterSet {
 }
 ```
 
+- 只有**组合包**才声明 `dsh.bundle.patch`；工作台模块不声明它，靠市场写入的那一行装载。
 - `apiVersion` 管形状；不认就不装、不挂。v3 把卡片标题挪成顶层的 `title`（`{ zh, en }` 字面量，`card` 只剩 `order`），v2 声明会被拒收并给迁移提示；v2 起 `env` 换成 `needs`。
 - `needs` 只有四种 `kind`：`bin`（机器上的命令）/ `extension`（运行时插件）/ `lib`（共用 npm 依赖）/ `env`（环境变量）。
   未知 `kind` / `source.kind` 判红；need 内未知字段降为警告，`x-` 前缀忽略；`purpose` 必填。
@@ -754,13 +757,13 @@ ctx.get('workbenchUnits').registerUnit({
 ### 5.7 生命周期
 
 ```text
-dsh plugin add <module>
+市场安装（pnpm add --dir <profile> + 写一行 wb-<unit>）
         │
         ▼
-profile/package.json  ← 模块清单 dsh.workbench
+profile/package.json（普通依赖） + profile/cordis.patch.yml（wb-<unit> 行）
         │
         ▼
-core 读清单 ──► UnitManifest
+core 读清单（bundles ∪ dependencies） ──► UnitManifest
         │
         ├── host: 模块 apply(ctx) → workbenchUnits.register(face)
         │        └── mountUnits(face.mount({data,...}))
@@ -773,11 +776,21 @@ core 读清单 ──► UnitManifest
                  └── GET unit-manifests
                        └── 卡片上板
 
-dsh plugin remove <module>
+市场卸载（删行 + pnpm remove）
         │
         ▼
-清单撤下 → 宿主撤路由 / 工具 / 写通道 → 浏览器撤卡片
+行撤下 → 宿主撤路由 / 工具 / 写通道 → 浏览器撤卡片
 ```
+
+装载器只认 profile 的 patch 行；模块的 id 必须等于包名（`dsh.workbench.unit` 决定
+`workbenchUnits` 里的那一格，行 id 用 `wb-<unit>` 只是工作台的命名空间）。
+
+**已经在 profile 里的模块怎么迁过来**：先在模块自己的仓库去掉 `dsh.bundle` 并重发（两样都声明时按
+组合包走，插件页还会出现它），把新版装进 profile，然后从 `dsh.profile.bundles` 里去掉这个包
+（插件页取消启用即可）。下次启动 `syncModuleRows` 看到「是依赖、不在 bundles 里、有
+`dsh.workbench.unit`」，自动补上 `wb-<unit>` 那一行。迁移过程中不会出现「组合包 + 行」两份装载：
+还在 bundles 里的模块不写行，包里**仍声明着** `dsh.bundle` 的模块也不写行（启动日志里会逐个点名，
+提示先重发包）。
 
 ### 5.8 状态与配置
 
@@ -1093,12 +1106,13 @@ profile
               ├── adapter-profile
               └── adapter-probe
 
-module 包 ──dsh plugin add──► profile
+module 包 ──市场安装──► profile（普通依赖 + wb-<unit> 行）
   └── dsh.workbench 清单 + 两个面
 ```
 
 - profile 的 `dsh.profile.bundles` 只需要 `@dsh-workbench/core`；适配器是它的依赖，不需要额外 enable。
-- 模块走 `dsh plugin add`；模块清单决定装不装、挂不挂。
+- 模块装成 profile 的普通依赖，不进 `dsh.profile.bundles`，也不出现在 dsh 插件页；卸载只能从工作台市场。
+- 模块清单（`dsh.workbench.unit`）决定挂不挂；行只是装载指令。
 - `pnpm release` 前必须过完整 `pnpm run check`。
 - 发版另有强制更新日志闸（只对正式版本，`-beta` / `-rc` 预发布跳过）：目标版本必须已在
   `packages/docs/site/desktop/views/changelog.md` 里有一节，

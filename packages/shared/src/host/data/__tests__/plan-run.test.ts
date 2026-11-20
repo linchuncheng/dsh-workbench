@@ -1,9 +1,10 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import type { PluginPlanStep } from '../../../contract/plugin-source.js';
 import { hostCommandStep, PlanStepError, runPlan } from '../plan-run.js';
+import type { Seam } from '../../seam/run.js';
 import { createSeam } from '../../seam/run.js';
 import { planLineOf, planStepText } from '../../shell/shell-render.js';
 import { createFakeProcesses, createFakeShell } from '../../../testing/host-fakes.js';
@@ -95,7 +96,7 @@ describe('runPlan', () => {
         seam: optional.seam,
         intent: { kind: 'product' },
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toContain('no such plugin');
 
     const required = seamWith([{ exitCode: 3, stderr: 'boom' }]);
     const failure = await runPlan([{ kind: 'run', line: 'pnpm add --dir /p x' }], {
@@ -228,5 +229,35 @@ describe('runPlan', () => {
       },
     );
     expect(seen).toEqual(['check:mkdir', 'check:run']);
+  });
+});
+
+describe('计划跑完把命令输出交回调用点', () => {
+  it('★ collect 按顺序收到每个命令步的输出（成功也算，不只是失败时）', async () => {
+    const seen: string[] = [];
+    const run = vi.fn(async (request: { command?: string }) => ({
+      exitCode: 0,
+      timedOut: false,
+      aborted: false,
+      stdout: `out:${request.command ?? ''}`,
+      stderr: 'warn',
+      truncated: false,
+      stalled: false,
+    }));
+
+    const output = await runPlan(
+      [
+        { kind: 'run', line: 'one' },
+        { kind: 'run', line: 'two' },
+      ],
+      {
+        seam: { run } as unknown as Seam,
+        intent: { kind: 'product' } as never,
+        collect: (chunk) => seen.push(chunk),
+      },
+    );
+
+    expect(seen).toEqual(['out:onewarn', 'out:twowarn']);
+    expect(output).toBe('out:onewarn\nout:twowarn');
   });
 });
