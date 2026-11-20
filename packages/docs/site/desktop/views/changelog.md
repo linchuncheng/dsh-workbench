@@ -2,6 +2,51 @@
 
 仓库从这一版开始记录：`v1.1.1` 是这份历史的第一个版本。
 
+## v1.4.2
+
+`2026-11-20`
+
+### core
+
+#### ✨ 新增
+
+- **改模块时方案只写这次改了什么**：走 DIY 的「改已有模块」时，方案四段（see / do / agent / data）每条要以
+  「新增：」「删除：」「修改：」开头，没改的段只写一条「没变」。四段全是「没变」、「没变」混在别的条目里、
+  或者少了标记，提交时当场拒并点名该补哪段。四段提到审批屏就必须配一张 `kind: "approval"` 的预览图，
+  给了审批图却没写审批屏也拒。
+- **预览图可以标类型**：方案里的 shots 每张能标一个 `kind`（卡片 / 审批 / 状态 / 其他），只认这四个值，
+  写错当场拒。
+
+#### ⚡ 改进
+
+- **审批屏把改动标出来**：摘要在最上面单独一行；四段里的「新增 / 删除 / 修改」按绿 / 红 / 蓝上色，没带标记
+  的条目（「没变」）用次级色。预览图改成和 README 一样：图注在上、图在下，代码块的标题栏不再显示图注。
+- **下一步提示改说 ascii**：「补上方案四段与字符画」改成「补上方案四段与 ascii」；改模块时说
+  「补上四段变化与改之后的 ascii」。
+
+### shared
+
+#### ✨ 新增
+
+- **模块 README 有了接口约定**：新增 `@dsh-workbench/shared/contract/readme`（宿主侧从
+  `@dsh-workbench/shared/host` 取）。`README_SOURCE_KEYS` / `README_SECTION_KEYS` / `README_SECTION_HEADINGS` /
+  `SHOT_KINDS` 给出 `readme.json` 的键与预览图类型，`readmeShotLines()` 把预览图拼成 Markdown，
+  `readmeShotKindProblem()` 指出不合法的 kind；另带 `ReadmeSource` / `ReadmeDraft` / `ReadmeShot` 类型。
+  模块工具链的渲染与检查、DIY 计划工具的四段与图，都按这一份来。
+
+### module-tools
+
+#### ⚡ 改进
+
+- **README 渲染与检查走同一份约定**：`design` 渲染四段与预览图时改用 shared 的常量；`init` 生成的
+  `readme.json` 由 selfcheck 核对——缺键、多键、`kind` 越界都报出来。
+- **截图那一节默认叫「界面预览」**：`shotsTitle` 留空时不再用口语化的默认标题，模板也填「界面预览」；
+  selfcheck 与文案检查同步，术语表补一条。
+
+### 📦 产物
+
+- [@dsh-workbench/core@1.4.2](https://www.npmjs.com/package/@dsh-workbench/core/v/1.4.2)
+
 ## v1.4.1
 
 `2026-11-20`
