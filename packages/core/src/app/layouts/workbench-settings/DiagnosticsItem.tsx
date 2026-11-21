@@ -27,6 +27,7 @@ export function DiagnosticsItem({ t }: DiagnosticsItemProps): JSX.Element {
   const [outcome, setOutcome] = useState<ExportOutcome>({ kind: 'idle' });
 
   const rows = diag.phase === 'ready' && diag.value !== undefined ? diagRowsOf(diag.value) : [];
+  const host = diag.phase === 'ready' ? (diag.value as { host?: { node?: string; profileDir?: string | null } } | undefined)?.host : undefined;
   const text = outcomeText(outcome, t);
 
   const runExport = (): void => {
@@ -40,6 +41,9 @@ export function DiagnosticsItem({ t }: DiagnosticsItemProps): JSX.Element {
   return (
     <SettingsRow title={t('diag.title')} description={t('diag.hint')}>
       <div className={styles.body}>
+        {host === undefined ? null : (
+          <p className={styles.meta}>{t('diag.host', { node: host.node ?? '-', dir: host.profileDir ?? '-' })}</p>
+        )}
         {rows.length === 0 ? (
           <p className={styles.empty}>{t('diag.empty')}</p>
         ) : (

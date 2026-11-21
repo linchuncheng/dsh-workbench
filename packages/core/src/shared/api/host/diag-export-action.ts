@@ -3,6 +3,10 @@ import { PANEL_STATE_SERVICE, nowIso, profileManifestOf, unreadableModules, work
 import { exportDiagBundle, type DiagExportResult } from './diag-export.js';
 import { diagRoutesOf } from './diag-routes.js';
 
+export function diagProfileDirOf(ctx: DshHostContext): string | null {
+  return (ctx.get('profileContext') as { readonly dir?: string } | undefined)?.dir ?? null;
+}
+
 export const DIAG_EXPORT_RESOURCE = 'export-diagnostics';
 
 export function diagExportAction(ctx: DshHostContext): PostResource {

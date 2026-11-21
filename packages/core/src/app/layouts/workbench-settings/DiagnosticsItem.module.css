@@ -57,3 +57,8 @@
   color: var(--dsw-color-text-secondary);
   font-size: var(--dsw-font-size-xs);
 }
+
+.meta {
+  color: var(--dsw-color-text-secondary);
+  font-size: var(--dsw-font-size-xs);
+}

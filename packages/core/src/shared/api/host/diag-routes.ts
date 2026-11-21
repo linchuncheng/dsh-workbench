@@ -14,6 +14,7 @@ export const DIAG_LIMIT_MAX = 500;
 
 export interface DiagRoutesDeps {
   readonly recorder: DiagRecorder;
+  readonly dirOf?: (() => string | null) | undefined;
   readonly readDisk?: ((day: string) => DiagReadResult) | undefined;
   readonly clock?: (() => number) | undefined;
 }
@@ -70,6 +71,7 @@ function queryOf(search: URLSearchParams): DiagQuery | string {
 
 export function diagRecordsHandler(deps: DiagRoutesDeps): RouteHandler {
   const clock = deps.clock ?? now;
+  const dirOf = deps.dirOf ?? (() => null);
   return (search) => {
     const query = queryOf(search);
     if (typeof query === 'string') {
@@ -86,7 +88,13 @@ export function diagRecordsHandler(deps: DiagRoutesDeps): RouteHandler {
         : deps.recorder.recent();
     const hit = all.filter((one) => diagMatches(one, query));
     const records = hit.slice(Math.max(0, hit.length - query.limit));
-    return { ok: true, records, total: hit.length, truncated: hit.length > records.length };
+    return {
+      ok: true,
+      records,
+      total: hit.length,
+      truncated: hit.length > records.length,
+      host: { node: process.versions.node, profileDir: dirOf() },
+    };
   };
 }
 

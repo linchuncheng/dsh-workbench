@@ -139,6 +139,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.noneInstalled': 'None of these modules has its required plugin installed yet',
   'panels.noneInstalledHint': 'Once installed, these modules reappear here; you can then choose which ones to add to the board.',
   'panels.market.installed': 'installed',
+  'diag.host': 'node {node} · profile dir {dir}',
   'diag.title': 'Diagnostics',
   'diag.hint': 'Read-only: recent failures and a directory export. Nothing here changes your settings.',
   'diag.empty': 'No failures recorded recently.',
