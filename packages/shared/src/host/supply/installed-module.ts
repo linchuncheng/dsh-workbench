@@ -239,9 +239,9 @@ export function readInstalledModule(
 
 function readFailureOf(error: unknown): string {
   const code = (error as NodeJS.ErrnoException | null)?.code;
-  if (code === 'ENOENT') return '没装上（读不到 package.json）';
-  if (code === 'EACCES' || code === 'EPERM') return '没有权限读 package.json';
-  return error instanceof Error ? error.message : String(error);
+  if (code === 'ENOENT') return '找不到这个模块的文件';
+  if (code === 'EACCES' || code === 'EPERM') return '没有权限读这个模块';
+  return '这个模块的文件读不出来';
 }
 
 export interface UnreadableModule {
