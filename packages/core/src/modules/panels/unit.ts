@@ -241,7 +241,6 @@ export const DIY_LOGS_TOOLS = [
 ] as const satisfies readonly PanelsToolName[];
 
 export const MANAGE_TOOLS = [
-  DIAG_TOOL,
   PANELS_LIST_TOOL,
   PANELS_SHOW_TOOL,
   PANELS_HIDE_TOOL,

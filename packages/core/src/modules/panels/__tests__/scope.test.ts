@@ -181,7 +181,7 @@ describe('工具面跟着单元走：不再有逐把的作用域', () => {
   it('★ 同样的清单没走 registerOwned：板里没有它就全部收走（豁免靠标记，不靠 id）', () => {
     const mounted = gate([panelsHost.manifest]);
 
-    const own = panelsHost.manifest.tools.filter((tool) => !tool.name.startsWith('workbench_diy'));
+    const own = panelsHost.manifest.tools.filter((tool) => !tool.name.startsWith('workbench_diy') && tool.name !== 'workbench_diag');
     expect(denied(mounted, A)).toEqual(own.map((tool) => tool.name));
   });
 });
