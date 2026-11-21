@@ -26,6 +26,7 @@ export interface PanelBoardRead {
   readonly board: PanelBoardView | null;
   readonly failed: boolean;
   readonly detail: string | null;
+  readonly code: string | null;
 }
 
 export function useEnabledUnitsState(
@@ -34,6 +35,7 @@ export function useEnabledUnitsState(
 ): PanelBoardRead {
   const [enabled, setEnabled] = useState<PanelBoardView | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [failureCode, setFailureCode] = useState<string | null>(null);
   const lastWorkspace = useRef<string | null>(workspace);
   const factRev = useFactRevision(PANELS_FACT);
 
@@ -51,14 +53,17 @@ export function useEnabledUnitsState(
       } catch (error) {
         if (cancelled) return;
         setFailure(error instanceof Error ? error.message : String(error));
+        setFailureCode(null);
         return;
       }
       if (cancelled) return;
       if (response.ok !== true) {
-        setFailure(`${response.error.code}：${response.error.message}`);
+        setFailure(response.error.message);
+        setFailureCode(response.error.code);
         return;
       }
       setFailure(null);
+      setFailureCode(null);
       if (!Array.isArray(response.units)) return;
       setEnabled({
         units: response.units,
@@ -75,7 +80,7 @@ export function useEnabledUnitsState(
     };
   }, [refreshToken, factRev, workspace]);
 
-  return { board: enabled, failed: failure !== null, detail: failure };
+  return { board: enabled, failed: failure !== null, detail: failure, code: failureCode };
 }
 
 export function useEnabledUnits(

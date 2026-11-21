@@ -163,6 +163,7 @@ function BoardContent({
   buildModule,
   readFailed,
   readDetail,
+  readCode,
   onRetryRead,
   t,
 }: {
@@ -181,6 +182,7 @@ function BoardContent({
   buildModule: () => void;
   readFailed: boolean;
   readDetail: string | null;
+  readCode?: string | null | undefined;
   onRetryRead: () => void;
   t: Translate;
 }) {
@@ -219,7 +221,7 @@ function BoardContent({
       {plan.reading ? (
         <CenteredState icon={null} title={<TextShimmer active>{t('panels.reading')}</TextShimmer>} />
       ) : null}
-      {readFailed ? <BoardReadFailed t={t} detail={readDetail} onRetry={onRetryRead} /> : null}
+      {readFailed ? <BoardReadFailed t={t} detail={readDetail} code={readCode} onRetry={onRetryRead} /> : null}
       {plan.empty ? (
         <BoardEmpty
           t={t}
@@ -382,6 +384,7 @@ export function Rightbar(props: RightbarProps) {
           buildModule={props.buildModule}
           readFailed={plan.readFailed || units.manifestReadFailure() !== null}
           readDetail={panelRead.detail ?? units.manifestReadFailure()}
+          readCode={panelRead.code}
           onRetryRead={refreshPanel}
           t={props.t}
         />
