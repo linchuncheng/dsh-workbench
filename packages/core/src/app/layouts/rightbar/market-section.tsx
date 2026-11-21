@@ -351,6 +351,7 @@ export function MarketSection({
   onOpenDetail,
   boardBusy,
   headAction,
+  titleNote,
   keepHead,
   onRecheck,
   rechecking,
@@ -368,6 +369,7 @@ export function MarketSection({
   readonly confirmActions: readonly MarketRowAction[];
   readonly onConfirming: (id: string | null) => void;
   readonly headAction?: ReactNode;
+  readonly titleNote?: ReactNode;
   readonly keepHead?: boolean;
   readonly onRecheck: () => void;
   readonly rechecking: boolean;
@@ -386,6 +388,7 @@ export function MarketSection({
           </span>
           <h2 className={styles.marketSectionTitle}>{t(titleKey)}</h2>
           <span className={styles.marketSectionCount}>{rows.length}</span>
+          {titleNote === undefined ? null : titleNote}
           {headAction === undefined ? null : (
             <span className={styles.marketSectionAction}>{headAction}</span>
           )}

@@ -66,12 +66,8 @@ export function MarketBody({
         icon={marketSectionIcon('installed')}
         rows={installed?.rows ?? NO_ROWS}
         keepHead
-        headAction={
-          <Fragment>
-            {h(MarketUnreadableBadge, { t, rows: unreadable })}
-            {checks.modules}
-          </Fragment>
-        }
+        titleNote={h(MarketUnreadableBadge, { t, rows: unreadable })}
+        headAction={checks.modules}
       />
       {pendingSection === undefined ? null : (
         <MarketSection

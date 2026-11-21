@@ -222,8 +222,8 @@ describe('市场页头：动作在飞，页头与列表里的钮一起禁用', (
     expect(page).toContain('modulesCheck={modulesCheck}');
     expect(page).toContain('pluginsCheck={pluginsCheck}');
     expect(page).toContain('onPending={setActing}');
-    expect(body).toContain('{checks.modules}');
-    expect(body).toContain('MarketUnreadableBadge');
+    expect(body).toContain('headAction={checks.modules}');
+    expect(body).toContain('titleNote={h(MarketUnreadableBadge');
     expect(body).toContain('checks.plugins');
     expect(body).toContain('h(UpdateAllPlugins');
     const seats = read('use-market-checks.ts');
