@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createWorkspaceStore, workspaceKey } from '@dsh-workbench/shared/host';
+import { createDiagRecorder, createWorkspaceStore, workspaceKey } from '@dsh-workbench/shared/host';
 
 let root = '';
 beforeEach(() => {
@@ -141,5 +141,41 @@ describe('createWorkspaceStore：模块读写自己的文件夹', () => {
     store.machine('panels').write('released.json', { ids: ['x'] });
     expect(store.machine('panels').dir).toBe(path.join(root, '_machine', 'panels'));
     expect(store.for('panels', '/w/a').read('released.json')).toBeNull();
+  });
+});
+
+describe('坏掉的模块配置：落一条诊断记录', () => {
+  function recorderOf() {
+    let at = 1_000;
+    return createDiagRecorder({ clock: () => (at += 10), nextCorrId: () => 'c-1', level: 'info' });
+  }
+
+  it('★ 读坏时记 CONFIG_CORRUPT，带文件名与原因，只记一次', () => {
+    const made = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-store-'));
+    const dir = createWorkspaceStore({ root: made }).for('inventory', '/w/a');
+    fs.mkdirSync(dir.dir, { recursive: true });
+    fs.writeFileSync(path.join(dir.dir, 'binding.json'), '{ 坏了', 'utf8');
+    const diag = recorderOf();
+    const store = createWorkspaceStore({ root: made, diag });
+
+    store.for('inventory', '/w/a').read('binding.json');
+    store.for('inventory', '/w/a').read('binding.json');
+
+    const records = diag.recent({ code: 'CONFIG_CORRUPT' });
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ class: 'user', area: 'settings', detail: { path: 'binding.json' } });
+    fs.rmSync(made, { recursive: true, force: true });
+  });
+
+  it('读得出来时零记录', () => {
+    const made = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-store-'));
+    const diag = recorderOf();
+    const store = createWorkspaceStore({ root: made, diag });
+
+    store.for('inventory', '/w/a').write('x.json', { ok: true });
+    store.for('inventory', '/w/a').read('x.json');
+
+    expect(diag.recent()).toHaveLength(0);
+    fs.rmSync(made, { recursive: true, force: true });
   });
 });

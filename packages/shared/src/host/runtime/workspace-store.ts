@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { workspacesRoot } from '../data/data-root.js';
+import type { DiagRecorder } from './diag-records.js';
 import { writeJsonFile } from './fs-write.js';
 
 export interface ModuleStore {
@@ -98,11 +99,20 @@ function parseFile(file: string): { readonly kind: 'absent' } | { readonly kind:
   }
 }
 
-function fileStore(dir: string, warn?: ((message: string) => void) | undefined): ModuleStore {
+function fileStore(
+  dir: string,
+  warn?: ((message: string) => void) | undefined,
+  diag?: DiagRecorder | undefined,
+): ModuleStore {
   const noted = new Set<string>();
   const noteCorrupt = (file: string, reason: string): void => {
     if (noted.has(file)) return;
     noted.add(file);
+    diag?.once(`config-corrupt:${file}`, {
+      code: 'CONFIG_CORRUPT',
+      level: 'error',
+      detail: { path: file, reason },
+    });
     warn?.(
       `[dsh-workbench] 模块配置文件读不出来：${file}（${reason}）。下一次写入会先把它备份到 ${CORRUPT_DIR}/，不会直接盖掉`,
     );
@@ -113,14 +123,14 @@ function fileStore(dir: string, warn?: ((message: string) => void) | undefined):
       const file = inside(dir, name);
       const parsed = parseFile(file);
       if (parsed.kind === 'value') return parsed.value;
-      if (parsed.kind === 'broken') noteCorrupt(file, parsed.reason);
+      if (parsed.kind === 'broken') noteCorrupt(name, parsed.reason);
       return null;
     },
     write: (name, value) => {
       const file = inside(dir, name);
       const before = parseFile(file);
       if (before.kind === 'broken') {
-        noteCorrupt(file, before.reason);
+        noteCorrupt(name, before.reason);
         try {
           fs.copyFileSync(file, corruptCopyOf(dir, name));
         } catch (error) {
@@ -157,6 +167,7 @@ function fileStore(dir: string, warn?: ((message: string) => void) | undefined):
 export function createWorkspaceStore(options: {
   readonly root?: string | null | undefined;
   readonly logger?: { warn?(message: string): void } | undefined;
+  readonly diag?: DiagRecorder | undefined;
 }): WorkspaceStore {
   const root = options.root === null ? null : options.root ?? workspacesRoot();
   let warned = false;
@@ -184,6 +195,7 @@ export function createWorkspaceStore(options: {
             ...parts.map((part) => slug(part)),
           ),
           options.logger?.warn?.bind(options.logger),
+          options.diag,
         );
 
   return {
@@ -204,7 +216,7 @@ export function createWorkspaceStore(options: {
         return [];
       }
       return entries.map((key) =>
-        fileStore(path.join(root, key, slug(unitId)), options.logger?.warn?.bind(options.logger)),
+        fileStore(path.join(root, key, slug(unitId)), options.logger?.warn?.bind(options.logger), options.diag),
       );
     },
   };

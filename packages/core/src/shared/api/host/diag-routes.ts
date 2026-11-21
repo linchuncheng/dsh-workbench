@@ -90,10 +90,16 @@ export function diagRecordsHandler(deps: DiagRoutesDeps): RouteHandler {
   };
 }
 
+const BY_ROOT = new Map<string, DiagRoutesDeps>();
+
 export function diagRoutesOf(root: string): DiagRoutesDeps {
+  const hit = BY_ROOT.get(root);
+  if (hit !== undefined) return hit;
   const files = createDiagFileSink({ dir: join(root, 'diagnostics', 'records') });
-  return {
+  const made: DiagRoutesDeps = {
     recorder: createDiagRecorder({ sinks: [files.sink] }),
     readDisk: (day) => files.readDay(day),
   };
+  BY_ROOT.set(root, made);
+  return made;
 }

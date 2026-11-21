@@ -13,7 +13,7 @@ import { assembleHostUnits } from '@/app/units/host';
 import { createPostChannels } from '@/shared/api/host/post-channels';
 import { takeHeldNotices, type AgentsLookup } from '@/shared/api/host/diy-debug-act';
 import { registerDiyActs } from '@/shared/api/host/diy-acts';
-import type { PostWrite, RouteTable } from '@dsh-workbench/shared/host';
+import type { PostWrite } from '@dsh-workbench/shared/host';
 import {
   capabilityHandler, dshHome, hostSurface, registerApi, registerPanelState, runningVersionOf, workbenchRoot,
 } from '@dsh-workbench/shared/host';
@@ -85,7 +85,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     adapters.libs === undefined
       ? undefined
       : withLibRunners(adapters.libs, adapters.runtime.runners(ctx, adapters.data), ctx.logger);
-  const routes: RouteTable = createHostRoutes({
+  const routes = createHostRoutes({
     ctx,
     facts,
     runtimes: runtimeHealth,
@@ -179,7 +179,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     );
     return found === undefined ? undefined : { ...found, released: releasedOf(unit) };
   };
-  const store = createWorkspaceStore({ logger: ctx.logger });
+  const store = createWorkspaceStore({ logger: ctx.logger, diag: diagRoutesOf(workbenchRoot()).recorder });
   const drafts = createDraftStore();
   ctx.effect(
     () => () => drafts.dispose(),
