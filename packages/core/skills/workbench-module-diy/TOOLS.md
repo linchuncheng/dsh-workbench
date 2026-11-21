@@ -99,11 +99,11 @@
 | 本轮中断 / 后台 | 消失 / 不弹 | 本轮结束 / 自动禁止 |
 | 连发多件 | 逐条询问 | 逐条等待 |
 
-按钮与弹窗由外壳提供；模块只决定明细：一行一个事实。
+按钮与弹窗由工作台提供；模块只定明细：一行一事实。
 
 ## 8 外部供给
 
-`needs` 声明能力依赖，外壳按 `kind` 探测、安装，状态见 `workbench_modules_list`。
+`needs` 声明能力依赖；工作台按 `kind` 探测安装，状态见 `workbench_modules_list`。
 
 四种 `kind`：`bin`（本机命令）/ `extension`（运行时插件）/ `lib`（共用 npm 依赖）/ `env`（环境变量）。
 每条必写 `purpose`（给用户看的那半句）；`required: false` 只降级、不挡卡片。
@@ -140,15 +140,15 @@
 ]
 ```
 
-- `sources` 按顺序尝试（本地 → 私有 → 公共）。没写 `sources` 表示「由我自己安装，你只负责判断」：外壳只探测，不代为安装。
+- `sources` 按顺序尝试（本地 → 私有 → 公共）。没写 `sources` 表示「我自己安装，你只判断」：工作台只探测，不代为安装。
 - 想让 `bin` 支持一键安装，就写 `install.line`（一条能直接粘贴到终端的命令，可用 `platforms` 限定平台）；
   不写就只显示「缺这条命令」，按钮都不会有。`docs` 是给人和 agent 看的补充链接。
   跨平台要么按 `darwin` / `linux` / `win32` 各写一条 `install.platforms`，要么只写你那一个平台并说明；
-  不要让 Windows 用户看到 `brew install`。`install.kind: "npm"` 时，由外壳安装进隔离运行时并接入 PATH。
+  不要让 Windows 用户看到 `brew install`。`install.kind: "npm"` 时，由工作台装进隔离运行时并接入 PATH。
 - `lib` 自行启动运行时的命令（例如发布编排库自己调用 `execFile('opencli')`）时，就写 `runs: ["opencli"]`：
-  外壳会把手上那份「运行 opencli」的执行器注入进去（库侧约定暴露 `setOpencliRunner`），
+  工作台把手上那份「运行 opencli」的执行器注入进去（库侧约定暴露 `setOpencliRunner`），
   这样编排与面板使用同一份 opencli（同一套插件、同一份登录状态）。不写 `runs` 时，按库自己的 PATH 查找。
-  库版本太旧、没有 `setOpencliRunner` 时，外壳只记录一条 warn，仍按 PATH 运行；用 `version` 限定那一版即可。
+  库版本太旧、没有 `setOpencliRunner` 时，工作台只记一条 warn，仍按 PATH 运行；用 `version` 限定那一版即可。
 - `extension` 的 `sources[].kind` 只有 `npm` / `git` / `local`；`lib` 只认 `npm`。
   未知 `kind` 或 `source.kind` 会失败；need 里未知字段只警告，`x-` 前缀忽略。
 - 未安装完成的文案由模块写：`deps.libInstallCommand({ need, source })` 拼好源与缓存目录，
@@ -156,7 +156,7 @@
 - `contracts` 判据：`apiVersion` 必须是 3；`needs` 走同一份 `NEED_KINDS` 注册表校验（`purpose` 必填、
   `bin`/`env` 不许带 `sources`（`bin` 需要代为安装就写 `install`）、`lib` 只认 npm 源）；
   声明了 `lib` 必须用 `deps.libInstallCommand`。
-  未知 `runtime` 不报错：探针会给「这个运行时工作台还不认识」的 `unchecked`，等运行时 provider 补上。
+  未知 `runtime` 不报错：探针给「这个运行时工作台还不认识」的 `unchecked`，等运行时 provider 补上。
 
 ## 9 长任务
 
@@ -169,12 +169,12 @@
 - 流程事件默认用 `longTaskStepOf(event)`。
 - **要人处理的节点**：给这一步带 `intervention`（类型从 `@dsh-workbench/shared` 取）：
   `{ title, hint?, actions?: ({kind:'open-url',url,label?} | {kind:'copy',text,label?})[], fields?, submitLabel? }`；
-  `title` / `hint` 是字面量（宿主侧没有 `t`），`label` 缺省用外壳的词；带它的步骤停在 `needs-human`，下一条不带就回 `running`。
+  `title` / `hint` 是字面量（宿主侧没有 `t`），`label` 缺省用工作台的词；带它的步骤停在 `needs-human`，下一条不带回 `running`。
 - **结构化回执**：`fields` 行上出表单，`submitLabel` 是提交钮；接住回执给 `longTasks.create({ answer?(current, values) })`，
   `<单元>/runs/answer` 交回模块；values 不进快照。
-- **恢复**：默认靠模块自己轮询。给了 `recheck?(current)` 行上才有「我处理完了」（只发 `<单元>/runs/recheck`，外壳不承诺恢复）；
+- **恢复**：默认靠模块自己轮询。给了 `recheck?(current)` 行上才有「我处理完了」（只发 `<单元>/runs/recheck`，工作台不承诺恢复）；
   要重试恢复就用 `withInterventionRetry(check, { attempts, delayMs })`（`@dsh-workbench/shared/host`）当 `recheck` handler：有界重试，check 回 `true` 即停。
-- 进入 `needs-human` 时外壳自动向起它的会话发「在等你处理」notice（hold、按 run 去重），模块不做。
+- 进入 `needs-human` 时工作台自动向起它的会话发「在等你处理」notice（hold、按 run 去重），模块不做。
 - 流程侧对应 `ctx.need(intervention)`；`ctx.login(url)` 是旧路（仍产 `needs-login` + `loginUrl`，标 deprecated）。
 - 浏览器侧：`useLongTask` → `feed.runs` / `feed.stop(id)` / `feed.recheck(id)` / `feed.answer(id, values)` /
   `feed.stopping` / `feed.stopFailed`；画 `LongTaskRow`（六态：`running` / `needs-human` / `needs-login` /
@@ -191,11 +191,11 @@
 - 停止：`run` 收到 `signal` 被 abort = 有人点击停止；在循环点与每条子命令前后查 `signal.aborted`。
   不响应 signal 就不要画停止按钮。画钮传 `stop`（`onStop: () => feed.stop(run.id)`、`busy`、`failed`、
   `label: 停止任务 {label}`、`askLabel: '确认停止'`）；失败文案画行下；两步确认归组件。
-- 外壳自带 `workbench_long_tasks_list`（读）与 `workbench_long_tasks_stop`（写）。自己发起的长任务无需审批；
+- 工作台自带 `workbench_long_tasks_list`（读）与 `workbench_long_tasks_stop`（写）。自己发起的长任务无需审批；
   他人的 / 用户手动启动的 / 未记录来源的需要审批；跨工作区直接拒绝。
 - `contracts` 查形状：注册表九个方法（含 `stop` / `live` / `answer`）、`create` 的 `key` / `run` / `view`、
   产物含 `useLongTask` / `LongTaskRow` 之一。是否实际响应 signal 不在检查范围内。
-- 左栏的状态点由外壳按 `live()` 驱动；等待人工处理时升级为「等你处理」的 warning，模块不做。
+- 左栏的状态点由工作台按 `live()` 驱动；等待人工处理时升级为「等你处理」的 warning，模块不做。
 - 用 `stop` / `session` / 长任务工具需把 `@dsh-workbench/core` peer 下限抬到含它们的版本（`check --only kit` 查）。
 
 `registerTools()` 调用时才注册、返回清理函数；工具名与 `dsh.workbench.tools` 一字不差，没有就 `() => []`。
@@ -220,9 +220,9 @@
 `gate: { deniedTools(context), subscribe(listener) }` 挂进 `mount` 返回值：
 
 - `deniedTools({ workspace, preset })` 返回该会话不存在的工具名（与 `registerTools()` 一致；二者可为 `null`）。
-  `subscribe` 在状态变化时通知外壳重算；不接则等重启。
-- 两个轴：`workspace` = 用户在看哪个项目；`preset` = 该会话被授权做什么。外壳两者都用。
+  `subscribe` 在状态变化时通知工作台重算；不接则等重启。
+- 两个轴：`workspace` = 用户在看哪个项目；`preset` = 该会话被授权做什么。工作台两者都用。
   模块工具按工作区是否有这个模块收窄；DIY 族按模式收窄。
-- 外壳双重执行：清单不出现 + 调用时拒。
+- 工作台双重执行：清单不出现 + 调用时拒。
 
 "哪些工作区出现"由用户用 `workbench_panels_show` / `_hide` 控制，卡片与全部工具同判；`deniedTools` 可选。

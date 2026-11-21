@@ -21,10 +21,10 @@
 | 层 | 是什么 | 拥有的真相 | 公开面 / 契约 | 明确不拥有 |
 |---|---|---|---|---|
 | **L0 dsh 本体** | 平台：插件宿主、会话、工具调用、UI 原语、模块加载表 | dsh 的插件 API、工具机制、`@deepseek-ai/dsh-client-ui-primitives` | dsh 自己的插件与模块表 | 工作台的产品形态、模块、工坊 |
-| **L1 外壳 core** | 工作台本体：两个运行时、workbench 域（项目 / 面板 / 记录 / 审批 / 市场 / DIY 入口）、内置域模块、`kit`、启动器、setup / seed | 工作台怎么运转、界面骨架、单元注册表、写通道与事实、长任务、审批管线 | `@dsh-workbench/core/client`（kit）、`@dsh-workbench/core/contract`（仅类型）、`bin/dsh-workbench` | 业务模块；契约定义（归 L2）；适配器实现（归 L3）；环境事实（归 L6） |
-| **L2 契约 shared** | 协议与纯代码：类型、纯函数、i18n、哑组件、host 工厂 | 协议只有一份；浏览器 / 宿主两个入口的分界 | `@dsh-workbench/shared`、`/host`、`/testing` | 外壳运行时；适配器实现；业务逻辑 |
+| **L1 工作台 core** | 工作台本体：两个运行时、workbench 域（项目 / 面板 / 记录 / 审批 / 市场 / DIY 入口）、内置域模块、`kit`、启动器、setup / seed | 工作台怎么运转、界面骨架、单元注册表、写通道与事实、长任务、审批管线 | `@dsh-workbench/core/client`（kit）、`@dsh-workbench/core/contract`（仅类型）、`bin/dsh-workbench` | 业务模块；契约定义（归 L2）；适配器实现（归 L3）；环境事实（归 L6） |
+| **L2 契约 shared** | 协议与纯代码：类型、纯函数、i18n、哑组件、host 工厂 | 协议只有一份；浏览器 / 宿主两个入口的分界 | `@dsh-workbench/shared`、`/host`、`/testing` | 工作台运行时；适配器实现；业务逻辑 |
 | **L3 适配器 AdapterSet** | 平台接缝的实现：opencli、浏览器读、DataReader、profile / 配置同步、供给 / registry、preflight / 自更新、市场 | 怎么跟外部系统说话 | `AdapterSet` / `RuntimeCapabilities` / `RuntimeProfile`，契约在 `shared/host` | 工作台域逻辑；模块；界面 |
-| **L4 模块** | 业务单元：两个面 + `model` / `components` + 清单 + `design.json` + 文案 + 测试 | 这个业务的数据、卡片、工具、写路径、验收 | `dsh.workbench` 清单、`host.ts` / `client.tsx`、`UnitMountResult` 成员（routes / tools / prefs / actions / provision / context / longTasks / facts） | 外壳内部；别的模块；工具链实现；环境搭建 |
+| **L4 模块** | 业务单元：两个面 + `model` / `components` + 清单 + `design.json` + 文案 + 测试 | 这个业务的数据、卡片、工具、写路径、验收 | `dsh.workbench` 清单、`host.ts` / `client.tsx`、`UnitMountResult` 成员（routes / tools / prefs / actions / provision / context / longTasks / facts） | 工作台内部；别的模块；工具链实现；环境搭建 |
 | **L5 工具链 module-tools** | 开发期契约与门禁：`init` / `build` / `check`（14 判据）/ `design` / `sync` / `migrate` / `lint` / `release` + 唯一模板 | 模块该长什么样、怎么算过、怎么发；工具自己的行为 | `dsh-wb-module` 命令、`@dsh-workbench/module-tools/arch` 与 `/lint` 方言、模板产物 | 运行时行为；模块业务；工作区 / 工坊环境；模块源码的归属 |
 | **L6 环境 / 实例** | 部署与工作区：profile、`$DSH_WORKBENCH_HOME`、DIY 工坊目录、`adapterSet` 选择、配置同步、依赖安装 | 环境事实：目录布局、依赖装在哪、沙箱 / EPERM、怎么起实例 | 磁盘布局 + 由脚本生成的 `README.md` / `AGENTS.md` | 代码、判据、工具实现 |
 | **L7 发布与市场** | 产物与分发：`npm pack` / team 源 / tarball / git、市场索引、安装 / 升级 / 回滚 | 包怎么发、索引怎么写、装哪份 | `release` 命令、索引格式、`CHANGELOG` | 运行时行为；开发期判据 |
@@ -41,11 +41,11 @@
 
 | 接缝 | 两侧 | 通过什么 | 不许什么 |
 |---|---|---|---|
-| 平台 → 外壳 | L0 ↔ L1 | dsh 插件 API、模块表 require dsh 原语 | 改 dsh、fork dsh、宿主侧引 dsh 浏览器包 |
-| 外壳 ↔ 契约 | L1 ↔ L2 | `core/contract` 类型、`shared` 两个入口、host 工厂 | 契约抄第二份、shared 依赖 core |
-| 外壳 ↔ 适配器 | L1 ↔ L3 | `AdapterSet` 契约 + profile 里的 `adapterSet` 选择 | `core/src` 出现 adapter 包名；按 adapter id 分支界面 |
-| 外壳 ↔ 模块 | L1 ↔ L4 | `dsh.workbench` 清单 + `mount()` 返回的成员；kit、contract、dsh 原语 | 模块 import 外壳内部；模块绕过写通道直写平台 |
-| 模块 ↔ 模块 | L4 ↔ L4 | 外壳提供的连接面（事实 / 数据 / 写通道） | 模块之间互相 import |
+| 平台 → 工作台 | L0 ↔ L1 | dsh 插件 API、模块表 require dsh 原语 | 改 dsh、fork dsh、宿主侧引 dsh 浏览器包 |
+| 工作台 ↔ 契约 | L1 ↔ L2 | `core/contract` 类型、`shared` 两个入口、host 工厂 | 契约抄第二份、shared 依赖 core |
+| 工作台 ↔ 适配器 | L1 ↔ L3 | `AdapterSet` 契约 + profile 里的 `adapterSet` 选择 | `core/src` 出现 adapter 包名；按 adapter id 分支界面 |
+| 工作台 ↔ 模块 | L1 ↔ L4 | `dsh.workbench` 清单 + `mount()` 返回的成员；kit、contract、dsh 原语 | 模块 import 工作台内部；模块绕过写通道直写平台 |
+| 模块 ↔ 模块 | L4 ↔ L4 | 工作台提供的连接面（事实 / 数据 / 写通道） | 模块之间互相 import |
 | 工具链 ↔ 模块 | L5 ↔ L4 | 文件系统：`package.json`、清单、`design.json`、源码文本、产物 | 工具运行时被模块依赖（只做 devDependency）；工具读环境事实当模块事实 |
 | 工具链 ↔ 环境 | L5 ↔ L6 | 只读 cwd / 工作区声明来发现包；环境文档解释怎么装 | 工具文档写安装 / 目录 / EPERM；环境文档写判据实现 |
 | 浏览器 ↔ 宿主 | L1/L4 内部横切 | 公开入口：kit、`contract`、`shared` 根 / `/host` 拆分 | 两侧互引；浏览器从 `/host` 取运行值 |
@@ -58,7 +58,7 @@
 
 | 层 | 文档 | 测试 / 门禁 | 配置与文案 |
 |---|---|---|---|
-| L1 外壳 | `packages/core/README.md`、`ARCHITECTURE.md`、`packages/docs/**` 的使用文档、`CONTRIBUTING.md` 的门禁纪律 | core 单测、`arch`、`check:runtimes`、core selfcheck、`WB-A1` | `arch.config.mjs`；界面文案与 kit JSDoc |
+| L1 工作台 | `packages/core/README.md`、`ARCHITECTURE.md`、`packages/docs/**` 的使用文档、`CONTRIBUTING.md` 的门禁纪律 | core 单测、`arch`、`check:runtimes`、core selfcheck、`WB-A1` | `arch.config.mjs`；界面文案与 kit JSDoc |
 | L2 契约 | `ARCHITECTURE.md` §5–§6、源码 JSDoc | `SH-A1`、`check-state`、typecheck | 入口 `exports`；i18n 字典 |
 | L3 适配器 | `ADAPTERS.md`、各 adapter 包 README | `check:adapter-defaults`、`node scripts/check-adapter-contract.mjs`、集成夹具 | `AdapterSet` 版本；profile 解析规则 |
 | L4 模块 | 模块 `README.md`（`design render` 生成需求段）、模板 `AGENTS.md`（只讲 tools 用法） | 14 条判据、`check:modules`、模块测试、smoke | `design.json`、清单、`messages.ts` |
@@ -84,7 +84,7 @@
 - **L5 不写 L6**：module-tools 里不出现工坊、工作区根、安装、EPERM、setup；模板 `AGENTS.md` 只写 tools；
 - **L4 不写 L6**：模块模板文档不解释依赖装哪、沙箱怎么绕；
 - **L6 不写 L5**：工坊 `README` / `AGENTS` 只讲环境事实，不写判据实现；
-- **L1 不写 L3 细节**：外壳不出现 adapter 包名，界面按 capability 不按 adapter id；
+- **L1 不写 L3 细节**：工作台不出现 adapter 包名，界面按 capability 不按 adapter id；
 - **L3 不写 L4**：适配器不 import 模块、不承载业务；
 - **L7 不回写运行时**：发布脚本不改运行行为；
 - **文档不复述环境**：`package.json` scripts、`--help`、导出类型能查到的，不复述。

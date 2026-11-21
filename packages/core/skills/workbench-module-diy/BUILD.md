@@ -26,7 +26,7 @@
 
 ⚠️ 如果没有可放代码的包（没有 `package.json`，或未声明 workspace），请询问用户：在这里建立 workspace，还是使用工坊的脚手架工作区。
 不要改动用户仓库的 monorepo 结构。从「创建模块」入口进入的会话已在工坊里，此时 `<dir>` 就是工坊。
-工具链与外壳不是同一代时无需处理：启动时会比对并在后台同步（`workbench_diy_status` 会给出状态）。
+工具链与工作台不是同一代时无需处理：启动时会比对并在后台同步（`workbench_diy_status` 会给出状态）。
 
 模块内的 `pnpm build` / `pnpm exec dsh-wb-module` 与工作区根使用同一个二进制，不要在模块里另外安装（否则会静默出现两代）。
 
@@ -36,7 +36,7 @@
 pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description "<一句话>"
 ```
 
-``<unit>`：小写短横线，同时是单元 id、包名后缀与样式前缀；全局唯一（与已安装模块、外壳单元冲突时，注册会抛错）。
+``<unit>`：小写短横线，同时是单元 id、包名后缀与样式前缀；全局唯一（与已安装模块、工作台单元冲突时，注册会抛错）。
 `<目录>` 是模块的创建位置：在某个工作区里时，选择它 glob 覆盖的目录（`packages/`、`apps/`、`modules/` 等均可）；
 也可以使用独立目录，此时这个包自己就是根。
 生成的骨架默认能通过 `check`；`selfcheck` 还包含 `design check`，要等设计底稿填写完成才会通过（共 10 个脚本）。**只有一个模板**：`--template diy`（默认），
@@ -70,7 +70,7 @@ pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description 
 - `check` 不会运行 `pnpm test`；状态、换算与边界测试需要自行运行。
 - `check:duplication` 用 jscpd 扫 `src` / `scripts`（阈值与忽略面在 `.jscpd.json`），有克隆就红；
   `duplication:report` 把 HTML / JSON 报告出到 `coverage/duplication/`。它不在 `check` 链里，修改源码后要单独运行。
-- 「不适用」不等于「通过」：`standalone` 需要外壳源码在场，`markers` 只扫描公开包（DIY 模块 `private`）。
+- 「不适用」不等于「通过」：`standalone` 需要工作台源码在场，`markers` 只扫描公开包（DIY 模块 `private`）。
   汇总行会列出未检查项。
 
 安装与添加到看板都由 agent 工具完成：`workbench_diy_install`、`workbench_diy_show`、`workbench_diy_status`
@@ -100,9 +100,9 @@ export const apply = plugin.apply;
 `mount({ data })` 的 `data` 是统一数据端口（`DataReader`）；读数据用 `data.read(...)`，不要自己 import adapter。
 `mount()` 返回 `UnitMountResult`：`routes`、`registerTools()`，以及可选的 `factsOf` / `gate` / `context` / `warmReads` / `prefs` / `actions` / `provision` / `longTasks` / `approvalDetail` / `needsApproval`。`routes` 挂 `/workbench/api/<路由>`，只许 GET，
 键必须在 `<unit>` 或 `<unit>/…` 之下（否则装配抛错）。错误返回
-`{ ok: false, error: { code, message, hint? } }`（HTTP 200，外壳转发）。`registerTools` 提供模块工具。
+`{ ok: false, error: { code, message, hint? } }`（HTTP 200，工作台转发）。`registerTools` 提供模块工具。
 
-浏览器面：`units.registerUnit({ unit, messages, card })`；清单由外壳从已安装清单读取，不在面里重复。`card` 收到
+浏览器面：`units.registerUnit({ unit, messages, card })`；清单由工作台从已安装清单读取，不在面里重复。`card` 收到
 `{ t, world, refreshToken, onRefresh, onSummary }`（`world.current.workspace` 为当前项目），返回元素。
 三态用 kit：加载 `kit.components.SkeletonRows`；空 `kit.components.EmptyState`（无按钮）；
 错误 `kit.components.BlockerState` + `kit.lib.blockerOfError(error, t)`。
@@ -112,7 +112,7 @@ export const apply = plugin.apply;
 
 ## 5 起子进程：走执行缝门面
 
-模块需要在宿主侧运行命令（构建、git、打包……）时，用外壳放进 `mount(deps)` 的执行缝门面 `deps.seam`。
+模块需要在宿主侧运行命令（构建、git、打包……）时，用工作台放进 `mount(deps)` 的执行缝门面 `deps.seam`。
 `ctx.get('shell')` / `ctx.get('workbenchShell')` / `ctx.get('seam')`、`runShell` / `shellOf`、裸
 `child_process` 都不给模块用，`check --only seam` 会判定失败。
 
@@ -181,5 +181,5 @@ if (result === undefined || result.exitCode !== 0) {
 - 一条命令只声明一个写入域；要写两棵树就在步骤边界拆成两次调用。
 - `retry: 'safe'` 只给幂等 / 只读命令（查询、列清单）；写命令用默认的 `'never'`。
 - 请求没声明的档在启动进程前就失败（`SeamError` 的 `scope-not-declared` / `workspace-unknown`），不要吞掉。
-- 这层门面是**约定 + 门禁 + 归因**，不是进程隔离：模块宿主代码与外壳同进程。真正的安全边界仍是
+- 这层门面是**约定 + 门禁 + 归因**，不是进程隔离：模块宿主代码与工作台同进程。真正的安全边界仍是
   「是否安装模块 + 审批」。

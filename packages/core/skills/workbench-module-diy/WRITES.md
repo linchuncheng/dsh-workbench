@@ -51,12 +51,12 @@
 
 ### 大文件：先落草稿，再提交
 
-正文大时不要用 `content` 传全文。`deps.drafts` 是外壳给的会话草稿库：
+正文大时不要用 `content` 传全文。`deps.drafts` 是工作台给的会话草稿库：
 
 - `drafts.put({ session, content, label })` → `{ id, path, bytes, sha256 }`；文件落在系统临时目录，按会话隔离。模块不要自己建临时目录，也不要让 agent 只知道一个它拼的路径。
 - 读工具把摘要与 `draftId` / `draftPath` 给 agent；agent 用 dsh 的 `read` / `grep` / `edit` / `write` 改 `draftPath`。
 - 写工具只收 `draftId`：用 `drafts.pathOf({ id, session })` 拿真实路径交给命令，用 `drafts.content({ id, session })` 拿正文做预览。不要收路径，也不要接受任意绝对路径。
-- `drafts` 缺失（旧外壳）时，大文件退回内联并说明；显式要走草稿就报「工作台没有提供草稿库」。
+- `drafts` 缺失（旧工作台）时，大文件退回内联并说明；显式要走草稿就报「工作台没有提供草稿库」。
 
 写工具获得批准之后，按以下顺序选择：
 

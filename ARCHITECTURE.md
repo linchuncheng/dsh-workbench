@@ -10,7 +10,7 @@
 
 ## 0.1 四层关系
 
-先看 DSH、外壳、适配器、模块四者的位置。模块不是挂在图外面的“另一个东西”，它通过两次握手接进 core。
+先看 DSH、工作台、适配器、模块四者的位置。模块不是挂在图外面的“另一个东西”，它通过两次握手接进 core。
 
 ```text
                             dsh 本体
@@ -18,7 +18,7 @@
                  ┌─────────────┴─────────────┐
                  │                           │
           @dsh-workbench/core          @acme/module-x
-          （外壳插件）                   （模块插件）
+          （工作台插件）                   （模块插件）
                  │                           │
           ┌──────┴──────┐             dsh.workbench 清单
           │             │                    │
@@ -48,7 +48,7 @@
    （契约 / 纯逻辑 / 宿主工具）
 ```
 
-默认装哪份集合由 `packages/core/package.json` 的 `workbench.adapterSet` 决定 —— 外壳按这个 spec 动态装载，
+默认装哪份集合由 `packages/core/package.json` 的 `workbench.adapterSet` 决定 —— 工作台按这个 spec 动态装载，
 `packages/core/src` 里不出现任何适配器包名（S69 钉着）。协议只有三样东西：`AdapterSet`（成员与版本）、
 `RuntimeCapabilities`（三个 boolean：`console` / `pluginMarket` / `browserBridge`）、`RuntimeProfile`（叫法、术语与
 排障话术）。界面按能力渲染入口，不按适配器 id 分支（S72）。
@@ -61,15 +61,15 @@
 
 两侧各自对着协议，互不认识：
 
-- **外壳侧**：协议说适配器会这样表现，外壳就按这个预期调它。测试给一份“符合协议预期”的适配器
-  （`@dsh-workbench/shared/testing` 的 `fakeAdapterSet()`，或按端口写的 double），看外壳的行为对不对。
+- **工作台侧**：协议说适配器会这样表现，工作台就按这个预期调它。测试给一份“符合协议预期”的适配器
+  （`@dsh-workbench/shared/testing` 的 `fakeAdapterSet()`，或按端口写的 double），看工作台的行为对不对。
 - **适配器侧**：协议是这样写的，实现符不符合 —— `adapterContractGaps` 逐项判契约，自己的单测判行为。
 
-所以外壳里**不许 import 任何 `adapter-*` 包**（S70，error，零例外），适配器也不认识外壳的测试。
+所以工作台里**不许 import 任何 `adapter-*` 包**（S70，error，零例外），适配器也不认识工作台的测试。
 
 适配器内部逻辑的测试归它自己的包：怎么解析 `git+https` 源、怎么生成隔离壳脚本、怎么比版本，
-住在 `adapter-supply` / `adapter-probe` 的 `src/**` 里，外壳不重复测 —— 否则换一份适配器，
-外壳的测试就在测一份不存在的实现。
+住在 `adapter-supply` / `adapter-probe` 的 `src/**` 里，工作台不重复测 —— 否则换一份适配器，
+工作台的测试就在测一份不存在的实现。
 
 `shared/testing` 是协议侧的夹具层；`vitest.setup.ts` 的中央 mock 最终也只用假集合
 （现在还在用真默认集合，这是正在还的债，见 ADR-0092）。
@@ -154,7 +154,7 @@ module client
 ┌──────────────── dsh 进程（宿主） ────────────────┐
 │ app/host.ts            组合根                    │
 │  ├ kernel/host         注册表、挂载、就绪、工具面  │
-│  ├ modules/*/model     外壳自己的域（panels/sessions）│
+│  ├ modules/*/model     工作台自己的域（panels/sessions）│
 │  ├ shared/api/host     宿主路由与宿主工具          │
 │  └ shared/host/adapters AdapterSet 端口            │
 └──────────────────┬───────────────────────────────┘
@@ -177,14 +177,14 @@ module client
 浏览器：packages/core/src/app/client.tsx
 ```
 
-外壳只提供机制：面板列、单元注册、路由、工具面、审批、市场、启动体检。
-外壳自己不带业务模块；业务模块是独立 dsh 插件包，装进 profile 才出现。
+工作台只提供机制：面板列、单元注册、路由、工具面、审批、市场、启动体检。
+工作台自己不带业务模块；业务模块是独立 dsh 插件包，装进 profile 才出现。
 
 ## 1. 包
 
 | 包 | 是什么 | 发布名 |
 |---|---|---|
-| `packages/core/` | 外壳：宿主、浏览器、单元协议、面板、市场、启动器、门禁 | `@dsh-workbench/core` |
+| `packages/core/` | 工作台：宿主、浏览器、单元协议、面板、市场、启动器、门禁 | `@dsh-workbench/core` |
 | `packages/shared/` | 契约类型、纯 lib、i18n、哑组件、宿主纯工具 | `@dsh-workbench/shared` |
 | `packages/module-tools/` | 模块 `build` / `check` / `lint` / `init` | `@dsh-workbench/module-tools` |
 | `packages/module-hello/` | 最小可安装模块样本 | `@dsh-workbench/module-hello` |
@@ -306,7 +306,7 @@ packages/core/src/
 层  9  dev/                                  本地开发
 层  7  app/units/                            清单装配
 层  6  app/layouts/                          左栏 / 右栏 / 市场 / 环境门
-层  5  modules/panels · modules/sessions     外壳自己的域
+层  5  modules/panels · modules/sessions     工作台自己的域
 层  4  shared/api · shared/hooks · shared/components · shared/dev-surface
 层  3  （没有源码角色；具体适配器住 packages/adapter-*）
 层  2  kernel/host · kernel/client · kernel/contract
@@ -395,7 +395,7 @@ ctx.provide(WORKBENCH_ADAPTERS, adapters);
 ### 4.2.1 端口流
 
 ```text
-业务模块 / 外壳单元
+业务模块 / 工作台单元
      │ adaptersOf(ctx) / supplyPortOf(ctx)
      ▼
 AdapterSet
@@ -599,7 +599,7 @@ export function createAdapterSet(ctx): AdapterSet {
 - **模块**：有 npm 包名、`package.json`、构建产物的工作台包；**不是** dsh 插件页里的组合包。
   它装成 profile 的普通依赖，并在 profile 的 `cordis.patch.yml` 里占一行（`wb-<unit>`）被装载；
   包里不声明 `dsh.bundle`，因此 dsh 的插件页不出现它。
-- **单元**：模块在外壳里的那一格：id、卡片（可选）、工具、挂载面。
+- **单元**：模块在工作台里的那一格：id、卡片（可选）、工具、挂载面。
 
 一个包 = 一个单元；一个单元在宿主与浏览器各有一半。安装后即启用，不提供启用/停用，只能卸载
 （删行 + `pnpm remove`）。
@@ -642,14 +642,14 @@ export function createAdapterSet(ctx): AdapterSet {
 - `needs` 只有四种 `kind`：`bin`（机器上的命令）/ `extension`（运行时插件）/ `lib`（共用 npm 依赖）/ `env`（环境变量）。
   未知 `kind` / `source.kind` 判红；need 内未知字段降为警告，`x-` 前缀忽略；`purpose` 必填。
 - `lib` 自己会起运行时的命令（发布编排库自己 `execFile('opencli')` 就是这种）就写 `runs: ["opencli"]`：
-  外壳在 `libs.load` 之后把「跑这个运行时」的执行器注入库的 `setOpencliRunner` —— 执行器走模块读缝，
+  工作台在 `libs.load` 之后把「跑这个运行时」的执行器注入库的 `setOpencliRunner` —— 执行器走模块读缝，
   与面板同一份 opencli。库版本旧、没有这个接缝时退回它自己按 PATH 找，只记一条 warn。
 - `sources` 按顺序试（本地 → 私有 → 公共），没写就只探不代装。
 - 这些依赖怎么被判、怎么修，见 §5.10。
 - `peerDependencies['@dsh-workbench/core']` 管服务面。
 - `host.writes` 声明模块会写哪一档：`unit`（运行时根下自己的数据目录，常开）或 `workspace`（当前会话工作区）；
   没声明就不给执行缝门面。模块起命令走 `deps.seam`，不直接拿 dsh 的 shell 服务（模块判据会拦）。
-  外壳自己的执行缝：`run` 走 dsh 的 `ctx.shell` + `ctx.sandboxPolicy`，不另写 shell；`spawn` / `open` / 宿主后台命令走工作台自己的 process host（detached、双向管道、完整 env）。宿主侧不 require dsh 包，dsh 类型只经 `@dsh-workbench/shared` 的别名层；bash / pwsh 由组合层按 `process.platform` 选，执行缝不翻译方言。
+  工作台自己的执行缝：`run` 走 dsh 的 `ctx.shell` + `ctx.sandboxPolicy`，不另写 shell；`spawn` / `open` / 宿主后台命令走工作台自己的 process host（detached、双向管道、完整 env）。宿主侧不 require dsh 包，dsh 类型只经 `@dsh-workbench/shared` 的别名层；bash / pwsh 由组合层按 `process.platform` 选，执行缝不翻译方言。
   它不是进程隔离：模块宿主代码与宿主同进程，安全边界仍是「装不装模块 + 审批」。
 - `workbenchFaces` 只给门禁算可达性，运行期不读。
 - 不认识的键会让清单被拒；拼错由 `protocol` 判据与运行时同一套拦下。
@@ -678,7 +678,7 @@ const face = {
 ctx.get('workbenchUnits').register(face);
 ```
 
-`mount()` 的返回值就是外壳与单元的契约；外壳不认业务、不认工具名。
+`mount()` 的返回值就是工作台与单元的契约；工作台不认业务、不认工具名。
 
 ### 5.4 浏览器面
 
@@ -701,7 +701,7 @@ ctx.get('workbenchUnits').registerUnit({
 
 ```text
 已装模块 package.json
-  → 宿主 UnitManifest（名字：title 来自声明，titleKey 是外壳合成的那个键）
+  → 宿主 UnitManifest（名字：title 来自声明，titleKey 是工作台合成的那个键）
   → GET /workbench/api/unit-manifests
   → 浏览器 setManifests()
   → 无清单的卡片不挂
@@ -719,7 +719,7 @@ ctx.get('workbenchUnits').registerUnit({
 - 路由名必须是 `<unit>` 或 `<unit>/…`。
 - 路由 / 偏好资源 / 动作资源 / 上下文 kind 重名只废后来那个单元。
 - `gate` 与 `provision` 全壳只能有一个提供者。
-- `gate.denyReason(name, context)` 可选：模型调了当前被收起的名字时，外壳拿它当拒绝理由（给 agent：
+- `gate.denyReason(name, context)` 可选：模型调了当前被收起的名字时，工作台拿它当拒绝理由（给 agent：
   发生了什么 + 下一步），替掉 dsh 自己的 `unknown tool`。它与 `deniedTools` 必须是同一份真相 ——
   能给出理由的名字，必须在 `deniedTools` 里。
 - `mount()` 失败要撤回已注册工具（路由在 mount 成功后才收）。
@@ -814,7 +814,7 @@ WorkspaceStore ──► POST /workbench/api/prefs
 ```
 
 - 显示状态按工作区存，换项目不会串。
-- 单元只通过外壳给的专属目录读写状态；不自己找全局文件。
+- 单元只通过工作台给的专属目录读写状态；不自己找全局文件。
 - 卡片不直接写，写入走 prefs / actions / agent 工具。
 
 ### 5.9 失败与降级
@@ -836,7 +836,7 @@ mount() 抛错 / 工具注册到一半失败
       └── 运行时拒绝（fail closed）
 
 适配器缺失 / 不可用
-      └── 对应能力返回 unavailable；不拖垮整个外壳
+      └── 对应能力返回 unavailable；不拖垮整个工作台
 ```
 
 ### 5.10 依赖与运行时：四段闭环
@@ -886,7 +886,7 @@ mount() 抛错 / 工具注册到一半失败
 模块清单 needs
       │
       ▼
-外壳探针  probe.probeUnits({ units, runtimeCommands, runtimes })
+工作台探针  probe.probeUnits({ units, runtimeCommands, runtimes })
   ├─ needs[].runtime 决定问哪个运行时
   ├─ 执行 <运行时> plugin list -f json              → 实际命令面
   ├─ needs[].commands × 实际命令面                   → 缺命令 = outdated
@@ -901,7 +901,7 @@ NeedState / UnitCapability
 市场那一行 · 模块详情 · 运行环境那一行
 ```
 
-`runtimeCommands` 与 `runtimes.opencli.versions` 都已经喂进探针：插件适配哪一版运行时由外壳从运行时的
+`runtimeCommands` 与 `runtimes.opencli.versions` 都已经喂进探针：插件适配哪一版运行时由工作台从运行时的
 体检结果里取，探针不自己去读运行时的文件（见「现状」那一节）。插件与运行时的对账走握手：
 探针每一轮读一次已装插件的 peer 范围，不合格就把那个单元的结论压成 `unsupported`；同一份结论也照亮
 运行环境那一行。判定权在探针与握手，模块与界面都不自己算。
@@ -949,7 +949,7 @@ store 与当前 pnpm 对不上（`ERR_PNPM_UNEXPECTED_STORE` 等）导致的失�
 ```
 
 软链是这套设计的支点：所有插件共用一份运行时，只装一份。代价是**包管理器的 peer 检查只在安装那一刻有效**——
-装完之后版本被软链带过去，之后换代不再有人校验。所以换代时必须由外壳重校验，这不是包管理器的责任。
+装完之后版本被软链带过去，之后换代不再有人校验。所以换代时必须由工作台重校验，这不是包管理器的责任。
 
 **不做换代前后的快照比对**。想做的是「这次更新才失效的」这种归因，但它只影响解释，不影响动作：
 更新完之后市场本来就按每个模块当下的状态给下一步（更新插件 / 等插件更新），多一句归因不改变用户点什么。
@@ -1195,7 +1195,7 @@ pnpm run check:gates:target
 | 想扩展 | 改哪里 |
 |---|---|
 | 加业务模块 | 新建 dsh 插件包，写 `dsh.workbench` + 两个面 |
-| 加外壳域 / 面板 | `packages/core/src/modules/` + `app/layouts/` |
+| 加工作台域 / 面板 | `packages/core/src/modules/` + `app/layouts/` |
 | 换数据源 / 浏览器 / CLI | 实现 `AdapterSet` 的对应端口，用 config 指过去；或换 `adapters-default` 的实现包 |
 | 换整套适配器 | 发布 `adapters-set` 包，profile 里 `workbench.config.adapterSet` 指向它，重启 |
 | 加模块能力 | `UnitMountResult` 的 routes / tools / prefs / actions / provision / context / longTasks |

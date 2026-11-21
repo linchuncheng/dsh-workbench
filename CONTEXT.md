@@ -1,11 +1,11 @@
 # dsh-workbench
 
-给 dsh 加一层 Agent 工作台外壳的插件包。词汇表，只放这个项目自己的词；
+给 dsh 加一层 Agent 工作台的插件包。词汇表，只放这个项目自己的词；
 通用编程概念不在这里。实现细节见 [`ARCHITECTURE.md`](ARCHITECTURE.md)。
 
 ## 工作台
 
-**工作台**：本项目的产品形态 —— 给 dsh 换一层外壳，做成个人使用的 Agent 工作台：
+**工作台**：本项目的产品形态 —— 在 dsh 之上加一层，做成个人使用的 Agent 工作台：
 左栏项目与会话，中间常驻对话，右侧是工作台自研的面板列（看板与模块都挂在这一列上）。
 两种装法：**独立实例**（`setup` 出的 `workbench` profile，自己的端口与进程；端口写在
 profile 自己的 patch 里，所以走启动器 `dsh-workbench` 起、还是直接 `dsh workbench` 起，
@@ -14,7 +14,7 @@ profile 自己的 patch 里，所以走启动器 `dsh-workbench` 起、还是直
 ADR-0037）。
 _Avoid_: 工作区、面板、dashboard
 
-**宿主自举（runtime seed）**：外壳在 `apply()` 里自己补上启动器本该做的那几件
+**宿主自举（runtime seed）**：工作台在 `apply()` 里自己补上启动器本该做的那几件
 （建 `$DSH_HOME/workbench/**`、写隔离 opencli 的入口、前插 `PATH`、跑随包的
 `seed-workshop.sh`）。单 profile 安装那条路上没有启动器，全靠它。
 _Avoid_: 初始化、bootstrap（那是 `setup` 那条路的事）
@@ -168,5 +168,5 @@ _Avoid_: 数据根（会跟共用的 `~/.dsh` 混）、沙箱、sandbox
 （不经沙箱，只给宿主侧，模块拿不到）。执行缝模块据此合成策略（部署上限 × 会话解析）、注入产品环境、
 把沙箱拒绝变成类型化结果并记事实；机制（dsh shell / 宿主进程 / detached / 管道）全在模块内。
 模块起命令走 `deps.seam` 的 `unit` / `workspace` 两档，不直接拿 dsh 的 shell 服务；
-`runShell` 是执行缝内部实现；`shellOf` / `withSandboxPolicy` 这类旧入口已删除。外壳自己调 `run` 时走 dsh 的 `ctx.shell` + `ctx.sandboxPolicy`；`spawn` / `open` 走工作台自己的 process host。宿主侧不 require dsh 包，dsh 类型只经 shared 的别名层。
+`runShell` 是执行缝内部实现；`shellOf` / `withSandboxPolicy` 这类旧入口已删除。工作台自己调 `run` 时走 dsh 的 `ctx.shell` + `ctx.sandboxPolicy`；`spawn` / `open` 走工作台自己的 process host。宿主侧不 require dsh 包，dsh 类型只经 shared 的别名层。
 _Avoid_: 接缝（那是两侧各自的入口）、bash 工具（agent 的入口，最终也走它）、沙箱（那是缝后面的判定）

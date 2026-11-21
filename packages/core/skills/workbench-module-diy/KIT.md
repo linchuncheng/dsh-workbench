@@ -1,12 +1,12 @@
 # kit：选型、组合、最小写法
 
-`check --only kit` 列出**当前安装的外壳实际提供的**成员；逐件用法在 `.d.ts` 的 JSDoc（`workbench_diy_surface name=<名>`）。
+`check --only kit` 列出**当前安装的工作台提供的**成员；逐件用法在 `.d.ts` 的 JSDoc（`workbench_diy_surface name=<名>`）。
 本文件只给跨件规则与最小示例。全部从 `kit.components` / `kit.hooks` / `kit.lib` / `kit.api`
 （`@dsh-workbench/core/client`）取；示例中 `h = createElement`（从 `react` 引）。
 
-优先用 kit：kit 随外壳换主题、跟语言走。
+优先用 kit：随工作台换主题与语言。
 
-## 1 卡片外壳
+## 1 卡片工作台
 
 - `Card`：标题 + 刷新 + 内容。面板每格都用它。
 
@@ -16,7 +16,7 @@ h(Card, { t: props.t, title: t('myunit.cardTitle'),
 ```
 
 - `CardHead`：自拼卡头时用；`platformHref` 给一个即出 ↗。
-- `CardAnchor`：外壳锚点 `#wb-card-<unit>`；不写不删。
+- `CardAnchor`：工作台锚点 `#wb-card-<unit>`；不写不删。
 - `CardBoundary`：卡片错误边界；不要自己 try/catch 渲染。
 
 ## 2 状态
@@ -164,7 +164,7 @@ h(SetupShell, {
 ```
 
 - 步骤是**动态**的：`canLeave` 决定能不能走，`next(values)` 返回下一步 id（`null` 表示完成）；不给 `next` 就按数组顺序走。
-- 每步想存就挂 `submit`；最后一步 `next` 返回 `null` 时相位到 `ready`，外壳把 `renderHome()` 替换为当前页。
+- 每步想存就挂 `submit`；最后一步 `next` 返回 `null` 时相位到 `ready`，工作台把 `renderHome()` 替换为当前页。
 - `edit` 模式把同一组步骤摊成一页，底部 `SaveBar` 走 `write(values)`；保存成功回调 `onSaved`。
 - 读失败时壳只给一句失败文案；需要登录/权限的阻断在卡里用 `UnitBlocker` 判（壳不认错误码）。
 - `values` 是 `Record<string, unknown>`，字段强转留在模块自己的 type guard 里。
@@ -193,7 +193,7 @@ h(FormRows, null,
 
 反例：手写标签行（F1）、自管行距（F2）、裸 `<form>` / 手写行槽类（F4）。
 
-时点：`Form` / `ConfirmBar` 需外壳发版含它们后，把 peer 下限抬到该版。
+时点：`Form` / `ConfirmBar` 需工作台发版含它们后，把 peer 下限抬到该版。
 
 ## 6 其他
 
@@ -206,7 +206,7 @@ h(FormRows, null,
 
 1. 调用点只给数据与语义；外观类名只允许布局槽（通栏、外边距、网格位置）。
 2. 字号与颜色走 kit 与令牌。重点数字用 `--dsw-font-xl-24` + `tabular-nums`；
-   令牌名现查不猜：`workbench_diy_surface` 给 `scope: 'tokens'`（现读已安装的 dsh 与外壳；`name=--dsw-…` 连浅/深值）。
+   令牌名现查不猜：`workbench_diy_surface` 给 `scope: 'tokens'`（现读已安装的 dsh 与工作台；`name=--dsw-…` 连浅/深值）。
    刻度外字面值在模块 `DEVELOPING.md` 说明（[PANEL.md](PANEL.md) §6）。
 3. 自写 CSS 只写布局（flex / grid / gap / 对齐）。
 
@@ -217,7 +217,7 @@ h(FormRows, null,
 
 ```jsonc
 "dsh": { "client": { "external": [ "@dsh-workbench/core/client", "@deepseek-ai/dsh-client-ui-primitives" ] } },
-"devDependencies": { "@deepseek-ai/dsh-client-ui-primitives": "<与外壳一致的精确版>" }
+"devDependencies": { "@deepseek-ai/dsh-client-ui-primitives": "<与工作台一致的精确版>" }
 ```
 
 改后 `pnpm install`。边界见 [PANEL.md](PANEL.md) §9。
