@@ -11,8 +11,9 @@ describe('诊断工具：常驻且只读', () => {
         return () => undefined;
       },
     } as unknown as DshToolRegistry;
+    const ctx = { get: (name: string) => (name === 'tools' ? tools : undefined) } as unknown as DshHostContext;
 
-    registerDiagTools({} as DshHostContext, tools);
+    registerDiagTools(ctx);
 
     expect(registered).toHaveLength(1);
     const tool = registered[0];

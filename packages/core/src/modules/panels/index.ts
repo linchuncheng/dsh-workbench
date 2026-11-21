@@ -57,6 +57,7 @@ import { capabilityBriefOf } from './model/capability-brief';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
 import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedReason } from './model/closed-tool';
 import { registerToolboxTools } from './model/toolbox-tools';
+import { registerDiagTools } from './model/diag-tool';
 import { panelsUnit, screenOnlyToolsFor } from './unit';
 
 function recordFlowOf(runs: DiyFlowRuns): RecordFlowPort {
@@ -303,6 +304,7 @@ export const panelsHost: UnitOwnedFace = {
       longTasks: installRuns,
       registerTools: () => [
         ...registerToolboxTools(ctx, toolbox),
+        ...registerDiagTools(ctx),
         ...registerPanelTools(ctx, panels, values),
         ...registerMarketTools(
           ctx,
