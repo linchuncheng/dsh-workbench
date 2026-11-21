@@ -3,6 +3,7 @@ import type { Translate } from '@dsh-workbench/shared';
 import { clientSurface } from '@/shared/api/platform/client';
 import { AdapterSetItem } from './AdapterSetItem';
 import { ConfigSyncItem } from './ConfigSyncItem';
+import { DiagnosticsItem } from './DiagnosticsItem';
 import { McpOnDemandItem } from './McpOnDemandItem';
 import { ModuleModelItem } from './ModuleModelItem';
 import { NewWorkbenchItem } from './NewWorkbenchItem';
@@ -34,6 +35,7 @@ export function WorkbenchSettingsSection({ t }: WorkbenchSettingsSectionProps): 
       <section className={styles.advanced} aria-labelledby={advancedTitleId}>
         <h3 id={advancedTitleId} className={styles.advancedTitle}>{t('workbenchSettings.advanced')}</h3>
         <ConfigSyncItem t={t} />
+        <DiagnosticsItem t={t} />
         {desktop ? null : <NewWorkbenchItem t={t} />}
       </section>
     </section>
