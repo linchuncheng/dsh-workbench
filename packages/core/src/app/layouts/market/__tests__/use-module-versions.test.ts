@@ -417,11 +417,11 @@ describe('更新挂起期间每 800ms 一趟的落地轮询（只读已安装）
 describe('读失败时的陈旧标记', () => {
   it('★ 手里有旧清单：失败只标可能过期，旧数据留着', async () => {
     vi.mocked(readModuleVersions).mockResolvedValueOnce(versions('1.0.0'));
-    await runModuleVersionsRead({ force: true, scope: 'modules' });
+    await runModuleVersionsRead(true, false, 'modules');
     expect(moduleVersionsValue().modules?.[0]?.installed).toBe('1.0.0');
 
     vi.mocked(readModuleVersions).mockResolvedValueOnce({ ok: false, error: { code: 'read-failed', message: '读不了' } });
-    await runModuleVersionsRead({ force: true, scope: 'modules' });
+    await runModuleVersionsRead(true, false, 'modules');
 
     const state = moduleVersionsValue();
     expect(state.stale).toBe(true);
@@ -430,9 +430,9 @@ describe('读失败时的陈旧标记', () => {
 
   it('★ 再读成功就把标记摘掉', async () => {
     vi.mocked(readModuleVersions).mockResolvedValueOnce({ ok: false, error: { code: 'read-failed', message: '读不了' } });
-    await runModuleVersionsRead({ force: true, scope: 'modules' });
+    await runModuleVersionsRead(true, false, 'modules');
     vi.mocked(readModuleVersions).mockResolvedValueOnce(versions('2.0.0'));
-    await runModuleVersionsRead({ force: true, scope: 'modules' });
+    await runModuleVersionsRead(true, false, 'modules');
 
     expect(moduleVersionsValue().stale).toBe(false);
   });
