@@ -6,7 +6,7 @@ export interface UnreadableModuleRow {
 }
 
 export function unreadableBadgeText(t: Translate, count: number): string {
-  return t('market.unreadable.badge', { count: String(count) });
+  return t(count === 1 ? 'market.unreadable.badge.one' : 'market.unreadable.badge.other', { count: String(count) });
 }
 
 export function unreadableTitle(t: Translate): string {
