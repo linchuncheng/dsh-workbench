@@ -3,7 +3,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { isDiagCode } from '../contract/diagnostics.js';
+import { isDiagCode } from '../contract/blocker.js';
 
 const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
 const SOURCE = /\.(?:ts|tsx|mjs|cjs|js)$/;

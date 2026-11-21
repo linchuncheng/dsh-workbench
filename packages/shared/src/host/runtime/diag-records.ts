@@ -1,12 +1,18 @@
+import { randomUUID } from 'node:crypto';
+import { now } from './time.js';
 import {
   DIAG_DETAIL_KEYS,
   DIAG_FALLBACK_CODE,
   DIAG_LEVELS,
+  diagMatches,
   diagSpecOf,
   type DiagArea,
   type DiagClass,
+  type DiagFilter,
   type DiagLevel,
-} from '../../contract/diagnostics.js';
+} from '../../contract/blocker.js';
+
+export type { DiagFilter } from '../../contract/blocker.js';
 
 export interface DiagSubject {
   readonly workspace?: string;
@@ -45,12 +51,7 @@ export interface DiagInput {
   readonly detail?: Readonly<Record<string, unknown>>;
 }
 
-export interface DiagFilter {
-  readonly since?: number;
-  readonly until?: number;
-  readonly area?: DiagArea;
-  readonly class?: DiagClass;
-  readonly code?: string;
+export interface DiagRecentFilter extends DiagFilter {
   readonly limit?: number;
 }
 
@@ -71,7 +72,7 @@ export interface DiagRecorderOptions {
 
 export interface DiagRecorder {
   record(input: DiagInput): DiagRecord | null;
-  recent(filter?: DiagFilter): readonly DiagRecord[];
+  recent(filter?: DiagRecentFilter): readonly DiagRecord[];
   counts(): ReadonlyMap<string, DiagCount>;
   subscribe(listener: (record: DiagRecord) => void): () => void;
 }
@@ -112,8 +113,8 @@ function defaultLevel(): DiagLevel {
 }
 
 export function createDiagRecorder(options: DiagRecorderOptions = {}): DiagRecorder {
-  const clock = options.clock ?? (() => Date.now());
-  const nextCorrId = options.nextCorrId ?? (() => Math.random().toString(36).slice(2, 10));
+  const clock = options.clock ?? now;
+  const nextCorrId = options.nextCorrId ?? (() => randomUUID().slice(0, 8));
   const cap = options.cap ?? DIAG_RING_CAP;
   const listeners = new Set<(record: DiagRecord) => void>();
   const sinks = [...(options.sinks ?? [])];
@@ -197,16 +198,7 @@ export function createDiagRecorder(options: DiagRecorderOptions = {}): DiagRecor
   return {
     record,
     recent(filter = {}) {
-      const since = filter.since ?? Number.NEGATIVE_INFINITY;
-      const until = filter.until ?? Number.POSITIVE_INFINITY;
-      const hit = ring.filter(
-        (one) =>
-          one.ts >= since &&
-          one.ts <= until &&
-          (filter.area === undefined || one.area === filter.area) &&
-          (filter.class === undefined || one.class === filter.class) &&
-          (filter.code === undefined || one.code === filter.code),
-      );
+      const hit = ring.filter((one) => diagMatches(one, filter));
       const limit = filter.limit ?? hit.length;
       return hit.slice(Math.max(0, hit.length - limit));
     },

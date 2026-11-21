@@ -7,7 +7,7 @@ import {
   DIAG_FALLBACK_CODE,
   diagSpecOf,
   isDiagCode,
-} from '../diagnostics.js';
+} from '../blocker.js';
 import { en } from '../../i18n/en.js';
 import { zh } from '../../i18n/zh.js';
 

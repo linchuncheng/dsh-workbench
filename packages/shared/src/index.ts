@@ -43,7 +43,6 @@ export * from './config/storage.js';
 export * from './contract/adapters.js';
 export * from './contract/approval.js';
 export * from './contract/blocker.js';
-export * from './contract/diagnostics.js';
 export * from './contract/capabilities.js';
 export * from './contract/cli.js';
 export * from './contract/command.js';
