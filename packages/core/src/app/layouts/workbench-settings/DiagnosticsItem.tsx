@@ -4,8 +4,8 @@ import { Button, IconRefreshOutlineRegular } from '@deepseek-ai/dsh-client-ui-pr
 import { useApiResource } from '@/shared/hooks/use-api-resource';
 import { useHostWrite } from '@/shared/hooks/use-host-write';
 import { SettingsRow } from './SettingsRow';
+import { SettingsDisclosure } from './SettingsDisclosure';
 import { diagRowsOf, exportResultOf, type DiagSummaryLike, type ExportOutcome } from './diag-view';
-import styles from './DiagnosticsItem.module.css';
 
 const DIAG_ROUTE = 'diag/records';
 
@@ -13,15 +13,16 @@ export interface DiagnosticsItemProps {
   readonly t: Translate;
 }
 
-function outcomeText(outcome: ExportOutcome, t: Translate): string | null {
+function outcomeText(outcome: ExportOutcome, t: Translate): string {
   if (outcome.kind === 'busy') return t('diag.exporting');
   if (outcome.kind === 'done') return t('diag.exported', { dir: outcome.dir });
   if (outcome.kind === 'failed') return `${t('diag.exportFailed')}${outcome.message}`;
-  return null;
+  return '';
 }
 
 export function DiagnosticsItem({ t }: DiagnosticsItemProps): JSX.Element {
   const [token, setToken] = useState(0);
+  const [open, setOpen] = useState(false);
   const diag = useApiResource<DiagSummaryLike>(DIAG_ROUTE, { limit: '50' }, token);
   const exporter = useHostWrite({ channel: 'actions', resource: 'export-diagnostics', networkText: t('diag.exportFailed') });
   const [outcome, setOutcome] = useState<ExportOutcome>({ kind: 'idle' });
@@ -29,6 +30,7 @@ export function DiagnosticsItem({ t }: DiagnosticsItemProps): JSX.Element {
   const rows = diag.phase === 'ready' && diag.value !== undefined ? diagRowsOf(diag.value) : [];
   const host = diag.phase === 'ready' ? (diag.value as { host?: { node?: string; profileDir?: string | null } } | undefined)?.host : undefined;
   const text = outcomeText(outcome, t);
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
 
   const runExport = (): void => {
     setOutcome({ kind: 'busy' });
@@ -39,33 +41,36 @@ export function DiagnosticsItem({ t }: DiagnosticsItemProps): JSX.Element {
   };
 
   return (
-    <SettingsRow title={t('diag.title')} description={t('diag.hint')}>
-      <div className={styles.body}>
+    <SettingsRow
+      title={t('diag.title')}
+      description={t('diag.hint')}
+      control={
+        <Button type="button" size="sm" variant="outline" disabled={outcome.kind === 'busy'} onClick={runExport}>
+          <IconRefreshOutlineRegular />
+          {t('diag.export')}
+        </Button>
+      }
+      error={text === '' ? null : text}
+    >
+      <SettingsDisclosure
+        title={t('diag.listTitle')}
+        meta={rows.length === 0 ? t('diag.empty') : t('diag.total', { count: String(total) })}
+        open={open}
+        onToggle={() => setOpen(!open)}
+      >
+        <ul>
+          {rows.map((row) => (
+            <li key={row.code}>
+              {row.code} · {row.area} · {t('diag.count', { count: String(row.count) })}
+            </li>
+          ))}
+        </ul>
         {host === undefined ? null : (
-          <p className={styles.meta}>{t('diag.host', { node: host.node ?? '-', dir: host.profileDir ?? '-' })}</p>
+          <p>
+            {t('diag.host', { node: host.node ?? '-', dir: host.profileDir ?? '-' })}
+          </p>
         )}
-        {rows.length === 0 ? (
-          <p className={styles.empty}>{t('diag.empty')}</p>
-        ) : (
-          <ul className={styles.list}>
-            {rows.map((row) => (
-              <li key={row.code} className={styles.row}>
-                <span className={styles.dot} aria-hidden="true" />
-                <code className={styles.code}>{row.code}</code>
-                <span className={styles.area}>{row.area}</span>
-                <span className={styles.count}>{t('diag.count', { count: String(row.count) })}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className={styles.actions}>
-          <Button type="button" size="sm" variant="outline" disabled={outcome.kind === 'busy'} onClick={runExport}>
-            <IconRefreshOutlineRegular />
-            {t('diag.export')}
-          </Button>
-          {text === null ? null : <span className={styles.outcome}>{text}</span>}
-        </div>
-      </div>
+      </SettingsDisclosure>
     </SettingsRow>
   );
 }

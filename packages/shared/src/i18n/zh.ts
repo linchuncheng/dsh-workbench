@@ -139,6 +139,8 @@ export const zh = {
   'panels.noneInstalledHint': '安装完成后，这些模块会重新出现在这里；可选择要添加到看板的模块。',
   'panels.market.installed': '已安装',
   'diag.host': 'node {node} · 配置目录 {dir}',
+  'diag.listTitle': '最近的故障',
+  'diag.total': '共 {count} 次',
   'diag.title': '诊断',
   'diag.hint': '只读：最近的故障记录与导出目录，不改任何设置。',
   'diag.empty': '最近没有记录到故障。',
