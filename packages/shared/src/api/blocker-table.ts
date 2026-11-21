@@ -14,10 +14,10 @@ function copyAction(t: Translate, text: string): BlockerAction {
 }
 
 /**
- * 把一次读失败翻成一张卡住态，交给卡片直接渲染。
- * @param error 读口回的错误；undefined 表示连错误都没拿到（多半是网络断，回「原因未知」）。
- * @param t 文案函数，只取 blocker.* 命名空间的键。
- * @param context 判定现场；platform 缺省时标题不带平台名。
+ * 把一条诊断码翻成卡住态：标题取该码自己的文案，不认识的码退回兜底那条。
+ * @param code 诊断码（`DIAG_*`）；不在注册表里就按兜底码处理。
+ * @param t 文案函数，只取 diag.code.* 与 blocker.* 命名空间的键。
+ * @param detail 可选的技术细节，原样透传；给 null 就不带。
  * @returns 一定有一张卡，actions 至少一颗「重试」。
  */
 export function blockerOfDiag(
@@ -35,6 +35,13 @@ export function blockerOfDiag(
   };
 }
 
+/**
+ * 把一次读失败翻成一张卡住态，交给卡片直接渲染。
+ * @param error 读口回的错误；undefined 表示连错误都没拿到（多半是网络断，回「原因未知」）。
+ * @param t 文案函数，只取 blocker.* 命名空间的键。
+ * @param context 判定现场；platform 缺省时标题不带平台名。
+ * @returns 一定有一张卡，actions 至少一颗「重试」。
+ */
 export function blockerOfError(
   error: ApiError | undefined,
   t: Translate,
