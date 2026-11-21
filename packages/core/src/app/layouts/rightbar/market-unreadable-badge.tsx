@@ -54,7 +54,8 @@ export function MarketUnreadableBadge({
         <ul className={styles.list}>
           {rows.map((row) => (
             <li key={`${row.pkg}:${row.reason}`} className={styles.line}>
-              {lineOf(row)}
+              {row.pkg === '' ? null : <code className={styles.pkg}>{row.pkg}</code>}
+              <span className={styles.reason}>{row.reason}</span>
             </li>
           ))}
         </ul>
