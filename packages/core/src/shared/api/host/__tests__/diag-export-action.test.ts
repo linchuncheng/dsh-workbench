@@ -43,6 +43,16 @@ describe('导出诊断目录的动作', () => {
     fs.rmSync(profileDir, { recursive: true, force: true });
   });
 
+  it('★ 有适配器时把平台名写进 env', async () => {
+    const withAdapters = {
+      get: (name: string) => (name === 'workbenchAdapters' ? { runtime: { platformName: () => 'darwin' } } : undefined),
+    } as unknown as DshHostContext;
+    const result = (await diagExportAction(withAdapters).handle({})) as { ok: boolean; dir: string };
+    const env = JSON.parse(fs.readFileSync(path.join(result.dir, 'env.json'), 'utf8')) as Record<string, unknown>;
+
+    expect(env['platform']).toBe('darwin');
+  });
+
   it('★ 有自更新日志时把尾巴带上', async () => {
     fs.writeFileSync(path.join(root, 'self-update.log'), 'update failed: boom\n', 'utf8');
     const result = (await diagExportAction(ctx).handle({})) as { ok: boolean; dir: string };

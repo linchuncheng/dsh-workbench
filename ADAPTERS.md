@@ -37,7 +37,9 @@ interface AdapterSet {
   `supply` 只给探针与市场用。
 - `ProbePort`：`probeUnits` / `registerPreflight` / `declaredPluginCommands`。
 - `RuntimePort`：必需 `packageRoot` / `capabilities` / `commands` / `runners` / `health` / `seed`；
-  可选 `profile` / `commandSurface` / `check` / `frontApp` / `bringToFront` / `raiseBrowser` / `versionReport`。
+  可选 `profile` / `platformName` / `commandSurface` / `check` / `frontApp` / `bringToFront` / `raiseBrowser` / `versionReport`。
+  `platformName` 回一个平台名（`darwin` / `win32` / `linux` / `other`），给诊断导出这类只需要
+  「哪台系统」的业务用 —— 原始判定留在适配器里，外壳不读 `process.platform`。
   `versionReport` 交的是"哪些插件跟这一版运行时对不上"，外壳把它喂给探针 —— 探针不自己去读
   运行时的文件。
   `frontApp` 问"现在前台是哪个应用"，`bringToFront` 把它带回前台 —— 录制结束时把工作台窗口

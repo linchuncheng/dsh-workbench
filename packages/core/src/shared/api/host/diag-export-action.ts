@@ -1,6 +1,7 @@
 import type { DshHostContext, PanelStateStore, PostResource } from '@dsh-workbench/shared/host';
 import { join } from 'node:path';
-import { PANEL_STATE_SERVICE, nowIso, profileManifestOf, unreadableModules, workbenchRoot } from '@dsh-workbench/shared/host';
+import { PANEL_STATE_SERVICE, WORKBENCH_ADAPTERS, nowIso, profileManifestOf, unreadableModules, workbenchRoot } from '@dsh-workbench/shared/host';
+import type { AdapterSet } from '@dsh-workbench/shared/host';
 import { exportDiagBundle, type DiagExportResult } from './diag-export.js';
 import { diagRoutesOf } from './diag-routes.js';
 import { logTailOf } from './diag-export-logs.js';
@@ -10,6 +11,11 @@ export function diagProfileDirOf(ctx: DshHostContext): string | null {
 }
 
 export const DIAG_EXPORT_RESOURCE = 'export-diagnostics';
+
+function platformOf(ctx: DshHostContext): string | null {
+  const adapters = ctx.get(WORKBENCH_ADAPTERS, false) as AdapterSet | undefined;
+  return adapters?.runtime.platformName?.(ctx) ?? null;
+}
 
 export function diagExportAction(ctx: DshHostContext): PostResource {
   return {
@@ -24,7 +30,7 @@ export function diagExportAction(ctx: DshHostContext): PostResource {
         recorder: diagRoutesOf(root).recorder,
         root,
         at: nowIso(),
-        env: { node: process.versions.node, profileDir: dir },
+        env: { node: process.versions.node, platform: platformOf(ctx), profileDir: dir },
         config: {
           name: manifest?.['name'] ?? null,
           dependencies: Object.keys((manifest?.['dependencies'] as Record<string, unknown>) ?? {}).length,

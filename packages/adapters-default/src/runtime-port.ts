@@ -5,6 +5,7 @@ import type { RuntimePort } from '@dsh-workbench/shared/host';
 import { packageRootOf, seamOf } from '@dsh-workbench/shared/host';
 import { backgroundLine, libsBinDir } from '@dsh-workbench/adapter-runtime';
 
+import { platformName } from '@dsh-workbench/adapter-probe';
 import { lastBridgeFacts, raiseBrowser, rememberFrontApp, restoreFocus } from '@dsh-workbench/adapter-probe';
 import {
   ensureLibsOpencliPeer,
@@ -53,6 +54,10 @@ const OPENCLI_RUNNER_TIMEOUT_MS = 30 * 60_000;
 export function createRuntimePort(): RuntimePort {
   return {
     packageRoot: packageRootOf,
+
+    platformName() {
+      return platformName();
+    },
 
     capabilities() {
       return {
