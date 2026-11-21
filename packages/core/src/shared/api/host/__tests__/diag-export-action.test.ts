@@ -39,7 +39,16 @@ describe('导出诊断目录的动作', () => {
     expect(config['name']).toBe('workbench');
     expect((config['unreadable'] as unknown[]).length).toBe(1);
     expect(runtime['panels']).toBeTruthy();
+    expect((runtime['logs'] as Record<string, unknown>)['selfUpdate']).toBeNull();
     fs.rmSync(profileDir, { recursive: true, force: true });
+  });
+
+  it('★ 有自更新日志时把尾巴带上', async () => {
+    fs.writeFileSync(path.join(root, 'self-update.log'), 'update failed: boom\n', 'utf8');
+    const result = (await diagExportAction(ctx).handle({})) as { ok: boolean; dir: string };
+    const runtime = JSON.parse(fs.readFileSync(path.join(result.dir, 'runtime.json'), 'utf8')) as Record<string, unknown>;
+
+    expect((runtime['logs'] as Record<string, unknown>)['selfUpdate']).toContain('update failed: boom');
   });
 
   it('★ 资源名固定，调用一次产出目录并在包内清单里', async () => {
