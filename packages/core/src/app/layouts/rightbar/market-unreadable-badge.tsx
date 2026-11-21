@@ -1,11 +1,17 @@
 import { createElement as h, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
-import { Button, IconWarningOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives';
+import { Button, IconWarningOutlineRegular, MarkdownText, Modal } from '@deepseek-ai/dsh-client-ui-primitives';
+import { markdownLabelsOf } from '../market/discover-doc';
 import { unreadableBadgeText, unreadableLead, unreadableTitle, type UnreadableModuleRow } from './market-unreadable-text';
 import styles from './MarketUnreadableBadge.module.css';
 
 function lineOf(row: UnreadableModuleRow): string {
   return row.pkg === '' ? row.reason : `${row.pkg}：${row.reason}`;
+}
+
+function markdownOf(t: Translate, rows: readonly UnreadableModuleRow[]): string {
+  const items = rows.map((row) => (row.pkg === '' ? `- ${row.reason}` : `- \`${row.pkg}\`：${row.reason}`));
+  return [unreadableLead(t), '', ...items].join('\n');
 }
 
 export function MarketUnreadableBadge({
@@ -45,7 +51,6 @@ export function MarketUnreadableBadge({
         onClose={() => setOpen(false)}
         title={unreadableTitle(t)}
         tone="warning"
-        description={unreadableLead(t)}
         closeLabel={t('market.unreadable.close')}
         footer={
           <Button type="button" size="sm" variant="primary" onClick={copyAll}>
@@ -53,14 +58,7 @@ export function MarketUnreadableBadge({
           </Button>
         }
       >
-        <ul className={styles.list}>
-          {rows.map((row) => (
-            <li key={`${row.pkg}:${row.reason}`} className={styles.line}>
-              {row.pkg === '' ? null : <code className={styles.pkg}>{row.pkg}</code>}
-              <span className={styles.reason}>{row.reason}</span>
-            </li>
-          ))}
-        </ul>
+        <MarkdownText text={markdownOf(t, rows)} labels={markdownLabelsOf(t)} variant="compact" />
       </Modal>
     </span>
   );
