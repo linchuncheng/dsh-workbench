@@ -108,8 +108,8 @@
     "@types/which": "^3.0.4",
     "@vitest/coverage-v8": "^5.0.2",
     "esbuild": "^0.28.2",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "5.9",
     "vite": "^8.3.1",
     "vitest": "^5.0.2"
