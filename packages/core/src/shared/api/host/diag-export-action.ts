@@ -1,5 +1,5 @@
-import type { DshHostContext, PostResource } from '@dsh-workbench/shared/host';
-import { nowIso, workbenchRoot } from '@dsh-workbench/shared/host';
+import type { DshHostContext, PanelStateStore, PostResource } from '@dsh-workbench/shared/host';
+import { PANEL_STATE_SERVICE, nowIso, profileManifestOf, unreadableModules, workbenchRoot } from '@dsh-workbench/shared/host';
 import { exportDiagBundle, type DiagExportResult } from './diag-export.js';
 import { diagRoutesOf } from './diag-routes.js';
 
@@ -11,13 +11,20 @@ export function diagExportAction(ctx: DshHostContext): PostResource {
     unit: 'workbench',
     handle(): DiagExportResult {
       const root = workbenchRoot();
+      const dir = (ctx.get('profileContext') as { readonly dir?: string } | undefined)?.dir ?? null;
+      const manifest = profileManifestOf(dir);
+      const panels = (ctx.get(PANEL_STATE_SERVICE) as PanelStateStore | undefined)?.snapshot(null) ?? null;
       return exportDiagBundle({
         recorder: diagRoutesOf(root).recorder,
         root,
         at: nowIso(),
-        env: { node: process.versions.node, platform: process.platform },
-        config: { hasContext: ctx.get('profileContext') !== undefined },
-        runtime: {},
+        env: { node: process.versions.node, platform: process.platform, profileDir: dir },
+        config: {
+          name: manifest?.['name'] ?? null,
+          dependencies: Object.keys((manifest?.['dependencies'] as Record<string, unknown>) ?? {}).length,
+          unreadable: [...unreadableModules(dir)],
+        },
+        runtime: { panels },
         checks: {},
       });
     },
