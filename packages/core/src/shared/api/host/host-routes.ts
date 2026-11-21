@@ -11,6 +11,7 @@ import {
   moduleVersionsHandler,
 } from '@/shared/api/host/bundle-routes';
 import { gitProbeHandler } from '@/shared/api/host/git-routes';
+import { DIAG_RECORDS_ROUTE, diagRecordsHandler } from '@/shared/api/host/diag-routes';
 import {
   BUNDLE_INSPECT_ROUTE,
   BUNDLE_REGISTRIES_ROUTE,
@@ -23,8 +24,9 @@ export function createHostRoutes(input: {
   readonly runtimes: Readonly<Record<string, RuntimeStatus>>;
   readonly running: string | undefined;
   readonly profile: ProfilePort;
+  readonly diag?: Pick<Parameters<typeof diagRecordsHandler>[0], 'recorder' | 'readDisk' | 'clock'> | undefined;
 }): RouteTable {
-  const { ctx, facts, runtimes, running, profile } = input;
+  const { ctx, facts, runtimes, running, profile, diag } = input;
   const includePrerelease = (): boolean =>
     (ctx.get(WORKBENCH_SETTINGS_SERVICE) as WorkbenchSettingsStore | undefined)?.read().includePrerelease === true;
   return {
@@ -34,6 +36,7 @@ export function createHostRoutes(input: {
     [BUNDLE_REGISTRIES_ROUTE]: bundleRegistriesHandler(ctx),
     [BUNDLE_INSPECT_ROUTE]: bundleInspectHandler(ctx),
     [MARKET_GIT_PROBE_ROUTE]: gitProbeHandler(),
+    ...(diag === undefined ? {} : { [DIAG_RECORDS_ROUTE]: diagRecordsHandler(diag) }),
     [MODULE_VERSIONS_ROUTE]: moduleVersionsHandler(
       ctx,
       seamOf(ctx),

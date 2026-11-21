@@ -8,6 +8,7 @@ import { bootOkAction } from '@/shared/api/host/boot-ok';
 import { provideGitProcessSeam } from '@/shared/api/host/git-process';
 import { browserExtensionDir, shippedAdapterSet } from '@/shared/api/host/shipped-adapter-set';
 import { createHostRoutes } from '@/shared/api/host/host-routes';
+import { diagRoutesOf } from '@/shared/api/host/diag-routes';
 import { assembleHostUnits } from '@/app/units/host';
 import { createPostChannels } from '@/shared/api/host/post-channels';
 import { takeHeldNotices, type AgentsLookup } from '@/shared/api/host/diy-debug-act';
@@ -90,6 +91,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     runtimes: runtimeHealth,
     running: runningVersionOf(import.meta.url),
     profile: adapters.profile,
+    diag: diagRoutesOf(workbenchRoot()),
   });
   const baseHealth = routes.health;
   const adapterFailure = loaded.ok || loaded.failure === 'not-configured' ? null : loaded.failure;

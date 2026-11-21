@@ -1,0 +1,121 @@
+import { existsSync, readFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
+import { join } from 'node:path';
+import { appendTextFile } from './fs-write.js';
+import { now } from './time.js';
+import type { DiagRecord, DiagSink } from './diag-records.js';
+
+export const DIAG_RETENTION_DAYS = 7;
+export const DIAG_DAY_BYTES = 5 * 1024 * 1024;
+export const DIAG_FILE_PREFIX = 'record-';
+
+dayjs.extend(utc);
+
+const SHARD = /^record-(\d{4}-\d{2}-\d{2})-(\d+)\.jsonl$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface DiagFileSinkOptions {
+  readonly dir: string;
+  readonly retentionDays?: number | undefined;
+  readonly dayBytes?: number | undefined;
+  readonly clock?: (() => number) | undefined;
+  readonly pid?: number | undefined;
+}
+
+export interface DiagReadResult {
+  readonly records: readonly DiagRecord[];
+  readonly skipped: number;
+  readonly read: number;
+}
+
+export interface DiagFileSink {
+  readonly sink: DiagSink;
+  readDay(day: string): DiagReadResult;
+  cleanup(): number;
+  pathOf(day: string): string;
+}
+
+function dayOf(ts: number): string {
+  return dayjs(ts).utc().format('YYYY-MM-DD');
+}
+
+function shardsIn(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((name) => SHARD.test(name));
+}
+
+export function createDiagFileSink(options: DiagFileSinkOptions): DiagFileSink {
+  const retained = options.retentionDays ?? DIAG_RETENTION_DAYS;
+  const capBytes = options.dayBytes ?? DIAG_DAY_BYTES;
+  const clock = options.clock ?? now;
+  const pid = options.pid ?? process.pid;
+  let day = '';
+  let path = '';
+  let bytes = 0;
+  let capped = false;
+
+  const pathOf = (at: string): string => join(options.dir, `${DIAG_FILE_PREFIX}${at}-${String(pid)}.jsonl`);
+
+  const cleanup = (): number => {
+    const cutoff = clock() - retained * DAY_MS;
+    let removed = 0;
+    for (const name of shardsIn(options.dir)) {
+      const match = SHARD.exec(name);
+      if (match === null || match[1] === undefined) continue;
+      const at = Date.parse(`${match[1]}T00:00:00.000Z`);
+      if (!Number.isFinite(at) || at >= cutoff) continue;
+      unlinkSync(join(options.dir, name));
+      removed += 1;
+    }
+    return removed;
+  };
+
+  const rollTo = (at: string): void => {
+    if (day === at) return;
+    day = at;
+    path = pathOf(at);
+    bytes = existsSync(path) ? statSync(path).size : 0;
+    capped = false;
+    cleanup();
+  };
+
+  const readDay = (asked: string): DiagReadResult => {
+    const names = shardsIn(options.dir).filter((name) => SHARD.exec(name)?.[1] === asked);
+    const records: DiagRecord[] = [];
+    let skipped = 0;
+    let read = 0;
+    const noteBroken = (): void => {
+      skipped += 1;
+    };
+    for (const name of names) {
+      const text = readFileSync(join(options.dir, name), 'utf8');
+      for (const line of text.split('\n')) {
+        if (line.trim() === '') continue;
+        read += 1;
+        try {
+          records.push(JSON.parse(line) as DiagRecord);
+        } catch {
+          noteBroken();
+        }
+      }
+    }
+    records.sort((left, right) => left.ts - right.ts);
+    return { records, skipped, read };
+  };
+
+  const sink: DiagSink = (record) => {
+    rollTo(dayOf(clock()));
+    if (capped) return;
+    const line = `${JSON.stringify(record)}\n`;
+    const size = Buffer.byteLength(line);
+    if (bytes + size > capBytes) {
+      capped = true;
+      throw new Error(`诊断记录到了当天的上限（${String(capBytes)} 字节），先停止写入：${path}`);
+    }
+    appendTextFile(path, line);
+    bytes += size;
+  };
+
+  return { sink, readDay, cleanup, pathOf };
+}
