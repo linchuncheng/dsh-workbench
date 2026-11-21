@@ -7,7 +7,6 @@ import type { AdapterSet, LongTaskBase, LongTaskRegistry } from '@dsh-workbench/
 import { registerSurfaceTool } from './diy-surface';
 import { registerDebugTools } from './diy-debug-tools';
 import { registerLogTools } from './diy-logs';
-import { registerDiagTools } from './diag-tool';
 import { registerBrowserTools } from './diy-browser-tools';
 
 async function unitsAt(
@@ -357,7 +356,6 @@ export function registerDiyTools(
     tools.register(reconTool),
     ...registerSpecTool(ctx, tools),
     ...registerLogTools(ctx, tools),
-    ...registerDiagTools(ctx, tools),
     ...(browserBridgeOn(ctx) ? registerBrowserTools(ctx, tools) : []),
     ...registerDebugTools(ctx, tools, debug),
     tools.register(showTool),
