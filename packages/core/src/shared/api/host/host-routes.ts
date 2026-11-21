@@ -43,6 +43,7 @@ export function createHostRoutes(input: {
       running,
       () => profile.selfUpdateView(basename(profile.dirOf(ctx) ?? '')),
       includePrerelease,
+      diag?.recorder,
     ),
   };
 }

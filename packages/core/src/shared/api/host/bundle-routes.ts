@@ -1,5 +1,5 @@
 import { basename, dirname } from 'node:path';
-import type { DshHostContext } from '@dsh-workbench/shared/host';
+import type { DiagRecorder, DshHostContext } from '@dsh-workbench/shared/host';
 import {
   declarationApiVersionOf,
   declarationProblemsOf,
@@ -32,6 +32,7 @@ import {
   type WorkbenchSelfUpdate,
 } from '@/kernel/contract/bundle-install';
 import { migrationFollowUp, type WorkbenchMigrationFollowUp } from './migration-follow-up.js';
+import { noteUnreadableModules } from './module-unreadable-note.js';
 import { dependencyReader } from './profile-dependencies.js';
 
 function registryOf(search: URLSearchParams): BundleRegistry | undefined {
@@ -233,6 +234,7 @@ export function moduleVersionsHandler(
   running?: string | undefined,
   selfUpdate?: (() => WorkbenchSelfUpdate | undefined) | undefined,
   includePrerelease?: (() => boolean) | undefined,
+  diag?: DiagRecorder | undefined,
 ): RouteHandler {
   return async (search) => {
     const supply = supplyPortOf(ctx);
@@ -240,6 +242,7 @@ export function moduleVersionsHandler(
     const manager = supply.readBundleManager(ctx);
     const dir = supply.profileDirOf(ctx);
     const unreadable = supply.unreadableModules?.(dir) ?? [];
+    noteUnreadableModules(diag, unreadable);
     if (manager === undefined) {
       const payload: ModuleVersionsPayload = {
         modules: [],

@@ -130,6 +130,22 @@ describe('诊断记录器', () => {
     expect(good).toHaveBeenCalledTimes(2);
   });
 
+  it('★ once：同一个键只记一次（轮询不刷屏），不同键各记一条', () => {
+    const recorder = recorderOf();
+
+    expect(recorder.once('mod:@a', { code: 'MODULE_UNREADABLE', subject: { pkg: '@a' } })).not.toBeNull();
+    expect(recorder.once('mod:@a', { code: 'MODULE_UNREADABLE', subject: { pkg: '@a' } })).toBeNull();
+    expect(recorder.once('mod:@b', { code: 'MODULE_UNREADABLE', subject: { pkg: '@b' } })).not.toBeNull();
+
+    expect(recorder.recent({ code: 'MODULE_UNREADABLE' })).toHaveLength(2);
+  });
+
+  it('once 被级别过滤掉时不占键，之后够级别的还能记上', () => {
+    const recorder = recorderOf({ level: 'error' });
+    expect(recorder.once('k', { code: 'READ_FAILED', level: 'info' })).toBeNull();
+    expect(recorder.once('k', { code: 'READ_FAILED', level: 'error' })).not.toBeNull();
+  });
+
   it('级别过滤：低于阈值的记录不落内存、不进 sink', () => {
     const seen: DiagRecord[] = [];
     const recorder = recorderOf({ level: 'error', sinks: [(record) => seen.push(record)] });

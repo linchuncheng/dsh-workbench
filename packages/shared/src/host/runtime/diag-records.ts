@@ -72,6 +72,7 @@ export interface DiagRecorderOptions {
 
 export interface DiagRecorder {
   record(input: DiagInput): DiagRecord | null;
+  once(key: string, input: DiagInput): DiagRecord | null;
   recent(filter?: DiagRecentFilter): readonly DiagRecord[];
   counts(): ReadonlyMap<string, DiagCount>;
   subscribe(listener: (record: DiagRecord) => void): () => void;
@@ -119,6 +120,7 @@ export function createDiagRecorder(options: DiagRecorderOptions = {}): DiagRecor
   const listeners = new Set<(record: DiagRecord) => void>();
   const sinks = [...(options.sinks ?? [])];
   const failedSinks = new Set<number>();
+  const seenOnce = new Set<string>();
   const countsByCode = new Map<string, DiagCount>();
   const ring: DiagRecord[] = [];
   const threshold = options.level ?? defaultLevel();
@@ -197,6 +199,12 @@ export function createDiagRecorder(options: DiagRecorderOptions = {}): DiagRecor
 
   return {
     record,
+    once(key, input) {
+      if (seenOnce.has(key)) return null;
+      const made = record(input);
+      if (made !== null) seenOnce.add(key);
+      return made;
+    },
     recent(filter = {}) {
       const hit = ring.filter((one) => diagMatches(one, filter));
       const limit = filter.limit ?? hit.length;
