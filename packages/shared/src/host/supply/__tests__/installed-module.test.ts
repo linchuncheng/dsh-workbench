@@ -63,3 +63,31 @@ describe('已安装模块的读取', () => {
     expect(unreadableModules(dir)).toHaveLength(1);
   });
 });
+
+describe('dsh 自带的 bundle', () => {
+  it('★ 只写在 dsh.profile.bundles、不在 dependencies 里的，不算「装了但读不出来」', () => {
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({
+        dependencies: {},
+        dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'] } },
+      }),
+      'utf8',
+    );
+
+    expect(unreadableModules(dir)).toEqual([]);
+  });
+
+  it('同样的清单里只要有一个真依赖读不到，仍然报它、不报内置包', () => {
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({
+        dependencies: { 'acme-missing': '1.0.0' },
+        dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      }),
+      'utf8',
+    );
+
+    expect(unreadableModules(dir).map((one) => one.pkg)).toEqual(['acme-missing']);
+  });
+});
