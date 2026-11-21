@@ -1,5 +1,8 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DIAG_BUNDLE_SCHEMA, buildDiagBundle, redactText } from '../diag-bundle.js';
+import { DIAG_BUNDLE_SCHEMA, buildDiagBundle, redactText, writeDiagBundle } from '../diag-bundle.js';
 import type { DiagRecord } from '../diag-records.js';
 
 function recordOf(at: number): DiagRecord {
@@ -61,5 +64,25 @@ describe('诊断目录', () => {
     expect(bundle.truncated[0]).toBe('records');
     expect(bundle.manifest['truncated']).toEqual(bundle.truncated);
     expect((bundle.files['records.jsonl'] ?? '').length).toBeLessThan(many.length * 40);
+  });
+});
+
+describe('诊断目录写盘', () => {
+  it('★ 写到 <root>/diagnostics/<时间戳>/，清单里的文件都在', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-bundle-'));
+    const bundle = buildDiagBundle(inputOf());
+
+    const dir = writeDiagBundle(root, '2026-11-21T10:00:00.000Z', bundle);
+
+    expect(dir).toBe(path.join(root, 'diagnostics', '2026-11-21T10-00-00-000Z'));
+    const names = fs.readdirSync(dir).sort();
+    expect(names).toEqual(['checks.json', 'config.json', 'env.json', 'manifest.json', 'records.jsonl', 'runtime.json']);
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8')) as Record<string, unknown>;
+    expect(manifest['schema']).toBe(DIAG_BUNDLE_SCHEMA);
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('写不进去时抛（调用方据此记一条并给出错误码）', () => {
+    expect(() => writeDiagBundle('/dev/null/nope', '2026-11-21T10:00:00.000Z', buildDiagBundle(inputOf()))).toThrow();
   });
 });

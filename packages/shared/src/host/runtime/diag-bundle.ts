@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import { join } from 'node:path';
 import { basename } from 'node:path';
+import { writeTextFile } from './fs-write.js';
 import type { DiagRecord } from './diag-records.js';
 
 export const DIAG_BUNDLE_SCHEMA = 1;
@@ -91,4 +93,15 @@ export function buildDiagBundle(input: DiagBundleInput): DiagBundle {
     manifest,
     truncated,
   };
+}
+
+export function diagBundleDir(root: string, at: string): string {
+  const stamp = at.replace(/[:.]/g, '-');
+  return join(root, 'diagnostics', stamp);
+}
+
+export function writeDiagBundle(root: string, at: string, bundle: DiagBundle): string {
+  const dir = diagBundleDir(root, at);
+  for (const [name, text] of Object.entries(bundle.files)) writeTextFile(join(dir, name), text);
+  return dir;
 }
