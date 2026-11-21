@@ -10,6 +10,7 @@ import type {
   WorkbenchSettingsRequest,
 } from '@/kernel/contract/workbench-settings';
 import { WORKBENCH_SETTINGS_RESOURCE, WORKBENCH_SETTINGS_ROUTE } from '@/kernel/contract/workbench-settings';
+import { DIY_PRESET_SOURCE_DEFAULT } from '@/kernel/contract/diy';
 
 export { WORKBENCH_SETTINGS_ROUTE } from '@/kernel/contract/workbench-settings';
 
@@ -19,6 +20,7 @@ export const DEFAULT_WORKBENCH_SETTINGS: WorkbenchSettings = {
   mcpOnDemand: false,
   includePrerelease: false,
   moduleModel: null,
+  diyPresetSource: DIY_PRESET_SOURCE_DEFAULT,
 };
 
 export interface WorkbenchSettingsStore {
@@ -58,6 +60,7 @@ function settingsOf(raw: unknown): WorkbenchSettings {
     includePrerelease:
       booleanOf(record['includePrerelease']) ?? DEFAULT_WORKBENCH_SETTINGS.includePrerelease,
     moduleModel: modelChoiceOf(record['moduleModel']) ?? null,
+    diyPresetSource: textOf(record['diyPresetSource']) ?? DEFAULT_WORKBENCH_SETTINGS.diyPresetSource,
   };
 }
 
@@ -68,6 +71,7 @@ function storedOf(settings: WorkbenchSettings): Record<string, unknown> {
     ...(settings.moduleModel === null
       ? {}
       : { moduleModel: { provider: settings.moduleModel.provider, model: settings.moduleModel.model } }),
+    diyPresetSource: settings.diyPresetSource,
   };
 }
 
@@ -101,15 +105,22 @@ export function createWorkbenchSettingsStore(options: { readonly root: string })
       if (request.includePrerelease !== undefined && booleanOf(request.includePrerelease) === undefined) {
         throw new Error('includePrerelease 要是 true / false');
       }
+      const requestedSource =
+        request.diyPresetSource === undefined ? current.diyPresetSource : textOf(request.diyPresetSource);
+      if (requestedSource === undefined) {
+        throw new Error('diyPresetSource 要是非空字符串');
+      }
       const next: WorkbenchSettings = {
         mcpOnDemand: booleanOf(request.mcpOnDemand) ?? current.mcpOnDemand,
         includePrerelease: booleanOf(request.includePrerelease) ?? current.includePrerelease,
         moduleModel: requestedModel,
+        diyPresetSource: requestedSource,
       };
       const changed =
         next.mcpOnDemand !== current.mcpOnDemand ||
         next.includePrerelease !== current.includePrerelease ||
-        !sameChoice(next.moduleModel, current.moduleModel);
+        !sameChoice(next.moduleModel, current.moduleModel) ||
+        next.diyPresetSource !== current.diyPresetSource;
       if (changed) writeJsonFile(file, storedOf(next));
       cached = next;
       if (changed) for (const listener of [...listeners]) listener(next);

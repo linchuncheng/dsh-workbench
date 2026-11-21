@@ -48,7 +48,7 @@ import { PANELS_SERVICE, PLUGIN_ID, UNITS_SERVICE } from '@dsh-workbench/shared/
 import { asArgs, warn } from '../shared/api/host/host-args';
 import { createApprovalGate } from '@/shared/api/host/approval-gate';
 import { registerBootThemeGuard } from '@/shared/api/host/boot-theme-guard';
-import { registerDiyPreset } from '@/shared/api/host/diy-preset';
+import { mountDiyPreset } from '@/shared/api/host/diy-preset-host';
 import { createFlowAgentGateway, FLOW_CHILD_HIDDEN_TOOLS } from '@/shared/api/host/flow/agent';
 import { notifyLongTaskChange } from '@/shared/api/host/long-task-notice';
 export const name = 'dsh-workbench';
@@ -59,7 +59,6 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   const seam = provideWorkbenchSeam(ctx);
   if (seam !== undefined) provideGitProcessSeam(seam);
   registerBootThemeGuard(ctx);
-  registerDiyPreset(ctx);
   const flowAgents = createFlowAgentGateway(ctx);
   const facts = createFactLog();
   const values = createValueHandoff();
@@ -188,6 +187,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   const unitsOfTool = (): ReturnType<typeof toolUnits> => toolUnits(liveManifests());
   const settings = mountWorkbenchSettings({ ctx, routes, root: workbenchRoot() });
   mountModuleModels({ ctx, routes });
+  mountDiyPreset({ ctx, routes, settings });
   const mcpScope = createMcpScope({ ctx, reapply: () => toolScope.reapply(), settings });
   const toolScope = createPresetScope({
     ctx,
