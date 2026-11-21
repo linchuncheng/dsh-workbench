@@ -15,6 +15,7 @@ export function MarketSceneView({
   pluginList,
   installedList,
   unreadable = [],
+  readStale = false,
   pending,
   failed,
   notice,
@@ -95,6 +96,7 @@ export function MarketSceneView({
         pluginList={pluginList}
         installedList={installedList}
         unreadable={unreadable}
+        readStale={readStale}
         pending={pending}
         failed={failed}
         notice={notice}

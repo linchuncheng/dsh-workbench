@@ -103,6 +103,7 @@ function MarketPanel({
     modules,
     unreadable,
     readFailure,
+    stale: versionsStale,
     plugins,
     workbench,
     selfUpdate,
@@ -197,6 +198,7 @@ function MarketPanel({
           installed={installed}
           unreadable={unreadable}
           readFailure={readFailure}
+          readStale={versionsStale}
           installedRead={shownRead}
           workbench={workbench}
           selfUpdate={selfUpdate}

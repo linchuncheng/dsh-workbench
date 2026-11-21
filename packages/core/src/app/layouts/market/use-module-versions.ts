@@ -26,6 +26,7 @@ export interface ModuleVersionsState {
   readonly modules: readonly ModuleVersion[] | null;
   readonly unreadable: readonly { readonly pkg: string; readonly reason: string }[];
   readonly readFailure: string | null;
+  readonly stale: boolean;
   readonly plugins: readonly InstalledPlugin[] | null;
   readonly workbench: WorkbenchVersion | null;
   readonly selfUpdate: WorkbenchSelfUpdate | null;
@@ -57,6 +58,7 @@ const NOT_READ: ModuleVersionsState = {
   modules: null,
   unreadable: [],
   readFailure: null,
+  stale: false,
   plugins: null,
   workbench: null,
   selfUpdate: null,
@@ -309,6 +311,7 @@ function runRead(run: ReadRun): Promise<void> {
             publish({
               ...state,
               readFailure: lastModulesFailure ?? '安装清单没读出来',
+              stale: moduleVersionsValue().modules !== null,
               ...(check
                 ? {
                     modulesCheck: landed(
@@ -333,6 +336,7 @@ function runRead(run: ReadRun): Promise<void> {
           publish({
             ...state,
             readFailure: null,
+            stale: payload === null && moduleVersionsValue().modules !== null,
             unreadable: check ? (payload?.unreadable ?? []) : state.unreadable,
             modules: shown ?? state.modules,
             workbench:

@@ -74,6 +74,7 @@ export interface MarketViewProps {
   readonly installed?: readonly InstalledWorkbenchModule[] | undefined;
   readonly unreadable?: readonly { readonly pkg: string; readonly reason: string }[] | undefined;
   readonly readFailure?: string | null | undefined;
+  readonly readStale?: boolean | undefined;
   readonly installedRead?: boolean | undefined;
   readonly workbench?: WorkbenchVersion | null | undefined;
   readonly selfUpdate?: WorkbenchSelfUpdate | null | undefined;
@@ -175,6 +176,7 @@ export function MarketView({
   installed,
   unreadable = [],
   readFailure = null,
+  readStale = false,
   installedRead,
   workbench,
   selfUpdate,
@@ -275,6 +277,7 @@ export function MarketView({
       pluginList={pluginList}
       installedList={installedList}
       unreadable={unreadableRows}
+      readStale={readStale}
       pending={pending}
       failed={failed}
       notice={notice}

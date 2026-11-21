@@ -20,6 +20,7 @@ export function MarketBody({
   pluginList,
   installedList,
   unreadable = [],
+  readStale = false,
   pending,
   failed,
   notice,
@@ -56,6 +57,7 @@ export function MarketBody({
   return (
     <>
       {notice === null ? null : <div className={styles.marketNote}>{notice}</div>}
+      {readStale ? <div className={styles.marketNote}>{t('panels.staleNote')}</div> : null}
       <MarketSection {...common} rows={self === undefined ? [] : [self]} />
       {self === undefined ? null : (
         <div className={styles.marketSelfDivider} aria-hidden="true" />
