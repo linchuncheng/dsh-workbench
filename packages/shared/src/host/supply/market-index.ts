@@ -40,7 +40,13 @@ export const MARKET_INDEX_README_LINES: readonly string[] = [
   '在工作台的「模块市场 → 发现」里添加本仓库地址，即可浏览与安装。',
   '',
 ];
-export { marketBranchOk, marketInstallTarget, marketText } from '../../lib/market-index.js';
+export {
+  marketBranchOk,
+  marketInstallTarget,
+  marketSpecPackage,
+  marketSpecPath,
+  marketText,
+} from '../../lib/market-index.js';
 export type { MarketEntryFile, MarketIndexAssemble } from './market-index-doc.js';
 export {
   compareSemver,

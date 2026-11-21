@@ -400,6 +400,11 @@ export const zh = {
   'panels.market.add.problemNotModuleOrPlugin': '这个包既不是工作台模块，也不是 {pluginOf}，安装后无法使用。请更换版本，或联系包作者。',
   'panels.market.add.failureNotModuleOrPlugin': '这个包既不是工作台模块，也不是 {pluginOf}，安装了也无法使用',
   'panels.market.add.installedPlugin': '已安装：{plugin} {name}',
+  'panels.market.add.unknownModule': '未知模块',
+  'panels.market.add.sourceRepo': '仓库：{repo}',
+  'panels.market.add.sourceRef': '提交：{ref}',
+  'panels.market.add.sourceDirectory': '目录：{path}',
+  'panels.market.add.sourceDir': '本地目录：{path}',
   'panels.market.add.pluginPreview':
     '这是一个 {pluginThing}：将安装到 {pluginArea}，安装完成后即可使用，无需重启。',
   'panels.market.add.pluginAlias': '插件名：{name}',

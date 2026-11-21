@@ -16,6 +16,7 @@ import {
 } from './discover-states';
 import { useDiscover } from './use-discover';
 import type { DiscoverController } from './use-discover';
+import type { AddModulePreset } from './use-add-module';
 import { sourceLabelsOf, unfiltered } from './discover-view';
 import styles from './MarketPage.module.css';
 
@@ -29,7 +30,7 @@ export interface DiscoverPanelProps {
   readonly t: Translate;
   readonly active: boolean;
   readonly onShowInstalled: (name: string) => void;
-  readonly onAddModule: (preset: { readonly spec: string; readonly registry?: string | undefined }) => void;
+  readonly onAddModule: (preset: AddModulePreset) => void;
   readonly onDetailChange?: ((open: boolean) => void) | undefined;
 }
 

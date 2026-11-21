@@ -46,6 +46,24 @@ function refused(problem: BundleInspectProblem, reason = ''): AddModuleMock {
   };
 }
 
+function modulePreview(over: {
+  readonly name: string;
+  readonly version?: string;
+  readonly description?: string;
+  readonly source: AddModulePreview['source'];
+}): AddModulePreview {
+  return { kind: 'module', version: '', description: '', origins: [], ...over };
+}
+
+function previewMock(
+  id: string,
+  label: string,
+  spec: string,
+  preview: AddModulePreview,
+): AddModuleMock {
+  return { id, label, phase: 'preview', spec, preview };
+}
+
 export const ADD_MODULE_MOCKS: readonly AddModuleMock[] = [
   { id: 'empty', label: '刚打开', phase: 'idle', spec: '' },
   { id: 'typed', label: '填了包名', phase: 'idle', spec: '@dsh-workbench/module-hello' },
@@ -59,49 +77,41 @@ export const ADD_MODULE_MOCKS: readonly AddModuleMock[] = [
   refused('not-a-module-or-plugin', '这个包既不是工作台的模块，也不是运行时的插件，装了也用不上'),
   refused('network', 'getaddrinfo ENOTFOUND registry.example.com'),
   refused('unknown', 'pnpm 的返回码是 1'),
-  {
-    id: 'preview',
-    label: '预览（可装）',
-    phase: 'preview',
-    spec: '@dsh-workbench/module-hello',
-    preview: {
-      kind: 'module',
-      name: '@dsh-workbench/module-hello',
-      version: '0.1.2',
-      description: '最小样本模块：一枚「你好」卡片',
-      registry: 'registry.npmmirror.com',
-      origins: [],
-    },
-  },
-  {
-    id: 'preview-no-source',
-    label: '预览（问不出源）',
-    phase: 'preview',
-    spec: '@dsh-workbench/module-hello',
-    preview: {
-      kind: 'module',
-      name: '@dsh-workbench/module-hello',
-      version: '',
-      description: '',
-      registry: '',
-      origins: [],
-    },
-  },
-  {
-    id: 'preview-plugin',
-    label: '预览（插件）',
-    phase: 'preview',
-    spec: 'acme-plugin-dashboards',
-    preview: {
-      kind: 'plugin',
-      name: 'acme-plugin-dashboards',
-      version: '1.0.16',
-      description: '',
-      registry: 'registry.npmmirror.com',
-      pluginName: 'dashboards',
-      origins: [],
-    },
-  },
+  previewMock('preview', '预览（可装）', '@dsh-workbench/module-hello', modulePreview({
+    name: '@dsh-workbench/module-hello',
+    version: '0.1.2',
+    description: '最小样本模块：一枚「你好」卡片',
+    source: { kind: 'registry', registry: 'registry.npmmirror.com' },
+  })),
+  previewMock('preview-no-source', '预览（问不出源）', '@dsh-workbench/module-hello', modulePreview({
+    name: '@dsh-workbench/module-hello',
+    source: { kind: 'registry', registry: '' },
+  })),
+  previewMock(
+    'preview-git',
+    '预览（git 来源）',
+    'git+ssh://git@git.example.com/acme/dsh-workbench-market.git#e87c7a16fa5&path:/artifacts/@acme/module-wallet-details',
+    modulePreview({
+      name: '@acme/module-wallet-details',
+      version: '1.4.0',
+      description: '钱包明细看板：按日汇总，点开看流水',
+      source: {
+        kind: 'git',
+        repo: 'git.example.com/acme/dsh-workbench-market',
+        ref: 'e87c7a1',
+        dir: '/artifacts/@acme/module-wallet-details',
+      },
+    }),
+  ),
+  previewMock('preview-plugin', '预览（插件）', 'acme-plugin-dashboards', {
+    kind: 'plugin',
+    name: 'acme-plugin-dashboards',
+    version: '1.0.16',
+    description: '',
+    source: { kind: 'registry', registry: 'registry.npmmirror.com' },
+    pluginName: 'dashboards',
+    origins: [],
+  }),
   { id: 'installing', label: '正在安装（可取消）', phase: 'installing', spec: '@dsh-workbench/module-hello' },
   {
     id: 'needs-approval',

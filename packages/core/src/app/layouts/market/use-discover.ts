@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
-import { marketInstallTarget } from '@dsh-workbench/shared';
+import { marketInstallTarget, marketText } from '@dsh-workbench/shared';
 import type {
   DiscoverEntry,
   DiscoverPayload,
@@ -15,6 +15,7 @@ import { CAPABILITY_FACT } from '@/shared/hooks/use-capabilities';
 import { subscribeFactRevision } from '@/shared/hooks/use-facts';
 import {
   DISCOVER_PAGE_SIZE,
+  displayTitleOf,
   filterEntries,
   localeNow,
   sortEntries,
@@ -22,6 +23,7 @@ import {
   visibleEntries,
   type DiscoverSort,
 } from './discover-view';
+import type { AddModulePreset } from './use-add-module';
 
 interface InstallTarget {
   readonly entry: DiscoverEntry;
@@ -96,7 +98,7 @@ export interface DiscoverController {
 export function useDiscover(
   t: Translate,
   active: boolean,
-  onAddModule: (preset: { readonly spec: string; readonly registry?: string | undefined }) => void,
+  onAddModule: (preset: AddModulePreset) => void,
 ): DiscoverController {
   const [payload, setPayload] = useState<DiscoverPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -363,9 +365,14 @@ export function useDiscover(
     );
     setChoice(null);
     setNotice(null);
+    const description = marketText(choice.entry.description, locale);
     onAddModule({
       spec: target.spec,
       ...(target.registry === undefined ? {} : { registry: target.registry }),
+      name: displayTitleOf(choice.entry, locale),
+      version: choice.version.version,
+      ...(description === '' ? {} : { description }),
+      autoInstall: true,
     });
   };
 

@@ -59,6 +59,17 @@ describe('添加模块浮层那两屏（插件态）', () => {
     expect(shown).not.toContain(PREVIEW_TEXT);
   });
 
+  it('★ git 来源的预览：标题是包名，不再拿整串地址当名字；仓库 / 提交 / 路径各一行，且不写「默认安装源」', () => {
+    const shown = texts(AddModulePreview({ t, state: stateOf('preview-git') })).join('|');
+
+    expect(shown).toContain('@acme/module-wallet-details');
+    expect(shown).toContain('仓库：git.example.com/acme/dsh-workbench-market');
+    expect(shown).toContain('提交：e87c7a1');
+    expect(shown).toContain('目录：/artifacts/@acme/module-wallet-details');
+    expect(shown).not.toContain('默认安装源');
+    expect(shown).not.toContain('git+ssh://');
+  });
+
   it('模块声明了 origins：预览里把会读的站摆出来', () => {
     const state = stateOf('preview');
     const preview = state.preview!;

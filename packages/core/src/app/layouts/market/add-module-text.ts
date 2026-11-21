@@ -1,47 +1,103 @@
 import type { Translate } from '@dsh-workbench/shared';
-import { requirementsText } from '@dsh-workbench/shared';
+import { gitAddressOf, marketSpecPackage, marketSpecPath, requirementsText } from '@dsh-workbench/shared';
 import type {
   BundleChange,
   BundleInspectProblem,
   BundleInspectionAccepted,
   BundleInspectionPlugin,
   BundleRegistries,
+  BundleSpecKind,
   RestartReason,
 } from '@/kernel/contract/bundle-install';
 
 export type AddModulePhase = 'idle' | 'inspecting' | 'preview' | 'installing' | 'result';
+
+export type PreviewSource =
+  | { readonly kind: 'registry'; readonly registry: string }
+  | { readonly kind: 'git'; readonly repo: string; readonly ref?: string; readonly dir?: string }
+  | { readonly kind: 'path'; readonly dir: string }
+  | { readonly kind: 'tarball' };
+
+export interface PreviewFacts {
+  readonly name?: string | undefined;
+  readonly version?: string | undefined;
+  readonly description?: string | undefined;
+}
 
 export interface AddModulePreview {
   readonly kind: 'module' | 'plugin';
   readonly name: string;
   readonly version: string;
   readonly description: string;
-  readonly registry: string;
+  readonly source: PreviewSource;
   readonly pluginName?: string;
   readonly origins: readonly string[];
 }
 
+export function specNameOf(spec: string): string | undefined {
+  const inPath = marketSpecPackage(spec);
+  if (inPath !== undefined) return inPath;
+  const text = spec.trim();
+  if (text === '') return undefined;
+  if (text.startsWith('/') || text.startsWith('~') || /^[A-Za-z]:[\\/]/u.test(text)) {
+    const base = text.split(/[\\/]+/u).filter((part) => part !== '').at(-1);
+    return base === undefined || base === '' ? undefined : base;
+  }
+  if (/^@[^/\s]+\/[^/@\s]+$/u.test(text)) return text;
+  if (!text.includes('/') && !text.includes(':')) return text;
+  const url = text.replace(/^git\+/u, '').replace(/[?#].*$/u, '');
+  const base = url.split('/').filter((part) => part !== '').at(-1);
+  if (base === undefined || base === '') return undefined;
+  const trimmed = base.replace(/\.(?:tgz|tar\.gz|git)$/u, '');
+  return trimmed === '' || trimmed.includes('@') ? undefined : trimmed;
+}
+
+const COMMIT = /^[0-9a-f]{7,40}$/iu;
+
+export function previewSourceOf(spec: string, kind: BundleSpecKind): PreviewSource {
+  if (kind === 'path') return { kind: 'path', dir: spec.trim() };
+  if (kind !== 'git') return { kind: 'tarball' };
+  const address = gitAddressOf(spec);
+  const repo =
+    address === undefined
+      ? spec.trim().replace(/^git\+/u, '').replace(/[?#].*$/u, '')
+      : `${address.host}/${address.path.replace(/\.git$/u, '')}`;
+  const hash = spec.indexOf('#');
+  const ref = hash === -1 ? '' : (spec.slice(hash + 1).split('&')[0] ?? '').trim();
+  const dir = marketSpecPath(spec);
+  return {
+    kind: 'git',
+    repo,
+    ...(ref === '' ? {} : { ref: COMMIT.test(ref) ? ref.slice(0, 7) : ref }),
+    ...(dir === undefined ? {} : { dir: `/${dir}` }),
+  };
+}
+
 export function previewOf(
   inspection: BundleInspectionAccepted | BundleInspectionPlugin,
-  fallback: string,
+  spec: string,
+  facts: PreviewFacts = {},
 ): AddModulePreview {
   if (inspection.status === 'plugin') {
     return {
       kind: 'plugin',
       name: inspection.pkg,
-      version: inspection.version ?? '',
+      version: inspection.version ?? facts.version ?? '',
       description: '',
-      registry: inspection.registry ?? '',
+      source: { kind: 'registry', registry: inspection.registry ?? '' },
       ...(inspection.pluginName === undefined ? {} : { pluginName: inspection.pluginName }),
       origins: [],
     };
   }
   return {
     kind: 'module',
-    name: inspection.name ?? fallback,
-    version: inspection.version ?? '',
-    description: inspection.description ?? '',
-    registry: inspection.registry ?? '',
+    name: inspection.name ?? facts.name ?? specNameOf(spec) ?? '',
+    version: inspection.version ?? facts.version ?? '',
+    description: inspection.description ?? facts.description ?? '',
+    source:
+      inspection.kind === 'registry'
+        ? { kind: 'registry', registry: inspection.registry ?? '' }
+        : previewSourceOf(spec, inspection.kind),
     origins: inspection.origins ?? [],
   };
 }

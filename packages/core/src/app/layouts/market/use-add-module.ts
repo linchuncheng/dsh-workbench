@@ -47,6 +47,10 @@ export interface AddModuleOutcome {
 export interface AddModulePreset {
   readonly spec: string;
   readonly registry?: string | undefined;
+  readonly name?: string | undefined;
+  readonly version?: string | undefined;
+  readonly description?: string | undefined;
+  readonly autoInstall?: boolean | undefined;
 }
 
 export interface AddModuleProblem {
@@ -131,48 +135,6 @@ export function useAddModule(options: {
 
   const registry = registryOf(choice, custom);
 
-  const check = useCallback((): void => {
-    const wanted = spec.trim();
-    if (wanted === '') return;
-    const mine = generationRef.current + 1;
-    generationRef.current = mine;
-    setProblem(null);
-    setFailure(null);
-    setInstallFailure(null);
-    setPreview(null);
-    setOutcome(null);
-    setRegistryOpen(false);
-    setPhase('inspecting');
-    void readBundleInspection(wanted, registry).then((response) => {
-      if (generationRef.current !== mine) return;
-      if (!response.ok) {
-        setFailure(response.error.message);
-        setPhase('idle');
-        return;
-      }
-      const inspection = response.inspection;
-      if (inspection.status === 'refused') {
-        setProblem({ problem: inspection.problem, reason: inspection.reason });
-        setPhase('idle');
-        return;
-      }
-      setPreview(previewOf(inspection, wanted));
-      setPhase('preview');
-    });
-  }, [spec, registry]);
-
-  const autoChecked = useRef(false);
-
-  useEffect(() => {
-    if (preset === undefined || autoChecked.current) return;
-    if (spec.trim() === '') return;
-    autoChecked.current = true;
-    const id = setTimeout(check, 0);
-    return () => {
-      clearTimeout(id);
-    };
-  }, [preset, spec, check]);
-
   const install = useCallback(
     (approvedBuilds: readonly string[] = []): void => {
       const wanted = spec.trim();
@@ -216,6 +178,53 @@ export function useAddModule(options: {
     },
     [spec, registry, write, onInstalled],
   );
+
+  const check = useCallback((): void => {
+    const wanted = spec.trim();
+    if (wanted === '') return;
+    const mine = generationRef.current + 1;
+    generationRef.current = mine;
+    setProblem(null);
+    setFailure(null);
+    setInstallFailure(null);
+    setPreview(null);
+    setOutcome(null);
+    setRegistryOpen(false);
+    setPhase('inspecting');
+    void readBundleInspection(wanted, registry).then((response) => {
+      if (generationRef.current !== mine) return;
+      if (!response.ok) {
+        setFailure(response.error.message);
+        setPhase('idle');
+        return;
+      }
+      const inspection = response.inspection;
+      if (inspection.status === 'refused') {
+        setProblem({ problem: inspection.problem, reason: inspection.reason });
+        setPhase('idle');
+        return;
+      }
+      setPreview(previewOf(inspection, wanted, preset));
+      if (preset?.autoInstall === true) {
+        install();
+        return;
+      }
+      setPhase('preview');
+    });
+  }, [spec, registry, preset, install]);
+
+  const autoChecked = useRef(false);
+
+  useEffect(() => {
+    if (preset === undefined || autoChecked.current) return;
+    if (spec.trim() === '') return;
+    autoChecked.current = true;
+    const id = setTimeout(check, 0);
+    return () => {
+      clearTimeout(id);
+    };
+  }, [preset, spec, check]);
+
 
   const cancelInstall = useCallback((): void => {
     void cancel.send({ action: 'cancel-install', requestId: requestIdRef.current });

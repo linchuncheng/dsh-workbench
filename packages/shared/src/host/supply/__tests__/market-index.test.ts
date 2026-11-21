@@ -9,6 +9,8 @@ import {
   marketEntryPath,
   marketInstallTarget,
   marketSourceKey,
+  marketSpecPackage,
+  marketSpecPath,
   parseMarketEntryJson,
   parseMarketIndex,
   parseMarketIndexJson,
@@ -326,6 +328,18 @@ describe('索引源与安装目标', () => {
     ).toEqual({
       spec: `git+https://git.company.com/wb/market.git#${'a'.repeat(40)}&path:/packages/module-x`,
     });
+  });
+
+  it('安装规格能反着读回来：&path: 那段与它末段的包名（带 scope 的也算）', () => {
+    const spec = `git+https://git.company.com/wb/market.git#${'a'.repeat(40)}&path:/artifacts/@scope/module-x`;
+
+    expect(marketSpecPath(spec)).toBe('artifacts/@scope/module-x');
+    expect(marketSpecPackage(spec)).toBe('@scope/module-x');
+    expect(marketSpecPath('@scope/module-x@0.1.1')).toBeUndefined();
+    expect(marketSpecPackage('@scope/module-x@0.1.1')).toBeUndefined();
+    expect(marketSpecPackage('git+https://git.company.com/wb/market.git#abc&path:/packages/module-y')).toBe(
+      'module-y',
+    );
   });
 
   it('http 源拒带凭据', () => {

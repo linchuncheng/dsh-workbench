@@ -3,8 +3,8 @@ import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bund
 import type { BundleManager } from '@dsh-workbench/shared/host';
 import type { InstalledModule } from '@dsh-workbench/shared/host';
 import {
-  approveBuilds, hostCommandStep, PlanCancelledError, profilePnpmCommand, quoteShellArg, recordPendingBuilds,
-  refusalReason, splitNpmSpec, WorkbenchDataError,
+  approveBuilds, hostCommandStep, marketSpecPackage, PlanCancelledError, profilePnpmCommand, quoteShellArg,
+  recordPendingBuilds, refusalReason, splitNpmSpec, WorkbenchDataError,
 } from '@dsh-workbench/shared/host';
 import { requireSupply, localDirOf, type SupplyPort } from '@dsh-workbench/shared/host';
 import { sourceProblemText } from './market-dependency';
@@ -49,21 +49,10 @@ function moduleInstallLine(options: {
   return `${prefix} add --dir ${quoteShellArg(options.profileDir)} ${quoteShellArg(options.spec)} --save-exact${store}${registry}`;
 }
 
-function packageNameInPath(path: string): string | undefined {
-  const parts = path.split('/').filter((part) => part !== '');
-  const last = parts[parts.length - 1];
-  if (last === undefined || last === '') return undefined;
-  const parent = parts[parts.length - 2];
-  return parent !== undefined && parent.startsWith('@') ? `${parent}/${last}` : last;
-}
-
 export function bundleNameOf(change: BundleChange, spec: string): string {
   if (change.bundle !== undefined && change.bundle !== '') return change.bundle;
-  const at = spec.indexOf('&path:');
-  if (at !== -1) {
-    const inPath = packageNameInPath(spec.slice(at + '&path:'.length));
-    if (inPath !== undefined) return inPath;
-  }
+  const inPath = marketSpecPackage(spec);
+  if (inPath !== undefined) return inPath;
   const version = spec.lastIndexOf('@');
   return version > 0 ? spec.slice(0, version) : spec;
 }

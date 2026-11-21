@@ -41,14 +41,22 @@ export function AddModulePending({ t, kind }: { t: Translate; kind: 'inspecting'
 export function AddModulePreview({ t, state }: { t: Translate; state: AddModuleState }) {
   const preview = state.preview;
   if (preview === null) return null;
-  const source = preview.registry === '' ? t('panels.market.add.registryDefault') : preview.registry;
+  const source = preview.source;
   const plugin = preview.kind === 'plugin';
   const pluginName = plugin ? preview.pluginName : undefined;
+  const registry =
+    source.kind === 'registry'
+      ? source.registry === ''
+        ? t('panels.market.add.registryDefault')
+        : source.registry
+      : '';
 
   return (
     <div className={styles.body}>
       <div className={styles.subject}>
-        <p className={styles.subjectName}>{preview.name}</p>
+        <p className={styles.subjectName}>
+          {preview.name === '' ? t('panels.market.add.unknownModule') : preview.name}
+        </p>
         {preview.version === '' ? null : (
           <p className={styles.subjectMeta}>
             {t('panels.market.add.installVersion', { version: preview.version })}
@@ -58,7 +66,19 @@ export function AddModulePreview({ t, state }: { t: Translate; state: AddModuleS
           <p className={styles.subjectMeta}>{t('panels.market.add.pluginAlias', { name: pluginName })}</p>
         )}
         {preview.description === '' ? null : <p className={styles.subjectDesc}>{preview.description}</p>}
-        <p className={styles.subjectMeta}>{source}</p>
+        {source.kind === 'registry' ? <p className={styles.subjectMeta}>{registry}</p> : null}
+        {source.kind === 'git' ? (
+          <p className={styles.subjectMeta}>{t('panels.market.add.sourceRepo', { repo: source.repo })}</p>
+        ) : null}
+        {source.kind === 'git' && source.ref !== undefined ? (
+          <p className={styles.subjectMeta}>{t('panels.market.add.sourceRef', { ref: source.ref })}</p>
+        ) : null}
+        {source.kind === 'git' && source.dir !== undefined ? (
+          <p className={styles.subjectMeta}>{t('panels.market.add.sourceDirectory', { path: source.dir })}</p>
+        ) : null}
+        {source.kind === 'path' ? (
+          <p className={styles.subjectMeta}>{t('panels.market.add.sourceDir', { path: source.dir })}</p>
+        ) : null}
         {preview.origins.length === 0 ? null : (
           <p className={styles.subjectMeta}>
             {t('panels.market.add.origins', { origins: preview.origins.join(', ') })}

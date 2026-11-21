@@ -12,6 +12,7 @@ import {
   heldWizardPhase,
   optionLabel,
   previewOf,
+  previewSourceOf,
   registryName,
   problemKey,
   registryChoiceFrom,
@@ -20,6 +21,7 @@ import {
   restartWhyKey,
   registryOptions,
   resultKindOf,
+  specNameOf,
   supplyKey,
   verdictKey,
 } from '../add-module-text';
@@ -179,14 +181,14 @@ describe('添加模块浮层：文案与来源选项（按 dsh 插件页的骨�
         bundle: true,
         registry: 'https://r.example/',
       },
-      'fallback',
+      '@dsh-workbench/module-hello@0.1.2',
     );
     expect(module).toEqual({
       kind: 'module',
       name: '@dsh-workbench/module-hello',
       version: '0.1.2',
       description: '最小样本模块',
-      registry: 'https://r.example/',
+      source: { kind: 'registry', registry: 'https://r.example/' },
       origins: [],
     });
 
@@ -198,21 +200,63 @@ describe('添加模块浮层：文案与来源选项（按 dsh 插件页的骨�
         version: '1.0.16',
         registry: null,
       },
-      'fallback',
+      'opencli-plugin-dashboards@1.0.16',
     );
     expect(plugin).toEqual({
       kind: 'plugin',
       name: 'opencli-plugin-dashboards',
       version: '1.0.16',
       description: '',
-      registry: '',
+      source: { kind: 'registry', registry: '' },
       pluginName: 'dashboards',
       origins: [],
     });
-    expect(previewOf({ status: 'accepted', kind: 'path', bundle: null, registry: null }, 'fallback')).toMatchObject({
+    expect(
+      previewOf({ status: 'accepted', kind: 'path', bundle: null, registry: null }, '/Users/me/my-module'),
+    ).toMatchObject({
       kind: 'module',
-      name: 'fallback',
+      name: 'my-module',
+      source: { kind: 'path', dir: '/Users/me/my-module' },
     });
+  });
+
+  it('★ git 规格不拿整串地址当名字：名字取 &path: 的末段，来源拆成仓库 / 提交 / 路径', () => {
+    const spec =
+      'git+ssh://git@e.coding.net/baiguokeji/UEDYHSJ/dsh-workbench-market.git#e87c7a16fa526028f6b13c04b021a159c5ec7c87&path:/artifacts/@dsh-workbench/module-llm-wallet-details';
+
+    const preview = previewOf(
+      { status: 'accepted', kind: 'git', bundle: true, registry: null },
+      spec,
+    );
+
+    expect(preview).toEqual({
+      kind: 'module',
+      name: '@dsh-workbench/module-llm-wallet-details',
+      version: '',
+      description: '',
+      source: {
+        kind: 'git',
+        repo: 'e.coding.net/baiguokeji/UEDYHSJ/dsh-workbench-market',
+        ref: 'e87c7a1',
+        dir: '/artifacts/@dsh-workbench/module-llm-wallet-details',
+      },
+      origins: [],
+    });
+    expect(previewSourceOf('git+https://git.example.com/a/b.git#feature/wallet-details', 'git')).toEqual({
+      kind: 'git',
+      repo: 'git.example.com/a/b',
+      ref: 'feature/wallet-details',
+    });
+  });
+
+  it('★ 没有包名时按规格推名字；推不出来才叫「未知模块」（中英都有）', () => {
+    expect(specNameOf('git+https://github.com/acme/wallet-ui.git#main')).toBe('wallet-ui');
+    expect(specNameOf('/Users/me/workbench-module-y')).toBe('workbench-module-y');
+    expect(specNameOf('https://r.example/pkg-1.0.0.tgz')).toBe('pkg-1.0.0');
+    expect(specNameOf('@scope/name@1.2.3')).toBeUndefined();
+    for (const language of ['zh', 'en'] as const) {
+      expect(dictionaries[language]['panels.market.add.unknownModule'] ?? '').not.toBe('');
+    }
   });
 
   it('★ 装完那句话按结果分档：插件这一档排在"要重启"前面，永远不说重启', () => {

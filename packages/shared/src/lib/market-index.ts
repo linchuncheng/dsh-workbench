@@ -34,3 +34,20 @@ export function marketInstallTarget(
   return { spec: path === '' ? base : `${base}&path:/${path}` };
 }
 
+export function marketSpecPath(spec: string): string | undefined {
+  const at = spec.indexOf('&path:');
+  if (at === -1) return undefined;
+  const path = spec.slice(at + '&path:'.length).trim().replace(/^\/+/u, '').replace(/\/+$/u, '');
+  return path === '' ? undefined : path;
+}
+
+export function marketSpecPackage(spec: string): string | undefined {
+  const path = marketSpecPath(spec);
+  if (path === undefined) return undefined;
+  const parts = path.split('/').filter((part) => part !== '');
+  const last = parts[parts.length - 1];
+  if (last === undefined) return undefined;
+  const parent = parts[parts.length - 2];
+  return parent !== undefined && parent.startsWith('@') ? `${parent}/${last}` : last;
+}
+
