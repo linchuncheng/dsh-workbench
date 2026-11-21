@@ -47,7 +47,13 @@ export function declaresPackage(profileDir: string | null, pkg: string): boolean
   return Array.isArray(bundles) && bundles.includes(pkg);
 }
 
-function declaresBundle(profileDir: string, pkg: string): boolean {
+/**
+ * 装在 profile 里的这一版是否自带 `dsh.bundle`。
+ * @param profileDir profile 根目录。
+ * @param pkg 包名。
+ * @returns 清单里有 `dsh.bundle` 时为 true；读不到这个包时为 false。
+ */
+export function declaresDshBundle(profileDir: string, pkg: string): boolean {
   try {
     const record = asRecord(JSON.parse(fs.readFileSync(path.join(profileDir, 'node_modules', pkg, 'package.json'), 'utf8')));
     const dsh = asRecord(record?.['dsh']);
@@ -81,7 +87,7 @@ export function profileModules(profileDir: string | null): readonly ProfileModul
         ...(read.registry === undefined ? {} : { registry: read.registry }),
         local: isLocalCopySpec(profileDir, spec),
         fromRegistry: isRegistryDependencySpec(spec),
-        ...(declaresBundle(profileDir, read.pkg) ? { shipsBundle: true } : {}),
+        ...(declaresDshBundle(profileDir, read.pkg) ? { shipsBundle: true } : {}),
       });
     }
   }

@@ -81,6 +81,7 @@ export async function installedFromIndexes(
           sourceId: source.id,
           sourceLabel: source.label,
           source: newest.source,
+          ...(entry.metadata?.workbench === true ? { route: 'module' as const } : {}),
         },
         wanted: input.dependencyOf(entry.name),
         preferred,

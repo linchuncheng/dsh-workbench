@@ -315,6 +315,8 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.detailSharedUsedBy': 'Used by modules',
   'panels.market.moduleOutdated': 'Update available',
   'panels.market.olderOnDisk': 'update needed',
+  'panels.market.configDriftedNote':
+    'The workbench config records {declared}, but {installed} is installed. Click Update to reinstall the recorded version.',
   'panels.market.olderOnDiskNote':
     'Installed {installed} while {running} is running. Update before restarting; a restart now runs {installed}.',
   'panels.market.updateNeedsWorkbench': 'This version needs a newer workbench first.',
@@ -428,6 +430,8 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.add.failureInstalled':
     'This package is already installed in the current workbench. The same package cannot be replaced in place: uninstall it first, then install again. This uninstall did not succeed.',
   'panels.market.add.failureGeneric': 'Something went wrong during installation; see Install details.',
+  'panels.market.add.failureBundleList':
+    'The module is installed in this workbench, but it is not in the module list that dsh loads, so it will not start. Fix that list as Install details describes, then restart the workbench.',
   'panels.market.add.failureModuleRow': 'The module is installed in this workbench, but the module list in its configuration was not updated, so it will not load. Fix that list as Install details describes, then restart the workbench.',
   'panels.market.add.failureModuleRowRemove': 'The module was removed from this workbench, but the module list in its configuration was not updated. Fix that list as Install details describes, then restart the workbench.',
   'panels.market.add.failureNoProfileDir': 'The directory for this workbench configuration cannot be found, so the module cannot be installed. Check the configuration directory in workbench settings, or install the workbench again.',

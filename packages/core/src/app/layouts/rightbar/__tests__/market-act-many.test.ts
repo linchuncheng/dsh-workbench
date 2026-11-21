@@ -33,6 +33,66 @@ function actOf(rows: readonly MarketRow[]) {
   return { act, reloads, sent };
 }
 
+describe('装/更新：把市场条目已知的形态一起交上去', () => {
+  function moduleRowOf(market: Record<string, unknown>): MarketRow {
+    return {
+      id: 'mod',
+      name: 'mod',
+      kind: 'module',
+      titleKey: 'panels.market.sectionModules',
+      pkg: '@t/mod',
+      market: {
+        pkg: '@t/mod',
+        unit: 'mod',
+        version: '1.2.0',
+        sourceId: 's1',
+        sourceLabel: 's1',
+        source: {
+          type: 'git',
+          url: 'https://host/org/repo.git',
+          commit: 'a'.repeat(40),
+          path: 'packages/@t/mod',
+        },
+        ...market,
+      },
+    } as unknown as MarketRow;
+  }
+
+  it('★ 条目说是工作台模块 → install-version 带上 route=module', async () => {
+    const { act, sent } = actOf([moduleRowOf({ route: 'module' })]);
+
+    await act('mod', 'install-version');
+
+    expect(sent[0]).toMatchObject({ action: 'install-version', route: 'module' });
+  });
+
+  it('★ 清单与盘上不一致那条：按行上的 reinstall 重装，不带 route', async () => {
+    const row = {
+      id: 'mod',
+      name: 'mod',
+      kind: 'module',
+      titleKey: 'panels.market.sectionModules',
+      pkg: '@t/mod',
+      reinstall: '@t/mod@1.1.8',
+      canUpdate: true,
+    } as unknown as MarketRow;
+    const { act, sent } = actOf([row]);
+
+    await act('mod', 'install-version');
+
+    expect(sent[0]).toMatchObject({ action: 'install-version', spec: '@t/mod@1.1.8' });
+    expect((sent[0] as { route?: string }).route).toBeUndefined();
+  });
+
+  it('条目没说是模块 → 不带 route（让宿主自己判）', async () => {
+    const { act, sent } = actOf([moduleRowOf({})]);
+
+    await act('mod', 'install-version');
+
+    expect((sent[0] as { route?: string }).route).toBeUndefined();
+  });
+});
+
 describe('批量升级：过程里不刷新，收尾刷一次', () => {
   it('★ 三个插件批量升级 → 只重新加载一次', async () => {
     const rows = [rowOf('a'), rowOf('b'), rowOf('c')];

@@ -81,6 +81,7 @@ export interface InstalledWorkbenchModule {
   readonly market?: MarketInstalledModule | undefined;
   readonly versions?: BundleVersionList | undefined;
   readonly spec?: string | undefined;
+  readonly declared?: string | undefined;
   readonly registry?: string | undefined;
 }
 
@@ -165,6 +166,8 @@ export function installedRows(
     const latest = module.local === true ? undefined : module.latest;
     const outdated = latest !== undefined && latest !== module.installed;
     const blocked = outdated ? module.latestBlocked : undefined;
+    const declared = module.local === true ? undefined : module.declared;
+    const drifted = !outdated && declared !== undefined && declared !== module.installed;
     const loaded = titles.has(module.unit);
     const refused = refusalReasons(module.refused, module.clientRefused);
     const pending = !loaded && refused.length === 0;
@@ -173,7 +176,13 @@ export function installedRows(
     const note =
       refused.length > 0
         ? ({ key: 'panels.market.moduleRefused', params: {} } as const)
-        : latestUnavailableNote(module.latestUnavailable);
+        : drifted && declared !== undefined
+          ? ({
+              key: 'panels.market.configDriftedNote',
+              params: { declared, installed: module.installed },
+              tone: 'alert',
+            } as const)
+          : latestUnavailableNote(module.latestUnavailable);
     rows.push({
       id: module.unit,
       titleKey: titleKey ?? module.unit,
@@ -191,9 +200,10 @@ export function installedRows(
       ...(module.registry === undefined ? {} : { registry: module.registry }),
       removeViaBundle: true,
       canInstall: false,
-      canUpdate: outdated && blocked === undefined,
+      canUpdate: (outdated || drifted) && blocked === undefined,
       canUninstall: true,
       version: { installed: module.installed, ...(latest === undefined ? {} : { latest }) },
+      ...(drifted && declared !== undefined ? { reinstall: `${module.pkg}@${declared}` } : {}),
       ...(outdated
         ? {
             moduleUpdate: {
@@ -232,17 +242,19 @@ export function marketActions(row: MarketRow): MarketRowAction[] {
   }
   return [
     ...(row.canInstall ? (['install'] as const) : []),
-    ...(row.moduleUpdate === undefined
-      ? row.canUpdate
-        ? (['update'] as const)
-        : []
-      : row.moduleUpdate.blocked === undefined
-        ? ([
-            row.market === undefined || row.pkg === undefined
-              ? ('update-bundle' as const)
-              : ('install-version' as const),
-          ])
-        : []),
+    ...(row.reinstall !== undefined
+      ? (['install-version'] as const)
+      : row.moduleUpdate === undefined
+        ? row.canUpdate
+          ? (['update'] as const)
+          : []
+        : row.moduleUpdate.blocked === undefined
+          ? ([
+              row.market === undefined || row.pkg === undefined
+                ? ('update-bundle' as const)
+                : ('install-version' as const),
+            ])
+          : []),
     ...(row.canUninstall
       ? ([row.removeViaBundle === true ? 'remove-bundle' : 'uninstall'] as const)
       : []),

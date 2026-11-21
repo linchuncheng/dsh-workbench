@@ -291,6 +291,7 @@ export interface ModuleVersion {
   readonly market?: MarketInstalledModule;
   readonly versions?: BundleVersionList;
   readonly spec?: string;
+  readonly declared?: string;
   readonly registry?: string;
 }
 

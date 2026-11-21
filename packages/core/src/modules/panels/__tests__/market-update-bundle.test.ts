@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
 import type { BundleManager, Seam, SupplyPort } from '@dsh-workbench/shared/host';
-import { declarationProblemsOf } from '@dsh-workbench/shared/host';
+import { declarationProblemsOf, isNewerVersion } from '@dsh-workbench/shared/host';
 import type { InstalledModule, ProfileModule } from '@dsh-workbench/shared/host';
 import type { ReplaceBundleDeps } from '../model/market-route';
 import { updateModuleBundle } from '../model/market-update-bundle';
@@ -226,6 +226,8 @@ describe('模块更新那一跳：跑完重新读盘对账', () => {
         host: { inject: [] },
       }),
       declarationRefusalOf: (_name: string, raw: unknown) => declarationProblemsOf(PKG, raw),
+      packageRouteOf: async () => ({ kind: 'dsh-bundle' }),
+      isNewerVersion,
     } as unknown as SupplyPort;
   }
 
@@ -419,12 +421,13 @@ describe('行加载的模块：更新只走 profile，不叫 dsh 的插件管理
     return dir;
   }
 
-  function supplyWith(latest: string): SupplyPort {
+  function supplyWith(latest: string, kind: 'dsh-module' | 'dsh-bundle' = 'dsh-module'): SupplyPort {
     return {
       latestVersion: async () => latest,
       registryDeclarationOf: async () => undefined,
       declarationRefusalOf: () => [],
-      packageRouteOf: async () => ({ kind: 'dsh-module', pkg: PKG }),
+      packageRouteOf: async () => ({ kind, pkg: PKG }),
+      isNewerVersion,
       modules: { isolatedRoot: () => '/tmp/wb-row-root', isolatedHome: () => '/tmp/wb-row-home' },
     } as unknown as SupplyPort;
   }
@@ -482,11 +485,38 @@ describe('行加载的模块：更新只走 profile，不叫 dsh 的插件管理
       },
       profileDir: profileOf([CORE, PKG], []),
       seam: {} as unknown as Seam,
-      supply: supplyWith('1.3.0'),
+      supply: supplyWith('1.3.0', 'dsh-bundle'),
     });
 
     await updateModuleBundle('mod', deps);
 
     expect(updated).toEqual([PKG]);
+  });
+
+  it('★ 源上最新比已装旧 → 不更新（不许把降级当更新）', async () => {
+    const updated: string[] = [];
+    const installs: string[] = [];
+    const outcome = await updateModuleBundle(
+      'mod',
+      depsOf({
+        modules: () => [{ pkg: PKG, unit: 'mod', version: '1.4.0' }],
+        installed: () => ({ kind: 'module', pkg: PKG, unit: 'mod', version: '1.4.0', registry: 'https://r.example.com/' }),
+        install: async () => {
+          installs.push('install');
+          return change();
+        },
+        updateBundle: async (pkg) => {
+          updated.push(pkg);
+          return null;
+        },
+        profileDir: profileOf([CORE, PKG], []),
+        seam: {} as unknown as Seam,
+        supply: supplyWith('1.3.0'),
+      }),
+    );
+
+    expect(outcome).toBeNull();
+    expect(updated).toEqual([]);
+    expect(installs).toEqual([]);
   });
 });

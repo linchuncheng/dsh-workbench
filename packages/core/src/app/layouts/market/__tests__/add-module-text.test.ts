@@ -409,6 +409,7 @@ describe('市场自己报的失败码都有专属文案', () => {
 
   it('★ 装上但没写行、卸掉但没删行是两个码，各有各的说法', () => {
     expect(failureReasonKey('module-row-failed')).toBe('panels.market.add.failureModuleRow');
+    expect(failureReasonKey('bundle-list-failed')).toBe('panels.market.add.failureBundleList');
     expect(failureReasonKey('module-row-remove-failed')).toBe('panels.market.add.failureModuleRowRemove');
     expect(failureReasonKey('no-profile-dir')).toBe('panels.market.add.failureNoProfileDir');
   });

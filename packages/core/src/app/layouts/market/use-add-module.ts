@@ -12,6 +12,7 @@ import type {
   BundleRemovePayload,
   BundleSupplyPayload,
 } from '@/kernel/contract/bundle-install';
+import type { InstallRoute } from '@/kernel/contract/market-index';
 import { readBundleInspection, readBundleRegistries } from '@/shared/hooks/bundle-queries';
 import { useHostWrite } from '@/shared/hooks/use-host-write';
 import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
@@ -44,9 +45,13 @@ export interface AddModuleOutcome {
   readonly plugin?: BundleInstalledPlugin;
 }
 
-export interface AddModulePreset {
-  readonly spec: string;
+export interface AddModuleTarget {
   readonly registry?: string | undefined;
+  readonly route?: InstallRoute | undefined;
+}
+
+export interface AddModulePreset extends AddModuleTarget {
+  readonly spec: string;
   readonly name?: string | undefined;
   readonly version?: string | undefined;
   readonly description?: string | undefined;
@@ -152,6 +157,7 @@ export function useAddModule(options: {
           spec: wanted,
           ...(registry === undefined ? {} : { registry }),
           requestId: id,
+          ...(preset?.route === undefined ? {} : { route: preset.route }),
           ...(approvedBuilds.length === 0 ? {} : { approvedBuilds: [...approvedBuilds] }),
         })
         .then((response) => {
@@ -176,7 +182,7 @@ export function useAddModule(options: {
           }
         });
     },
-    [spec, registry, write, onInstalled],
+    [spec, registry, write, onInstalled, preset],
   );
 
   const check = useCallback((): void => {

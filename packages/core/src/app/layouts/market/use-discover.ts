@@ -373,6 +373,7 @@ export function useDiscover(
       version: choice.version.version,
       ...(description === '' ? {} : { description }),
       autoInstall: true,
+      route: 'module',
     });
   };
 

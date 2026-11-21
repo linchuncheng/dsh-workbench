@@ -50,6 +50,17 @@ describe('provision 请求体：每类动作各有各的目标字段', () => {
     });
   });
 
+  it('install-bundle / install-version：带上界面知道的形态（route），不认识的值不带', () => {
+    expect(parseProvisionBody({ action: 'install-version', spec: '@a/b@1.2.3', route: 'module' })).toEqual({
+      ok: true,
+      request: { action: 'install-version', spec: '@a/b@1.2.3', route: 'module' },
+    });
+    expect(parseProvisionBody({ action: 'install-bundle', spec: '@a/b', route: 'nope' })).toEqual({
+      ok: true,
+      request: { action: 'install-bundle', spec: '@a/b' },
+    });
+  });
+
   it('remove-bundle / cancel-install 各认各的字段', () => {
     expect(parseProvisionBody({ action: 'remove-bundle', name: '@a/b' })).toEqual({
       ok: true,

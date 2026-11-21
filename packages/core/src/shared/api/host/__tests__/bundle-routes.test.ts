@@ -496,6 +496,44 @@ describe('已装模块的最新版（打开市场页问一次 registry）', () =
     cleanup();
   });
 
+  it('★ 清单里是精确版本 → 带 declared（界面据此判断清单与盘上是否一致）', async () => {
+    const { dir, cleanup } = profileWith('0.1.3');
+    const file = path.join(dir, 'package.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8')) as { dependencies?: Record<string, string> };
+    manifest.dependencies = { '@a/mod': '0.1.2' };
+    fs.writeFileSync(file, JSON.stringify(manifest), 'utf8');
+    const { seam } = fakeShell({ '@a/mod': '0.1.3', '@a/other': '0.1.3' });
+    const ctx = fakeContext({ ...MANAGER }, dir);
+
+    const result = (await moduleVersionsHandler(ctx, seam as never)(new URLSearchParams())) as {
+      modules: { unit: string; declared?: string }[];
+    };
+
+    expect(result.modules).toMatchObject([
+      { unit: 'mod', declared: '0.1.2' },
+      { unit: 'other' },
+    ]);
+    expect(result.modules[1]?.declared).toBeUndefined();
+    cleanup();
+  });
+
+  it('★ 源上最新比已装旧 → 不带 latest（界面不许把降级当「有新版本」）', async () => {
+    const { dir, cleanup } = profileWith('0.1.3');
+    const { seam } = fakeShell({ '@a/mod': '0.1.2', '@a/other': '0.1.2' });
+    const ctx = fakeContext({ ...MANAGER }, dir);
+
+    const result = (await moduleVersionsHandler(ctx, seam as never)(new URLSearchParams())) as {
+      modules: { unit: string; installed: string; latest?: string }[];
+    };
+
+    expect(result.modules).toMatchObject([
+      { unit: 'mod', installed: '0.1.3' },
+      { unit: 'other', installed: '0.1.3' },
+    ]);
+    expect(result.modules.map((row) => row.latest)).toEqual([undefined, undefined]);
+    cleanup();
+  });
+
   it('★ 有新版本就问 dsh 要完整版本表：带 tags/废弃/incompatible，latest 取表里最新', async () => {
     const { dir, cleanup } = profileWith('0.1.2');
     const { seam } = fakeShell({ '@a/mod': '0.2.0' }, { '@a/mod': declarationOf('mod', 3) });

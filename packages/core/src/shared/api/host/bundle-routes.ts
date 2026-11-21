@@ -6,6 +6,7 @@ import {
   declaresPackage,
   readDeclaration,
   isBetaVersion,
+  isValidVersion,
   param,
   PLUGIN_ID,
   SUPPORTED_API_VERSIONS,
@@ -290,12 +291,14 @@ export function moduleVersionsHandler(
         const listed = list?.status === 'listed' ? list.versions : [];
         const visible = visibleVersions(listed, includePrereleaseNow);
         const newest = visible[0]?.version;
-        const latest =
+        const candidate =
           newest === undefined
             ? probed
             : probed === undefined || supply.isNewerVersion(newest, probed)
               ? newest
               : probed;
+        const latest =
+          candidate !== undefined && !supply.isNewerVersion(module.version, candidate) ? candidate : undefined;
         const raw = supply.moduleDeclarationOf(dir, module.pkg);
         const declared = raw === undefined ? [] : declarationProblemsOf(module.pkg, raw);
         const title = titleOf(raw);
@@ -340,6 +343,7 @@ export function moduleVersionsHandler(
           ...(refused === undefined ? {} : { refused }),
           ...(list === null ? {} : { versions: list }),
           ...(spec === undefined ? {} : { spec }),
+          ...(spec !== undefined && isValidVersion(spec) ? { declared: spec.trim() } : {}),
           ...(registry === undefined ? {} : { registry }),
         };
       }),

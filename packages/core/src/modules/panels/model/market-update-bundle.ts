@@ -130,6 +130,7 @@ export async function updateModuleBundle(
           force: true,
           includePrerelease: deps.includePrerelease?.() === true,
         });
+  if (latest !== undefined && supply.isNewerVersion(before, latest)) return null;
   if (latest !== undefined && deps.seam !== undefined && registry !== undefined) {
     const declared = await supply.registryDeclarationOf({
       seam: deps.seam,
@@ -144,8 +145,13 @@ export async function updateModuleBundle(
   const spec = latest === undefined ? pkg : `${pkg}@${latest}`;
   const rowModule =
     deps.profileDir !== undefined && deps.profileDir !== null && hasModuleRow(deps.profileDir, pkg);
+  const target =
+    deps.seam === undefined || registry === undefined
+      ? undefined
+      : await supply.packageRouteOf({ spec, seam: deps.seam, registry });
   const delegated =
     !rowModule &&
+    target?.kind !== 'dsh-module' &&
     latest !== undefined &&
     registry !== undefined &&
     found.fromRegistry !== false &&
@@ -170,7 +176,7 @@ export async function updateModuleBundle(
     readAfter.kind === 'module'
       ? base.restored
       : (base.restored ?? (await restoreRemovedBundle(pkg, before, registry, deps)));
-  if (readAfter.kind === 'module') await reEnableBundle(pkg, deps);
+  if (readAfter.kind === 'module' && forwarded !== null) await reEnableBundle(pkg, deps);
   let after = deps.installed?.(pkg) ?? { kind: 'unknown', pkg };
   const verified = verifyBundleUpdate({
     change: base.change,

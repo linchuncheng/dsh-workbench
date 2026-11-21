@@ -108,6 +108,9 @@ function failureText(change: BundleChange): string {
   if (REMOVE_BLOCKED.has(code)) {
     return `旧版无法卸载（dsh 不能就地覆盖正在使用的模块），从外部替换也失败。下一步：让用户在终端执行 dsh plugin --profile <名字> add <包>@<版本>，完成后${surface.restartHint}`;
   }
+  if (code === 'bundle-list-failed') {
+    return `模块已安装，但没有进入 dsh 加载的模块清单，因此还不会加载。下一步：让用户按安装详情修好清单，完成后${surface.restartHint}`;
+  }
   const detail = (change.errorDetail ?? '').trim();
   return code === 'operation-error' && detail !== '' ? detail : code;
 }

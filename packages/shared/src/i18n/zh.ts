@@ -312,6 +312,8 @@ export const zh = {
   'panels.market.detailSharedUsedBy': '使用它的模块',
   'panels.market.moduleOutdated': '有新版本',
   'panels.market.olderOnDisk': '需要更新',
+  'panels.market.configDriftedNote':
+    '工作台配置记录的是 {declared}，实际安装的是 {installed}。请点击「更新」按配置记录的版本重新安装。',
   'panels.market.olderOnDiskNote':
     '已安装 {installed}，正在运行 {running}。请先更新再重启；直接重启会运行 {installed}。',
   'panels.market.updateNeedsWorkbench': '这个版本需要先升级工作台。',
@@ -425,7 +427,10 @@ export const zh = {
   'panels.market.add.failureInstalled':
     '这个包已安装在当前工作台中。同一个包无法就地覆盖，需要先卸载再安装；本次卸载也未成功。',
   'panels.market.add.failureGeneric': '安装过程中出错，原因见「安装详情」。',
-  'panels.market.add.failureModuleRow': '模块已装进工作台配置，但工作台配置里的模块清单没有更新，因此还不会加载。请按「安装详情」里的提示修好这份清单，再重启工作台。',
+  'panels.market.add.failureBundleList':
+    '模块已安装到工作台配置，但没有进入 dsh 加载的模块清单，因此还不会加载。请按「安装详情」里的提示修好清单，再重启工作台。',
+  'panels.market.add.failureModuleRow':
+    '模块已安装到工作台配置，但工作台配置里的模块清单没有更新，因此还不会加载。请按「安装详情」里的提示修好这份清单，再重启工作台。',
   'panels.market.add.failureModuleRowRemove': '模块已从工作台配置移除，但模块清单没有更新。请按「安装详情」里的提示修好这份清单，再重启工作台。',
   'panels.market.add.failureNoProfileDir': '找不到这份工作台配置的目录，无法安装模块。请在工作台设置里检查配置目录，或重新安装工作台。',
   'panels.market.add.failureIncompatible': '这个版本需要 {dsh}，当前 dsh 为 {runtime}。请先升级 dsh 再安装。',

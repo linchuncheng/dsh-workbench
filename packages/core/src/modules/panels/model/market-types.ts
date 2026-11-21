@@ -1,5 +1,5 @@
 import type { Need } from '@dsh-workbench/shared';
-import type { ProvisionAction } from '@dsh-workbench/shared/host';
+import type { ProvisionAction, ProvisionInstallRoute } from '@dsh-workbench/shared/host';
 import type { BundleCancellation, BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bundle-install';
 import type { InstalledModule } from '@dsh-workbench/shared/host';
 import type { UnitCapability } from '@dsh-workbench/shared/host';
@@ -26,6 +26,7 @@ export interface BundleInstallOptions {
   readonly approvedBuilds?: readonly string[] | undefined;
   readonly requestId?: string | undefined;
   readonly signal?: AbortSignal | undefined;
+  readonly route?: ProvisionInstallRoute | undefined;
 }
 
 export type BundleSupply =

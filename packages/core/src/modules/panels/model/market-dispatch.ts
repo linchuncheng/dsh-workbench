@@ -2,6 +2,7 @@ import type { ProvisionAction, ProvisionRequest } from '@dsh-workbench/shared/ho
 import type { BundleCancellation, BundleChange } from '@/kernel/contract/bundle-install';
 import type { InstalledModule } from '@dsh-workbench/shared/host';
 import type { BundleSupply, MarketEntry, MarketService } from './market';
+import type { BundleInstallOptions } from './market-types';
 import type { PluginKept } from './plugin-actions';
 import type { SharedDependency } from './market-dependency';
 
@@ -67,6 +68,17 @@ function isDependency(action: ProvisionAction): action is 'update-dependency' {
   return action === 'update-dependency';
 }
 
+type MutableInstallOptions = { -readonly [K in keyof BundleInstallOptions]: BundleInstallOptions[K] };
+
+function installOptionsOf(request: ProvisionRequest): BundleInstallOptions {
+  const options: MutableInstallOptions = {};
+  if (request.registry !== undefined) options.registry = request.registry;
+  if (request.approvedBuilds !== undefined) options.approvedBuilds = request.approvedBuilds;
+  if (request.requestId !== undefined) options.requestId = request.requestId;
+  if (request.route !== undefined) options.route = request.route;
+  return options;
+}
+
 export async function dispatchMarket(
   market: MarketService,
   request: ProvisionRequest,
@@ -76,21 +88,13 @@ export async function dispatchMarket(
     const shared = await market.updateDependency(id);
     return { ok: true, action: request.action, shared };
   }
-  if (request.action === 'install-bundle') {
-    const outcome = await market.installBundle(request.spec ?? '', {
-      ...(request.registry === undefined ? {} : { registry: request.registry }),
-      ...(request.approvedBuilds === undefined ? {} : { approvedBuilds: request.approvedBuilds }),
-      ...(request.requestId === undefined ? {} : { requestId: request.requestId }),
-    });
-    return { ok: true, action: 'install-bundle', ...outcome };
-  }
-  if (request.action === 'install-version') {
-    const outcome = await market.replaceBundle(request.spec ?? '', {
-      ...(request.registry === undefined ? {} : { registry: request.registry }),
-      ...(request.approvedBuilds === undefined ? {} : { approvedBuilds: request.approvedBuilds }),
-      ...(request.requestId === undefined ? {} : { requestId: request.requestId }),
-    });
-    return { ok: true, action: 'install-version', ...outcome };
+  if (request.action === 'install-bundle' || request.action === 'install-version') {
+    const options = installOptionsOf(request);
+    const outcome =
+      request.action === 'install-bundle'
+        ? await market.installBundle(request.spec ?? '', options)
+        : await market.replaceBundle(request.spec ?? '', options);
+    return { ok: true, action: request.action, ...outcome };
   }
   if (request.action === 'update-bundle') {
     const outcome = await market.updateBundle(request.unit ?? '');

@@ -310,6 +310,7 @@ const FAILURE_KEYS: Readonly<Record<string, string>> = {
   cancelled: 'panels.market.add.failureCancelled',
   'stale-approval': 'panels.market.add.failureGeneric',
   'module-row-failed': 'panels.market.add.failureModuleRow',
+  'bundle-list-failed': 'panels.market.add.failureBundleList',
   'module-row-remove-failed': 'panels.market.add.failureModuleRowRemove',
   'no-profile-dir': 'panels.market.add.failureNoProfileDir',
 };

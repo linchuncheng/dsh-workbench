@@ -3,8 +3,8 @@ import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bund
 import type { BundleManager } from '@dsh-workbench/shared/host';
 import type { InstalledModule } from '@dsh-workbench/shared/host';
 import {
-  approveBuilds, hostCommandStep, marketSpecPackage, PlanCancelledError, profilePnpmCommand, quoteShellArg,
-  recordPendingBuilds, refusalReason, splitNpmSpec, WorkbenchDataError,
+  approveBuilds, declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, profileBundlesOf,
+  profilePnpmCommand, quoteShellArg, recordPendingBuilds, refusalReason, splitNpmSpec, WorkbenchDataError,
 } from '@dsh-workbench/shared/host';
 import { requireSupply, localDirOf, type SupplyPort } from '@dsh-workbench/shared/host';
 import { sourceProblemText } from './market-dependency';
@@ -170,19 +170,15 @@ export async function replaceRouted(
   spec: string,
   options?: BundleInstallOptions,
 ): Promise<BundleInstallOutcome> {
-  const supply = deps.supply ?? requireSupply();
-  const route = await supply.packageRouteOf({
-    spec,
-    ...(deps.seam === undefined ? {} : { seam: deps.seam }),
-    ...(deps.registry === undefined ? {} : { registry: deps.registry }),
-  });
-  if (route?.kind !== 'dsh-module') return replaceDshBundle(deps, spec, options);
   const { remove: _remove, ...rest } = deps;
-  return installModuleRow(
-    { ...rest, spec, ...(options === undefined ? {} : { options }) },
-    spec,
-    route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim(),
-  );
+  if (options?.route === 'module') return installAsModule(rest, spec, options);
+  if (options?.route === 'bundle') return retryBundle(deps, spec, options, true);
+  const supply = deps.supply ?? requireSupply();
+  const route = await probeOf(supply, spec, deps.seam, deps.registry);
+  if (route?.kind === 'dsh-module') {
+    return installAsModule(rest, spec, options, route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim());
+  }
+  return retryBundle(deps, spec, options, true);
 }
 
 function installOptions(options: BundleInstallOptions | undefined) {
@@ -222,6 +218,106 @@ async function settle(
   return { change, module, supply: await deps.supplyAfter(module, change) };
 }
 
+function pkgNameOf(spec: string): string {
+  return marketSpecPackage(spec) ?? splitNpmSpec(spec)?.name ?? spec.trim();
+}
+
+function probeOf(
+  supply: SupplyPort,
+  spec: string,
+  seam: Seam | undefined,
+  registry: string | undefined,
+) {
+  return supply.packageRouteOf({
+    spec,
+    ...(seam === undefined ? {} : { seam }),
+    ...(registry === undefined ? {} : { registry }),
+  });
+}
+
+function retryBundle(
+  deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
+  spec: string,
+  options: BundleInstallOptions | undefined,
+  replace: boolean,
+): Promise<BundleInstallOutcome> {
+  const attempt =
+    replace
+      ? replaceDshBundle(deps as ReplaceBundleDeps, spec, options)
+      : installDshBundle(deps, spec, options);
+  return attempt.then((outcome) => retryAsModule(deps, spec, options, outcome));
+}
+
+function installAsModule(
+  deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
+  spec: string,
+  options: BundleInstallOptions | undefined,
+  pkg: string = pkgNameOf(spec),
+): Promise<BundleInstallOutcome> {
+  return installModuleRow({ ...deps, spec, ...(options === undefined ? {} : { options }) }, spec, pkg);
+}
+
+async function wireModule(deps: Omit<BundleInstallDeps, 'spec' | 'options'>, pkg: string): Promise<void> {
+  const dir = deps.profileDir;
+  if (dir === undefined || dir === null) return;
+  const wanted = declaresDshBundle(dir, pkg);
+  const listed = (): boolean => profileBundlesOf(dir).includes(pkg);
+  if (listed() === wanted) return;
+  const setEnabled = deps.manager.setEnabled?.bind(deps.manager);
+  const shape = wanted ? '这一版声明了 dsh.bundle' : '这一版未声明 dsh.bundle';
+  const move = wanted ? '加入 dsh.profile.bundles' : '从 dsh.profile.bundles 移除';
+  if (setEnabled === undefined) {
+    throw new Error(`${shape}，但这份 dsh 无法把它${move}`);
+  }
+  let change: BundleChange | null;
+  try {
+    change = await setEnabled(pkg, wanted);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`${shape}，但未能把它${move}（${detail}）`, { cause: error });
+  }
+  if (listed() !== wanted) {
+    throw new Error(`${shape}，但未能把它${move}（${change?.errorCode ?? '原因不明'}）`);
+  }
+}
+
+async function realignProfile(
+  deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
+  pkg: string,
+): Promise<void> {
+  const dir = deps.profileDir;
+  if (dir === undefined || dir === null) return;
+  const pnpm = profilePnpmCommand(dir);
+  const prefix = [pnpm.command, ...pnpm.args].map(quoteShellArg).join(' ');
+  const store = pnpm.storeDir === undefined ? '' : ` --store-dir ${quoteShellArg(pnpm.storeDir)}`;
+  const line = `${prefix} install --frozen-lockfile --dir ${quoteShellArg(dir)}${store}`;
+  try {
+    await deps.runAll([hostCommandStep({ kind: 'run', line })]);
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 安装失败，已按 lockfile 重装工作台配置`);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 安装失败，按 lockfile 重装工作台配置也失败：${detail}`);
+  }
+}
+
+async function retryAsModule(
+  deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
+  spec: string,
+  options: BundleInstallOptions | undefined,
+  outcome: BundleInstallOutcome,
+): Promise<BundleInstallOutcome> {
+  if (outcome.change.errorCode !== 'not-bundle') return outcome;
+  const pkg = bundleNameOf(outcome.change, spec);
+  deps.logger?.info?.(`[dsh-workbench] ${pkg} 未声明 dsh.bundle，改按工作台模块安装`);
+  const retried = await installModuleRow(
+    { ...deps, spec, ...(options === undefined ? {} : { options }) },
+    spec,
+    pkg,
+  );
+  if (retried.change.application === 'failed') await realignProfile(deps, pkg);
+  return retried;
+}
+
 async function installModuleRow(
   deps: BundleInstallDeps,
   spec: string,
@@ -249,6 +345,20 @@ async function installModuleRow(
     if (error instanceof PlanCancelledError) return routedCancelled(deps, pkg);
     const pending = pendingFrom(deps, outputOfError(error));
     return routedFailure(deps, pkg, failureDetailOf(error), pending);
+  }
+  try {
+    await wireModule(deps, pkg);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已安装到工作台配置，但 dsh.profile.bundles 未同步：${detail}`);
+    return outcomeOf(deps, pkg, {
+      application: 'failed',
+      stage: 'install',
+      changed: true,
+      target: pkg,
+      errorCode: 'bundle-list-failed',
+      errorDetail: `dsh.profile.bundles: ${detail}`,
+    });
   }
   try {
     deps.syncRows?.();
@@ -280,16 +390,14 @@ async function installModuleRow(
 
 export async function installRouted(deps: BundleInstallDeps): Promise<BundleInstallOutcome> {
   const { spec, options, registry, seam } = deps;
+  if (options?.route === 'module') return installAsModule(deps, spec, options);
+  if (options?.route === 'bundle') return retryBundle(deps, spec, options, false);
   const supply = deps.supply ?? requireSupply();
-  const route = await supply.packageRouteOf({
-    spec,
-    ...(seam === undefined ? {} : { seam }),
-    ...(registry === undefined ? {} : { registry }),
-  });
+  const route = await probeOf(supply, spec, seam, registry);
   if (route?.kind === 'dsh-module') {
     return installModuleRow(deps, spec, route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim());
   }
-  if (route === undefined || route.kind === 'dsh-bundle') return installDshBundle(deps, spec, options);
+  if (route === undefined || route.kind === 'dsh-bundle') return retryBundle(deps, spec, options, false);
 
   const pkg = route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim();
   if (route.kind === 'neither') {

@@ -110,7 +110,8 @@ export function marketActOf(options: MarketActOptions): MarketAct {
       market === undefined || row?.pkg === undefined
         ? undefined
         : marketInstallTarget(row.pkg, market.version, market.source).spec;
-    if (action === 'install-version' && marketSpec === undefined) {
+    const spec = (action === 'install-version' ? row?.reinstall : undefined) ?? marketSpec;
+    if (action === 'install-version' && spec === undefined) {
       seats.setPending(null);
       seats.setFailed({ id, message: t('panels.market.failed', { reason: t('panels.market.noMarketSource') }) });
       return;
@@ -125,9 +126,14 @@ export function marketActOf(options: MarketActOptions): MarketAct {
                 action,
                 name: row?.pkg ?? '',
               }
-            : marketSpec === undefined
+            : spec === undefined
               ? { action, unit: id }
-              : { action, spec: marketSpec, requestId: globalThis.crypto.randomUUID() },
+              : {
+                  action,
+                  spec,
+                  requestId: globalThis.crypto.randomUUID(),
+                  ...(market?.route === undefined ? {} : { route: market.route }),
+                },
     );
     if (!outcome.ok) {
       changed({ force: true });

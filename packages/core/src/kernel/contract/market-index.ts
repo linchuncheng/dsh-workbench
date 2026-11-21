@@ -27,6 +27,7 @@ export type {
   GitProbePayload,
   GitProbeStatus,
   GitTransportKind,
+  InstallRoute,
   InstalledPackageInfo,
   MarketInstalledModule,
   MarketInstalledPayload,

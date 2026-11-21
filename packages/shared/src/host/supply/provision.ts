@@ -1,4 +1,5 @@
 import type { ProvisionAction } from '../../contract/workbench-contract.js';
+import type { InstallRoute } from '../../contract/protocol/market-index.js';
 
 export type { ProvisionAction };
 
@@ -34,6 +35,8 @@ void ALL_ACTIONS_COVERED;
 
 export type ProvisionTarget = 'unit' | 'id' | 'spec' | 'name' | 'requestId';
 
+export type ProvisionInstallRoute = InstallRoute;
+
 export function provisionTargetOf(action: ProvisionAction): ProvisionTarget {
   if (action === 'update-dependency') return 'id';
   if (action === 'install-bundle' || action === 'install-version') return 'spec';
@@ -54,6 +57,7 @@ export interface ProvisionRequest {
   readonly requestId?: string;
   readonly version?: string;
   readonly registry?: string;
+  readonly route?: ProvisionInstallRoute;
   readonly approvedBuilds?: readonly string[];
 }
 
@@ -126,6 +130,7 @@ export function parseProvisionBody(body: unknown): ProvisionParsed {
   const registry = typeof raw.registry === 'string' && raw.registry.trim() !== '' ? raw.registry.trim() : undefined;
   const approvedBuilds = stringsOf(raw.approvedBuilds);
   const requestId = typeof raw.requestId === 'string' && raw.requestId.trim() !== '' ? raw.requestId.trim() : undefined;
+  const route = raw.route === 'module' || raw.route === 'bundle' ? raw.route : undefined;
   return {
     ok: true,
     request: {
@@ -133,6 +138,7 @@ export function parseProvisionBody(body: unknown): ProvisionParsed {
       ...(registry === undefined ? {} : { registry }),
       ...(approvedBuilds === undefined ? {} : { approvedBuilds }),
       ...(requestId === undefined ? {} : { requestId }),
+      ...(route === undefined ? {} : { route }),
     },
   };
 }

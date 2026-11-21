@@ -61,6 +61,7 @@ export interface MarketNote {
     | 'panels.market.selfUpdateBusy'
     | 'panels.market.selfUpdateReinstallFailed'
     | 'panels.market.selfUpdateReinstallStopped'
+    | 'panels.market.configDriftedNote'
     | 'panels.market.olderOnDiskNote';
   readonly params: Readonly<Record<string, string>>;
   readonly tone?: 'plain' | 'alert';
@@ -123,6 +124,7 @@ export interface MarketRow {
   readonly followUp?: MarketFollowUp;
   readonly spec?: string;
   readonly registry?: string;
+  readonly reinstall?: string;
   readonly installedAt?: string;
   readonly runtimeProblem?:
     | { readonly label: string; readonly need: string; readonly have: string }

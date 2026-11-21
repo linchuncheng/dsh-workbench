@@ -232,6 +232,8 @@ export interface MarketSourcesPayload {
   readonly transports?: Readonly<Record<string, GitTransportKind>>;
 }
 
+export type InstallRoute = 'module' | 'bundle';
+
 export interface MarketInstalledModule {
   readonly pkg: string;
   readonly unit: string;
@@ -239,6 +241,7 @@ export interface MarketInstalledModule {
   readonly sourceId: string;
   readonly sourceLabel: string;
   readonly source: MarketIndexSource;
+  readonly route?: InstallRoute;
 }
 
 export interface MarketInstalledPayload {

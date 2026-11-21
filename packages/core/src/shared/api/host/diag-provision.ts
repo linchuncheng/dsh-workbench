@@ -1,7 +1,26 @@
 import type { DiagRecorder, ProvisionHandler, ProvisionRequest } from '@dsh-workbench/shared/host';
 
+function changeOf(result: unknown): Record<string, unknown> | undefined {
+  if (typeof result !== 'object' || result === null) return undefined;
+  const change = (result as { change?: unknown }).change;
+  return typeof change === 'object' && change !== null ? (change as Record<string, unknown>) : undefined;
+}
+
 function failedOf(result: unknown): boolean {
-  return typeof result === 'object' && result !== null && (result as { ok?: unknown }).ok === false;
+  if (typeof result !== 'object' || result === null) return false;
+  if ((result as { ok?: unknown }).ok === false) return true;
+  return changeOf(result)?.['application'] === 'failed';
+}
+
+function detailOf(request: ProvisionRequest, result: unknown): Record<string, string> {
+  const change = changeOf(result);
+  const code = change?.['errorCode'];
+  const stage = change?.['stage'];
+  return {
+    action: request.action,
+    ...(typeof code === 'string' && code !== '' ? { reason: code } : {}),
+    ...(typeof stage === 'string' && stage !== '' ? { stage } : {}),
+  };
 }
 
 function keyOf(request: ProvisionRequest): string {
@@ -25,7 +44,7 @@ export function withDiagProvision(handler: ProvisionHandler, diag?: DiagRecorder
                   ...(request.spec === undefined ? {} : { pkg: request.spec }),
                 },
               }),
-          detail: { action: request.action },
+          detail: detailOf(request, result),
         });
       }
       return result;

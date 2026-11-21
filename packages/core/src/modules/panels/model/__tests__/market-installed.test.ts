@@ -59,6 +59,31 @@ const gitUrlOf = (row: { readonly source: { readonly type: string; readonly url?
   row !== undefined && row.source.type === 'git' ? (row.source.url ?? '') : '';
 
 describe('已安装页问索引：谁有新版本', () => {
+  it('★ 市场条目声明是工作台模块 → 行上带 route=module；没声明的不带', async () => {
+    const sourceOf = {
+      type: 'git' as const,
+      url: 'https://host/org/repo.git',
+      commit: 'a'.repeat(40),
+      path: 'packages/@t/a',
+    };
+    const rows = await installedFromIndexes({
+      sources: [source('s1')],
+      cached: () => ({
+        format: 1,
+        plugins: [
+          { name: '@t/a', metadata: { workbench: true }, versions: [{ version: '1.2.0', source: sourceOf }] },
+          { name: '@t/b', versions: [{ version: '1.2.0', source: sourceOf }] },
+        ],
+      }),
+      modules: [moduleOf('@t/a', '1.1.0', 'a'), moduleOf('@t/b', '1.1.0', 'b')],
+      dependencyOf: () => undefined,
+      isNewer: newer,
+    });
+    expect(rows.find((row) => row.pkg === '@t/a')?.route).toBe('module');
+    expect(rows.find((row) => row.pkg === '@t/b')?.route).toBeUndefined();
+  });
+
+
   it('★ 索引里有更高的版本才算一条；传输按「当初装它那种」先试，通了就不再多探', async () => {
     const fake = probeOf({ 'ssh://git@host/org/repo.git': 'ok' });
     const rows = await installedFromIndexes({

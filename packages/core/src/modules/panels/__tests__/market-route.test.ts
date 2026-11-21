@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWorkspaceStore } from '@dsh-workbench/shared/host';
 const PLUGIN_MANIFEST_FILE = 'opencli-plugin.json';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
+import { profileModules } from '@dsh-workbench/shared/host';
+import { syncModuleRows } from '@/shared/api/host/module-rows-sync';
 import { fakeSeamOf } from './seam-fake';
 import type { DshShell } from '@dsh-workbench/shared/host';
 import type { BundleChange, BundleInstallRequest } from '@/kernel/contract/bundle-install';
@@ -555,6 +557,242 @@ describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，
     expect(warn.mock.calls[0]?.[0]).toContain('模块行没有写入');
     expect(outcome.change).toMatchObject({ application: 'failed', errorCode: 'module-row-failed' });
     expect(outcome.change.errorDetail).toContain('cordis.patch.yml');
+  });
+});
+
+describe('接线跟着装出来的那一版走：带 bundle 的放回名单，不带的摘掉并写行', () => {
+  function profileAt(options: {
+    readonly pkg: string;
+    readonly version: string;
+    readonly bundles: readonly string[];
+    readonly shipsBundle: boolean;
+  }): string {
+    const dir = dirOf('profile');
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({
+        name: 'p',
+        dsh: { profile: { bundles: [...options.bundles] } },
+        dependencies: { [options.pkg]: options.version },
+      }),
+      'utf8',
+    );
+    const at = path.join(dir, 'node_modules', options.pkg);
+    fs.mkdirSync(at, { recursive: true });
+    fs.writeFileSync(
+      path.join(at, 'package.json'),
+      JSON.stringify({
+        name: options.pkg,
+        version: options.version,
+        dsh: {
+          workbench: { unit: 'a', card: { order: 10 }, tools: [], host: { inject: [] } },
+          ...(options.shipsBundle ? { bundle: { patch: './cordis.patch.yml' } } : {}),
+        },
+      }),
+      'utf8',
+    );
+    return dir;
+  }
+
+  function togglingManager(
+    dir: string,
+    install: (request: BundleInstallRequest) => BundleChange,
+  ): { manager: BundleManager; setEnabled: ReturnType<typeof vi.fn> } {
+    const setEnabled = vi.fn(async (pkg: string, enabled: boolean) => {
+      const file = path.join(dir, 'package.json');
+      const manifest = JSON.parse(fs.readFileSync(file, 'utf8')) as {
+        dsh?: { profile?: { bundles?: string[] } };
+      };
+      const bundles = manifest.dsh?.profile?.bundles ?? [];
+      manifest.dsh = {
+        ...manifest.dsh,
+        profile: {
+          ...manifest.dsh?.profile,
+          bundles: enabled ? [...new Set([...bundles, pkg])] : bundles.filter((item) => item !== pkg),
+        },
+      };
+      fs.writeFileSync(file, JSON.stringify(manifest), 'utf8');
+      return { application: 'applied', stage: 'install', changed: true, target: pkg } as BundleChange;
+    });
+    return {
+      setEnabled,
+      manager: {
+        registries: async () => null,
+        inspect: async () => null,
+        install: async (request: BundleInstallRequest) => install(request),
+        remove: async () => null,
+        cancel: async () => null,
+        setEnabled,
+      },
+    };
+  }
+
+  function failNotBundle(request: BundleInstallRequest): BundleChange {
+    return {
+      application: 'failed',
+      stage: 'install',
+      changed: false,
+      target: request.spec,
+      errorCode: 'not-bundle',
+      errorDetail: 'declares no bundle',
+    };
+  }
+
+  it('★ 市场条目说它是模块 → 不再问源判形态，直接 pnpm add + 写行', async () => {
+    const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: false });
+    const asked = vi.fn(() => {
+      throw new Error('不该问源');
+    });
+    const supply = pluginSupply(asked);
+    const { deps, install, commands } = rig({ spec: '@t/module-a@1.2.0', supply });
+    const syncRows = vi.fn();
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: dir,
+      syncRows,
+      options: { route: 'module' },
+    });
+
+    expect(asked).not.toHaveBeenCalled();
+    expect(install).not.toHaveBeenCalled();
+    expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([
+      `'pnpm' add --dir '${dir}' '@t/module-a@1.2.0' --save-exact`,
+    ]);
+    expect(syncRows).toHaveBeenCalledTimes(1);
+    expect(outcome.change.application).toBe('applied');
+  });
+
+  it('★ 按模块重装也失败 → 按 lockfile 把 profile 拉回一致（不留半装状态）', async () => {
+    const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: false });
+    const { deps } = rig({ spec: '@t/module-a@1.1.9', supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });
+    const { manager } = togglingManager(dir, failNotBundle);
+    const lines: string[] = [];
+
+    const outcome = await installRouted({
+      ...deps,
+      manager,
+      profileDir: dir,
+      options: { route: 'bundle' },
+      runAll: async (steps) => {
+        for (const step of steps) {
+          const line = planStepText(step);
+          lines.push(line);
+          if (line.includes(' add ')) throw new Error('pnpm 装不上');
+        }
+      },
+    });
+
+    expect(lines.map((line) => line.replace(/^& /u, ''))).toEqual([
+      `'pnpm' add --dir '${dir}' '@t/module-a@1.1.9' --save-exact`,
+      `'pnpm' install --frozen-lockfile --dir '${dir}'`,
+    ]);
+    expect(outcome.change.application).toBe('failed');
+  });
+
+  it('★ 市场那种 git spec：包名从 path 末段取，不把整串当包名', async () => {
+    const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: false });
+    const spec = `git+ssh://git@host/org/repo.git#${'a'.repeat(40)}&path:/artifacts/@t/module-a`;
+    const { deps, commands } = rig({ spec, supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });
+    const syncRows = vi.fn();
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: dir,
+      syncRows,
+      options: { route: 'module' },
+      installed: (pkg) => ({ kind: 'module', pkg, unit: 'a', version: '1.2.0' }),
+    });
+
+    expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([
+      `'pnpm' add --dir '${dir}' '${spec}' --save-exact`,
+    ]);
+    expect(outcome.change.target).toBe('@t/module-a');
+    expect(outcome.module).toEqual({ kind: 'module', pkg: '@t/module-a', unit: 'a', version: '1.2.0' });
+  });
+
+  it('★ dsh 回 not-bundle → 按工作台模块再装一次，不停在失败上', async () => {
+    const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: false });
+    const { deps, commands } = rig({ spec: '@t/module-a@1.1.9', supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });
+    const { manager, setEnabled } = togglingManager(dir, failNotBundle);
+    const syncRows = vi.fn();
+    const info = vi.fn();
+
+    const outcome = await installRouted({
+      ...deps,
+      manager,
+      profileDir: dir,
+      syncRows,
+      options: { route: 'bundle' },
+      logger: { info },
+    });
+
+    expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([
+      `'pnpm' add --dir '${dir}' '@t/module-a@1.1.9' --save-exact`,
+    ]);
+    expect(setEnabled).not.toHaveBeenCalled();
+    expect(syncRows).toHaveBeenCalledTimes(1);
+    expect(info.mock.calls[0]?.[0]).toContain('改按工作台模块安装');
+    expect(outcome.change.application).toBe('applied');
+  });
+
+  it('★ 新版不带 dsh.bundle 却还在名单里 → 摘掉，再写行', async () => {
+    const dir = profileAt({ pkg: '@t/module-a', version: '1.1.9', bundles: ['@t/module-a'], shipsBundle: false });
+    const { deps, commands } = rig({ spec: '@t/module-a', supply: pluginSupply(() => ({ kind: 'dsh-module', pkg: '@t/module-a' })) });
+    const { manager, setEnabled } = togglingManager(dir, (request) => change(request.spec));
+
+    const outcome = await installRouted({
+      ...deps,
+      manager,
+      profileDir: dir,
+      syncRows: () => {
+        syncModuleRows({ profileDir: dir, modules: profileModules(dir) });
+      },
+    });
+
+    expect(commands).toHaveLength(1);
+    expect(setEnabled.mock.calls[0]).toEqual(['@t/module-a', false]);
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')) as {
+      dsh: { profile: { bundles: string[] } };
+    };
+    expect(manifest.dsh.profile.bundles).not.toContain('@t/module-a');
+    expect(fs.readFileSync(path.join(dir, 'cordis.patch.yml'), 'utf8')).toContain('wb-a');
+    expect(outcome.change.application).toBe('applied');
+  });
+
+  it('★ 这一版又带 dsh.bundle 了但不在名单里 → 放回名单（行留给同步去清）', async () => {
+    const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: true });
+    const { deps } = rig({ spec: '@t/module-a', supply: pluginSupply(() => ({ kind: 'dsh-module', pkg: '@t/module-a' })) });
+    const { manager, setEnabled } = togglingManager(dir, (request) => change(request.spec));
+    const syncRows = vi.fn();
+
+    await installRouted({ ...deps, manager, profileDir: dir, syncRows });
+
+    expect(setEnabled.mock.calls[0]).toEqual(['@t/module-a', true]);
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')) as {
+      dsh: { profile: { bundles: string[] } };
+    };
+    expect(manifest.dsh.profile.bundles).toContain('@t/module-a');
+  });
+
+  it('★ 名单改不动 → 不算生效：报 bundle-list-failed，详情点名 dsh.profile.bundles', async () => {
+    const dir = profileAt({ pkg: '@t/module-a', version: '1.1.9', bundles: ['@t/module-a'], shipsBundle: false });
+    const { deps } = rig({ spec: '@t/module-a', supply: pluginSupply(() => ({ kind: 'dsh-module', pkg: '@t/module-a' })) });
+    const setEnabled = vi.fn(async () => null);
+    const manager: BundleManager = {
+      registries: async () => null,
+      inspect: async () => null,
+      install: async () => null,
+      remove: async () => null,
+      cancel: async () => null,
+      setEnabled,
+    };
+
+    const outcome = await installRouted({ ...deps, manager, profileDir: dir, syncRows: () => {} });
+
+    expect(setEnabled).toHaveBeenCalledTimes(1);
+    expect(outcome.change).toMatchObject({ application: 'failed', errorCode: 'bundle-list-failed' });
+    expect(outcome.change.errorDetail).toContain('dsh.profile.bundles');
   });
 });
 

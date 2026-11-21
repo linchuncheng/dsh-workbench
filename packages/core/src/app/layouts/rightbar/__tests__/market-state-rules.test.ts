@@ -196,6 +196,24 @@ describe('为什么该更新：一句话 + 底下说清缘由', () => {
     expect(row?.note).toBeUndefined();
   });
 
+  it('★ 清单写的版本和盘上不一致 → 行上给「更新」，按清单那一版重装（不再一直卡着）', () => {
+    const rows = installedRows(
+      [{ unit: 'mod', pkg: '@p/mod', installed: '1.1.9', spec: '1.1.8', declared: '1.1.8' }],
+      [unit('mod')],
+      new Set(),
+    );
+
+    expect(rows[0]?.state).toBe('installed');
+    expect(rows[0]?.canUpdate).toBe(true);
+    expect(rows[0]?.reinstall).toBe('@p/mod@1.1.8');
+    expect(rows[0]?.note).toMatchObject({
+      key: 'panels.market.configDriftedNote',
+      params: { declared: '1.1.8', installed: '1.1.9' },
+      tone: 'alert',
+    });
+    expect(marketActions(rows[0] as never)).toEqual(['install-version', 'remove-bundle']);
+  });
+
   it('模块包有新版本 → 同一句「有新版本」，理由靠版本箭头说', () => {
     const row = marketRows(
       [unit('issues', 'demo')],
