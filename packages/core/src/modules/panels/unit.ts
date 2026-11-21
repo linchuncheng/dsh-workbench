@@ -56,6 +56,8 @@ export const DIY_RECORD_READ_TOOL = 'workbench_diy_record_read';
 export const DIY_RECORD_DETAIL_TOOL = 'workbench_diy_record_detail';
 export const DIY_RECORD_STOP_TOOL = 'workbench_diy_record_stop';
 
+export const DIAG_TOOL = 'workbench_diag';
+
 export const LONG_TASKS_LIST_TOOL = 'workbench_long_tasks_list';
 export const LONG_TASKS_STOP_TOOL = 'workbench_long_tasks_stop';
 
@@ -100,9 +102,11 @@ export const DIY_TOOLS = [
   DIY_LOGS_WATCH_TOOL,
   DIY_LOGS_READ_TOOL,
   DIY_LOGS_STOP_TOOL,
+  DIAG_TOOL,
 ] as const;
 
 export const ALL_TOOLS = [
+  DIAG_TOOL,
   TOOLBOX_LIST_TOOL,
   TOOLBOX_OPEN_TOOL,
   TOOLBOX_CLOSE_TOOL,
@@ -141,6 +145,7 @@ export const ALL_TOOLS = [
 export type PanelsToolName = (typeof ALL_TOOLS)[number];
 
 export const READ_TOOLS = [
+  DIAG_TOOL,
   DIY_STEP_TOOL,
   TOOLBOX_LIST_TOOL,
   TOOLBOX_OPEN_TOOL,
@@ -236,6 +241,7 @@ export const DIY_LOGS_TOOLS = [
 ] as const satisfies readonly PanelsToolName[];
 
 export const MANAGE_TOOLS = [
+  DIAG_TOOL,
   PANELS_LIST_TOOL,
   PANELS_SHOW_TOOL,
   PANELS_HIDE_TOOL,
