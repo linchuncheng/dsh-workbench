@@ -20,7 +20,12 @@ describe('工作台设置（本机文件）', () => {
   it('★ 默认关：没有文件时 MCP 按需加载与非正式版本都是关的，模块也没选模型', () => {
     const store = createWorkbenchSettingsStore({ root });
 
-    expect(store.read()).toEqual({ mcpOnDemand: false, includePrerelease: false, moduleModel: null });
+    expect(store.read()).toEqual({
+      mcpOnDemand: false,
+      includePrerelease: false,
+      moduleModel: null,
+      diyPresetSource: 'standard',
+    });
     expect(fs.existsSync(settingsFile())).toBe(false);
   });
 
@@ -29,15 +34,26 @@ describe('工作台设置（本机文件）', () => {
 
     expect(store.apply({ mcpOnDemand: true })).toEqual({
       ok: true,
-      settings: { mcpOnDemand: true, includePrerelease: false, moduleModel: null },
+      settings: {
+        mcpOnDemand: true,
+        includePrerelease: false,
+        moduleModel: null,
+        diyPresetSource: 'standard',
+      },
     });
     expect(readFile()).toEqual({
       mcpOnDemand: true,
       includePrerelease: false,
+      diyPresetSource: 'standard',
     });
 
     const again = createWorkbenchSettingsStore({ root });
-    expect(again.read()).toEqual({ mcpOnDemand: true, includePrerelease: false, moduleModel: null });
+    expect(again.read()).toEqual({
+      mcpOnDemand: true,
+      includePrerelease: false,
+      moduleModel: null,
+      diyPresetSource: 'standard',
+    });
   });
 
   it('开关变了才通知；同一个值再写一次不惊动订阅者', () => {
@@ -70,12 +86,22 @@ describe('工作台设置（本机文件）', () => {
 
     expect(routes['workbench-settings']?.()).toEqual({
       ok: true,
-      settings: { mcpOnDemand: false, includePrerelease: false, moduleModel: null },
+      settings: {
+        mcpOnDemand: false,
+        includePrerelease: false,
+        moduleModel: null,
+        diyPresetSource: 'standard',
+      },
     });
     store.apply({ mcpOnDemand: true });
     expect(routes['workbench-settings']?.()).toEqual({
       ok: true,
-      settings: { mcpOnDemand: true, includePrerelease: false, moduleModel: null },
+      settings: {
+        mcpOnDemand: true,
+        includePrerelease: false,
+        moduleModel: null,
+        diyPresetSource: 'standard',
+      },
     });
   });
 
@@ -84,7 +110,12 @@ describe('工作台设置（本机文件）', () => {
 
     expect(() => store.apply({ mcpOnDemand: 'yes' })).toThrow(/mcpOnDemand/);
     expect(fs.existsSync(settingsFile())).toBe(false);
-    expect(store.read()).toEqual({ mcpOnDemand: false, includePrerelease: false, moduleModel: null });
+    expect(store.read()).toEqual({
+      mcpOnDemand: false,
+      includePrerelease: false,
+      moduleModel: null,
+      diyPresetSource: 'standard',
+    });
   });
 
   it('★ 打开非正式版本开关：只改它，MCP 那一档不动', () => {
@@ -92,11 +123,17 @@ describe('工作台设置（本机文件）', () => {
 
     expect(store.apply({ includePrerelease: true })).toEqual({
       ok: true,
-      settings: { mcpOnDemand: false, includePrerelease: true, moduleModel: null },
+      settings: {
+        mcpOnDemand: false,
+        includePrerelease: true,
+        moduleModel: null,
+        diyPresetSource: 'standard',
+      },
     });
     expect(readFile()).toEqual({
       mcpOnDemand: false,
       includePrerelease: true,
+      diyPresetSource: 'standard',
     });
   });
 
@@ -116,12 +153,14 @@ describe('工作台设置（本机文件）', () => {
         mcpOnDemand: false,
         includePrerelease: false,
         moduleModel: { provider: 'deepseek', model: 'deepseek-chat' },
+        diyPresetSource: 'standard',
       },
     });
     expect(readFile()).toEqual({
       mcpOnDemand: false,
       includePrerelease: false,
       moduleModel: { provider: 'deepseek', model: 'deepseek-chat' },
+      diyPresetSource: 'standard',
     });
 
     const again = createWorkbenchSettingsStore({ root });
@@ -133,7 +172,11 @@ describe('工作台设置（本机文件）', () => {
     store.apply({ moduleModel: { provider: 'deepseek', model: 'deepseek-chat' } });
 
     expect(store.apply({ moduleModel: null }).settings.moduleModel).toBeNull();
-    expect(readFile()).toEqual({ mcpOnDemand: false, includePrerelease: false });
+    expect(readFile()).toEqual({
+      mcpOnDemand: false,
+      includePrerelease: false,
+      diyPresetSource: 'standard',
+    });
   });
 
   it('moduleModel 形状不对就当场拒，文件一个字节都不动', () => {
@@ -154,10 +197,54 @@ describe('工作台设置（本机文件）', () => {
       mcpOnDemand: false,
       includePrerelease: true,
       moduleModel: { provider: 'deepseek', model: 'deepseek-chat' },
+      diyPresetSource: 'standard',
     });
     expect(store.apply({ mcpOnDemand: true }).settings.moduleModel).toEqual({
       provider: 'deepseek',
       model: 'deepseek-chat',
     });
+  });
+
+  it('★ 选好的 DIY 来源写进 settings.json，换个 store 读回来还在', () => {
+    const store = createWorkbenchSettingsStore({ root });
+
+    expect(store.apply({ diyPresetSource: 'my-mode' }).settings).toEqual({
+      mcpOnDemand: false,
+      includePrerelease: false,
+      moduleModel: null,
+      diyPresetSource: 'my-mode',
+    });
+    expect(readFile()).toEqual({
+      mcpOnDemand: false,
+      includePrerelease: false,
+      diyPresetSource: 'my-mode',
+    });
+
+    const again = createWorkbenchSettingsStore({ root });
+    expect(again.read().diyPresetSource).toBe('my-mode');
+  });
+
+  it('★ 文件里没有 DIY 来源时按 standard 读；只改别的设置不动它', () => {
+    fs.writeFileSync(settingsFile(), JSON.stringify({ mcpOnDemand: false, includePrerelease: false }));
+    const store = createWorkbenchSettingsStore({ root });
+    expect(store.read().diyPresetSource).toBe('standard');
+
+    store.apply({ diyPresetSource: 'my-mode' });
+    expect(store.apply({ includePrerelease: true }).settings).toEqual({
+      mcpOnDemand: false,
+      includePrerelease: true,
+      moduleModel: null,
+      diyPresetSource: 'my-mode',
+    });
+  });
+
+  it('diyPresetSource 不是非空字符串就当场拒，文件一个字节都不动', () => {
+    const store = createWorkbenchSettingsStore({ root });
+
+    expect(() => store.apply({ diyPresetSource: '' })).toThrow(/DIY 模式/);
+    expect(() => store.apply({ diyPresetSource: '  ' })).toThrow(/DIY 模式/);
+    expect(() => store.apply({ diyPresetSource: 3 })).toThrow(/DIY 模式/);
+    expect(fs.existsSync(settingsFile())).toBe(false);
+    expect(store.read().diyPresetSource).toBe('standard');
   });
 });

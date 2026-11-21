@@ -7,7 +7,12 @@ import { createMcpScope } from '../pack-scope';
 import type { WorkbenchSettingsStore } from '../workbench-settings';
 
 function settingsOf(onDemand: boolean): WorkbenchSettingsStore & { set(next: boolean): void } {
-  let current: WorkbenchSettings = { mcpOnDemand: onDemand, includePrerelease: false, moduleModel: null };
+  let current: WorkbenchSettings = {
+    mcpOnDemand: onDemand,
+    includePrerelease: false,
+    moduleModel: null,
+    diyPresetSource: 'standard',
+  };
   const listeners = new Set<(settings: WorkbenchSettings) => void>();
   return {
     read: () => current,
@@ -17,7 +22,12 @@ function settingsOf(onDemand: boolean): WorkbenchSettingsStore & { set(next: boo
       return () => listeners.delete(listener);
     },
     set(next) {
-      current = { mcpOnDemand: next, includePrerelease: false, moduleModel: null };
+      current = {
+        mcpOnDemand: next,
+        includePrerelease: false,
+        moduleModel: null,
+        diyPresetSource: 'standard',
+      };
       for (const listener of [...listeners]) listener(current);
     },
   };

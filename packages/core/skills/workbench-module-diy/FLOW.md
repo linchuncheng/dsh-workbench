@@ -116,7 +116,7 @@ export const face: UnitModuleFace = {
   读站点数据的 plan 写法见 [DATASOURCE.md](DATASOURCE.md#多跳后一步要用前一步的结果)；
   分页、HTML 表格都写在 plan 里（`repeat` / `while` / `response.kind: 'html'`）。
 
-`registerTools()` 的返回值是**清理函数数组**（外壳卸载 / 热换时逐个调），不是“注册函数数组”。
+`registerTools()` 的返回值是**清理函数数组**（工作台卸载 / 热换时逐个调），不是“注册函数数组”。
 清单里每一条 `dsh.workbench.tools` 必须在这里注册一把、名字逐字一致；没有工具就 `() => []`。
 可运行的完整样板：`dsh-wb-module init --template diy` 生成的模块里那把 `__UNIT___run`
 （`createFlowTask` 把工具 + 长任务 + 动作通道收成一份实现）。
@@ -132,7 +132,7 @@ export const face: UnitModuleFace = {
 | 子流程 | `{ id, flow: subFlow, with: { ... } }`；结果在 `steps.<id>` |
 | 多跳读 | `{ id, data: RequestPlan }`；结果在 `steps.<id>.<步骤名>`，默认先打开 origin（`open: false` 可关） |
 | 提前结束 | `flow.stopWhen` |
-| 人工干预 | 动作里调 `ctx.need(intervention)`（`title` 说清要人做什么，可选 `hint` / `actions`），长任务进 `needs-human`；报告后继续自行轮询，条件满足再发下一步；需要「我处理完了」这个按钮，就在 `longTasks.create` 里给可选 `recheck`（点击后只请模块重新检查一次，外壳不承诺恢复；要自动重试就用 `withInterventionRetry(check, { attempts, delayMs })` 当 handler，check 回 `true` 即停）；要行上出回执表单，就给 `intervention.fields`（`{key,label,kind?:'text'|'secret',placeholder?,required?}`）与 `submitLabel`，并在 `longTasks.create` 里给 `answer?(current, values)` —— values 只回给模块，不进快照 / agent 可读处 |
+| 人工干预 | 动作里调 `ctx.need(intervention)`（`title` 说清要人做什么，可选 `hint` / `actions`），长任务进 `needs-human`；报告后继续自行轮询，条件满足再发下一步；需要「我处理完了」这个按钮，就在 `longTasks.create` 里给可选 `recheck`（点击后只请模块重新检查一次，工作台不承诺恢复；要自动重试就用 `withInterventionRetry(check, { attempts, delayMs })` 当 handler，check 回 `true` 即停）；要行上出回执表单，就给 `intervention.fields`（`{key,label,kind?:'text'|'secret',placeholder?,required?}`）与 `submitLabel`，并在 `longTasks.create` 里给 `answer?(current, values)` —— values 只回给模块，不进快照 / agent 可读处 |
 | 登录 | 动作用 `withLoginRetry(action)`：认证失败自动 `ctx.login(url)` 并在原地重试；长任务进 `needs-login`。data 步骤换了新路：`auth` 且计划给了 `loginUrl` 进 `needs-human` + 登录链接；没给就当场失败 |
 
 分支（`already_merged` / `can_merge` / `REVIEW_WAITING`）继续写在动作里；flow 只保留稳定的外层顺序。
@@ -169,11 +169,11 @@ export const face: UnitModuleFace = {
   要人处理就让它的结论进 `when`，下一步在动作里 `ctx.need(intervention)` 停下来。
 - `provider` / `model` / `preset` 可以单步覆盖；`name` 给子会话起一个可识别的名字（`forEach` 里不要写，会撞名）。
 - **次数上限**：一条 run 默认最多 16 次 agent 调用（`forEach` 与重试都算），超了这一步失败。
-- **会话**：agent 节点借用本次运行的会话作为父 agent。工具发起的流程自带会话；由看板按钮发起的，外壳会把**你当前
+- **会话**：agent 节点借用本次运行的会话作为父 agent。工具发起的流程自带会话；由看板按钮发起的，工作台会把**你当前
   这个对话**一并传入，子 agent 挂在该对话下，trace 在会话树里可见。宿主侧没有会话时（直接调用动作
   接口），才为本次运行创建一条临时会话，完成后一并结束。
 
-人工干预进入 `needs-human` 时，外壳会自动向发起它的会话发送一条「在等你处理」通知（hold、按 run 去重），flow 侧无需做任何事。
+人工干预进入 `needs-human` 时，工作台会自动向发起它的会话发送一条「在等你处理」通知（hold、按 run 去重），flow 侧无需做任何事。
 
 ## 5 不要做
 

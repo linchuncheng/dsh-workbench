@@ -2,7 +2,7 @@
 
 工作台的宿主侧适配器只有一份契约：`AdapterSet`。契约住
 `@dsh-workbench/shared/host`，默认实现在 `@dsh-workbench/adapters-default`。
-外壳只在组合根 `dynamic import` 默认集合兜底；默认包是 core 的硬依赖（`dependencies`），
+工作台只在组合根 `dynamic import` 默认集合兜底；默认包是 core 的硬依赖（`dependencies`），
 第三方 set 从 profile 解析。
 
 ## 契约
@@ -37,11 +37,13 @@ interface AdapterSet {
   `supply` 只给探针与市场用。
 - `ProbePort`：`probeUnits` / `registerPreflight` / `declaredPluginCommands`。
 - `RuntimePort`：必需 `packageRoot` / `capabilities` / `commands` / `runners` / `health` / `seed`；
-  可选 `profile` / `commandSurface` / `check` / `frontApp` / `bringToFront` / `raiseBrowser` / `versionReport`。
-  `versionReport` 交的是"哪些插件跟这一版运行时对不上"，外壳把它喂给探针 —— 探针不自己去读
+  可选 `profile` / `platformName` / `commandSurface` / `check` / `frontApp` / `bringToFront` / `raiseBrowser` / `versionReport`。
+  `platformName` 回一个平台名（`darwin` / `win32` / `linux` / `other`），给诊断导出这类只需要
+  「哪台系统」的业务用 —— 原始判定留在适配器里，工作台不读 `process.platform`。
+  `versionReport` 交的是"哪些插件跟这一版运行时对不上"，工作台把它喂给探针 —— 探针不自己去读
   运行时的文件。
   `frontApp` 问"现在前台是哪个应用"，`bringToFront` 把它带回前台 —— 录制结束时把工作台窗口
-  拉回来用的就是这一对；平台分支住在适配器里，外壳只问。
+  拉回来用的就是这一对；平台分支住在适配器里，工作台只问。
   `raiseBrowser` 把浏览器整体抬到系统最前（录制的窗口只在 Chrome 内部置顶，系统级那一步归它）
   —— 录制开窗后立刻调一次，失败就静默跳过。
   它是**中立**的：端口不点名任何具体运行时，运行时叫什么由模块清单的 `runtime` / `runs` 声明。

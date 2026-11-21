@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import type { DshAgentPresetRow, DshHostContext } from '@dsh-workbench/shared/host';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { createSeam, quoteShellArgFor } from '@dsh-workbench/shared/host';
@@ -9,6 +9,12 @@ import { WAKE_BROWSER_ROUTE } from '@dsh-workbench/shared/contract/protocol/pref
 import { localPnpmBin, localPnpmCommand, provisionWorkbenchPnpm, registerPreflight } from '../../index.js';
 import type { DesktopBrowser } from '../../index.js';
 import { ALL_OK } from './preflight-fixtures';
+
+const HOME = mkdtempSync(join(tmpdir(), 'wb-route-home-'));
+vi.stubEnv('DSH_WORKBENCH_HOME', HOME);
+afterAll(() => {
+  rmSync(HOME, { recursive: true, force: true });
+});
 
 function seamFor(shell: Parameters<typeof createSeam>[0]['shell']) {
   return createSeam({ shell, runtimeRoot: '/tmp/wb-seam-test' });

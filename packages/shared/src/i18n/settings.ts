@@ -63,6 +63,20 @@ export const zhSettings = {
   'configSync.emptyProviders': '工作台还没有配置模型供应商。可以从上方来源同步模型供应商相关行，或直接到「模型」中配置。',
   'configSync.failed': '同步失败，请重试。',
 
+  'diyPresetSource.nav': 'DIY 模式继承自',
+  'diyPresetSource.lead': '增加 DIY 工具与技能；默认标准模式，从新会话开始生效。',
+  'diyPresetSource.standard': '标准模式',
+  'diyPresetSource.ptc': 'PTC 模式',
+  'diyPresetSource.minimal': '极简模式',
+  'diyPresetSource.cordis': '创造模式',
+  'diyPresetSource.unusable': '{name}（不可用）',
+  'diyPresetSource.storedUnavailable': '选中的模式不可用；DIY 模式暂时以标准模式为基础。',
+  'diyPresetSource.readFailed': '无法读取模式列表，请重试。',
+  'diyPresetSource.reading': '读取中…',
+  'diyPresetSource.search': '搜索模式',
+  'diyPresetSource.empty': '没有可用的模式。请先在 dsh 中修复或新建一个模式。',
+  'diyPresetSource.failed': '保存设置失败，请重试。',
+
 } as const;
 
 /** 上面那组的中文对照。 */
@@ -129,5 +143,19 @@ export const enSettings: Record<keyof typeof zhSettings, string> = {
   'configSync.noSource': 'This machine has only this workbench configuration and no source to sync from',
   'configSync.emptyProviders': 'The workbench has no model providers configured yet. Sync the model-provider rows from a source above, or configure them directly under Models.',
   'configSync.failed': 'Sync failed. Try again.',
+
+  'diyPresetSource.nav': 'DIY mode inherits from',
+  'diyPresetSource.lead': 'Adds DIY tools and skills; defaults to Standard mode and applies to new sessions.',
+  'diyPresetSource.standard': 'Standard mode',
+  'diyPresetSource.ptc': 'PTC mode',
+  'diyPresetSource.minimal': 'Minimal mode',
+  'diyPresetSource.cordis': 'Creator mode',
+  'diyPresetSource.unusable': '{name} (unavailable)',
+  'diyPresetSource.storedUnavailable': 'The selected mode is unavailable; DIY mode is based on Standard mode for now.',
+  'diyPresetSource.readFailed': 'Could not read the mode list. Try again.',
+  'diyPresetSource.reading': 'Reading…',
+  'diyPresetSource.search': 'Search modes',
+  'diyPresetSource.empty': 'No usable modes. Fix or create one in dsh first.',
+  'diyPresetSource.failed': 'Could not save this setting. Try again.',
 
 };

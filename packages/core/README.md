@@ -1,6 +1,6 @@
 # @dsh-workbench/core
 
-工作台本体是一个 **DeepSeek Harness 插件**，为 dsh 换一层外壳：左栏项目与会话、
+工作台本体是一个 **DeepSeek Harness 插件**，为 dsh 换一层工作台：左栏项目与会话、
 中间常驻对话、右侧一列实时数据面板。dsh 本体一行不改，安装与否都只影响你自己的环境。
 同仓的其他包（`shared` / `module-tools` / `module-hello` / `adapter-*` / `adapters-default`）是给**作者与实现者**的库、样本与适配器，
 终端用户只需要安装这一个。
@@ -44,7 +44,7 @@ Desktop 里个别浏览器调试能力不可用；网页浏览与录制不受影
 | `scripts/` | 随包出货的脚本：`seed-profile.sh` / `seed-workshop.sh` / `create-workbench.mjs` / `clone-profile.mjs` / `share-data-root.mjs` / `patch-blocks.mjs` / `profile-dsh-layer.mjs` |
 | `icon.svg` | 插件图标（dsh 插件页用） |
 
-「工作台 DIY 模式」不在这个表里：**启动时现场派生**，没有生成物。`src/shared/api/host/diy-preset.ts` 从本次 dsh 的 `standard` preset 克隆出插件表、叠加三处差分并注册；纯规则在 `../shared/src/host/diy/diy-preset.ts`。dsh 增加工具或调整 preset 行时，派生结果随之更新。
+「工作台 DIY 模式」不在这个表里：**启动时按 dsh 当前的模式声明派生**，没有生成物。`src/shared/api/host/diy-preset.ts` 从用户选中的模式（默认标准模式 `standard`，在「工作台设置 → DIY 模式继承自」里改）克隆插件表、叠加三处差分并注册；纯规则在 `../shared/src/host/diy/diy-preset.ts`。dsh 增加工具或调整 preset 行时，派生结果随之更新；改完这项设置后，新会话开始生效。
 
 ## 数据落在哪
 
@@ -69,7 +69,7 @@ Desktop 里个别浏览器调试能力不可用；网页浏览与录制不受影
 | 安装模块 | 打开模块市场，或让 agent 安装 |
 | 不再使用 | 在插件页移除；浏览器里的 OpenCLI 扩展不会随之移除，到扩展页移除 |
 
-外壳本身**不带业务模块**：右侧面板的内容来自已安装的模块，可在插件页或模块市场安装。
+工作台本身**不带业务模块**：右侧面板的内容来自已安装的模块，可在插件页或模块市场安装。
 
 ⚠️ **不要在 Settings → 插件里关闭 `@dsh-workbench/core`**：关闭后，工作台对界面的修改会整体失效，
 界面退化成原版 dsh（左栏恢复、右侧面板消失），但数据不会丢失。重新启用后恢复原样；
@@ -101,7 +101,7 @@ Desktop 里个别浏览器调试能力不可用；网页浏览与录制不受影
 | 准备页没有进展、提示「命令行没有返回」 | 命令已发出但结果没有返回（常见于 Windows 沙箱残留的锁文件）。请完全退出工作台（托盘图标也要退出），清掉系统临时目录里以 `dsh-` 开头的残留文件，再重新打开；如果反复出现，请升级 Desktop。 |
 | 启动被拒，提示 dsh 太旧 | 升级 Desktop，安装完成后重启；仍被拒时先升级工作台 |
 | 升级 dsh 之后启动失败，日志只有 `N required plugins did not activate` | dsh 的兼容性预检把旧版工作台安装的插件逐个停用了。重新安装一次工作台（插件页或模块市场），再重启 Desktop |
-| 左栏没有「工作台 DIY」，模式下拉里也没有「工作台 DIY 模式」 | DIY preset 在启动时从本次 dsh 的 `standard` 派生：如果 dsh 太旧（没有 `loader` / `agentPresets` 的注册入口），或 `standard` 的行发生了变化，就无法派生。dsh 的模式选择器只列出能挂载的项，因此整个入口会消失且不报错。启动检查会指出这一点并给出升级命令；要自行核对，可以查看 dsh 的 设置 → 「Agent presets」那一行的红标与原因 |
+| 左栏没有「工作台 DIY」，模式下拉里也没有「工作台 DIY 模式」 | DIY preset 在启动时按「工作台设置 → DIY 模式继承自」选中的模式派生（默认标准模式 `standard`）。如果 dsh 太旧（没有 `loader` / `agentPresets` 的注册入口）、选中的模式不见了，或它缺 `skill-filesystem` / `tool-skill` 这两行，就无法派生；选中的模式不可用时会退回标准模式（`standard`）。dsh 的模式选择器只列出能挂载的项，因此入口会消失且不报错。启动检查会指出这一点并给出升级命令；自行核对可查看 dsh 的「设置 → Agent presets」中对应行的红标与原因。 |
 | 在自己的项目里启用 DIY 模式后，面板提示没找到模块 | 模块跟随**这条会话的工作区**，不跟随工坊：① 该工作区的某个 `package.json` 要声明 `dsh.workbench`；② 从工坊带过去的模块，需要把模块目录移动或复制到那个仓库；③ 旧截图不会迁移（新的放在 `~/.dsh/workbench/artifacts/<工作区>/`）。细节见工作台模块指引 |
 
 ## 从源码运行

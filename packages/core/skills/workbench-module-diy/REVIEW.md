@@ -5,16 +5,16 @@
 | 判据 | 检查 | 修法 |
 |---|---|---|
 | `contracts` | 清单 ↔ 代码 ↔ `design.json` 漂移；dsh 组合期不校验清单；站点引用 / 未用站点 / origins / 信封 | 按报错改：`unit` 重名换名；`dsh.workbenchFaces` 两个源码入口；至少保留 `build` / `typecheck` / `test` / `selfcheck` 四个脚本（模板共 10 个）；`private: true`。`dsh.workbench.tools` 与 `registerTools()` 一致；`design.json` 对键名；生成物过期时运行 `sync`。站点：配方只写 `site`，站点表不多不少；`host.origins` 由站点推导；信封路径运行 `sync` 展开 |
-| `protocol` | `dsh.workbench` 版本 / 形状 / 多余键（外壳静默忽略生字段） | 补 `"apiVersion": 3`；`unit` / `title` / `card` / `tools` / `host` 写全（名字是 `{ zh, en }` 字面量；无卡片 `null`、无工具 `[]`）；删协议外键（`faces` 在 `dsh.workbenchFaces`；不写 `scope`） |
+| `protocol` | `dsh.workbench` 版本 / 形状 / 多余键（工作台静默忽略生字段） | 补 `"apiVersion": 3`；`unit` / `title` / `card` / `tools` / `host` 写全（名字是 `{ zh, en }` 字面量；无卡片 `null`、无工具 `[]`）；删协议外键（`faces` 在 `dsh.workbenchFaces`；不写 `scope`） |
 | `bundles` | 运行时互串：浏览器产物含 node 内置 / 宿主产物含 DOM、react | 不 import 对方那侧 |
-| `source` | 非种子 `@deepseek-ai/*`；宿主碰 dsh 浏览器包；`@/` 指外壳；根入口取运行值；客户端引 `/host`；**手写进程 / PATH / 文件锁 / 状态原子写**（import 首选库放行） | 宿主只用 Node 侧；种子词仅在 client 可达文件；`@/` 只指自己 `src/`；运行值：浏览器 `kit`、宿主 `shared/host`；进程/锁/状态写交给外壳 |
+| `source` | 非种子 `@deepseek-ai/*`；宿主碰 dsh 浏览器包；`@/` 指工作台；根入口取运行值；客户端引 `/host`；**手写进程 / PATH / 文件锁 / 状态原子写**（import 首选库放行） | 宿主只用 Node 侧；种子词仅在 client 可达文件；`@/` 只指自己 `src/`；运行值：浏览器 `kit`、宿主 `shared/host`；进程/锁/状态写交给工作台 |
 | `primitives` | 声明 `external` 但产物无物证（原语被内联） | `dsh.client.external` 声明；devDependency 精确版对齐；产物中为 `require(...)` |
-| `kit` | 用了 peer 下限外壳没有的成员（首帧 `Element type is invalid`） | 只用 peer 范围内成员；下限抬到实际使用版 |
-| `cards` | 八种外壳侧输入 × `zh` / `en` 下崩溃 / 空白 / 脏值 | 五态可画；外层 `Card`；卡片自己用到的文案键双语齐（名字走清单 `title`，不再是卡片键）。不断言具体态（归 `plugin.test.ts`） |
+| `kit` | 用了 peer 下限工作台没有的成员（首帧 `Element type is invalid`） | 只用 peer 范围内成员；下限抬到实际使用版 |
+| `cards` | 八种工作台侧输入 × `zh` / `en` 下崩溃 / 空白 / 脏值 | 五态可画；外层 `Card`；卡片自己用到的文案键双语齐（名字走清单 `title`，不再是卡片键）。不断言具体态（归 `plugin.test.ts`） |
 | `standalone` | 依赖工作台源码才能构建 | 不引用工作台源码；`tsconfig.paths` 用相对路径 |
 | `markers` | 私有源 / 私网地址 / 内网域名进入公开包 | 不进包；配置落到模块配置面；组织特有的词表由 `DSH_WB_INTERNAL_MARKERS` 提供 |
 | `alias` | `@/` 指向工作台源码 | `@/` 只指自己 `src/` |
-| `style` | 模块定义 `.wb-*`；手写行 / 操作区 / 表单（F1–F4）；`--dsw-*` / `--wb-*` 不在现读的令牌清单 | 样式走 `*.module.css`（无 `wb-` 前缀）；借外壳类用 `:global(.wb-…)`；行 / 操作区用 `FormRow(s)` / `FormActions`，表单用 `Form`（[KIT.md](KIT.md) §5）。F4：裸 `<form` 或手写 `wb-formRow` / `wb-formRows` / `wb-field`。令牌名现查：`workbench_diy_surface` `scope: 'tokens'` |
+| `style` | 模块定义 `.wb-*`；手写行 / 操作区 / 表单（F1–F4）；`--dsw-*` / `--wb-*` 不在现读的令牌清单 | 样式走 `*.module.css`（无 `wb-` 前缀）；借工作台类用 `:global(.wb-…)`；行 / 操作区用 `FormRow(s)` / `FormActions`，表单用 `Form`（[KIT.md](KIT.md) §5）。F4：裸 `<form` 或手写 `wb-formRow` / `wb-formRows` / `wb-field`。令牌名现查：`workbench_diy_surface` `scope: 'tokens'` |
 | `arch` | 结构：巨文件 / 反向依赖 / 跨运行时 / 表外目录 / 模型无测试 / 测试住 `__tests__`；依赖白名单（含 execa / which / proper-lockfile / write-file-atomic / dayjs / zod）+ `shell-quote` / `shelljs` / `zx` deny；能力首选 dayjs / structuredClone / URLSearchParams / zod（日期已是硬门禁） | 见「第十二条」 |
 | `lint` | 语法：`as any` / `console` / `debugger` / 颜色字面量 / `!important` / **直接读 `process.platform` / `versions.electron` / `dshDesktop` / `navigator.userAgent`** / react-hooks | 见「第十三条」 |
 

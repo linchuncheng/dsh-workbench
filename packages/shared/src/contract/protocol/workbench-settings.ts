@@ -4,9 +4,23 @@ export const WORKBENCH_SETTINGS_RESOURCE = 'workbenchSettings';
 
 export const WORKBENCH_MODULE_MODELS_ROUTE = 'workbench-module-models';
 
+export const WORKBENCH_DIY_PRESETS_ROUTE = 'workbench-diy-presets';
+
 export interface WorkbenchModelChoice {
   readonly provider: string;
   readonly model: string;
+}
+
+export interface WorkbenchDiyPresetSource {
+  readonly id: string;
+  readonly name: string | null;
+  readonly description: string | null;
+  readonly usable: boolean;
+}
+
+export interface WorkbenchDiyPresetsSnapshot {
+  readonly ready: boolean;
+  readonly sources: readonly WorkbenchDiyPresetSource[];
 }
 
 export interface WorkbenchModelRef {
@@ -24,6 +38,7 @@ export interface WorkbenchSettings {
   readonly mcpOnDemand: boolean;
   readonly includePrerelease: boolean;
   readonly moduleModel: WorkbenchModelChoice | null;
+  readonly diyPresetSource: string;
 }
 
 export interface WorkbenchSettingsSnapshot {
@@ -39,6 +54,7 @@ export interface WorkbenchSettingsRequest {
   readonly mcpOnDemand?: boolean;
   readonly includePrerelease?: boolean;
   readonly moduleModel?: WorkbenchModelChoice | null;
+  readonly diyPresetSource?: string;
 }
 
 export interface WorkbenchModuleModelsSnapshot {

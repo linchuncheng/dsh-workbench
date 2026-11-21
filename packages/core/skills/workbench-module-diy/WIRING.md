@@ -1,4 +1,4 @@
-# 接外壳：依赖、禁区、安装、热换、发布
+# 接工作台：依赖、禁区、安装、热换、发布
 
 [BUILD.md](BUILD.md) 的后半。设计见 [DESIGN.md](DESIGN.md) / [STEPS.md](STEPS.md)；门禁见 [REVIEW.md](REVIEW.md)。
 
@@ -14,9 +14,9 @@
 | 浏览器侧 hooks / 组件 / 图标 / 文案工具 | `@dsh-workbench/core/client` 的 `kit` |
 | kit 没有的 dsh 控件 / 图标 | `@deepseek-ai/dsh-client-ui-primitives`（`dsh.client.external` + 精确版 devDependency；[KIT.md](KIT.md) §8） |
 | 类型 | `import type` |
-| 外壳 | `@dsh-workbench/core`（peer，安装时比版本） |
+| 工作台 | `@dsh-workbench/core`（peer，安装时比版本） |
 
-成员清单用命令取，不手工复制：`check --only kit`（当前安装的外壳真实产物）、`check --only primitives`
+成员清单用命令取，不手工复制：`check --only kit`（当前安装的工作台真实产物）、`check --only primitives`
 （dsh 原语导出、与 kit 求交、需写入 `package.json` 的两行）。
 
 ⚠️ 共享包入口按运行时分离（`source` 判据）：
@@ -37,7 +37,7 @@
 | `import '@/shared/…'`、`../../core/src/…` | `@/` 只指自己 `src/`；跨包用包名 |
 | 公开包写内网地址 / 域名 / 企业名 | `markers` 红 |
 
-纪律：样式走 `*.module.css`，类名不带 `wb-` 前缀（外壳全局类；借契约类写 `:global(.wb-…)`）；
+纪律：样式走 `*.module.css`，类名不带 `wb-` 前缀（工作台全局类；借契约类写 `:global(.wb-…)`）；
 `src/**` 零注释；用户说明写 `README.md`，作者说明写 `DEVELOPING.md` 或 spec。
 
 ## 3 安装、添加到看板

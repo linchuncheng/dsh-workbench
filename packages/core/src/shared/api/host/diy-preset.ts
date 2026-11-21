@@ -1,10 +1,26 @@
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import type { DshHostContext } from '@dsh-workbench/shared/host';
-import { diyPresetFrom, now, standardPresetConfigOf } from '@dsh-workbench/shared/host';
+import type {
+  DshAgentPresetDefinition,
+  DshAgentPresetRegistry,
+  DshAgentPresetUnregister,
+  DshHostContext,
+  DshLoader,
+} from '@dsh-workbench/shared/host';
+import { now, presetConfigOf, diyPresetFrom } from '@dsh-workbench/shared/host';
+import { DIY_PRESET_SOURCE_DEFAULT } from '@/kernel/contract/diy';
 
 const RETRY_MS = 250;
 const DEADLINE_MS = 15_000;
+
+export interface DiyPresetSourcePort {
+  readonly current: () => string;
+  readonly watch: (listener: () => void) => () => void;
+}
+
+type Derived =
+  | { readonly ok: true; readonly definition: DshAgentPresetDefinition; readonly source: string }
+  | { readonly ok: false; readonly retry: boolean };
 
 function skillsDirOf(): string | null {
   try {
@@ -15,7 +31,7 @@ function skillsDirOf(): string | null {
   }
 }
 
-export function registerDiyPreset(ctx: DshHostContext): void {
+export function registerDiyPreset(ctx: DshHostContext, port: DiyPresetSourcePort): void {
   const skillsDir = skillsDirOf();
   if (skillsDir === null) {
     ctx.logger?.warn?.(
@@ -28,23 +44,89 @@ export function registerDiyPreset(ctx: DshHostContext): void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
   let gaveUp = false;
-  let unregister: (() => Promise<void>) | undefined;
+  let active: { readonly source: string; readonly off: DshAgentPresetUnregister } | undefined;
+  let generation = 0;
+  let chain: Promise<void> = Promise.resolve();
   const until = now() + DEADLINE_MS;
 
   function schedule(): void {
-    if (stopped || gaveUp) return;
+    if (stopped || gaveUp || timer !== undefined) return;
     if (now() >= until) {
       gaveUp = true;
       ctx.logger?.warn?.(
-        `[dsh-workbench] 等了 ${DEADLINE_MS}ms 仍没拿到 dsh 的 standard preset —— ` +
-          '本次不注册「工作台 DIY 模式」（dsh 的 loader 里没有 preset-standard？）',
+        `[dsh-workbench] 等了 ${DEADLINE_MS}ms 仍没有可用的 dsh 模式声明 —— ` +
+          '本次不注册「工作台 DIY 模式」',
       );
       return;
     }
-    timer = setTimeout(attempt, RETRY_MS);
+    timer = setTimeout(() => {
+      timer = undefined;
+      request();
+    }, RETRY_MS);
   }
 
-  function attempt(): void {
+  function derive(loader: DshLoader, source: string): Derived {
+    let config: unknown;
+    try {
+      config = presetConfigOf(loader.entries(), source);
+    } catch (error) {
+      ctx.logger?.warn?.(`[dsh-workbench] 读 dsh 的 loader 行失败：${String(error)}`);
+      return { ok: false, retry: true };
+    }
+    if (config === undefined) return { ok: false, retry: true };
+    try {
+      return { ok: true, definition: diyPresetFrom(config, dir, source), source };
+    } catch (error) {
+      ctx.logger?.warn?.(`[dsh-workbench] 从「${source}」派生「工作台 DIY 模式」失败：${String(error)}`);
+      return { ok: false, retry: false };
+    }
+  }
+
+  function definitionFor(loader: DshLoader, source: string): Derived {
+    const wanted = derive(loader, source);
+    if (wanted.ok || source === DIY_PRESET_SOURCE_DEFAULT) return wanted;
+    const fallback = derive(loader, DIY_PRESET_SOURCE_DEFAULT);
+    if (fallback.ok) {
+      ctx.logger?.warn?.(
+        wanted.retry
+          ? `[dsh-workbench] dsh 里没有「${source}」这个模式；DIY 模式改为从「${DIY_PRESET_SOURCE_DEFAULT}」派生`
+          : `[dsh-workbench] 「${source}」无法派生 DIY 模式；改为从「${DIY_PRESET_SOURCE_DEFAULT}」派生`,
+      );
+    }
+    return fallback;
+  }
+
+  async function reconcile(
+    mine: number,
+    registry: DshAgentPresetRegistry,
+    loader: DshLoader,
+  ): Promise<void> {
+    if (stopped || mine !== generation) return;
+    const source = port.current() || DIY_PRESET_SOURCE_DEFAULT;
+    if (active?.source === source) return;
+    const derived = definitionFor(loader, source);
+    if (!derived.ok) {
+      if (derived.retry) schedule();
+      return;
+    }
+    if (active !== undefined) {
+      const previous = active;
+      active = undefined;
+      await previous.off();
+    }
+    if (stopped || mine !== generation) return;
+    const off = await registry.register(derived.definition);
+    if (stopped || mine !== generation) {
+      await off();
+      return;
+    }
+    active = { source, off };
+    ctx.logger?.info?.(
+      `[dsh-workbench] 「工作台 DIY 模式」从「${derived.source}」派生（${derived.definition.plugins.length} 行）`,
+    );
+  }
+
+  function request(): void {
     if (stopped || gaveUp) return;
     const registry = ctx.get('agentPresets');
     const loader = ctx.get('loader');
@@ -52,51 +134,22 @@ export function registerDiyPreset(ctx: DshHostContext): void {
       schedule();
       return;
     }
-
-    let standard: unknown;
-    try {
-      standard = standardPresetConfigOf(loader.entries());
-    } catch (error) {
-      ctx.logger?.warn?.(`[dsh-workbench] 读 dsh 的 loader 行失败：${String(error)}`);
-      schedule();
-      return;
-    }
-    if (standard === undefined) {
-      schedule();
-      return;
-    }
-
-    let definition;
-    try {
-      definition = diyPresetFrom(standard, dir);
-    } catch (error) {
-      ctx.logger?.warn?.(`[dsh-workbench] DIY 模式派生失败：${String(error)}`);
-      return;
-    }
-
-    void registry.register(definition).then(
-      (off) => {
-        if (stopped) {
-          void off();
-          return;
-        }
-        unregister = off;
-        ctx.logger?.info?.(
-          `[dsh-workbench] 「工作台 DIY 模式」从本次 dsh 的 standard 现场派生（${definition.plugins.length} 行）`,
-        );
-      },
-      (error: unknown) => {
-        ctx.logger?.warn?.(`[dsh-workbench] 注册「工作台 DIY 模式」失败：${String(error)}`);
-      },
-    );
+    const mine = ++generation;
+    chain = chain.then(() => reconcile(mine, registry, loader)).catch((error: unknown) => {
+      ctx.logger?.warn?.(`[dsh-workbench] 注册「工作台 DIY 模式」失败：${String(error)}`);
+    });
   }
 
   ctx.effect(() => {
-    attempt();
+    request();
+    const offWatch = port.watch(() => request());
     return () => {
       stopped = true;
+      offWatch();
       if (timer !== undefined) clearTimeout(timer);
-      if (unregister !== undefined) void unregister();
+      const current = active;
+      active = undefined;
+      if (current !== undefined) void current.off();
     };
-  }, 'dsh-workbench: DIY 模式从本次 dsh 的 standard 现场派生（没有生成物）');
+  }, 'dsh-workbench: DIY 模式按用户选中的模式从 dsh 当前声明派生（无生成物）');
 }

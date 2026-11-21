@@ -46,7 +46,7 @@
 
    - 不知道数据在哪：先执行 `performance.getEntriesByType('resource')`，筛选 `/api/`、`.json`。
      有 → 接口读；无但页面有整块表格 → DOM 读。判断一次即可。
-   - `opencli` 随工作台预装（隔离运行时位于 `$DSH_HOME/workbench/opencli/`，启动检查时安装，不碰 `~/.opencli`）。
+   - `opencli` 随工作台预装（隔离运行时在 `$DSH_HOME/workbench/opencli/`，启动检查时安装，不碰 `~/.opencli`）。
      如果隔离运行时尚未安装完成，工具会报错提示；请转述原文，不要猜测 URL。
    - 脚本约定：不在站点 → `not-on-site`；登录过期 → `not-logged-in`；没权限 → `forbidden`；成功 → `{ ok: true, ...数据 }`。
    - 新 session 的 `eval` 会静默开 `about:blank`（后台容器窗，不抢焦点）。脚本第一行判断
@@ -220,5 +220,5 @@ const out = await data.plan({
 ## 门禁
 
 - 数据源在宿主半侧；卡片只消费返回。
-- 只读路由错误返回 `{ ok: false, error: { code, message, hint? } }`（HTTP 200，外壳转发）。
+- 只读路由错误返回 `{ ok: false, error: { code, message, hint? } }`（HTTP 200，工作台转发）。
 - 验收走正常 / 空 / 出错三条路；真机上无法构造的状态写清如何触发，并在 `plugin.test.ts` 各喂一遍。

@@ -30,6 +30,7 @@ export function blockerOfDiag(
     id: `diag:${spec?.code ?? DIAG_FALLBACK_CODE}`,
     severity: 'block',
     title: t(spec?.messageKey ?? 'diag.code.unknownCode'),
+    ...(spec?.hintKey === undefined ? {} : { hint: t(spec.hintKey) }),
     ...(detail === null ? {} : { detail }),
     actions: [retryAction(t)],
   };

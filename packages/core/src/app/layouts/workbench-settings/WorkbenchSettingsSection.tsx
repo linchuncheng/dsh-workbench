@@ -4,17 +4,13 @@ import { clientSurface } from '@/shared/api/platform/client';
 import { AdapterSetItem } from './AdapterSetItem';
 import { ConfigSyncItem } from './ConfigSyncItem';
 import { McpOnDemandItem } from './McpOnDemandItem';
-import { ModuleModelItem } from './ModuleModelItem';
 import { NewWorkbenchItem } from './NewWorkbenchItem';
 import { SidebarEditionItem } from './SidebarEditionItem';
+import { settingsPickRows } from './settings-picks';
 import { UpdatePrereleaseItem } from './UpdatePrereleaseItem';
 import styles from './WorkbenchSettingsSection.module.css';
 
-export interface WorkbenchSettingsSectionProps {
-  readonly t: Translate;
-}
-
-export function WorkbenchSettingsSection({ t }: WorkbenchSettingsSectionProps): JSX.Element {
+export function WorkbenchSettingsSection({ t }: { readonly t: Translate }): JSX.Element {
   const desktop = clientSurface().deployment === 'desktop';
   const pageTitleId = useId();
   const advancedTitleId = useId();
@@ -27,7 +23,7 @@ export function WorkbenchSettingsSection({ t }: WorkbenchSettingsSectionProps): 
       <div className={styles.rows}>
         <AdapterSetItem t={t} />
         <SidebarEditionItem t={t} />
-        <ModuleModelItem t={t} />
+        {settingsPickRows(t)}
         <McpOnDemandItem t={t} />
         <UpdatePrereleaseItem t={t} />
       </div>

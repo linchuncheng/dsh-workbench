@@ -11,3 +11,7 @@ export function currentHostOs(): HostOs {
 export function currentShellKind(): ShellKind {
   return shellKindOf();
 }
+
+export function platformName(): string {
+  return currentHostOs();
+}

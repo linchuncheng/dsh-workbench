@@ -202,6 +202,7 @@ export interface RuntimePort {
   packageRoot(moduleUrl: string): string;
   capabilities(ctx: DshHostContext): RuntimeCapabilities;
   profile?(ctx: DshHostContext): RuntimeProfile;
+  platformName?(ctx: DshHostContext): string;
   commandSurface?(ctx: DshHostContext): RuntimeCommandSurface | undefined;
   check?(ctx: DshHostContext): Promise<RuntimeCheck>;
   commands(ctx: DshHostContext): Readonly<Record<string, string>>;

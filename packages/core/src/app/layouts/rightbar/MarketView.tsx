@@ -263,7 +263,8 @@ export function MarketView({
   useSettleHold({ pending, landed, t, onChanged, selfUpdate: effectiveSelfUpdate, setPending, setFailed });
   useSelfUpdateBusyRefresh(effectiveSelfUpdate?.busy === true && mock === undefined, onChanged);
   const nothing = marketNothingOf(shown, self, installedList, pluginList);
-  const unreadableRows = mock?.unreadable ?? (unreadable.length > 0 ? unreadable : readFailure === null ? [] : [{ pkg: '', reason: readFailure }]);
+  const unreadableRows = mock?.unreadable ?? unreadable;
+  const listUnread = unreadableRows.length === 0 && readFailure !== null;
   const { checks, recheck, rechecking: checkingShown } = useMarketChecks(
     { t, mock, installed, plugins, modulesCheck, pluginsCheck, pending, onCheck, onChanged, setFailed, checking: freshness.checking },
   );
@@ -280,7 +281,7 @@ export function MarketView({
       readStale={readStale}
       pending={pending}
       failed={failed}
-      notice={notice}
+      notice={listUnread ? t('market.listUnread', { reason: readFailure ?? '' }) : notice}
       act={act}
       onConfirming={setConfirming}
       setDefault={setDefault}
