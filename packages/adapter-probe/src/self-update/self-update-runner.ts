@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import {
+  createDiagFileSink,
+  createDiagRecorder,
+  workbenchRoot,
   createNodeProcessHost,
   readUpdateJournal,
   recoverUpdateJournal,
@@ -117,9 +120,11 @@ async function main(): Promise<number> {
   try {
     writeJsonFile(plan.markerPath, { ...plan.marker, pid: process.pid });
     const processes = createNodeProcessHost();
+    const diagFiles = createDiagFileSink({ dir: join(workbenchRoot(), 'diagnostics', 'records') });
     const result = await runSelfUpdateSteps(plan, {
       processes,
       log: report,
+      diag: createDiagRecorder({ sinks: [diagFiles.sink] }),
     });
     const journal = recoverJournal(plan);
     if (journal.kind === 'restored') report(`退出前按日志恢复：${journal.detail}`);
