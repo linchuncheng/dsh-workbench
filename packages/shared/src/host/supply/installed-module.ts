@@ -252,9 +252,10 @@ export interface UnreadableModule {
 export function unreadableModules(profileDir: string | null): readonly UnreadableModule[] {
   const record = profileManifestOf(profileDir);
   if (record === undefined || profileDir === null) return [];
+  const declared = new Set(Object.keys(asRecord(record.dependencies) ?? {}));
   const found: UnreadableModule[] = [];
   for (const pkg of declaredNamesOf(record)) {
-    if (!isPackageName(pkg)) continue;
+    if (!isPackageName(pkg) || !declared.has(pkg)) continue;
     const read = readInstalledModule(profileDir, pkg);
     if (read.kind === 'unknown') found.push({ pkg, reason: read.reason ?? '读不出来' });
   }
