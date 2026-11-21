@@ -133,6 +133,7 @@ export function registerPreflight(input: {
     installLogger === undefined ? undefined : (message: string) => installLogger.warn?.(message);
   const preflight = createPreflight({
     seam: input.seam,
+    snapshotRoot: workbenchRoot(),
     command,
     installCommand,
     ...(extensionDirOf(input.extensionDir) === undefined ? {} : { extensionDir: extensionDirOf(input.extensionDir) }),

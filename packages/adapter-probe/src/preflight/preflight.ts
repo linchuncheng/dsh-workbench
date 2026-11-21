@@ -1,10 +1,8 @@
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
-import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, WARM_TIMEOUT_MS, now } from '@dsh-workbench/shared/host';
-import { tailLines } from '@dsh-workbench/shared/host';
-import { hostOsOf, quoteShellArgFor } from '@dsh-workbench/shared/host';
+import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, WARM_TIMEOUT_MS, hostOsOf, now, productWrite, quoteShellArgFor, tailLines, type Seam } from '@dsh-workbench/shared/host';
 import { opencliCommandLine, OPENCLI_SITE_SESSION_ENV, OPENCLI_WINDOW_ENV } from '@dsh-workbench/adapter-runtime';
-import { productWrite, type Seam } from '@dsh-workbench/shared/host';
 import { notePreflightFailed } from './preflight-note.js';
+import { persistPreflightSnapshot } from './preflight-snapshot.js';
 import { DIY_UPGRADE_COMMAND } from './diy-preset-health.js';
 import type { DiyPresetVerdict } from './diy-preset-health.js';
 import { opencliInstallCommand } from '../install/install.js';
@@ -99,6 +97,7 @@ export function createPreflight(options: {
   runtimeLabel?: string | undefined;
   platform?: NodeJS.Platform | undefined;
   diag?: import('@dsh-workbench/shared/host').DiagRecorder | undefined;
+  snapshotRoot?: string | undefined;
 }): Preflight {
   const { seam, command = 'opencli', logger } = options;
   const platform = options.platform;
@@ -152,6 +151,7 @@ export function createPreflight(options: {
   function set(next: Partial<PreflightSnapshot> & { steps?: PreflightStep[] }): PreflightSnapshot {
     if (next.phase === 'failed') notePreflightFailed(options.diag, next.failure ?? 'unknown', next.error ?? '');
     current = { ...current, ...next, log: [...logLines], at: now() };
+    if (options.snapshotRoot !== undefined) persistPreflightSnapshot(options.snapshotRoot, current);
     return current;
   }
 

@@ -5,6 +5,7 @@ import type { AdapterSet } from '@dsh-workbench/shared/host';
 import { exportDiagBundle, type DiagExportResult } from './diag-export.js';
 import { diagRoutesOf } from './diag-routes.js';
 import { logTailOf } from './diag-export-logs.js';
+import { readPreflightSnapshot } from './diag-preflight.js';
 
 export function diagProfileDirOf(ctx: DshHostContext): string | null {
   return (ctx.get('profileContext') as { readonly dir?: string } | undefined)?.dir ?? null;
@@ -36,7 +37,11 @@ export function diagExportAction(ctx: DshHostContext): PostResource {
           dependencies: Object.keys((manifest?.['dependencies'] as Record<string, unknown>) ?? {}).length,
           unreadable: [...unreadableModules(dir)],
         },
-        runtime: { panels, logs: { selfUpdate: logTailOf(join(root, 'self-update.log')) } },
+        runtime: {
+          panels,
+          logs: { selfUpdate: logTailOf(join(root, 'self-update.log')) },
+          preflight: readPreflightSnapshot(root),
+        },
         checks: {
           codes: [...diagRoutesOf(root).recorder.counts().keys()].sort(),
           total: diagRoutesOf(root).recorder.recent().length,
