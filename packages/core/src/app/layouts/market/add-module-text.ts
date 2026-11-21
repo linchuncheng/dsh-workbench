@@ -246,6 +246,9 @@ const FAILURE_KEYS: Readonly<Record<string, string>> = {
   'stop-profile': 'panels.market.add.failureStopProfile',
   cancelled: 'panels.market.add.failureCancelled',
   'stale-approval': 'panels.market.add.failureGeneric',
+  'module-row-failed': 'panels.market.add.failureModuleRow',
+  'module-row-remove-failed': 'panels.market.add.failureModuleRowRemove',
+  'no-profile-dir': 'panels.market.add.failureNoProfileDir',
 };
 
 function needsCredentials(change: BundleChange): boolean {

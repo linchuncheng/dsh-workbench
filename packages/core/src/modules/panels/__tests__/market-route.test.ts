@@ -535,7 +535,7 @@ describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，
 
     expect(commands).toEqual([]);
     expect(outcome.change.application).toBe('failed');
-    expect(outcome.change.errorDetail).toContain('缺少可写的目录');
+    expect(outcome.change.errorCode).toBe('no-profile-dir');
   });
 
   it('★ 装上了但写行失败 → 不算生效：报 module-row-failed，并说清怎么修', async () => {

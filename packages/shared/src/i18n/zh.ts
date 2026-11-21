@@ -419,6 +419,9 @@ export const zh = {
   'panels.market.add.failureInstalled':
     '这个包已安装在当前工作台中。同一个包无法就地覆盖，需要先卸载再安装；本次卸载也未成功。',
   'panels.market.add.failureGeneric': '安装过程中出错，原因见「安装详情」。',
+  'panels.market.add.failureModuleRow': '模块已装进工作台配置，但工作台配置里的模块清单没有更新，因此还不会加载。请按「安装详情」里的提示修好这份清单，再重启工作台。',
+  'panels.market.add.failureModuleRowRemove': '模块已从工作台配置移除，但模块清单没有更新。请按「安装详情」里的提示修好这份清单，再重启工作台。',
+  'panels.market.add.failureNoProfileDir': '找不到这份工作台配置的目录，无法安装模块。请在工作台设置里检查配置目录，或重新安装工作台。',
   'panels.market.add.failureIncompatible': '这个版本需要 {dsh}，当前 dsh 为 {runtime}。请先升级 dsh 再安装。',
   'panels.market.add.failureCredentials': '这个仓库需要凭证，本机没有它的 git 凭据。请先在终端中执行一次 clone，并配置凭据助手，或改用 SSH 地址后重试。',
   'panels.market.add.approveTitle': '安装脚本需要批准',

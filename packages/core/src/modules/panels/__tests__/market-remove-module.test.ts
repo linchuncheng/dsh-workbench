@@ -59,7 +59,7 @@ describe('卸载工作台模块：pnpm remove + 删行', () => {
     });
 
     expect(warn.mock.calls[0]?.[0]).toContain('模块行没有删除');
-    expect(change).toMatchObject({ application: 'failed', errorCode: 'module-row-failed' });
+    expect(change).toMatchObject({ application: 'failed', errorCode: 'module-row-remove-failed' });
     expect(change.errorDetail).toContain('cordis.patch.yml');
   });
 });

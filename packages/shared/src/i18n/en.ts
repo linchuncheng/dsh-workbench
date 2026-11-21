@@ -422,6 +422,9 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.add.failureInstalled':
     'This package is already installed in the current workbench. The same package cannot be replaced in place: uninstall it first, then install again. This uninstall did not succeed.',
   'panels.market.add.failureGeneric': 'Something went wrong during installation; see Install details.',
+  'panels.market.add.failureModuleRow': 'The module is installed in this workbench, but the module list in its configuration was not updated, so it will not load. Fix that list as Install details describes, then restart the workbench.',
+  'panels.market.add.failureModuleRowRemove': 'The module was removed from this workbench, but the module list in its configuration was not updated. Fix that list as Install details describes, then restart the workbench.',
+  'panels.market.add.failureNoProfileDir': 'The directory for this workbench configuration cannot be found, so the module cannot be installed. Check the configuration directory in workbench settings, or install the workbench again.',
   'panels.market.add.failureIncompatible': 'This version needs {dsh}; the running dsh is {runtime}. Upgrade dsh first.',
   'panels.market.add.failureCredentials': 'This repository needs credentials, and this machine has none for it. Run a clone once in a terminal and set up a credential helper, or switch to the SSH address and try again.',
   'panels.market.add.approveTitle': 'Install scripts need approval',

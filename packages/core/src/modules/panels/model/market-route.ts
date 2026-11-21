@@ -121,13 +121,14 @@ function routedFailure(
   pkg: string,
   errorDetail: string,
   pendingBuilds: readonly string[] = [],
+  errorCode = 'operation-error',
 ): BundleInstallOutcome {
   return outcomeOf(deps, pkg, {
     application: 'failed',
     stage: 'install',
     changed: false,
     target: pkg,
-    errorCode: pendingBuilds.length === 0 ? 'operation-error' : 'build-blocked',
+    errorCode: pendingBuilds.length === 0 ? errorCode : 'build-blocked',
     errorDetail,
     ...(pendingBuilds.length === 0 ? {} : { pendingBuilds }),
   });
@@ -239,7 +240,7 @@ async function installModuleRow(
 ): Promise<BundleInstallOutcome> {
   const profileDir = deps.profileDir;
   if (profileDir === undefined || profileDir === null) {
-    return routedFailure(deps, pkg, '这份工作台配置缺少可写的目录，无法安装模块。');
+    return routedFailure(deps, pkg, 'profile dir is missing', [], 'no-profile-dir');
   }
   const line = moduleInstallLine({ spec, profileDir, ...(deps.registry === undefined ? {} : { registry: deps.registry }) });
   const signal = deps.options?.signal;
@@ -271,7 +272,7 @@ async function installModuleRow(
       changed: true,
       target: pkg,
       errorCode: 'module-row-failed',
-      errorDetail: `包已装进工作台配置，但没有写入它的 cordis.patch.yml：${detail}。请修好这个文件后重启工作台，模块才会加载。`,
+      errorDetail: `cordis.patch.yml: ${detail}`,
     });
   }
   const skipped = pendingFrom(deps, output);

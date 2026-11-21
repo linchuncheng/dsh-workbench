@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { dictionaries, zh } from '@dsh-workbench/shared';
 import type { Translate } from '@dsh-workbench/shared';
@@ -340,5 +341,29 @@ describe('发现页把规格交过来时，源怎么落', () => {
     expect(registryChoiceFrom(undefined)).toBeUndefined();
     expect(registryChoiceFrom('')).toBeUndefined();
     expect(registryChoiceFrom('   ')).toBeUndefined();
+  });
+});
+
+describe('市场自己报的失败码都有专属文案', () => {
+  const GENERIC_OK = new Set(['operation-error']);
+
+  it('★ 装/卸两条路里写死的码都落在专属句上，不落回「原因不明」', () => {
+    const source = ['market-route.ts', 'market-remove.ts']
+      .map((name) => readFileSync(new URL(`../../../../modules/panels/model/${name}`, import.meta.url), 'utf8'))
+      .join('\n');
+    const codes = new Set([...source.matchAll(/errorCode: '([a-z-]+)'/g)].map((match) => match[1]));
+
+    expect(codes.size).toBeGreaterThan(3);
+    for (const code of codes) {
+      const key = failureReasonKey(code);
+      expect(key, code).toBeDefined();
+      if (!GENERIC_OK.has(code)) expect(key, code).not.toBe('panels.market.add.failureGeneric');
+    }
+  });
+
+  it('★ 装上但没写行、卸掉但没删行是两个码，各有各的说法', () => {
+    expect(failureReasonKey('module-row-failed')).toBe('panels.market.add.failureModuleRow');
+    expect(failureReasonKey('module-row-remove-failed')).toBe('panels.market.add.failureModuleRowRemove');
+    expect(failureReasonKey('no-profile-dir')).toBe('panels.market.add.failureNoProfileDir');
   });
 });
