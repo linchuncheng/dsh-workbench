@@ -29,7 +29,11 @@ describe('install-record', () => {
   });
 
   it('写不进去也不炸：装好了就是装好了', () => {
-    expect(() => recordInstall('/dev/null/toolchain', '1.8.8', AT)).not.toThrow();
+    const root = mkdtempSync(join(tmpdir(), 'install-record-ro-'));
+    const blocker = join(root, 'blocker');
+    writeFileSync(blocker, 'x');
+
+    expect(() => recordInstall(join(blocker, 'toolchain'), '1.8.8', AT)).not.toThrow();
   });
 
   it('文件不在 / 字段缺 / schema 不对 → 当没有记录', () => {

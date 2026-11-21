@@ -77,6 +77,26 @@ const selfUpdateFailedRe = copyPattern([
   'panels.market.selfUpdateReinstallFailed',
   'panels.market.selfUpdateReinstallStopped',
 ]);
+const addModuleSettledRe = copyPattern([
+  'panels.market.add.installingTitle',
+  'panels.market.add.installedTitle',
+  'panels.market.add.failedTitle',
+  'panels.market.add.cancelledTitle',
+]);
+const marketOutcomeRe = new RegExp(
+  [
+    'Installed:',
+    'restart once',
+    'Failed:',
+    "Didn't install",
+    'Not installable',
+    'no newer version',
+    'could not be installed',
+    copyPattern(['panels.market.add.failedTitle']).source,
+    copyPattern(['panels.market.add.cancelledTitle']).source,
+  ].join('|'),
+  'iu',
+);
 
 const startedAt = Date.now();
 const elapsed = () => `${((Date.now() - startedAt) / 1000).toFixed(1)}s`;
@@ -370,38 +390,81 @@ async function addPluginDialog(cdp) {
   throw new Error('Add plugin 弹窗没出来（60s，重试过点 Add plugin）');
 }
 
+async function dialogInstallState(cdp, click = false) {
+  const answer = await cdp.send('Runtime.evaluate', {
+    expression: `(() => {
+      const dialog = document.querySelector(${JSON.stringify(DIALOG_SELECTOR)});
+      const scope = dialog ?? document;
+      const buttons = [...scope.querySelectorAll('button')];
+      const named = buttons.filter((node) => (node.innerText ?? '').trim() === 'Install');
+      const enabled = named
+        .filter((node) => node.disabled !== true && node.getAttribute('aria-disabled') !== 'true')
+        .at(-1);
+      let clicked = false;
+      if (enabled !== undefined && ${click}) {
+        enabled.click();
+        clicked = true;
+      }
+      return {
+        dialog: dialog !== null,
+        found: named.length > 0,
+        clickable: enabled !== undefined,
+        clicked,
+        labels: buttons.map((node) => (node.innerText ?? '').trim()).filter((one) => one !== ''),
+      };
+    })()`,
+    returnByValue: true,
+  });
+  const value = answer.result?.value;
+  const state = typeof value === 'object' && value !== null ? value : {};
+  return { dialog: false, found: false, clickable: false, clicked: false, labels: [], ...state };
+}
+
+async function dialogTextOf(cdp) {
+  const answer = await cdp.send('Runtime.evaluate', {
+    expression: `(() => {
+      const dialog = document.querySelector(${JSON.stringify(DIALOG_SELECTOR)});
+      return dialog === null ? '' : (dialog.innerText ?? '');
+    })()`,
+    returnByValue: true,
+  });
+  return String(answer.result?.value ?? '');
+}
+
+async function waitDialogMoved(cdp, budgetMs) {
+  const until = Date.now() + budgetMs;
+  while (Date.now() < until) {
+    await sleep(500);
+    const text = await dialogTextOf(cdp);
+    if (text === '' || addModuleSettledRe.test(text)) return true;
+  }
+  return false;
+}
+
 async function confirmInstall(cdp, budgetMs = 60_000) {
   const until = Date.now() + remaining('等安装确认弹窗里的 Install', budgetMs);
   let last = '';
+  let clicks = 0;
   while (Date.now() < until) {
-    const answer = await cdp.send('Runtime.evaluate', {
-      expression: `(() => {
-        const dialog = document.querySelector('[role="dialog"], [aria-modal="true"]');
-        const scope = dialog ?? document;
-        const buttons = [...scope.querySelectorAll('button')];
-        const target = buttons.filter((node) => (node.innerText ?? '').trim() === 'Install').at(-1);
-        if (target !== undefined) {
-          target.click();
-          return JSON.stringify({ clicked: true });
-        }
-        return JSON.stringify({
-          clicked: false,
-          labels: buttons.map((node) => (node.innerText ?? '').trim()).filter((one) => one !== ''),
-        });
-      })()`,
-      returnByValue: true,
-    });
-    last = String(answer.result?.value ?? '');
+    const state = await dialogInstallState(cdp);
+    last = JSON.stringify(state);
     log(`confirm install: ${last}`);
-    try {
-      const state = JSON.parse(last);
-      if (state.clicked === true) return true;
-    } catch {
-
+    if (state.dialog !== true) {
+      if (clicks > 0) return true;
+      await sleep(500);
+      continue;
+    }
+    if (state.clickable === true && clicks < 5) {
+      const clicked = await dialogInstallState(cdp, true);
+      clicks += 1;
+      const moved = await waitDialogMoved(cdp, 15_000);
+      log(`install 第 ${clicks} 次点击：${clicked.clicked === true ? 'clicked' : 'missing'}，弹层${moved ? '已开始' : '没动'}`);
+      if (moved) return true;
+      continue;
     }
     await sleep(500);
   }
-  log(`confirm install 等到超时：${last}`);
+  log(`confirm install 等到超时：${last}（点了 ${clicks} 次）`);
   return false;
 }
 
@@ -940,12 +1003,7 @@ async function smokeMarket(cdp) {
   }
   mark('market-install-clicked');
 
-  const doneBody = await waitForBody(
-    cdp,
-    /Installed:|restart once|Failed:|Didn't install|Not installable|no newer version|could not be installed/u,
-    MODULE_WAIT_MS,
-    'market-install',
-  );
+  const doneBody = await waitForBody(cdp, marketOutcomeRe, MODULE_WAIT_MS, 'market-install');
   writeText(`${prefix}-market-installed.txt`, doneBody);
   result.installed = /Installed:|restart once/u.test(doneBody);
   result.restartHint = /restart/u.test(doneBody);

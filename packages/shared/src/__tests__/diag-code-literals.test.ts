@@ -9,6 +9,7 @@ const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
 const SOURCE = /\.(?:ts|tsx|mjs|cjs|js)$/;
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const SKIP = new Set(['node_modules', 'dist', 'coverage', 'site-dist', '__tests__', 'vendor', 'test']);
+const RECORD_CALL = /\.record\s*\(/u;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -70,14 +71,20 @@ describe('故障码字面量判据', () => {
     expect(unregisteredCodesOf(files)).toEqual([]);
   });
 
-  it('★ 全仓现存的记录调用都用表内码', () => {
-    const dirs = ['packages', 'scripts'];
-    const files = dirs.flatMap((dir) => walk(join(REPO, dir))).map((file) => ({
-      file: relative(REPO, file).split('\\').join('/'),
-      text: readFileSync(file, 'utf8'),
-    }));
+  it(
+    '★ 全仓现存的记录调用都用表内码',
+    () => {
+      const dirs = ['packages', 'scripts'];
+      const scanned = dirs.flatMap((dir) => walk(join(REPO, dir))).map((file) => ({
+        file: relative(REPO, file).split('\\').join('/'),
+        text: readFileSync(file, 'utf8'),
+      }));
+      const files = scanned.filter((one) => RECORD_CALL.test(one.text));
 
-    expect(files.length).toBeGreaterThan(100);
-    expect(unregisteredCodesOf(files)).toEqual([]);
-  });
+      expect(scanned.length).toBeGreaterThan(100);
+      expect(files.length).toBeGreaterThan(0);
+      expect(unregisteredCodesOf(files)).toEqual([]);
+    },
+    60_000,
+  );
 });

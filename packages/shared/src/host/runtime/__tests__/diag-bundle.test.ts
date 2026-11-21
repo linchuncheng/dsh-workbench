@@ -83,6 +83,15 @@ describe('诊断目录写盘', () => {
   });
 
   it('写不进去时抛（调用方据此记一条并给出错误码）', () => {
-    expect(() => writeDiagBundle('/dev/null/nope', '2026-11-21T10:00:00.000Z', buildDiagBundle(inputOf()))).toThrow();
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-bundle-ro-'));
+    const blocker = path.join(parent, 'blocker');
+    fs.writeFileSync(blocker, 'x');
+    try {
+      expect(() =>
+        writeDiagBundle(path.join(blocker, 'nope'), '2026-11-21T10:00:00.000Z', buildDiagBundle(inputOf())),
+      ).toThrow();
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
   });
 });

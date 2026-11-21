@@ -37,22 +37,29 @@ describe('导出诊断目录', () => {
 
   it('★ 写不进去：回错误码并记一条 DIAG_SINK_FAILED（不抛）', () => {
     const recorder = recorderOf();
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-export-ro-'));
+    const blocker = path.join(parent, 'blocker');
+    fs.writeFileSync(blocker, 'x');
 
-    const result = exportDiagBundle({
-      recorder,
-      root: '/dev/null/nope',
-      at: AT,
-      env: {},
-      config: {},
-      runtime: {},
-      checks: {},
-    });
+    try {
+      const result = exportDiagBundle({
+        recorder,
+        root: path.join(blocker, 'nope'),
+        at: AT,
+        env: {},
+        config: {},
+        runtime: {},
+        checks: {},
+      });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.code).toBe('DIAG_SINK_FAILED');
-    const records = recorder.recent({ code: 'DIAG_SINK_FAILED' });
-    expect(records).toHaveLength(1);
-    expect(typeof records[0]?.detail?.['reason']).toBe('string');
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.code).toBe('DIAG_SINK_FAILED');
+      const records = recorder.recent({ code: 'DIAG_SINK_FAILED' });
+      expect(records).toHaveLength(1);
+      expect(typeof records[0]?.detail?.['reason']).toBe('string');
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
   });
 });
