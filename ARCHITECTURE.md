@@ -1133,10 +1133,11 @@ pnpm run check
 
 <!-- doc-facts:begin gate-chain -->
 ```text
-lint:commit → build → check:deps → typecheck → lint → check:duplication → coverage →
-check:gates:target --fail-on-red → arch → check:docs → check:copy:strict → check:runtimes →
-selfcheck → check:modules → check:adapter-defaults → scripts/check-adapter-contract.mjs →
-scripts/check-opencli-wire.mjs → check:release-packages → check:release-artifacts
+lint:commit → build → check:deps → typecheck → lint → check:duplication →
+check:swallow:strict → coverage → check:gates:target --fail-on-red → arch → check:docs →
+check:copy:strict → check:runtimes → selfcheck → check:modules → check:adapter-defaults →
+scripts/check-adapter-contract.mjs → scripts/check-opencli-wire.mjs → check:release-packages →
+check:release-artifacts
 ```
 <!-- doc-facts:end gate-chain -->
 

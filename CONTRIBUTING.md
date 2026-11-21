@@ -31,8 +31,8 @@ pnpm run check
 
 <!-- doc-facts:begin gate-chain-inline -->
 `lint:commit` → `build` → `check:deps` → `typecheck` → `lint` → `check:duplication` →
-`coverage` → `check:gates:target --fail-on-red` → `arch` → `check:docs` →
-`check:copy:strict` → `check:runtimes` → `selfcheck` → `check:modules` →
+`check:swallow:strict` → `coverage` → `check:gates:target --fail-on-red` → `arch` →
+`check:docs` → `check:copy:strict` → `check:runtimes` → `selfcheck` → `check:modules` →
 `check:adapter-defaults` → `scripts/check-adapter-contract.mjs` →
 `scripts/check-opencli-wire.mjs` → `check:release-packages` → `check:release-artifacts`
 <!-- doc-facts:end gate-chain-inline -->
@@ -144,6 +144,27 @@ fixed or refactored first.
 Baseline fingerprints describe clone content, not line numbers or file names, so moving code
 or renaming files does not invalidate the baseline. Re-run `duplication:accept` after changing
 the scan surface in `.jscpd.json` or after upgrading jscpd across a major version.
+
+## Swallowed errors
+
+`check:swallow` parses every `.ts` / `.tsx` / `.js` / `.mjs` / `.cjs` file under `packages/`
+and `scripts/` (tests, declarations and build output excluded) and reports `catch` and
+`.catch(...)` handlers that leave no observable outcome: no rethrow, no log or report call, no
+findings list push, no `process.exitCode`, and no failure-shaped return such as
+`{ ok: false }`. A handler that returns `undefined` / `null` / `[]` / `false` is reported too:
+the caller cannot tell it from "nothing there", which is how a real failure turns into an empty
+panel.
+
+The accepted sites are recorded in `.swallow-baseline.json`, keyed by file plus the shape of
+the handler, so moving code or shifting line numbers does not invalidate it. The step runs in
+report mode inside `pnpm run check` — it prints the totals and any site outside the baseline,
+but does not fail the chain yet.
+
+- Fix the site (log it, rethrow, or return an explicit failure) — preferred.
+- Accept it with `pnpm run swallow:accept` and commit the updated `.swallow-baseline.json`.
+- `pnpm run swallow:report` prints every accepted site as `file:line  kind/bucket  handler`.
+- `pnpm run check:swallow:strict` is the same check with a non-zero exit when new sites
+  appear; switch the chain step to it once the baseline stops growing.
 
 ## CI
 
