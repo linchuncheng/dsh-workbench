@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resourceViewOf } from '../resource-view';
+import { failureViewOf, resourceViewOf } from '../resource-view';
 
 describe('存下来的那一态只属于产出它的身份', () => {
   const ready = { phase: 'ready' as const, value: { ok: true }, at: 7 };
@@ -21,5 +21,20 @@ describe('存下来的那一态只属于产出它的身份', () => {
     const failed = { phase: 'error' as const, error: { code: 'network', message: '断了' } };
     expect(resourceViewOf(true, { identity: 'a', state: failed }, 'a')).toBe(failed);
     expect(resourceViewOf(true, { identity: 'a', state: failed }, 'b')).toEqual({ phase: 'loading' });
+  });
+});
+
+describe('读失败但手里有旧值', () => {
+  const error = { code: 'network', message: '断了' };
+
+  it('★ 旧值留着，标成可能过期，不再清空', () => {
+    const view = failureViewOf({ phase: 'ready', value: { rows: 3 }, at: 7 }, error);
+
+    expect(view).toEqual({ phase: 'ready', value: { rows: 3 }, error, stale: true, at: 7 });
+  });
+
+  it('★ 没有旧值时才进 error', () => {
+    expect(failureViewOf(undefined, error)).toEqual({ phase: 'error', error });
+    expect(failureViewOf({ phase: 'loading' }, error)).toEqual({ phase: 'error', error });
   });
 });

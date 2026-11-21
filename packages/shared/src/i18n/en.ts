@@ -684,6 +684,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'blocker.exec.hint': 'Make sure the runtime is installed and can run from a terminal.',
   'blocker.unknown.title': 'An error occurred',
   'panels.reading': 'Reading the panel setup…',
+  'panels.staleNote': 'Possibly out of date: the last read failed, so this is what it read earlier.',
   'panels.boardReadFailed': 'Could not read the panel setup',
   'panels.boardReadFailedHint': 'This is not "no modules": the host failed to read the setup. Try again; if it keeps failing, check the log',
   'panels.retry': 'Retry',

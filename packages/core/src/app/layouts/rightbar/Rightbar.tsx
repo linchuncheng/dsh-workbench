@@ -164,6 +164,7 @@ function BoardContent({
   readFailed,
   readDetail,
   readCode,
+  readStale,
   onRetryRead,
   t,
 }: {
@@ -183,6 +184,7 @@ function BoardContent({
   readFailed: boolean;
   readDetail: string | null;
   readCode?: string | null | undefined;
+  readStale?: boolean | undefined;
   onRetryRead: () => void;
   t: Translate;
 }) {
@@ -222,6 +224,11 @@ function BoardContent({
         <CenteredState icon={null} title={<TextShimmer active>{t('panels.reading')}</TextShimmer>} />
       ) : null}
       {readFailed ? <BoardReadFailed t={t} detail={readDetail} code={readCode} onRetry={onRetryRead} /> : null}
+      {readStale === true ? (
+        <p className="wb-panelStale" role="note">
+          {t('panels.staleNote')}
+        </p>
+      ) : null}
       {plan.empty ? (
         <BoardEmpty
           t={t}
@@ -385,6 +392,7 @@ export function Rightbar(props: RightbarProps) {
           readFailed={plan.readFailed || units.manifestReadFailure() !== null}
           readDetail={panelRead.detail ?? units.manifestReadFailure()}
           readCode={panelRead.code}
+          readStale={panelRead.stale}
           onRetryRead={refreshPanel}
           t={props.t}
         />

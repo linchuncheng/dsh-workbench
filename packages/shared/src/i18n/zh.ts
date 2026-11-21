@@ -680,6 +680,7 @@ export const zh = {
   'blocker.exec.hint': '请确认运行时已安装完成，并且能在终端中直接运行。',
   'blocker.unknown.title': '出现错误',
   'panels.reading': '正在读取面板配置…',
+  'panels.staleNote': '可能已过期：最近一次读失败了，下面是上次拿到的内容。',
   'panels.boardReadFailed': '面板配置没读出来',
   'panels.boardReadFailedHint': '这不是「没有模块」：工作台后台读配置失败了，重试一次；还是不行就看日志',
   'panels.retry': '重试',

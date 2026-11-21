@@ -27,6 +27,7 @@ export interface PanelBoardRead {
   readonly failed: boolean;
   readonly detail: string | null;
   readonly code: string | null;
+  readonly stale: boolean;
 }
 
 export function useEnabledUnitsState(
@@ -36,6 +37,8 @@ export function useEnabledUnitsState(
   const [enabled, setEnabled] = useState<PanelBoardView | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [failureCode, setFailureCode] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+  const boardRef = useRef<PanelBoardView | null>(null);
   const lastWorkspace = useRef<string | null>(workspace);
   const factRev = useFactRevision(PANELS_FACT);
 
@@ -43,6 +46,7 @@ export function useEnabledUnitsState(
     let cancelled = false;
     if (shouldDropPanels(workspace, lastWorkspace.current)) {
       lastWorkspace.current = workspace;
+      boardRef.current = null;
       setEnabled(null);
     }
 
@@ -52,26 +56,31 @@ export function useEnabledUnitsState(
         response = await apiGet<PanelsPayload>(PANELS_ROUTE, workspace === null ? {} : { path: workspace });
       } catch (error) {
         if (cancelled) return;
-        setFailure(error instanceof Error ? error.message : String(error));
+        setStale(boardRef.current !== null);
+        setFailure(boardRef.current === null ? (error instanceof Error ? error.message : String(error)) : null);
         setFailureCode(null);
         return;
       }
       if (cancelled) return;
       if (response.ok !== true) {
-        setFailure(response.error.message);
-        setFailureCode(response.error.code);
+        setStale(boardRef.current !== null);
+        setFailure(boardRef.current === null ? response.error.message : null);
+        setFailureCode(boardRef.current === null ? response.error.code : null);
         return;
       }
       setFailure(null);
       setFailureCode(null);
+      setStale(false);
       if (!Array.isArray(response.units)) return;
-      setEnabled({
+      const next = {
         units: response.units,
         plugins: Array.isArray(response.plugins) ? response.plugins : [],
         defaults: Array.isArray(response.defaults) ? response.defaults : [],
         own: response.own === true,
         changed: response.changed ?? {},
-      });
+      };
+      boardRef.current = next;
+      setEnabled(next);
     };
 
     void read();
@@ -80,7 +89,7 @@ export function useEnabledUnitsState(
     };
   }, [refreshToken, factRev, workspace]);
 
-  return { board: enabled, failed: failure !== null, detail: failure, code: failureCode };
+  return { board: enabled, failed: failure !== null, detail: failure, code: failureCode, stale };
 }
 
 export function useEnabledUnits(

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ApiResponse, Query } from '@dsh-workbench/shared';
+import type { ApiError, ApiResponse, Query } from '@dsh-workbench/shared';
 import { apiGet } from '@dsh-workbench/shared';
 import { factOfRoute } from '@dsh-workbench/shared';
 
 import { useFactRevision } from './use-facts';
 import { reportPanelRead, unitOfRoute } from './panel-state-report';
-import { IDLE, LOADING, resourceViewOf, type ResourceState, type TaggedState } from './resource-view';
+import { IDLE, LOADING, failureViewOf, resourceViewOf, type ResourceState, type TaggedState } from './resource-view';
 
 /**
  * 一次读的状态：`idle` 没开读 · `loading` 在飞 · `ready` 有值 · `error` 失败；`value` 是 `ApiResponse<T>`、
@@ -116,6 +116,8 @@ export function useApiResource<T>(
     }
     let cancelled = false;
     const put = (state: ResourceState<T>): void => setCurrent({ identity, state });
+    const putFailure = (error: ApiError): void =>
+      setCurrent((prev) => ({ identity, state: failureViewOf(prev.state, error) }));
     const sameIdentity = lastIdentity.current === identity;
     lastIdentity.current = identity;
     setCurrent((prev) => ({
@@ -141,7 +143,7 @@ export function useApiResource<T>(
           if (owner !== null) reportPanelRead({ unit: owner, route, phase: 'ready' });
           return;
         }
-        put({ phase: 'error', error: response.error });
+        putFailure(response.error);
         if (owner !== null) {
           reportPanelRead({
             unit: owner,
@@ -154,10 +156,7 @@ export function useApiResource<T>(
       .catch((reason: unknown) => {
         if (cancelled) return;
         const message = reason instanceof Error ? reason.message : String(reason);
-        put({
-          phase: 'error',
-          error: { code: 'network', message },
-        });
+        putFailure({ code: 'network', message });
         if (owner !== null) {
           reportPanelRead({ unit: owner, route, phase: 'error', error: { code: 'network', message } });
         }
