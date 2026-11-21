@@ -22,9 +22,9 @@ export const checks = [
     },
   },
   {
-    title: '★ DIY preset 在启动时按选中的模式现场派生（默认 standard，没有生成物要维护）',
+    title: '★ DIY preset 在启动时按选中的模式派生（默认 standard，无生成物）',
     run(_ctx, report) {
-      const title = '★ DIY preset 在启动时按选中的模式现场派生（默认 standard，没有生成物要维护）';
+      const title = '★ DIY preset 在启动时按选中的模式派生（默认 standard，无生成物）';
       const hostEntry = read(pkg('src/app/host.ts'));
       const hostSide = read(pkg('src/shared/api/host/diy-preset.ts'));
       const orchestration = read(pkg('src/shared/api/host/diy-preset-host.ts'));

@@ -108,7 +108,7 @@ export function createWorkbenchSettingsStore(options: { readonly root: string })
       const requestedSource =
         request.diyPresetSource === undefined ? current.diyPresetSource : textOf(request.diyPresetSource);
       if (requestedSource === undefined) {
-        throw new Error('diyPresetSource 要是非空字符串');
+        throw new Error('无法保存设置：DIY 模式必须从一个模式继承。');
       }
       const next: WorkbenchSettings = {
         mcpOnDemand: booleanOf(request.mcpOnDemand) ?? current.mcpOnDemand,
