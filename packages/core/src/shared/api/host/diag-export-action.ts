@@ -18,7 +18,7 @@ export function diagExportAction(ctx: DshHostContext): PostResource {
         recorder: diagRoutesOf(root).recorder,
         root,
         at: nowIso(),
-        env: { node: process.versions.node, platform: process.platform, profileDir: dir },
+        env: { node: process.versions.node, profileDir: dir },
         config: {
           name: manifest?.['name'] ?? null,
           dependencies: Object.keys((manifest?.['dependencies'] as Record<string, unknown>) ?? {}).length,
