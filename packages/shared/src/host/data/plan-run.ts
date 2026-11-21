@@ -60,7 +60,7 @@ export class PlanCancelledError extends Error {
   readonly step: PluginPlanStep;
 
   constructor(step: PluginPlanStep) {
-    super(`计划被取消，停在：${planStepText(step)}`);
+    super(`安装计划已取消，停在：${planStepText(step)}`);
     this.name = 'PlanCancelledError';
     this.step = step;
   }

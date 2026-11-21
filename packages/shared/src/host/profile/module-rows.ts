@@ -39,7 +39,7 @@ function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined
 export function moduleRowsIn(text: string): readonly ModuleRow[] {
   const document = parseDocument(text, { logLevel: 'silent' });
   if (document.errors.length > 0) {
-    throw new Error(`cordis.patch.yml 解析不了：${document.errors[0]?.message ?? '原因不明'}`);
+    throw new Error(`cordis.patch.yml 无法解析：${document.errors[0]?.message ?? '原因不明'}`);
   }
   const raw: unknown = document.toJS();
   const items = Array.isArray(raw) ? (raw as unknown[]) : [];

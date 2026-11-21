@@ -60,7 +60,7 @@ export function workspaceDeclarationOf(text: string): WorkspaceDeclaration {
   try {
     document = parse(text);
   } catch (error) {
-    throw new PnpmConfigError('unparsable', `pnpm-workspace.yaml 解析不了：${errorText(error)}`);
+    throw new PnpmConfigError('unparsable', `pnpm-workspace.yaml 无法解析：${errorText(error)}`);
   }
   const record = asRecord(document);
   if (record === undefined) return { declared: false, patterns: [], empty: false };

@@ -517,7 +517,6 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.discover.badShell': 'Cannot install',
   'panels.discover.badShellDetail': 'This version is not compatible with the current workbench {current}; it requires {peer}.',
   'panels.discover.unverified': 'Workbench unverified',
-  'panels.discover.installing': 'Installing…',
   'panels.discover.failed': 'Failed: {reason}',
   'panels.discover.transportTitle': 'Choose how to read this repository',
   'panels.discover.transportSsh': 'SSH',

@@ -29,12 +29,12 @@ function readPolicy(profileDir: string) {
   }
   const document = parseDocument(text);
   if (document.errors[0] !== undefined) throw document.errors[0];
-  if (!isMap(document.contents)) throw new Error('profile 的 pnpm-workspace.yaml 不是一份 YAML 映射');
+  if (!isMap(document.contents)) throw new Error('这份工作台配置的 pnpm-workspace.yaml 不是键值结构');
   const builds = document.get('allowBuilds');
-  if (builds !== undefined && !isMap(builds)) throw new Error('pnpm-workspace.yaml 里的 allowBuilds 必须是映射');
+  if (builds !== undefined && !isMap(builds)) throw new Error('pnpm-workspace.yaml 里的 allowBuilds 必须是「包名: true」的形式');
   visit(builds ?? null, (_key, node) => {
     if (isAlias(node) || (isNode(node) && 'anchor' in node && node.anchor)) {
-      throw new Error('pnpm-workspace.yaml 的 allowBuilds 不许用 YAML 锚点或别名');
+      throw new Error('pnpm-workspace.yaml 的 allowBuilds 不能使用 YAML 锚点或别名');
     }
   });
   const entries = isMap(builds) ? builds.items : [];
@@ -81,7 +81,7 @@ export function approveBuilds(profileDir: string | null, names: readonly string[
   const { document, pending } = readPolicy(profileDir);
   const stale = names.filter((name) => !pending.includes(name));
   if (stale.length > 0) {
-    throw new Error(`这些构建没有在等待批准：${stale.join('、')}。重新安装一次，看最新的待批清单`);
+    throw new Error(`这些包不在等待批准的清单里：${stale.join('、')}。请重新安装一次，再查看最新的等待批准清单。`);
   }
   for (const name of names) document.setIn(['allowBuilds', name], true);
   writeTextFile(policyPath(profileDir), `${String(document)}\n`, { mode: 0o600 });

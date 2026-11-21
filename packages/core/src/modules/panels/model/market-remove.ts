@@ -121,7 +121,7 @@ export async function removeWorkbenchModule(options: RemoveModuleRowOptions): Pr
       changed: true,
       target: options.pkg,
       errorCode: 'module-row-failed',
-      errorDetail: `包已从工作台配置移除，但 profile 的 cordis.patch.yml 没改成功：${detail}。修好这个文件再重启工作台。`,
+      errorDetail: `包已从工作台配置移除，但没有改成功它的 cordis.patch.yml：${detail}。请修好这个文件后重启工作台。`,
     };
   }
   return { application: 'applied', stage: 'remove', changed: true, target: options.pkg };

@@ -56,7 +56,7 @@ export function spannedBlocks(text: string): SpannedBlock[] {
   const lineCounter = new LineCounter();
   const document = parseDocument(text, { lineCounter, logLevel: 'silent' });
   if (document.errors.length > 0) {
-    throw new Error(`cordis.patch.yml 解析不了：${document.errors[0]?.message ?? '原因不明'}`);
+    throw new Error(`cordis.patch.yml 无法解析：${document.errors[0]?.message ?? '原因不明'}`);
   }
   const items = isSeq(document.contents) ? document.contents.items : [];
   const starts = items.flatMap((item) =>

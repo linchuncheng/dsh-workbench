@@ -52,6 +52,6 @@ describe('patch 分块：YAML 节点区间', () => {
   });
 
   it('坏 YAML 明确抛，不猜', () => {
-    expect(() => patchBlocks('- id: [')).toThrow(/解析不了/);
+    expect(() => patchBlocks('- id: [')).toThrow(/无法解析/);
   });
 });
