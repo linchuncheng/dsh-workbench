@@ -36,6 +36,7 @@ import {
   type VersionLink,
 } from './version/version-dir.js';
 import { switchJournalOf } from './version/version-switch.js';
+import { noteSelfUpdateFailed } from './self-update-note.js';
 import { versionGateOf, type VersionEntryProbe } from './version/version-gate.js';
 import { isRealDir } from './version/version-migrate.js';
 import { runSelfUpdateCommand } from './self-update-command.js';
@@ -50,6 +51,7 @@ export interface SelfUpdateRunDeps {
   readonly writeManifest?: ((input: { readonly profileDir: string; readonly links: readonly VersionLink[] }) => void) | undefined;
   readonly entryProbe?: VersionEntryProbe | undefined;
   readonly inUseWaitMs?: number | undefined;
+  readonly diag?: import('@dsh-workbench/shared/host').DiagRecorder | undefined;
   readonly inUsePollMs?: number | undefined;
   readonly log?: ((message: string) => void) | undefined;
 }
@@ -81,6 +83,7 @@ export async function runSelfUpdateSteps(
   plan: SelfUpdateSteps,
   deps: SelfUpdateRunDeps,
 ): Promise<SelfUpdateRunResult> {
+  const diag = deps.diag;
   const log = deps.log ?? (() => undefined);
   const now = deps.now ?? (() => new Date().toISOString());
   const ran: string[] = [];
@@ -108,12 +111,16 @@ export async function runSelfUpdateSteps(
       });
       log(detail);
       log(`救法：${plan.rescue}`);
+      noteSelfUpdateFailed(diag, plan.version, detail);
       return { ok: false, state: 'failed', detail, ran };
     }
     ran.push(step.kind);
     log(outcome.detail);
     if (outcome.state === 'pending') return { ok: true, state: 'pending', detail: outcome.detail, ran };
-    if (outcome.state === 'failed') return { ok: false, state: 'failed', detail: outcome.detail, ran };
+    if (outcome.state === 'failed') {
+      noteSelfUpdateFailed(diag, plan.version, outcome.detail);
+      return { ok: false, state: 'failed', detail: outcome.detail, ran };
+    }
   }
   return { ok: true, state: 'ok', detail: `${plan.version} 已就绪，重启后生效`, ran };
 }
