@@ -22,17 +22,19 @@ export const checks = [
     },
   },
   {
-    title: '★ DIY preset 在启动时从 dsh 的 standard 现场派生（没有生成物要维护）',
+    title: '★ DIY preset 在启动时按选中的模式现场派生（默认 standard，没有生成物要维护）',
     run(_ctx, report) {
-      const title = '★ DIY preset 在启动时从 dsh 的 standard 现场派生（没有生成物要维护）';
+      const title = '★ DIY preset 在启动时按选中的模式现场派生（默认 standard，没有生成物要维护）';
       const hostEntry = read(pkg('src/app/host.ts'));
       const hostSide = read(pkg('src/shared/api/host/diy-preset.ts'));
+      const orchestration = read(pkg('src/shared/api/host/diy-preset-host.ts'));
       const derive = read(pkg('../shared/src/host/diy/diy-preset.ts'));
       const manifest = JSON.parse(read(pkg('package.json')));
       const patches = manifest.dsh?.bundle?.patch;
       const patchList = Array.isArray(patches) ? patches : [patches];
       const noArtifact = !patchList.includes('./preset/diy.patch.yml') && !existsSync(pkg('preset/diy.patch.yml'));
-      const wired = hostEntry.includes('registerDiyPreset(ctx)');
+      const wired = hostEntry.includes('mountDiyPreset(') && orchestration.includes('registerDiyPreset(');
+      const sourceChoice = orchestration.includes('diyPresetSource') && orchestration.includes('settings.watch');
       const hostReads = hostSide.includes("'agentPresets'") && hostSide.includes("'loader'") && hostSide.includes('.register(');
       const deriveAnchors =
         derive.includes('DIY_PRESET_ID') &&
@@ -41,8 +43,8 @@ export const checks = [
         derive.includes('tool-plugin-manager');
       report(
         title,
-        wired && hostReads && deriveAnchors && noArtifact,
-        `宿主接线 ${wired} · 读 loader/agentPresets ${hostReads} · 三处差分锚点 ${deriveAnchors} · 生成物已删 ${noArtifact}`,
+        wired && sourceChoice && hostReads && deriveAnchors && noArtifact,
+        `宿主接线 ${wired} · 按设置选来源 ${sourceChoice} · 读 loader/agentPresets ${hostReads} · 三处差分锚点 ${deriveAnchors} · 生成物已删 ${noArtifact}`,
       );
     },
   },
