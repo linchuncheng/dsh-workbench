@@ -4,6 +4,7 @@ import { tailLines } from '@dsh-workbench/shared/host';
 import { hostOsOf, quoteShellArgFor } from '@dsh-workbench/shared/host';
 import { opencliCommandLine, OPENCLI_SITE_SESSION_ENV, OPENCLI_WINDOW_ENV } from '@dsh-workbench/adapter-runtime';
 import { productWrite, type Seam } from '@dsh-workbench/shared/host';
+import { notePreflightFailed } from './preflight-note.js';
 import { DIY_UPGRADE_COMMAND } from './diy-preset-health.js';
 import type { DiyPresetVerdict } from './diy-preset-health.js';
 import { opencliInstallCommand } from '../install/install.js';
@@ -97,6 +98,7 @@ export function createPreflight(options: {
   runtimeCheck?: (() => Promise<{ ok: boolean; detail: string }>) | undefined;
   runtimeLabel?: string | undefined;
   platform?: NodeJS.Platform | undefined;
+  diag?: import('@dsh-workbench/shared/host').DiagRecorder | undefined;
 }): Preflight {
   const { seam, command = 'opencli', logger } = options;
   const platform = options.platform;
@@ -148,17 +150,16 @@ export function createPreflight(options: {
   let daemonHealed = false;
 
   function set(next: Partial<PreflightSnapshot> & { steps?: PreflightStep[] }): PreflightSnapshot {
+    if (next.phase === 'failed') notePreflightFailed(options.diag, next.failure ?? 'unknown', next.error ?? '');
     current = { ...current, ...next, log: [...logLines], at: now() };
     return current;
   }
 
-  function patchStep(id: PreflightStepId, patch: Partial<PreflightStep>): PreflightSnapshot {
-    return set({ steps: current.steps.map((item) => (item.id === id ? { ...item, ...patch } : item)) });
-  }
+  const patchStep = (id: PreflightStepId, patch: Partial<PreflightStep>): PreflightSnapshot =>
+    set({ steps: current.steps.map((item) => (item.id === id ? { ...item, ...patch } : item)) });
 
-  function hostFailure(detail: string): PreflightSnapshot {
-    return set({ phase: 'failed', error: detail, failure: 'host', guidance: 'host' });
-  }
+  const hostFailure = (detail: string): PreflightSnapshot =>
+    set({ phase: 'failed', error: detail, failure: 'host', guidance: 'host' });
 
   async function exec(
     stepId: PreflightStepId,
