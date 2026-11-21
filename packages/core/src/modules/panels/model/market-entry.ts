@@ -26,7 +26,7 @@ export function createMarketEntries(deps: MarketEntryDeps) {
         unit,
         status: 'unchecked',
         needs: [],
-        detail: '没有探测能力（缺少执行缝或探测服务）',
+        detail: '没有探测能力（缺少命令执行入口或探测服务）',
       }
     );
   }

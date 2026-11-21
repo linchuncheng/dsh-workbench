@@ -2,7 +2,6 @@ import { Fragment, createElement as h, useLayoutEffect } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
 import { Button, IconWarningOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives';
 import { DiscoverDetail } from './discover-detail';
-import { DiscoverInstalling } from './discover-installing';
 import { DiscoverDialogs } from './discover-dialogs';
 import { DiscoverRows } from './discover-rows';
 import { DiscoverToolbar } from './discover-toolbar';
@@ -29,13 +28,13 @@ function readFailureOf(d: DiscoverController, t: Translate, failed: boolean): st
 export interface DiscoverPanelProps {
   readonly t: Translate;
   readonly active: boolean;
-  readonly onInstalled: () => void;
   readonly onShowInstalled: (name: string) => void;
+  readonly onAddModule: (preset: { readonly spec: string; readonly registry?: string | undefined }) => void;
   readonly onDetailChange?: ((open: boolean) => void) | undefined;
 }
 
-export function DiscoverPanel({ t, active, onInstalled, onShowInstalled, onDetailChange }: DiscoverPanelProps) {
-  const d = useDiscover(t, active, onInstalled);
+export function DiscoverPanel({ t, active, onShowInstalled, onAddModule, onDetailChange }: DiscoverPanelProps) {
+  const d = useDiscover(t, active, onAddModule);
   const detailOpen = d.detailEntry !== null;
   useLayoutEffect(() => {
     onDetailChange?.(detailOpen);
@@ -127,14 +126,6 @@ export function DiscoverPanel({ t, active, onInstalled, onShowInstalled, onDetai
             onInit={() => d.setInitOpen(true)}
           />
         )}
-        {d.installing === null ? null : (
-          <DiscoverInstalling
-            t={t}
-            name={d.installing}
-            cancelling={d.cancelling}
-            onCancel={d.cancelInstall}
-          />
-        )}
         {d.notice === null ? null : (
           <p className={styles.discoverNotice} role="note">
             <IconWarningOutlineRegular size={14} aria-hidden="true" />
@@ -142,7 +133,6 @@ export function DiscoverPanel({ t, active, onInstalled, onShowInstalled, onDetai
           </p>
         )}
         {d.writeFailed === null ? null : <p className={styles.discoverError}>{d.writeFailed}</p>}
-        {d.provisionFailed === null ? null : <p className={styles.discoverError}>{d.provisionFailed}</p>}
         {d.detailEntry !== null ? (
           <DiscoverDetail
             t={t}
@@ -152,7 +142,6 @@ export function DiscoverPanel({ t, active, onInstalled, onShowInstalled, onDetai
             onBack={d.closeDetail}
             onInstall={(entry, version) => d.setChoice({ entry, version })}
             onShowInstalled={onShowInstalled}
-            installDisabled={d.installDisabled}
           />
         ) : readFailed !== null || uninitialized !== null || retrying ? null : d.shown.length === 0 ? (
           <DiscoverEmptyText text={emptyText} />
@@ -164,7 +153,6 @@ export function DiscoverPanel({ t, active, onInstalled, onShowInstalled, onDetai
             onOpen={d.openDetail}
             onInstall={(entry, version) => d.setChoice({ entry, version })}
             onShowInstalled={onShowInstalled}
-            installDisabled={d.installDisabled}
           />
         )}
         {d.detailEntry !== null || d.total <= d.shown.length ? null : (

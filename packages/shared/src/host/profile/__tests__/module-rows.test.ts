@@ -63,7 +63,7 @@ describe('读 patch 里的模块行', () => {
   });
 
   it('坏 YAML 明确抛错，不装作没有行', () => {
-    expect(() => moduleRowsIn('- insert: [')).toThrow(/解析不了/);
+    expect(() => moduleRowsIn('- insert: [')).toThrow(/无法解析/);
   });
 });
 

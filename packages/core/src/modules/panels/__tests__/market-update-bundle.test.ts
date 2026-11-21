@@ -33,6 +33,7 @@ function depsOf(input: {
   readonly dshHome?: string;
   readonly swapWaitMs?: number;
   readonly swapPollMs?: number;
+  readonly route?: Partial<ReplaceBundleDeps>;
 }) {
   const manager: BundleManager = {
     registries: async () => null,
@@ -50,6 +51,7 @@ function depsOf(input: {
     rememberSource: async () => undefined,
     supplyAfter: async () => ({ state: 'no-needs' }),
     remove: async () => change({ stage: 'remove' }),
+    ...(input.route === undefined ? {} : input.route),
   };
   return {
     modules: input.modules ?? (() => [{ pkg: PKG, unit: 'mod', version: '0.1.0' }]),
@@ -427,33 +429,45 @@ describe('行加载的模块：更新只走 profile，不叫 dsh 的插件管理
     } as unknown as SupplyPort;
   }
 
-  it('★ 装的是 wb- 行（不在 bundle 名单里）→ 不调 updateBundle，改走 profile 安装', async () => {
+  it('★ 装的是 wb- 行（不在 bundle 名单里）→ 不调 updateBundle，走 pnpm + 行同步', async () => {
     let version = '1.2.0';
     const updated: string[] = [];
-    const installed = [
-      { kind: 'module' as const, pkg: PKG, unit: 'mod', version, registry: 'https://r.example.com/' },
-    ];
+    const installedCalls: string[] = [];
+    const lines: string[] = [];
+    const synced: string[] = [];
+    const dir = profileOf([CORE], [PKG]);
     const deps = depsOf({
-      installed: () => ({ kind: 'module', pkg: PKG, unit: 'mod', version }),
+      installed: () => ({ kind: 'module', pkg: PKG, unit: 'mod', version, registry: 'https://r.example.com/' }),
       install: async () => {
-        version = '1.3.0';
+        installedCalls.push('manager.install');
         return change();
       },
       updateBundle: async (pkg) => {
         updated.push(pkg);
         return null;
       },
-      profileDir: profileOf([CORE], [PKG]),
+      profileDir: dir,
       seam: {} as unknown as Seam,
       supply: supplyWith('1.3.0'),
+      route: {
+        supply: supplyWith('1.3.0'),
+        profileDir: dir,
+        runAll: async (steps) => {
+          for (const step of steps) if (step.kind === 'run') lines.push(step.line);
+          version = '1.3.0';
+        },
+        syncRows: () => {
+          synced.push('sync');
+        },
+      },
     });
 
-    const outcome = await updateModuleBundle(
-      'mod',
-      { ...deps, installed: () => installed[0] as InstalledModule },
-    );
+    const outcome = await updateModuleBundle('mod', deps);
 
     expect(updated).toEqual([]);
+    expect(installedCalls).toEqual([]);
+    expect(lines).toEqual([`'pnpm' add --dir '${dir}' '@a/mod@1.3.0' --save-exact`]);
+    expect(synced).toEqual(['sync']);
     expect(outcome?.change.application).toBe('applied');
   });
 

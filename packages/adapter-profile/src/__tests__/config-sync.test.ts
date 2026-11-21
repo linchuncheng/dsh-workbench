@@ -139,7 +139,7 @@ describe('配置同步：写回', () => {
     const merged = mergeBlocks('- id: [', idBlocksOf(WEB_PATCH), new Set());
     expect(merged.ok).toBe(false);
     if (merged.ok) return;
-    expect(merged.reason).toContain('解析不了');
+    expect(merged.reason).toContain('无法解析');
   });
 });
 

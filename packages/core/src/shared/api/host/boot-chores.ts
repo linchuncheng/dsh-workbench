@@ -75,7 +75,7 @@ export function bootChores(input: BootChoresInput): string | undefined {
         }
         if (sync.stuck.length > 0) {
           input.log?.(
-            `[dsh-workbench] ${sync.stuck.join('、')} 还声明着 dsh.bundle，没给它写行：先在模块自己的仓库去掉这个字段并重发，再迁移`,
+            `[dsh-workbench] ${sync.stuck.join('、')} 还声明着 dsh.bundle，没有为它写模块行：请先在模块自己的仓库里去掉这个字段并重新发布，再迁移`,
           );
         }
       } catch (error) {

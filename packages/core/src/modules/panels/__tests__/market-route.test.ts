@@ -13,7 +13,7 @@ import { diagnoseInstallFailure, planStepText, refusalReason } from '@dsh-workbe
 import { createMarketService } from '../model/market';
 import { sourceProblemText } from '../model/market-dependency';
 import { installError } from '../model/market-install-error';
-import { bundleNameOf, installRouted, type BundleInstallDeps } from '../model/market-route';
+import { bundleNameOf, installRouted, replaceRouted, type BundleInstallDeps, type ReplaceBundleDeps } from '../model/market-route';
 import type { BundleInstallOutcome } from '../model/market-types';
 import { createPluginLedger, type PluginLedger } from '../model/plugin-ledger';
 
@@ -535,7 +535,7 @@ describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，
 
     expect(commands).toEqual([]);
     expect(outcome.change.application).toBe('failed');
-    expect(outcome.change.errorDetail).toContain('profile');
+    expect(outcome.change.errorDetail).toContain('缺少可写的目录');
   });
 
   it('★ 装上了但写行失败 → 不算生效：报 module-row-failed，并说清怎么修', async () => {
@@ -648,6 +648,48 @@ describe('模块安装遇到被拦的构建脚本：记账、可批准、批准�
     expect(commands).toEqual([]);
     expect(outcome.change.application).toBe('failed');
     expect(outcome.change.errorDetail).toContain('手抖写错');
+  });
+});
+
+describe('替换/更新也认路线：模块走 pnpm + 行，组合包照旧叫 dsh', () => {
+  function replaceDeps(deps: BundleInstallDeps): ReplaceBundleDeps {
+    return {
+      ...deps,
+      remove: async () => ({ application: 'applied', stage: 'remove', changed: true, target: '@t/module-a' }),
+    };
+  }
+
+  it('★ 模块：不叫 dsh 的 install，跑 pnpm add 并同步行', async () => {
+    const { deps, install, commands } = rig({
+      spec: '@t/module-a@1.3.0',
+      supply: pluginSupply(() => ({ kind: 'dsh-module', pkg: '@t/module-a' })),
+    });
+    const syncRows = vi.fn();
+
+    const outcome = await replaceRouted(
+      { ...replaceDeps(deps), profileDir: '/tmp/wb-profile', syncRows },
+      '@t/module-a@1.3.0',
+    );
+
+    expect(install).not.toHaveBeenCalled();
+    expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([
+      `'pnpm' add --dir '/tmp/wb-profile' '@t/module-a@1.3.0' --save-exact`,
+    ]);
+    expect(syncRows).toHaveBeenCalledTimes(1);
+    expect(outcome.change).toMatchObject({ application: 'applied', stage: 'install' });
+  });
+
+  it('★ 组合包：照旧交给 dsh 的插件管理器（不跑 pnpm）', async () => {
+    const at = pluginFixture();
+    const { deps, install, commands } = rig({
+      spec: at,
+      supply: pluginSupply(() => ({ kind: 'dsh-bundle', pkg: '@t/plugin-a' })),
+    });
+
+    await replaceRouted(replaceDeps(deps), at);
+
+    expect(install).toHaveBeenCalled();
+    expect(commands).toEqual([]);
   });
 });
 

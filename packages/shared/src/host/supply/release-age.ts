@@ -99,7 +99,7 @@ function appendExcludes(text: string, wants: readonly ExcludeWant[]): string {
   if (document.errors.length > 0) {
     throw new PnpmConfigError(
       'unparsable',
-      `pnpm-workspace.yaml 解析不了：${document.errors[0]?.message ?? '原因不明'}`,
+      `pnpm-workspace.yaml 无法解析：${document.errors[0]?.message ?? '原因不明'}`,
     );
   }
   if (wants.length === 0) return text;

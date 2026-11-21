@@ -13,22 +13,32 @@ import { AddModuleForm } from './AddModuleForm';
 import { SafetyNote } from './SafetyNote';
 import { AddModulePending, AddModulePreview, AddModuleFailure, AddModuleResult } from './AddModuleStages';
 import type { AddModuleMock } from './add-module-mock';
-import { useAddModule, type AddModuleState } from './use-add-module';
+import { useAddModule, type AddModulePreset, type AddModuleState } from './use-add-module';
 
 export interface AddModuleDialogProps {
   readonly t: Translate;
   readonly open: boolean;
   readonly onClose: () => void;
   readonly onInstalled: () => void;
+  readonly preset?: AddModulePreset | undefined;
 }
 
-export function AddModuleDialog({ t, open, onClose, onInstalled }: AddModuleDialogProps) {
+export function AddModuleDialog({ t, open, onClose, onInstalled, preset }: AddModuleDialogProps) {
   if (!open) return null;
-  return <AddModuleContent t={t} onClose={onClose} onInstalled={onInstalled} />;
+  return <AddModuleContent t={t} onClose={onClose} onInstalled={onInstalled} preset={preset} />;
 }
 
-function AddModuleContent({ t, onClose, onInstalled }: Omit<AddModuleDialogProps, 'open'>) {
-  const real = useAddModule({ onInstalled, failedText: t('panels.failed') });
+function AddModuleContent({
+  t,
+  onClose,
+  onInstalled,
+  preset,
+}: Omit<AddModuleDialogProps, 'open'>) {
+  const real = useAddModule({
+    onInstalled,
+    failedText: t('panels.failed'),
+    ...(preset === undefined ? {} : { preset }),
+  });
   const devAdd = devSurface.useStrips<AddModuleMock>('addModule', []);
   const mock = devAdd.current;
   const state = mock === undefined ? real : (devSurface.addModuleState(real, mock) as AddModuleState);

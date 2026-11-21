@@ -3,7 +3,7 @@ import type { BundleManager, Seam, SupplyPort } from '@dsh-workbench/shared/host
 import { PLUGIN_ID, hasModuleRow, profileBundlesOf, quoteShellArg, requireSupply, storeMismatchIn } from '@dsh-workbench/shared/host';
 import type { InstalledModule, ProfileModule } from '@dsh-workbench/shared/host';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
-import { replaceDshBundle, type ReplaceBundleDeps } from './market-route';
+import { replaceRouted, type ReplaceBundleDeps } from './market-route';
 import { verifyBundleUpdate } from './market-verify';
 import { swapExternally } from './market-swap-stuck';
 import type { BundleInstallOutcome } from './market-types';
@@ -155,7 +155,7 @@ export async function updateModuleBundle(
   const forwarded = delegated !== null && delegated.change.errorCode !== 'invalid-spec' ? delegated : null;
   const base: BundleInstallOutcome =
     forwarded === null
-      ? await replaceDshBundle(deps.routeDeps, spec, {
+      ? await replaceRouted(deps.routeDeps, spec, {
           ...(registry === undefined ? {} : { registry }),
         })
       : {

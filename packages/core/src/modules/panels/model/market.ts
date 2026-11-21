@@ -20,7 +20,7 @@ import {
   type DependencyTarget,
   type SharedDependency,
 } from './market-dependency';
-import { installRouted, replaceDshBundle, type ReplaceBundleDeps } from './market-route';
+import { installRouted, replaceRouted, type ReplaceBundleDeps } from './market-route';
 import { updateModuleBundle } from './market-update-bundle';
 import { removeDshBundle, removeWorkbenchModule } from './market-remove';
 import { routeDepsOf, syncModuleRowsOf } from './market-route-deps';
@@ -360,7 +360,7 @@ export function createMarketService(options: {
     async replaceBundle(spec, options) {
       const manager = requireBundles();
       const registry = options?.registry ?? (await manager.registries().catch(() => null))?.resolved ?? undefined;
-      const outcome = await replaceDshBundle(routeDeps(manager), spec, {
+      const outcome = await replaceRouted(routeDeps(manager), spec, {
         ...(options === undefined ? {} : options),
         ...(registry === undefined ? {} : { registry }),
       });

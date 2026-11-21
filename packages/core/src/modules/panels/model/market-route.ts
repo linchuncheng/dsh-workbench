@@ -175,6 +175,26 @@ export async function replaceDshBundle(
   return settle(deps, spec, options, await installOnce(deps, spec, options));
 }
 
+export async function replaceRouted(
+  deps: ReplaceBundleDeps,
+  spec: string,
+  options?: BundleInstallOptions,
+): Promise<BundleInstallOutcome> {
+  const supply = deps.supply ?? requireSupply();
+  const route = await supply.packageRouteOf({
+    spec,
+    ...(deps.seam === undefined ? {} : { seam: deps.seam }),
+    ...(deps.registry === undefined ? {} : { registry: deps.registry }),
+  });
+  if (route?.kind !== 'dsh-module') return replaceDshBundle(deps, spec, options);
+  const { remove: _remove, ...rest } = deps;
+  return installModuleRow(
+    { ...rest, spec, ...(options === undefined ? {} : { options }) },
+    spec,
+    route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim(),
+  );
+}
+
 function installOptions(options: BundleInstallOptions | undefined) {
   return {
     ...(options?.registry === undefined ? {} : { registry: options.registry }),
@@ -219,7 +239,7 @@ async function installModuleRow(
 ): Promise<BundleInstallOutcome> {
   const profileDir = deps.profileDir;
   if (profileDir === undefined || profileDir === null) {
-    return routedFailure(deps, pkg, '这份工作台配置里没有 profile 目录，无法安装模块。');
+    return routedFailure(deps, pkg, '这份工作台配置缺少可写的目录，无法安装模块。');
   }
   const line = moduleInstallLine({ spec, profileDir, ...(deps.registry === undefined ? {} : { registry: deps.registry }) });
   const signal = deps.options?.signal;
@@ -251,14 +271,14 @@ async function installModuleRow(
       changed: true,
       target: pkg,
       errorCode: 'module-row-failed',
-      errorDetail: `包已装进工作台配置，但 profile 的 cordis.patch.yml 没写进去：${detail}。修好这个文件再重启工作台，模块才会挂上。`,
+      errorDetail: `包已装进工作台配置，但没有写入它的 cordis.patch.yml：${detail}。请修好这个文件后重启工作台，模块才会加载。`,
     });
   }
   const skipped = pendingFrom(deps, output);
   if (skipped.length > 0) {
     deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已安装到工作台配置，但这些包的构建脚本没有运行：${skipped.join('、')}`);
   }
-  deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装：profile 依赖 + 一条 patch 行`);
+  deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装：profile 依赖 + 一条模块行`);
   return outcomeOf(deps, pkg, {
     application: 'applied',
     stage: 'install',
