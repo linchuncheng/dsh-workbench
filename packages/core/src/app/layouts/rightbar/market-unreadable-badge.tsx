@@ -36,7 +36,9 @@ export function MarketUnreadableBadge({
         title={unreadableBadgeText(t, rows.length)}
         onClick={() => setOpen(true)}
       >
-        <IconWarningOutlineRegular size={14} aria-hidden="true" />
+        <span className={styles.icon}>
+          <IconWarningOutlineRegular size={14} aria-hidden="true" />
+        </span>
       </Button>
       <Modal
         open={open}
