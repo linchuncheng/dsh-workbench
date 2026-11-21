@@ -35,7 +35,9 @@ function registryRootOf(name: string, tarball: string): string | undefined {
   const at = tarball.indexOf(marker);
   if (at > 0) return tarball.slice(0, at + 1);
   try {
-    return `${new URL(tarball).origin}/`;
+    const url = new URL(tarball);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined;
+    return url.pathname.endsWith('.tgz') ? `${url.origin}/` : undefined;
   } catch {
     return undefined;
   }

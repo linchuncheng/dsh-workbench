@@ -62,6 +62,46 @@ describe('lockEntriesOf：pnpm-lock.yaml 的 packages', () => {
     ]);
   });
 
+  it('★ git 依赖的 tarball 不是 registry：别把 codeload 的域名当成源', () => {
+    const text = [
+      "lockfileVersion: '9.0'",
+      '',
+      'packages:',
+      '',
+      "  '@acme/module-from-git@1.0.0':",
+      '    resolution: {tarball: https://codeload.github.com/acme/market/tar.gz/abc123}',
+      '',
+    ].join('\n');
+
+    expect(lockEntriesOf(text)).toEqual([
+      {
+        name: '@acme/module-from-git',
+        version: '1.0.0',
+        tarball: 'https://codeload.github.com/acme/market/tar.gz/abc123',
+      },
+    ]);
+  });
+
+  it('本地 .tgz 文件也不算：origin 是 null，不能当源', () => {
+    const text = [
+      "lockfileVersion: '9.0'",
+      '',
+      'packages:',
+      '',
+      "  '@acme/module-local@1.0.0':",
+      '    resolution: {tarball: file:../acme-module-1.0.0.tgz}',
+      '',
+    ].join('\n');
+
+    expect(lockEntriesOf(text)).toEqual([
+      {
+        name: '@acme/module-local',
+        version: '1.0.0',
+        tarball: 'file:../acme-module-1.0.0.tgz',
+      },
+    ]);
+  });
+
   it('坏 lock：空数组，不抛', () => {
     expect(lockEntriesOf(fixture('lock/malformed.yaml'))).toEqual([]);
     expect(lockEntriesOf('')).toEqual([]);

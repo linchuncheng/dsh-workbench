@@ -105,6 +105,18 @@ describe('sourcesFromLockfile：从已装的包里推出"谁来自哪个源"', (
   it('没有 tarball 的 lockfile → 一条都没有', () => {
     expect(sourcesFromLockfile("lockfileVersion: '9.0'\n")).toEqual([]);
   });
+
+  it('★ git 依赖不算源：它没有 registry，别把 codeload 写进 .npmrc', () => {
+    const fromGit = `lockfileVersion: '9.0'
+
+packages:
+
+  '@acme-dsh-workbench/module-git@1.0.0':
+    resolution: {tarball: https://codeload.github.com/acme/market/tar.gz/abc123}
+`;
+
+    expect(sourcesFromLockfile(fromGit)).toEqual([]);
+  });
 });
 
 describe('mergeRegistryConfig：只加不改、不重复', () => {
