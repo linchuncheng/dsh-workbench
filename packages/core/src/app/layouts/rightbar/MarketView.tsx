@@ -262,7 +262,8 @@ export function MarketView({
   useSettleHold({ pending, landed, t, onChanged, selfUpdate: effectiveSelfUpdate, setPending, setFailed });
   useSelfUpdateBusyRefresh(effectiveSelfUpdate?.busy === true && mock === undefined, onChanged);
   const nothing = marketNothingOf(shown, self, installedList, pluginList);
-  const unreadableText = marketUnreadableText({ t, unreadable, readFailure });
+  const unreadableRows = mock?.unreadable ?? unreadable;
+  const unreadableText = marketUnreadableText({ t, unreadable: unreadableRows, readFailure });
   const { checks, recheck, rechecking: checkingShown } = useMarketChecks(
     { t, mock, installed, plugins, modulesCheck, pluginsCheck, pending, onCheck, onChanged, setFailed, checking: freshness.checking },
   );

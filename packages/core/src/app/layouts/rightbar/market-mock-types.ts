@@ -47,5 +47,6 @@ export interface MarketMock {
   readonly loaded?: boolean;
   readonly confirming?: string;
   readonly failure?: MarketFailure;
+  readonly unreadable?: readonly { readonly pkg: string; readonly reason: string }[];
   readonly expect: MarketMockExpect;
 }

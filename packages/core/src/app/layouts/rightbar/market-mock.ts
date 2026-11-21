@@ -128,6 +128,19 @@ function probe(unit: string, status: string, patch: FixturePatch = {}): Capabili
   };
 }
 
+export const UNREADABLE_MOCK: MarketMock = {
+  id: 'unreadable',
+  label: '有模块读不出来',
+  manifests: [],
+  capabilities: null,
+  unreadable: [
+    { pkg: '@acme/missing', reason: '找不到这个模块的文件' },
+    { pkg: '@acme/locked', reason: '没有权限读这个模块' },
+    { pkg: '@acme/broken', reason: '这个模块的文件读不出来' },
+  ],
+  expect: { rows: 0 },
+};
+
 export function buildMarketMocks(roster: readonly UnitManifest[]): readonly MarketMock[] {
   const found = roster.find((manifest) => manifest.card !== null);
   if (found === undefined) {
@@ -139,6 +152,7 @@ export function buildMarketMocks(roster: readonly UnitManifest[]): readonly Mark
   const secondId = second.id;
 
   return [
+    UNREADABLE_MOCK,
     {
       id: 'installed',
       label: '已装',
