@@ -253,3 +253,15 @@ version, the OS and the relevant log lines. For security issues, follow
 ## License
 
 Contributions are accepted under the MIT License (see [`LICENSE`](LICENSE)).
+
+## 诊断记录（可观测的底座）
+
+失败不再只写日志行，而是落一条**诊断记录**：`code`（来自契约层注册表）、类别（user / env / bug）、区域、主体、关联号、脱敏 detail。
+
+- 记录器：宿主半侧唯一入口，注入时钟 / 关联号 / 容量 / sink；表外码降级为 `DIAG_UNKNOWN_CODE` 并把原码留在 `cause.code`；`once(key, …)` 用于轮询场景去重。
+- 落盘：`<数据根>/diagnostics/records/record-<日期>-<pid>.jsonl`，保留 7 天、单日单进程 5 MB；坏行跳过并计数。
+- 读口：`GET /api/diag/records`（since / until / area / class / code / limit，默认 100、上限 500）。
+- 导出：动作 `export-diagnostics` 写 `<数据根>/diagnostics/<时间戳>/`（manifest / env / config / runtime / records / checks），8 MB 上限按「记录 → 日志 → 面板」截断；绝对路径与敏感键在导出前脱敏。
+- agent：常驻工具 `workbench_diag` 返回最近记录与按码计数，只读。
+
+新增失败点时：码先进注册表（`packages/shared/src/contract/blocker.ts`），再落记录；`check:swallow` 会拦住新出现的静默 catch。

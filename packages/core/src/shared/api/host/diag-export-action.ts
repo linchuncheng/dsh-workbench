@@ -25,7 +25,10 @@ export function diagExportAction(ctx: DshHostContext): PostResource {
           unreadable: [...unreadableModules(dir)],
         },
         runtime: { panels },
-        checks: {},
+        checks: {
+          codes: [...diagRoutesOf(root).recorder.counts().keys()].sort(),
+          total: diagRoutesOf(root).recorder.recent().length,
+        },
       });
     },
   };
