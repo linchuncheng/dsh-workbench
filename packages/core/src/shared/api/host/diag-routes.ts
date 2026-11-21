@@ -94,6 +94,7 @@ export function diagRecordsHandler(deps: DiagRoutesDeps): RouteHandler {
       total: hit.length,
       truncated: hit.length > records.length,
       host: { node: process.versions.node, profileDir: dirOf() },
+      counts: [...deps.recorder.counts().entries()].map(([code, one]) => ({ code, count: one.count, at: one.at })),
     };
   };
 }

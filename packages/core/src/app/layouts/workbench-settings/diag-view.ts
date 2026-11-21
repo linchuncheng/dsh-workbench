@@ -16,8 +16,8 @@ export interface DiagRow {
 }
 
 export interface DiagSummaryLike {
-  readonly records: readonly DiagRecord[];
-  readonly counts: readonly { readonly code: string; readonly count: number; readonly at: number }[];
+  readonly records?: readonly DiagRecord[];
+  readonly counts?: readonly { readonly code: string; readonly count: number; readonly at: number }[];
 }
 
 export type ExportOutcome =
@@ -27,10 +27,10 @@ export type ExportOutcome =
   | { readonly kind: 'failed'; readonly code: string; readonly message: string };
 
 export function diagRowsOf(summary: DiagSummaryLike): readonly DiagRow[] {
-  const counted = new Map(summary.counts.map((one) => [one.code, one.count]));
+  const counted = new Map((summary.counts ?? []).map((one) => [one.code, one.count]));
   const seen = new Set<string>();
   const rows: DiagRow[] = [];
-  for (const record of [...summary.records].reverse()) {
+  for (const record of [...(summary.records ?? [])].reverse()) {
     if (seen.has(record.code)) continue;
     seen.add(record.code);
     rows.push({

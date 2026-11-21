@@ -19,6 +19,11 @@ describe('诊断页的投影', () => {
     expect(rows[0]?.count).toBe(2);
   });
 
+  it('★ 只回 records 不给 counts 也不炸（空摘要给空列表）', () => {
+    expect(diagRowsOf({})).toEqual([]);
+    expect(diagRowsOf({ records: [recordOf('READ_FAILED', 1)] }).map((one) => one.count)).toEqual([1]);
+  });
+
   it('★ 导出成功给目录，失败给码与人话', () => {
     expect(exportResultOf({ ok: true, dir: '/x/diagnostics/1', bytes: 10 })).toEqual({ kind: 'done', dir: '/x/diagnostics/1' });
     expect(exportResultOf({ ok: false, code: 'DIAG_SINK_FAILED', message: '磁盘满' })).toEqual({
