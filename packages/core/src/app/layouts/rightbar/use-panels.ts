@@ -22,11 +22,18 @@ export function shouldDropPanels(workspace: string | null, previous: string | nu
   return workspace !== previous;
 }
 
-export function useEnabledUnits(
+export interface PanelBoardRead {
+  readonly board: PanelBoardView | null;
+  readonly failed: boolean;
+  readonly detail: string | null;
+}
+
+export function useEnabledUnitsState(
   refreshToken: number,
   workspace: string | null,
-): PanelBoardView | null {
+): PanelBoardRead {
   const [enabled, setEnabled] = useState<PanelBoardView | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
   const lastWorkspace = useRef<string | null>(workspace);
   const factRev = useFactRevision(PANELS_FACT);
 
@@ -38,17 +45,28 @@ export function useEnabledUnits(
     }
 
     const read = async (): Promise<void> => {
-      const response = await apiGet<PanelsPayload>(PANELS_ROUTE, workspace === null ? {} : { path: workspace }).catch(() => null);
-      if (cancelled) return;
-      if (response?.ok === true && Array.isArray(response.units)) {
-        setEnabled({
-          units: response.units,
-          plugins: Array.isArray(response.plugins) ? response.plugins : [],
-          defaults: Array.isArray(response.defaults) ? response.defaults : [],
-          own: response.own === true,
-          changed: response.changed ?? {},
-        });
+      let response: Awaited<ReturnType<typeof apiGet<PanelsPayload>>>;
+      try {
+        response = await apiGet<PanelsPayload>(PANELS_ROUTE, workspace === null ? {} : { path: workspace });
+      } catch (error) {
+        if (cancelled) return;
+        setFailure(error instanceof Error ? error.message : String(error));
+        return;
       }
+      if (cancelled) return;
+      if (response.ok !== true) {
+        setFailure(`${response.error.code}：${response.error.message}`);
+        return;
+      }
+      setFailure(null);
+      if (!Array.isArray(response.units)) return;
+      setEnabled({
+        units: response.units,
+        plugins: Array.isArray(response.plugins) ? response.plugins : [],
+        defaults: Array.isArray(response.defaults) ? response.defaults : [],
+        own: response.own === true,
+        changed: response.changed ?? {},
+      });
     };
 
     void read();
@@ -57,7 +75,14 @@ export function useEnabledUnits(
     };
   }, [refreshToken, factRev, workspace]);
 
-  return enabled;
+  return { board: enabled, failed: failure !== null, detail: failure };
+}
+
+export function useEnabledUnits(
+  refreshToken: number,
+  workspace: string | null,
+): PanelBoardView | null {
+  return useEnabledUnitsState(refreshToken, workspace).board;
 }
 
 export function useSelectedProjectId(): string | null {

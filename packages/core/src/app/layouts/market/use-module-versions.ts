@@ -24,6 +24,8 @@ export interface VersionsCheck {
 
 export interface ModuleVersionsState {
   readonly modules: readonly ModuleVersion[] | null;
+  readonly unreadable: readonly { readonly pkg: string; readonly reason: string }[];
+  readonly readFailure: string | null;
   readonly plugins: readonly InstalledPlugin[] | null;
   readonly workbench: WorkbenchVersion | null;
   readonly selfUpdate: WorkbenchSelfUpdate | null;
@@ -53,6 +55,8 @@ const IDLE: VersionsCheck = { checking: false, failed: false, checkedAt: null };
 
 const NOT_READ: ModuleVersionsState = {
   modules: null,
+  unreadable: [],
+  readFailure: null,
   plugins: null,
   workbench: null,
   selfUpdate: null,
@@ -229,8 +233,17 @@ function readMarketInstalledShared(): Promise<ApiResponse<MarketInstalledPayload
   return promise;
 }
 
+let lastModulesFailure: string | null = null;
+
+function failureTextOf(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason);
+}
+
 function readModulesOnce(force: boolean, check: boolean): Promise<ModulesResponse | null> {
-  return Promise.all([readModuleVersions(force, check), readMarketInstalledShared()]).catch(() => null);
+  return Promise.all([readModuleVersions(force, check), readMarketInstalledShared()]).catch((reason) => {
+    lastModulesFailure = failureTextOf(reason);
+    return null;
+  });
 }
 
 function readPluginsOnce(force: boolean, check: boolean): Promise<ApiResponse<InstalledPluginsPayload> | null> {
@@ -273,6 +286,16 @@ function runRead(run: ReadRun): Promise<void> {
     if (!check) newestDataSeq[part] = ticket;
   }
   if (check) publish(checking(run.scope));
+  const checkSeatOf = (part: VersionsPart): VersionsCheck =>
+    part === 'modules' ? state.modulesCheck : state.pluginsCheck;
+  const dropped = (part: VersionsPart, ticket: number, checkTicket: number): boolean => {
+    if (at === epoch && !superseded(run, part, ticket)) return false;
+    const seat = released(checkSeatOf(part), checkTicket, checkSeq[part]);
+    if (check && seat !== checkSeatOf(part)) {
+      publish(part === 'modules' ? { ...state, modulesCheck: seat } : { ...state, pluginsCheck: seat });
+    }
+    return true;
+  };
   const modulesTicket = tickets.get('modules');
   const pluginsTicket = tickets.get('plugins');
   const modulesCheckTicket = checkTickets.get('modules') ?? 0;
@@ -281,24 +304,23 @@ function runRead(run: ReadRun): Promise<void> {
     modulesTicket === undefined
       ? null
       : readModulesOnce(run.force, check).then((response) => {
-          if (at !== epoch || superseded(run, 'modules', modulesTicket)) {
-            const seat = released(state.modulesCheck, modulesCheckTicket, checkSeq.modules);
-            if (check && seat !== state.modulesCheck) publish({ ...state, modulesCheck: seat });
-            return;
-          }
+          if (dropped('modules', modulesTicket, modulesCheckTicket)) return;
           if (response === null) {
-            if (check) {
-              publish({
-                ...state,
-                modulesCheck: landed(
-                  state.modulesCheck,
-                  modulesCheckTicket,
-                  checkSeq.modules,
-                  false,
-                  Date.now(),
-                ),
-              });
-            }
+            publish({
+              ...state,
+              readFailure: lastModulesFailure ?? '安装清单没读出来',
+              ...(check
+                ? {
+                    modulesCheck: landed(
+                      state.modulesCheck,
+                      modulesCheckTicket,
+                      checkSeq.modules,
+                      false,
+                      Date.now(),
+                    ),
+                  }
+                : {}),
+            });
             return;
           }
           const [modules, market] = response;
@@ -310,6 +332,8 @@ function runRead(run: ReadRun): Promise<void> {
           const shown = listed === null ? null : check ? listed : withPreviousLatest(listed, state.modules ?? []);
           publish({
             ...state,
+            readFailure: null,
+            unreadable: check ? (payload?.unreadable ?? []) : state.unreadable,
             modules: shown ?? state.modules,
             workbench:
               payload === null
@@ -336,11 +360,7 @@ function runRead(run: ReadRun): Promise<void> {
     pluginsTicket === undefined
       ? null
       : readPluginsOnce(run.force, check).then((response) => {
-          if (at !== epoch || superseded(run, 'plugins', pluginsTicket)) {
-            const seat = released(state.pluginsCheck, pluginsCheckTicket, checkSeq.plugins);
-            if (check && seat !== state.pluginsCheck) publish({ ...state, pluginsCheck: seat });
-            return;
-          }
+          if (dropped('plugins', pluginsTicket, pluginsCheckTicket)) return;
           if (response === null) {
             if (check) {
               publish({

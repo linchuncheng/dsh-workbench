@@ -57,12 +57,17 @@ function declaresBundle(profileDir: string, pkg: string): boolean {
   }
 }
 
+function declaredNamesOf(record: Readonly<Record<string, unknown>>): string[] {
+  const bundles = stringsOf(asRecord(asRecord(record.dsh)?.profile)?.bundles);
+  const dependencies = asRecord(record.dependencies) ?? {};
+  return [...new Set([...bundles, ...Object.keys(dependencies)])];
+}
+
 export function profileModules(profileDir: string | null): readonly ProfileModule[] {
   const record = profileManifestOf(profileDir);
   if (record === undefined || profileDir === null) return [];
-  const bundles = stringsOf(asRecord(asRecord(record.dsh)?.profile)?.bundles);
   const dependencies = asRecord(record.dependencies) ?? {};
-  const names = [...new Set([...bundles, ...Object.keys(dependencies)])];
+  const names = declaredNamesOf(record);
   const found: ProfileModule[] = [];
   const lock = lockLookupOf(profileDir);
   for (const pkg of names) {
@@ -214,11 +219,11 @@ export function readInstalledModule(
   let manifest: unknown;
   try {
     manifest = JSON.parse(fs.readFileSync(path.join(profileDir, 'node_modules', pkg, 'package.json'), 'utf8'));
-  } catch {
-    return { kind: 'unknown', pkg };
+  } catch (error) {
+    return { kind: 'unknown', pkg, reason: readFailureOf(error) };
   }
   const record = asRecord(manifest);
-  if (record === undefined) return { kind: 'unknown', pkg };
+  if (record === undefined) return { kind: 'unknown', pkg, reason: 'package.json 不是一份对象' };
   const declared = asRecord(asRecord(record.dsh)?.workbench);
   const unit = declared === undefined ? '' : asText(declared.unit);
   if (unit === '') return { kind: 'not-module', pkg };
@@ -230,6 +235,30 @@ export function readInstalledModule(
     version: asText(record.version),
     ...(registry === undefined ? {} : { registry }),
   };
+}
+
+function readFailureOf(error: unknown): string {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  if (code === 'ENOENT') return '没装上（读不到 package.json）';
+  if (code === 'EACCES' || code === 'EPERM') return '没有权限读 package.json';
+  return error instanceof Error ? error.message : String(error);
+}
+
+export interface UnreadableModule {
+  readonly pkg: string;
+  readonly reason: string;
+}
+
+export function unreadableModules(profileDir: string | null): readonly UnreadableModule[] {
+  const record = profileManifestOf(profileDir);
+  if (record === undefined || profileDir === null) return [];
+  const found: UnreadableModule[] = [];
+  for (const pkg of declaredNamesOf(record)) {
+    if (!isPackageName(pkg)) continue;
+    const read = readInstalledModule(profileDir, pkg);
+    if (read.kind === 'unknown') found.push({ pkg, reason: read.reason ?? '读不出来' });
+  }
+  return found;
 }
 
 const PACKED_ARTIFACT = /\.(?:tgz|tar\.gz|tar)$/i;

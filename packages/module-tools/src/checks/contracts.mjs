@@ -271,11 +271,14 @@ function pluginCommandsIn(dir) {
   }
 }
 
-function catalogBySite() {
+function catalogBySite(onBroken = () => {}) {
+  const file = catalogPathOf();
+  if (!existsSync(file)) return undefined;
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync(catalogPathOf(), 'utf8'));
-  } catch {
+    parsed = JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    onBroken(`${file}：opencli 的 cli-manifest.json 读不出来（${error instanceof Error ? error.message : String(error)}）`);
     return undefined;
   }
   if (!Array.isArray(parsed)) return undefined;
@@ -794,7 +797,11 @@ export async function run() {
       const products = productsTextOf(pkg.dir);
       const extensions = needs.filter((need) => need?.kind === 'extension');
 
-      const catalog = catalogBySite();
+      const catalog = catalogBySite((reason) =>
+        problems.push(
+          `${name}: ${reason} —— needs 里的 extension 命令这一项没有对账（不是通过；opencli 安装损坏了先修它，或用 ${OPENCLI_CATALOG_ENV} 指一份能读的清单）`,
+        ),
+      );
       extensions.forEach((plugin, index) => {
         const pluginName = text(plugin?.name);
         const declared = (plugin?.commands ?? []).map((one) => text(one)).filter((one) => one !== '');

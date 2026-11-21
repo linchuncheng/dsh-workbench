@@ -121,6 +121,7 @@ export interface ModulePort {
   readProfilePackage(dir: string | null, pkg: string): ProfilePackage | undefined;
   readBundleManager(ctx: DshHostContext): BundleManager | undefined;
   createRegistryNotebook(dir: string | null): RegistryNotebook;
+  unreadableModules?(dir: string | null): readonly { readonly pkg: string; readonly reason: string }[];
   declarationGaps(dir: string | null): readonly { readonly pkg: string }[] | undefined;
   moduleDeclarationOf(dir: string | null, pkg: string): unknown;
   registryDeclarationOf(options: {

@@ -19,6 +19,8 @@ export interface ClientUnitRegistry {
   installable(): ReadonlySet<string> | null;
   refusals(): readonly ClientUnitRefusal[];
   setManifests(manifests: readonly UnitManifest[], installable?: readonly string[]): void;
+  setManifestReadFailure(reason: string | null): void;
+  manifestReadFailure(): string | null;
   readonly board: BoardRegistry;
   subscribe(listener: () => void): () => void;
   version(): number;
@@ -74,6 +76,7 @@ export function createClientUnitRegistry(
   let revision = 0;
   let manifestsCache: readonly UnitManifest[] | undefined;
   let titleSignature = '';
+  let manifestReadFailure: string | null = null;
 
   function titlesOf(manifests: readonly UnitManifest[]): string {
     return manifests
@@ -177,6 +180,12 @@ export function createClientUnitRegistry(
 
     installable: () => installableIds,
 
+    setManifestReadFailure(reason) {
+      if (manifestReadFailure === reason) return;
+      manifestReadFailure = reason;
+      notify();
+    },
+    manifestReadFailure: () => manifestReadFailure,
     setManifests(manifests, installable) {
       known = new Map(manifests.map((manifest) => [manifest.id, manifest]));
       installableIds = installable === undefined ? null : new Set(installable);

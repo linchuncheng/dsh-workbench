@@ -11,6 +11,8 @@ export interface UnitManifestLoaderOptions {
 
 const DEFAULT_RETRY_DELAY_MS = 1000;
 
+const MANIFESTS_GAVE_UP = '模块清单读了 30 次都没成功：面板会一直是空的，检查宿主日志';
+
 const DEFAULT_MAX_RETRIES = 30;
 
 export function createUnitManifestLoader(
@@ -33,12 +35,18 @@ export function createUnitManifestLoader(
     inFlight = true;
     let settled = false;
     try {
-      const response = await apiGet<UnitManifestsPayload>(UNIT_MANIFESTS_ROUTE).catch(() => null);
+      let response: Awaited<ReturnType<typeof apiGet<UnitManifestsPayload>>> | null = null;
+      try {
+        response = await apiGet<UnitManifestsPayload>(UNIT_MANIFESTS_ROUTE);
+      } catch (error) {
+        registry.setManifestReadFailure(error instanceof Error ? error.message : String(error));
+      }
       if (response?.ok === true && Array.isArray(response.manifests)) {
         registry.setManifests(
           response.manifests,
           Array.isArray(response.installable) ? response.installable : undefined,
         );
+        registry.setManifestReadFailure(null);
         settled = !registry.refusals().some((item) => item.kind === 'no-manifest');
       }
     } finally {
@@ -51,6 +59,8 @@ export function createUnitManifestLoader(
           timer = null;
           void load(registry);
         }, retryDelayMs);
+      } else if (retries >= maxRetries && !settled) {
+        registry.setManifestReadFailure(MANIFESTS_GAVE_UP);
       }
       if (queued) {
         queued = false;

@@ -1,5 +1,5 @@
 import { createElement as h } from 'react';
-import type { ReactNode, Translate } from '@dsh-workbench/shared';
+import type { Translate } from '@dsh-workbench/shared';
 import type { UnitManifest } from '@dsh-workbench/shared';
 import { useHostWrite } from '@/shared/hooks/use-host-write';
 
@@ -9,6 +9,9 @@ import { MIN_BUSY_MS } from '@dsh-workbench/shared';
 import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
 
 import { marketSettled } from './market-freshness';
+import { marketUnreadableText } from './market-unreadable-text';
+import { useMarketChecks } from './use-market-checks';
+
 import { useSelfUpdateBusyRefresh, useSelfUpdateTold, useSettleHold } from './market-settle-hold';
 import { useMarketTransient } from './market-transient-state';
 import { useMarketDetail } from './use-market-detail';
@@ -21,14 +24,11 @@ import {
   checkingRows,
   installedIdSet,
   installedRows,
-  checkedPluginCount,
-  latestCheckSummary,
   liveManifests,
   marketCatalog,
   marketRows,
   sharedRows,
   type InstalledWorkbenchModule,
-  type LatestCheckSummary,
   type MarketRow,
   type SharedRow,
 } from './market-rows';
@@ -53,11 +53,9 @@ import {
 import { marketActOf } from './market-act';
 import { usePublishMarketBusy } from './market-busy';
 import { useMarketDefault } from './use-market-default';
-import { SectionCheck } from '../market/section-check';
 import type { VersionsCheck, VersionsPart } from '../market/use-module-versions';
 import type { MarketReloadOptions } from '../market/use-market-reload';
 
-const NO_CHECK: VersionsCheck = { checking: false, failed: false, checkedAt: null };
 const NO_UNITS: ReadonlySet<string> = new Set();
 
 export interface MarketViewProps {
@@ -75,6 +73,8 @@ export interface MarketViewProps {
   readonly pluginsCheck?: VersionsCheck | undefined;
   readonly onCheck?: ((part: VersionsPart) => void) | undefined;
   readonly installed?: readonly InstalledWorkbenchModule[] | undefined;
+  readonly unreadable?: readonly { readonly pkg: string; readonly reason: string }[] | undefined;
+  readonly readFailure?: string | null | undefined;
   readonly installedRead?: boolean | undefined;
   readonly workbench?: WorkbenchVersion | null | undefined;
   readonly selfUpdate?: WorkbenchSelfUpdate | null | undefined;
@@ -151,39 +151,6 @@ function useMarketScene(input: {
   return { names, catalog, effective, updateMap, rows, shared, installedList, byDefault, steady, pinned, removing, busyId };
 }
 
-function sectionChecksOf(input: {
-  readonly t: Translate;
-  readonly modules?: VersionsCheck | undefined;
-  readonly plugins?: VersionsCheck | undefined;
-  readonly latestModules: LatestCheckSummary;
-  readonly latestPlugins: LatestCheckSummary;
-  readonly disabled: boolean;
-  readonly onCheck?: ((part: VersionsPart) => void) | undefined;
-}): Readonly<Record<VersionsPart, ReactNode>> {
-  return {
-    modules: (
-      <SectionCheck
-        t={input.t}
-        part="modules"
-        seat={input.modules ?? NO_CHECK}
-        latest={input.latestModules}
-        disabled={input.disabled}
-        onCheck={input.onCheck}
-      />
-    ),
-    plugins: (
-      <SectionCheck
-        t={input.t}
-        part="plugins"
-        seat={input.plugins ?? NO_CHECK}
-        latest={input.latestPlugins}
-        disabled={input.disabled}
-        onCheck={input.onCheck}
-      />
-    ),
-  };
-}
-
 function workbenchSelfOf(input: {
   readonly workbench: WorkbenchVersion | null | undefined;
   readonly selfUpdate?: WorkbenchSelfUpdate | null | undefined;
@@ -207,6 +174,8 @@ export function MarketView({
   pluginsCheck,
   onCheck,
   installed,
+  unreadable = [],
+  readFailure = null,
   installedRead,
   workbench,
   selfUpdate,
@@ -293,20 +262,10 @@ export function MarketView({
   useSettleHold({ pending, landed, t, onChanged, selfUpdate: effectiveSelfUpdate, setPending, setFailed });
   useSelfUpdateBusyRefresh(effectiveSelfUpdate?.busy === true && mock === undefined, onChanged);
   const nothing = marketNothingOf(shown, self, installedList, pluginList);
-  const { busy: checkingShown } = useVisibleBusy(freshness.checking, MIN_BUSY_MS);
-  const recheck = (): void => {
-    setFailed(null);
-    if (mock === undefined) onChanged({ force: true });
-  };
-  const checks = sectionChecksOf({
-    t,
-    modules: modulesCheck,
-    plugins: pluginsCheck,
-    latestModules: latestCheckSummary(mock?.installed ?? installed),
-    latestPlugins: { checked: checkedPluginCount(mock?.plugins ?? plugins), unknown: 0 },
-    disabled: pending !== null,
-    onCheck: mock === undefined ? onCheck : undefined,
-  });
+  const unreadableText = marketUnreadableText({ t, unreadable, readFailure });
+  const { checks, recheck, rechecking: checkingShown } = useMarketChecks(
+    { t, mock, installed, plugins, modulesCheck, pluginsCheck, pending, onCheck, onChanged, setFailed, checking: freshness.checking },
+  );
 
   return (
     <MarketSceneView
@@ -316,6 +275,7 @@ export function MarketView({
       shown={shown}
       pluginList={pluginList}
       installedList={installedList}
+      unreadable={unreadableText}
       pending={pending}
       failed={failed}
       notice={notice}

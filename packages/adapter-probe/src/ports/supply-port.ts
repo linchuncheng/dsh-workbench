@@ -22,6 +22,7 @@ import {
   registryDeclarationOf,
   resolvePluginSource,
   splitNpmSpec,
+  unreadableModules,
 } from '@dsh-workbench/adapter-supply';
 import { PLUGIN_ID, readBundleManager, refusalReason } from '@dsh-workbench/shared/host';
 import { OPENCLI_MANIFEST_FILE, OPENCLI_RUNTIME_FIELD } from '@dsh-workbench/adapter-runtime';
@@ -54,6 +55,7 @@ export function createSupplyPort(options: ProbeSupplyOptions = {}): SupplyPort {
     refusalReason,
     readInstalledModule,
     readProfilePackage,
+    unreadableModules,
       createRegistryNotebook,
     declarationGaps,
     moduleDeclarationOf,

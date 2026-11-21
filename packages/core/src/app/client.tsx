@@ -427,7 +427,11 @@ function mount(ctx: DshClientContext): void {
     if (workshop === undefined) return () => undefined;
     const title = ctx.workspaces.list.getSnapshot().items.find((item) => item.workspaceId === workshop.workspaceId)?.title;
     if (title !== undefined && WORKSHOP_PAST_TITLES.includes(title) && title !== WORKSHOP_TITLE) {
-      void ctx.workspaces.rename(workshop.workspaceId as WorkspaceId, WORKSHOP_TITLE).catch(() => undefined);
+      void ctx.workspaces.rename(workshop.workspaceId as WorkspaceId, WORKSHOP_TITLE).catch((error: unknown) => {
+        ctx.logger?.warn?.(
+          `[dsh-workbench] 工坊那一行的旧名字没换成「${WORKSHOP_TITLE}」：${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
     }
     return () => undefined;
   }, 'dsh-workbench: 工坊那一行的旧名字换成新名字');

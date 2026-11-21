@@ -54,13 +54,18 @@ function rowSpacingOf(property, value) {
   return null;
 }
 
-function selfManagedRowsIn(css) {
-  let root;
+function parsedRootOf(css, onBroken) {
   try {
-    root = postcss.parse(css);
-  } catch {
-    return [];
+    return postcss.parse(css);
+  } catch (error) {
+    onBroken(error instanceof Error ? error.message : String(error));
+    return null;
   }
+}
+
+function selfManagedRowsIn(css, onBroken = () => {}) {
+  const root = parsedRootOf(css, onBroken);
+  if (root === null) return [];
   const hits = [];
   root.walkRules((rule) => {
     const selector = rule.selector.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\s+/g, ' ').trim();
@@ -252,13 +257,9 @@ function contractFilesFor(moduleDir) {
   ];
 }
 
-function classNamesIn(css) {
-  let root;
-  try {
-    root = postcss.parse(css);
-  } catch {
-    return [];
-  }
+function classNamesIn(css, onBroken = () => {}) {
+  const root = parsedRootOf(css, onBroken);
+  if (root === null) return [];
   const names = [];
   root.walkRules((rule) => {
     for (const match of rule.selector.matchAll(/\.([A-Za-z][\w-]*)/g)) names.push(match[1]);
@@ -266,10 +267,16 @@ function classNamesIn(css) {
   return names;
 }
 
-function contractOf(moduleDir) {
+function contractOf(moduleDir, onBroken = () => {}) {
   const files = contractFilesFor(moduleDir);
   if (files.length === 0) return null;
-  return new Set(files.flatMap((file) => classNamesIn(readFileSync(file, 'utf8'))));
+  return new Set(
+    files.flatMap((file) =>
+      classNamesIn(readFileSync(file, 'utf8'), (reason) =>
+        onBroken(`${relative(process.cwd(), file) || file}：样式表解析不了（${reason}）—— 借用类这一项对这份文件没有检查`),
+      ),
+    ),
+  );
 }
 
 export const title = '样式归属';
@@ -303,7 +310,11 @@ export async function run() {
   const formHits = new Set();
   const anchorHits = new Set();
   const modules = discoverModulePackages({ root: process.cwd() });
-  const contracts = new Map(modules.map((pkg) => [pkg.dir, contractOf(pkg.dir)]));
+  const parseProblems = [];
+  const onBroken = (message) => {
+    if (!parseProblems.includes(message)) parseProblems.push(message);
+  };
+  const contracts = new Map(modules.map((pkg) => [pkg.dir, contractOf(pkg.dir, onBroken)]));
   let dshTokens = null;
   if (modules.length > 0) {
     const searched = [
@@ -382,7 +393,11 @@ export async function run() {
       if (/\.css$/.test(file)) {
         const key = `${pkg.manifest.name}:${relative(pkg.dir, file)}`;
         const exemptRows = FORM_ROW_EXEMPT.has(key);
-        for (const hit of selfManagedRowsIn(text)) {
+        for (const hit of selfManagedRowsIn(text, (reason) =>
+          onBroken(
+            `${pkg.manifest.name}: ${relative(pkg.dir, file)}：样式表解析不了（${reason}）—— 行距 / 表单 / 操作区这几项对这份文件没有检查`,
+          ),
+        )) {
           formRowHits.add(key);
           if (exemptRows) continue;
           rows.push(
@@ -540,11 +555,16 @@ export async function run() {
     );
   }
 
-  if (bindings.length + problems.length + borrowed.length + anchors.length + controls.length
-    + rows.length + actionAreas.length + forms.length + staleRows.length + staleActionRows.length
-    + staleFormRows.length + staleAnchorRows.length > 0) {
+  if (bindings.length + problems.length + parseProblems.length + borrowed.length + anchors.length
+    + controls.length + rows.length + actionAreas.length + forms.length + staleRows.length
+    + staleActionRows.length + staleFormRows.length + staleAnchorRows.length > 0) {
     const notes = [];
     if (tokenNote !== null) notes.push(tokenNote);
+    if (parseProblems.length > 0) {
+      notes.push(
+        `${parseProblems.length} 处样式表解析不了：这几项检查对它们**没有检查过**（不是通过）—— 先把 CSS 修到能解析，再看这份清单`,
+      );
+    }
     if (bindings.length > 0) {
       notes.push(
         `${bindings.length} 处是「样式绑定指向了 CSS 中不存在的类」：（CSS Modules 的哈希类名依靠"同一份文件、同一个导出"配对：` +
@@ -637,6 +657,7 @@ export async function run() {
       status: 'fail',
       notes,
       problems: [
+        ...parseProblems,
         ...bindings,
         ...problems,
         ...borrowed,

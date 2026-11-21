@@ -82,6 +82,43 @@ describe('createWorkspaceStore：模块读写自己的文件夹', () => {
     expect(dir.read('binding.json')).toBeNull();
   });
 
+  it('★ 坏文件不是静默当空：读的时候 warn 一次，并指出文件', () => {
+    const warnings: string[] = [];
+    const store = createWorkspaceStore({ root, logger: { warn: (m: string) => warnings.push(m) } });
+    const dir = store.for('inventory', '/w/a');
+    dir.write('binding.json', { ok: true });
+    fs.writeFileSync(path.join(dir.dir, 'binding.json'), '{ 这不是 JSON', 'utf8');
+    expect(dir.read('binding.json')).toBeNull();
+    expect(dir.read('binding.json')).toBeNull();
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('binding.json');
+  });
+
+  it('没存过不算坏事：不 warn', () => {
+    const warnings: string[] = [];
+    const store = createWorkspaceStore({ root, logger: { warn: (m: string) => warnings.push(m) } });
+    expect(store.for('inventory', '/w/a').read('binding.json')).toBeNull();
+    expect(warnings).toEqual([]);
+  });
+
+  it('★ 写之前先留下读不出来的原文件：坏内容不会被默认值盖掉', () => {
+    const warnings: string[] = [];
+    const store = createWorkspaceStore({ root, logger: { warn: (m: string) => warnings.push(m) } });
+    const dir = store.for('inventory', '/w/a');
+    dir.write('binding.json', { envs: ['prod'] });
+    fs.writeFileSync(path.join(dir.dir, 'binding.json'), '{ 这不是 JSON', 'utf8');
+
+    dir.write('binding.json', { envs: [] });
+
+    expect(dir.read('binding.json')).toEqual({ envs: [] });
+    const kept = fs.readdirSync(path.join(dir.dir, '.corrupt'));
+    expect(kept).toHaveLength(1);
+    expect(kept[0]).toContain('binding.json');
+    expect(fs.readFileSync(path.join(dir.dir, '.corrupt', kept[0] as string), 'utf8')).toBe('{ 这不是 JSON');
+    expect(dir.list()).toEqual(['binding.json']);
+    expect(warnings.length).toBeGreaterThan(0);
+  });
+
   it('没有工作区 / 没有可写根 → 只在内存里生效，并 warn 一次', () => {
     const warnings: string[] = [];
     const store = createWorkspaceStore({ root: null, logger: { warn: (m: string) => warnings.push(m) } });

@@ -156,15 +156,26 @@ export function useDiscover(t: Translate, active: boolean, onInstalled: () => vo
   const loadSources = useCallback(async (): Promise<void> => {
     const ticket = sourceTicket.current + 1;
     sourceTicket.current = ticket;
-    const response = await readMarketSources().catch(() => null);
+    let response: Awaited<ReturnType<typeof readMarketSources>>;
+    try {
+      response = await readMarketSources();
+    } catch {
+      if (sourceTicket.current !== ticket) return;
+      setFailure(t('panels.discover.unreadable'));
+      return;
+    }
     if (sourceTicket.current !== ticket) return;
-    if (response === null || !response.ok) return;
+    if (!response.ok) {
+      setFailure(t('panels.discover.unreadable'));
+      return;
+    }
+
     setKnownSources({
       sources: sourceRowsOf(response.sources),
       selected: response.selected,
       transports: response.transports ?? {},
     });
-  }, []);
+  }, [t]);
 
   const load = useCallback(
     async (force = false): Promise<void> => {

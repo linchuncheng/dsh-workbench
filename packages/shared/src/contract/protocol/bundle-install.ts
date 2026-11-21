@@ -313,8 +313,14 @@ export interface WorkbenchVersion {
   };
 }
 
+export interface UnreadableModule {
+  readonly pkg: string;
+  readonly reason: string;
+}
+
 export interface ModuleVersionsPayload {
   readonly modules: readonly ModuleVersion[];
+  readonly unreadable?: readonly UnreadableModule[];
   readonly workbench?: WorkbenchVersion;
   readonly selfUpdate?: WorkbenchSelfUpdate;
 }

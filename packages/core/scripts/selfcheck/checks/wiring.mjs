@@ -161,6 +161,7 @@ export const checks = [
         'app/layouts/market/section-check.tsx',
         'app/layouts/market/use-add-module.ts',
         'app/layouts/rightbar/ModulesPage.tsx',
+        'app/layouts/rightbar/use-market-checks.ts',
         'app/layouts/rightbar/MarketView.tsx',
         'app/layouts/workbench-settings/ConfigSyncItem.tsx',
         'app/layouts/workbench-settings/NewWorkbenchItem.tsx',

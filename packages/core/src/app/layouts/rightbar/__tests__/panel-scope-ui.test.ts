@@ -121,6 +121,7 @@ describe('两屏的分工：市场管机器级默认、面板管本工作区', (
     const section = read('market-section.tsx');
     const view = read('MarketView.tsx');
 
+
     expect(section).toContain("'panels.market.defaultHint'");
     expect(section).toContain('marketSwitchLocked(row)');
     expect(view).not.toContain('defaultNote');
@@ -208,11 +209,12 @@ describe('两屏的分工：市场管机器级默认、面板管本工作区', (
 describe('市场页头：动作在飞，页头与列表里的钮一起禁用', () => {
   it('★ 行里在装/在更新/在卸 → 页头那颗全局刷新、两段区块头那颗与「添加模块」都不许点（不然就是在同一条通道上叠第二笔）', () => {
     const page = readFileSync(new URL('../../market/panel.tsx', import.meta.url), 'utf8');
-    const view = read('MarketView.tsx');
+
     const body = read('market-body.tsx');
     const header = readFileSync(new URL('../../market/market-header.tsx', import.meta.url), 'utf8');
     const check = readFileSync(new URL('../../market/market-check.tsx', import.meta.url), 'utf8');
     const transient = read('market-transient-state.ts');
+    const view = read('MarketView.tsx');
 
     expect(page).toMatch(/marketSettled\(shownFreshness, shownRead\) \|\| acting/);
     expect(page).toContain('busy={busy}');
@@ -223,7 +225,8 @@ describe('市场页头：动作在飞，页头与列表里的钮一起禁用', (
     expect(body).toContain('headAction={checks.modules}');
     expect(body).toContain('checks.plugins');
     expect(body).toContain('h(UpdateAllPlugins');
-    expect(view).toContain('disabled: pending !== null');
+    const seats = read('use-market-checks.ts');
+    expect(seats).toContain('disabled: input.pending !== null');
     expect(check).toContain('variant="ghost"');
     expect(check).not.toContain('updatesCount');
     expect(check).toContain('disabled={disabled || checking}');
@@ -235,7 +238,7 @@ describe('市场页头：动作在飞，页头与列表里的钮一起禁用', (
     const page = readFileSync(new URL('../../market/panel.tsx', import.meta.url), 'utf8');
     const header = readFileSync(new URL('../../market/market-header.tsx', import.meta.url), 'utf8');
     const reload = readFileSync(new URL('../../market/use-market-reload.ts', import.meta.url), 'utf8');
-    const view = read('MarketView.tsx');
+
     const section = readFileSync(new URL('../../market/section-check.tsx', import.meta.url), 'utf8');
     const versions = readFileSync(new URL('../../market/use-module-versions.ts', import.meta.url), 'utf8');
 
@@ -247,8 +250,9 @@ describe('市场页头：动作在飞，页头与列表里的钮一起禁用', (
     expect(reload).toContain('check: true,');
     expect(reload).toContain('check({ force: true });');
     expect(reload).toContain('check({ force: true, scope: part })');
-    expect(view).toContain('part="modules"');
-    expect(view).toContain('part="plugins"');
+    const seats = read('market-section-checks.tsx');
+    expect(seats).toContain('part="modules"');
+    expect(seats).toContain('part="plugins"');
     expect(section).toContain('latestCheck={latest}');
     expect(versions).toContain("export type VersionsScope = 'all' | 'modules' | 'plugins';");
   });

@@ -16,17 +16,21 @@ function normalize(raw: unknown): Config {
   return { name, limit };
 }
 
-function memoryStore(): UnitConfigStore & { readonly file: () => unknown } {
-  let value: unknown = null;
+function memoryStore(): UnitConfigStore & {
+  readonly file: () => unknown;
+  readonly keys: () => string[];
+} {
+  const files = new Map<string, unknown>();
   return {
-    read: () => value,
-    write: (_name, next) => {
-      value = next;
+    read: (name) => files.get(name) ?? null,
+    write: (name, next) => {
+      files.set(name, next);
     },
-    remove: () => {
-      value = null;
+    remove: (name) => {
+      files.delete(name);
     },
-    file: () => value,
+    file: () => files.get('config.json') ?? null,
+    keys: () => [...files.keys()],
   };
 }
 
@@ -63,6 +67,51 @@ describe('单元配置的读写器', () => {
     const config = createUnitConfig({ store, file: 'config.json', fallback: FALLBACK, normalize });
     expect(() => config.write(null)).toThrowError('不是一份配置');
     expect(store.file()).toBeNull();
+  });
+
+  it('★ 形状不对（JSON 合法）：读回兜底并提醒，原内容不被默认值盖掉', () => {
+    const warnings: string[] = [];
+    const store = memoryStore();
+    store.write('config.json', ['这不是我们要的形状']);
+    const config = createUnitConfig({
+      store,
+      file: 'config.json',
+      fallback: FALLBACK,
+      normalize: (raw) => {
+        if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error('不是一份配置');
+        return normalize(raw);
+      },
+      logger: { warn: (message: string) => warnings.push(message) },
+    });
+
+    expect(config.read()).toEqual(FALLBACK);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('config.json');
+
+    config.write({ name: '新', limit: 1 });
+
+    const kept = store.read(`.corrupt/config.json.${'x'}`) ?? null;
+    expect(kept).toBeNull();
+    const keys = store.keys().filter((key: string) => key.startsWith('.corrupt/config.json.'));
+    expect(keys).toHaveLength(1);
+    expect(store.read(keys[0] as string)).toEqual(['这不是我们要的形状']);
+    expect(store.file()).toEqual({ name: '新', limit: 1 });
+  });
+
+  it('没存过 / 形状对：不提醒，也不产生备份', () => {
+    const warnings: string[] = [];
+    const store = memoryStore();
+    const config = createUnitConfig({
+      store,
+      file: 'config.json',
+      fallback: FALLBACK,
+      normalize,
+      logger: { warn: (message: string) => warnings.push(message) },
+    });
+    expect(config.read()).toEqual(FALLBACK);
+    config.write({ name: 'a' });
+    expect(warnings).toEqual([]);
+    expect(store.keys().filter((key: string) => key.startsWith('.corrupt/'))).toEqual([]);
   });
 
   it('★ 清空：下次读回兜底', () => {

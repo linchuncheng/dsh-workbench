@@ -4,6 +4,7 @@ import type { MarketBodyExtras, MarketBodyProps } from './market-body-props';
 import { marketFootVisible } from './market-view-text';
 import { marketOrder, marketRowTitle, marketSections, updatablePlugins } from './market-rows';
 import { MarketSection } from './market-section';
+import { MarketUnreadableNote } from './market-unreadable-note';
 import { UpdateAllPlugins } from './UpdateAllPlugins';
 import { marketSectionIcon } from './market-section-icon';
 import { PanelFoot } from '@/shared/components/PanelFoot';
@@ -18,6 +19,7 @@ export function MarketBody({
   shown,
   pluginList,
   installedList,
+  unreadable = [],
   pending,
   failed,
   notice,
@@ -53,6 +55,7 @@ export function MarketBody({
   } as const;
   return (
     <>
+      {unreadable.length === 0 ? null : <MarketUnreadableNote text={unreadable.join('；')} />}
       {notice === null ? null : <div className={styles.marketNote}>{notice}</div>}
       <MarketSection {...common} rows={self === undefined ? [] : [self]} />
       {self === undefined ? null : (

@@ -43,6 +43,9 @@ export function supplyPortOf(ctx: DshHostContext): SupplyPort {
     readBundleManager: (context) => modules.readBundleManager(context),
     createRegistryNotebook: (dir) => modules.createRegistryNotebook(dir),
     declarationGaps: (dir) => modules.declarationGaps(dir),
+    ...(modules.unreadableModules === undefined
+      ? {}
+      : { unreadableModules: (dir) => modules.unreadableModules?.(dir) ?? [] }),
     moduleDeclarationOf: (dir, pkg) => modules.moduleDeclarationOf(dir, pkg),
     registryDeclarationOf: (options) => modules.registryDeclarationOf(options),
     pathDeclarationOf: (spec) => modules.pathDeclarationOf(spec),

@@ -73,25 +73,71 @@ function memoryStore(dir: string): ModuleStore {
   };
 }
 
-function fileStore(dir: string): ModuleStore {
+const CORRUPT_DIR = '.corrupt';
+
+function corruptCopyOf(dir: string, name: string): string {
+  const target = path.join(dir, CORRUPT_DIR);
+  fs.mkdirSync(target, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const flat = name.replace(/[\\/]/g, '__');
+  return path.join(target, `${flat}.${stamp}`);
+}
+
+function parseFile(file: string): { readonly kind: 'absent' } | { readonly kind: 'value'; readonly value: unknown } | { readonly kind: 'broken'; readonly reason: string } {
+  let text: string;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { kind: 'absent' };
+    return { kind: 'broken', reason: error instanceof Error ? error.message : String(error) };
+  }
+  try {
+    return { kind: 'value', value: JSON.parse(text) as unknown };
+  } catch (error) {
+    return { kind: 'broken', reason: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+function fileStore(dir: string, warn?: ((message: string) => void) | undefined): ModuleStore {
+  const noted = new Set<string>();
+  const noteCorrupt = (file: string, reason: string): void => {
+    if (noted.has(file)) return;
+    noted.add(file);
+    warn?.(
+      `[dsh-workbench] 模块配置文件读不出来：${file}（${reason}）。下一次写入会先把它备份到 ${CORRUPT_DIR}/，不会直接盖掉`,
+    );
+  };
   return {
     dir,
     read: (name) => {
       const file = inside(dir, name);
-      try {
-        return JSON.parse(fs.readFileSync(file, 'utf8')) as unknown;
-      } catch {
-        return null;
-      }
+      const parsed = parseFile(file);
+      if (parsed.kind === 'value') return parsed.value;
+      if (parsed.kind === 'broken') noteCorrupt(file, parsed.reason);
+      return null;
     },
     write: (name, value) => {
-      writeJsonFile(inside(dir, name), value);
+      const file = inside(dir, name);
+      const before = parseFile(file);
+      if (before.kind === 'broken') {
+        noteCorrupt(file, before.reason);
+        try {
+          fs.copyFileSync(file, corruptCopyOf(dir, name));
+        } catch (error) {
+          throw new Error(
+            `这份配置读不出来，备份也失败，为了不弄丢它没有覆盖：${file}（${error instanceof Error ? error.message : String(error)}）`,
+            { cause: error },
+          );
+        }
+      }
+      writeJsonFile(file, value);
     },
     remove: (name) => {
       const file = inside(dir, name);
       try {
         fs.unlinkSync(file);
-      } catch {
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       }
     },
     list: () => {
@@ -137,6 +183,7 @@ export function createWorkspaceStore(options: {
             root,
             ...parts.map((part) => slug(part)),
           ),
+          options.logger?.warn?.bind(options.logger),
         );
 
   return {
@@ -156,7 +203,9 @@ export function createWorkspaceStore(options: {
       } catch {
         return [];
       }
-      return entries.map((key) => fileStore(path.join(root, key, slug(unitId))));
+      return entries.map((key) =>
+        fileStore(path.join(root, key, slug(unitId)), options.logger?.warn?.bind(options.logger)),
+      );
     },
   };
 }

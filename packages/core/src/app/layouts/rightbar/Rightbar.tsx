@@ -17,6 +17,7 @@ import { useCapabilityMap } from '@/shared/hooks/use-capability-gate';
 import { Breadcrumbs, type StepTitleKeyOf } from './Breadcrumbs';
 import { publishBoardProbe, BOARD_PROBE_UNKNOWN } from './board-fact';
 import { BoardEmpty } from './BoardEmpty';
+import { BoardReadFailed } from './BoardReadFailed';
 import { PanelModules } from './PanelModules';
 import { aggregateSummaries, selectBoardModules } from './board-selection';
 import { planBoard, type BoardPlan } from './board-plan';
@@ -25,7 +26,7 @@ import type { BoardRegistry } from '@/kernel/client/board-registry';
 import type { RightbarState } from './store';
 import { rightbarPresentation } from './presentation';
 import { createSuiteWorld } from './suite-world';
-import { useBoardWorkspace, useEnabledUnits, type PanelBoardView } from './use-panels';
+import { useBoardWorkspace, useEnabledUnitsState, type PanelBoardView } from './use-panels';
 import { reportPanelCrash, setPanelWorkspace } from '@/shared/hooks/panel-state-report';
 import { Button, IconPanelLeftOutlineRegular, IconRefreshOutlineRegular, TextShimmer } from '@deepseek-ai/dsh-client-ui-primitives';
 import styles from './Rightbar.module.css';
@@ -160,6 +161,9 @@ function BoardContent({
   onOpenModules,
   onCardFailure,
   buildModule,
+  readFailed,
+  readDetail,
+  onRetryRead,
   t,
 }: {
   top: PanelStep;
@@ -175,6 +179,9 @@ function BoardContent({
   onOpenModules: () => void;
   onCardFailure: (unit: string, reason: string) => void;
   buildModule: () => void;
+  readFailed: boolean;
+  readDetail: string | null;
+  onRetryRead: () => void;
   t: Translate;
 }) {
   if (top.kind !== 'board') {
@@ -212,6 +219,7 @@ function BoardContent({
       {plan.reading ? (
         <CenteredState icon={null} title={<TextShimmer active>{t('panels.reading')}</TextShimmer>} />
       ) : null}
+      {readFailed ? <BoardReadFailed t={t} detail={readDetail} onRetry={onRetryRead} /> : null}
       {plan.empty ? (
         <BoardEmpty
           t={t}
@@ -237,9 +245,10 @@ function BoardContent({
 }
 
 export function Rightbar(props: RightbarProps) {
-  const { modules, manifests, titleKeyOf, state, sessions, workspaces, panelToken, refreshPanel, capabilities, board } = useRightbarWiring(props);
+  const { units, modules, manifests, titleKeyOf, state, sessions, workspaces, panelToken, refreshPanel, capabilities, board } = useRightbarWiring(props);
   const boardWorkspace = board.path;
-  const panelBoard = useEnabledUnits(panelToken, boardWorkspace);
+  const panelRead = useEnabledUnitsState(panelToken, boardWorkspace);
+  const panelBoard = panelRead.board;
   const enabledUnits = panelBoard?.units ?? null;
 
   const [modulesOpen, setModulesOpen] = useState(false);
@@ -249,9 +258,10 @@ export function Rightbar(props: RightbarProps) {
   const visibleModules = selectBoardModules(enabledUnits, (id) => modules.byId(id), capabilities);
   const plan = planBoard(
     devBoard.shape,
-    { modules: visibleModules, configRead: panelBoard !== null },
+    { modules: visibleModules, configRead: panelBoard !== null, configFailed: panelRead.failed },
     devBoard.seed,
   );
+
 
   const world = createSuiteWorld({
     workspaces,
@@ -370,6 +380,9 @@ export function Rightbar(props: RightbarProps) {
           onOpenModules={() => setModulesOpen(true)}
           onCardFailure={onCardFailure}
           buildModule={props.buildModule}
+          readFailed={plan.readFailed || units.manifestReadFailure() !== null}
+          readDetail={panelRead.detail ?? units.manifestReadFailure()}
+          onRetryRead={refreshPanel}
           t={props.t}
         />
       </div>

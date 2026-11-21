@@ -101,6 +101,8 @@ function MarketPanel({
   const { capabilities, checkedAt, checking, forceProbe, reload: reloadCapability } = useCapabilityMap(0);
   const {
     modules,
+    unreadable,
+    readFailure,
     plugins,
     workbench,
     selfUpdate,
@@ -193,6 +195,8 @@ function MarketPanel({
           pluginsCheck={pluginsCheck}
           onCheck={checkPart}
           installed={installed}
+          unreadable={unreadable}
+          readFailure={readFailure}
           installedRead={shownRead}
           workbench={workbench}
           selfUpdate={selfUpdate}

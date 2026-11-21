@@ -56,15 +56,26 @@ function stubFetch(hold = false): {
   };
 }
 
-function registrySpy(): { registry: ClientUnitRegistry; written: UnitManifest[][] } {
+function registrySpy(): {
+  registry: ClientUnitRegistry;
+  written: UnitManifest[][];
+  failures: (string | null)[];
+} {
   const written: UnitManifest[][] = [];
+  const failures: (string | null)[] = [];
+  let failure: string | null = null;
   const registry = {
     setManifests: (manifests: readonly UnitManifest[]) => {
       written.push([...manifests]);
     },
     refusals: () => [],
+    setManifestReadFailure: (reason: string | null) => {
+      failure = reason;
+      failures.push(reason);
+    },
+    manifestReadFailure: () => failure,
   } as unknown as ClientUnitRegistry;
-  return { registry, written };
+  return { registry, written, failures };
 }
 
 function sourceOf(): FakeEventSource {
@@ -247,6 +258,47 @@ describe('createUnitManifestLoader', () => {
     for (let round = 0; round < 8; round += 1) await flush();
 
     expect(calls).toBe(3);
+  });
+
+  it('★ 重试走到头还读不到：登记成"读失败了"，界面才分得清空态与故障', async () => {
+    const { createUnitManifestLoader } = await import('../manifests');
+    vi.stubGlobal('fetch', (url: string) => {
+      if (!String(url).includes(UNIT_MANIFESTS_ROUTE)) {
+        return Promise.resolve({ ok: false, status: 404, json: async () => ({ ok: false }) });
+      }
+      return Promise.resolve({ ok: false, status: 503, json: async () => ({ ok: false }) });
+    });
+    const { registry } = registrySpy();
+    const load = createUnitManifestLoader({ retryDelayMs: 0, maxRetries: 2 });
+
+    load(registry);
+    for (let round = 0; round < 8; round += 1) await flush();
+
+    expect(registry.manifestReadFailure()).not.toBeNull();
+  });
+
+  it('读成功之后把"读失败"清掉（恢复后不再挂着错误）', async () => {
+    const { createUnitManifestLoader } = await import('../manifests');
+    let calls = 0;
+    vi.stubGlobal('fetch', (url: string) => {
+      if (!String(url).includes(UNIT_MANIFESTS_ROUTE)) {
+        return Promise.resolve({ ok: false, status: 404, json: async () => ({ ok: false }) });
+      }
+      calls += 1;
+      if (calls === 1) return Promise.resolve({ ok: false, status: 503, json: async () => ({ ok: false }) });
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, manifests: [manifest('hello')] }),
+      });
+    });
+    const { registry } = registrySpy();
+    const load = createUnitManifestLoader({ retryDelayMs: 0, maxRetries: 3 });
+
+    load(registry);
+    for (let round = 0; round < 8; round += 1) await flush();
+
+    expect(registry.manifestReadFailure()).toBeNull();
   });
 
   it('★ 注册到宿主没担保的 unit 时那次重读还在（onUnknownUnit 那条路）', async () => {

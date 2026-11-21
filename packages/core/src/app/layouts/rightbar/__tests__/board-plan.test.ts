@@ -113,4 +113,19 @@ describe('planBoard', () => {
     expect(planBoard({ kind: 'all' }, { modules: [], configRead: true }, [A]).repeated).toBe(false);
     expect(planBoard({ kind: 'all' }, { modules: [A], configRead: false }, []).modules).toEqual([]);
   });
+
+  it('★ 配置读失败：既不是"还在读"，也不是"没有模块"——单独一个失败态', () => {
+    const plan = planBoard({ kind: 'real' }, { modules: [], configRead: false, configFailed: true }, []);
+
+    expect(plan.readFailed).toBe(true);
+    expect(plan.reading).toBe(false);
+    expect(plan.empty).toBe(false);
+  });
+
+  it('还在读（没失败）时不摆失败态', () => {
+    const plan = planBoard({ kind: 'real' }, { modules: [], configRead: false }, []);
+
+    expect(plan.readFailed).toBe(false);
+    expect(plan.reading).toBe(true);
+  });
 });

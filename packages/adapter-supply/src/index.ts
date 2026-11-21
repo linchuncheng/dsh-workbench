@@ -29,5 +29,6 @@ export {
   readBundleManager,
   readInstalledModule,
   readProfilePackage,
+  unreadableModules,
 } from '@dsh-workbench/shared/host';
 export type { BundleManager } from '@dsh-workbench/shared/host';

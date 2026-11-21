@@ -59,11 +59,12 @@ describe('装进来的包是不是工作台模块（读它自己的自述）', (
     });
   });
 
-  it('包不在 / 自述坏了 → unknown（结论缺失，不冒充"不是"）', () => {
+  it('包不在 / 自述坏了 → unknown（结论缺失，不冒充"不是"），并带上为什么读不到', () => {
     const root = profileWith('@a/b', { name: '@a/b' });
     fs.writeFileSync(path.join(root, 'node_modules', '@a', 'b', 'package.json'), '{ 坏掉的 json', 'utf8');
-    expect(readInstalledModule(root, '@a/b')).toEqual({ kind: 'unknown', pkg: '@a/b' });
-    expect(readInstalledModule(root, '@a/missing')).toEqual({ kind: 'unknown', pkg: '@a/missing' });
+    expect(readInstalledModule(root, '@a/b')).toMatchObject({ kind: 'unknown', pkg: '@a/b' });
+    expect(readInstalledModule(root, '@a/b').kind === 'unknown' ? readInstalledModule(root, '@a/b').reason : '').not.toBe('');
+    expect(readInstalledModule(root, '@a/missing')).toMatchObject({ kind: 'unknown', pkg: '@a/missing' });
     expect(readInstalledModule(null, '@a/b')).toEqual({ kind: 'unknown', pkg: '@a/b' });
   });
 

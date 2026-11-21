@@ -2,6 +2,7 @@ import { Fragment, createElement as h } from 'react';
 import type { MarketBodyProps, MarketSceneExtras } from './market-body-props';
 import { MarketBody } from './market-body';
 import { MarketChecking, MarketEmpty } from './MarketStates';
+import { MarketUnreadableNote } from './market-unreadable-note';
 import { MarketDetailPage } from './market-detail-page';
 import { SharedDetailPage } from './market-shared-detail';
 import { UninstallConfirm } from './market-uninstall';
@@ -13,6 +14,7 @@ export function MarketSceneView({
   shown,
   pluginList,
   installedList,
+  unreadable = [],
   pending,
   failed,
   notice,
@@ -75,7 +77,14 @@ export function MarketSceneView({
   }
   if (!settled || (settlingSize > 0 && shown.length === 0 && installedList.length === 0))
     return <MarketChecking t={t} />;
-  if (nothing) return <MarketEmpty t={t} />;
+  if (nothing) {
+    return (
+      <>
+        {unreadable.length === 0 ? null : <MarketUnreadableNote text={unreadable.join('；')} />}
+        <MarketEmpty t={t} />
+      </>
+    );
+  }
   return (
     <>
       <MarketBody
@@ -85,6 +94,7 @@ export function MarketSceneView({
         shown={shown}
         pluginList={pluginList}
         installedList={installedList}
+        unreadable={unreadable}
         pending={pending}
         failed={failed}
         notice={notice}

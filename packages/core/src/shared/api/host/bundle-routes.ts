@@ -238,11 +238,15 @@ export function moduleVersionsHandler(
     const supply = supplyPortOf(ctx);
     const includePrereleaseNow = includePrerelease?.() === true;
     const manager = supply.readBundleManager(ctx);
+    const dir = supply.profileDirOf(ctx);
+    const unreadable = supply.unreadableModules?.(dir) ?? [];
     if (manager === undefined) {
-      const payload: ModuleVersionsPayload = { modules: [] };
+      const payload: ModuleVersionsPayload = {
+        modules: [],
+        ...(unreadable.length === 0 ? {} : { unreadable }),
+      };
       return { ok: true, ...payload };
     }
-    const dir = supply.profileDirOf(ctx);
     const found = supply.profileModules(dir);
     const refusals = new Map<string, readonly string[]>(
       ((ctx.get(UNITS_SERVICE) as { refusals(): readonly UnitRefusal[] } | undefined)?.refusals() ?? [])
@@ -364,6 +368,7 @@ export function moduleVersionsHandler(
     });
     const payload: ModuleVersionsPayload = {
       modules,
+      ...(unreadable.length === 0 ? {} : { unreadable }),
       ...(workbench === undefined ? {} : { workbench }),
       ...(selfUpdateNow === undefined ? {} : { selfUpdate: selfUpdateNow }),
     };

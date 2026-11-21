@@ -20,7 +20,7 @@ export type InstalledModule =
       readonly local?: boolean;
     }
   | { readonly kind: 'not-module'; readonly pkg: string }
-  | { readonly kind: 'unknown'; readonly pkg: string };
+  | { readonly kind: 'unknown'; readonly pkg: string; readonly reason?: string };
 
 export interface ProfileModule {
   readonly pkg: string;
