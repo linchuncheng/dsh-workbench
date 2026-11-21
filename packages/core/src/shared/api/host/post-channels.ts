@@ -1,5 +1,8 @@
 import type { DshHostContext } from '@dsh-workbench/shared/host';
+import { workbenchRoot } from '@dsh-workbench/shared/host';
 import type { PostResource, PostWrite } from '@dsh-workbench/shared/host';
+import { withDiagProvision } from './diag-provision.js';
+import { diagRoutesOf } from './diag-routes.js';
 import {
   ACTIONS_PREFIX,
   PREFS_PREFIX,
@@ -41,7 +44,7 @@ export function createPostChannels(deps: PostChannelDeps): PostChannels {
       const provision = [...mounted.values()].find((item) => item.plan.provision !== undefined)?.plan.provision;
       if (prefs.length > 0) bind(PREFS_PREFIX, () => registerPrefs(ctx, prefs, wrote));
       if (actions.length > 0) bind(ACTIONS_PREFIX, () => registerActions(ctx, actions, wrote));
-      if (provision !== undefined) bind(PROVISION_PREFIX, () => registerProvision(ctx, provision, facts));
+      if (provision !== undefined) bind(PROVISION_PREFIX, () => registerProvision(ctx, withDiagProvision(provision, diagRoutesOf(workbenchRoot()).recorder), facts));
     },
     dispose() {
       for (const dispose of undo) dispose?.();

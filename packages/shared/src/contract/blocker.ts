@@ -177,6 +177,7 @@ export function isDiagCode(code: string): boolean {
 }
 
 export const DIAG_DETAIL_KEYS: readonly string[] = [
+  'action',
   'attempt',
   'cacheAgeMs',
   'count',
