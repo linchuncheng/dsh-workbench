@@ -51,6 +51,7 @@ export interface DiagCodeSpec {
   readonly area: DiagArea;
   readonly action: DiagActionKind;
   readonly messageKey: string;
+  readonly hintKey?: string;
 }
 
 export const DIAG_CLASSES: readonly DiagClass[] = ['user', 'env', 'bug'];
@@ -84,6 +85,7 @@ export const DIAG_CODES: readonly DiagCodeSpec[] = [
     area: 'panels',
     action: 'retry',
     messageKey: 'diag.code.readFailed',
+    hintKey: 'diag.hint.readFailed',
   },
   {
     code: 'CONFIG_CORRUPT',

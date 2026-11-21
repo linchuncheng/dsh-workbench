@@ -241,7 +241,7 @@ function readFailureOf(error: unknown): string {
   const code = (error as NodeJS.ErrnoException | null)?.code;
   if (code === 'ENOENT') return '找不到这个模块的文件';
   if (code === 'EACCES' || code === 'EPERM') return '没有权限读这个模块';
-  return '这个模块的文件读不出来';
+  return '这个模块的配置文件读不出来';
 }
 
 export interface UnreadableModule {
