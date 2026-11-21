@@ -83,6 +83,16 @@ const addModuleSettledRe = copyPattern([
   'panels.market.add.failedTitle',
   'panels.market.add.cancelledTitle',
 ]);
+const addModuleInstalledRe = copyPattern(['panels.market.add.installedTitle']);
+const addModuleResultRe = copyPattern([
+  'panels.market.add.installedTitle',
+  'panels.market.add.failedTitle',
+  'panels.market.add.cancelledTitle',
+]);
+const addModuleFailedRe = copyPattern([
+  'panels.market.add.failedTitle',
+  'panels.market.add.cancelledTitle',
+]);
 const marketOutcomeRe = new RegExp(
   [
     'Installed:',
@@ -466,6 +476,37 @@ async function confirmInstall(cdp, budgetMs = 60_000) {
   }
   log(`confirm install 等到超时：${last}（点了 ${clicks} 次）`);
   return false;
+}
+
+
+async function closeAddModuleDialog(cdp) {
+  const labels = copyOf('panels.market.add.close');
+  const answer = await cdp.send('Runtime.evaluate', {
+    expression: `(() => {
+      const dialog = document.querySelector(${JSON.stringify(DIALOG_SELECTOR)});
+      if (dialog === null) return 'gone';
+      const target = [...dialog.querySelectorAll('button')].find((node) =>
+        ${JSON.stringify(labels)}.includes((node.innerText ?? '').trim()));
+      if (target === undefined) return 'missing';
+      target.click();
+      return 'clicked';
+    })()`,
+    returnByValue: true,
+  });
+  return String(answer.result?.value ?? 'missing');
+}
+
+async function waitMarketOutcome(cdp, budgetMs) {
+  const until = Date.now() + remaining('market-install', budgetMs);
+  while (Date.now() < until) {
+    const dialog = await dialogTextOf(cdp);
+    if (dialog !== '' && addModuleResultRe.test(dialog)) return dialog;
+    const body = await bodyOf(cdp);
+    log(`market-install: ${tailBody(body, 200)}`);
+    if (marketOutcomeRe.test(body)) return body;
+    await sleep(POLL_MS);
+  }
+  throw new Error(`market-install 等不到结果：弹层没给「已安装 / 安装失败 / 已取消」，页面也没有结果文案`);
 }
 
 async function waitForBody(cdp, pattern, budgetMs, label) {
@@ -1003,10 +1044,16 @@ async function smokeMarket(cdp) {
   }
   mark('market-install-clicked');
 
-  const doneBody = await waitForBody(cdp, marketOutcomeRe, MODULE_WAIT_MS, 'market-install');
-  writeText(`${prefix}-market-installed.txt`, doneBody);
-  result.installed = /Installed:|restart once/u.test(doneBody);
+  const doneBody = await waitMarketOutcome(cdp, MODULE_WAIT_MS);
+  if (addModuleFailedRe.test(doneBody)) {
+    await fail(cdp, '模块安装失败（弹层给了失败或取消）', doneBody);
+  }
+  result.installed = addModuleInstalledRe.test(doneBody) || /Installed:|restart once/u.test(doneBody);
   result.restartHint = /restart/u.test(doneBody);
+  log(`market-install 结果：${JSON.stringify({ installed: result.installed, restart: result.restartHint })}`);
+  log(`关闭弹层：${await closeAddModuleDialog(cdp)}`);
+  await sleep(1500);
+  writeText(`${prefix}-market-installed.txt`, await bodyOf(cdp));
   mark('market-installed');
   return result;
 }

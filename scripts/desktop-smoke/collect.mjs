@@ -207,10 +207,10 @@ async function main() {
     () => (new RegExp(`${moduleShortName}|Sample module`, 'u').test(readFileSync(join(cwd, `${prefix}-market-body.txt`), 'utf8')) ? '是' : '否'),
     '否',
   );
-  const marketInstalled = safe(
-    () => (/Installed:|restart once/u.test(readFileSync(join(cwd, `${prefix}-market-installed.txt`), 'utf8')) ? '是' : '否'),
-    '否',
-  );
+  const marketInstalled = safe(() => {
+    const smoke = JSON.parse(readFileSync(join(cwd, `${prefix}-smoke.json`), 'utf8'));
+    return smoke.installed === true ? '是' : '否';
+  }, '否');
   const cardVisible = safe(
     () =>
       /Sample module|示例模块|hello, workbench/u.test(
