@@ -22,7 +22,7 @@ export interface DiyPresetSourceRow {
   readonly usable: boolean;
 }
 
-/** 这一轮 dsh 的模式没法派生时抛的错：带上哪一段锚点变了。 */
+/** 这一轮 dsh 的模式无法派生时抛的错：带上哪一段锚点变了。 */
 export class DiyPresetSourceError extends Error {
   constructor(message: string) {
     super(message);
@@ -51,7 +51,7 @@ function nameOf(sourceId: string): string {
 }
 
 function rowAt(value: unknown, at: string): Row {
-  if (!isRow(value)) throw new DiyPresetSourceError(`${at} 不是一行插件配置`);
+  if (!isRow(value)) throw new DiyPresetSourceError(`${at} 不是插件配置`);
   return value;
 }
 
@@ -69,7 +69,7 @@ function configRowsOf(entries: Iterable<DshLoaderEntry>): Row[] {
 function sourceConfigOf(value: unknown, sourceId: string): Row {
   const source = rowAt(value, nameOf(sourceId));
   if (!Array.isArray(source.plugins)) {
-    throw new DiyPresetSourceError(`${nameOf(sourceId)}没有 plugins 表 —— 派生不出 DIY 那一份`);
+    throw new DiyPresetSourceError(`${nameOf(sourceId)}没有 plugins 表，无法派生 DIY 模式`);
   }
   return source;
 }
@@ -79,16 +79,16 @@ function clonedPluginsOf(source: Row, sourceId: string): Row[] {
   try {
     cloned = structuredClone(source);
   } catch (error) {
-    throw new DiyPresetSourceError(`${nameOf(sourceId)}的配置复制不了：${String(error)}`);
+    throw new DiyPresetSourceError(`无法复制${nameOf(sourceId)}的配置：${String(error)}`);
   }
   const rows = rowAt(cloned, nameOf(sourceId)).plugins;
   if (!Array.isArray(rows)) {
-    throw new DiyPresetSourceError(`${nameOf(sourceId)}没有 plugins 表 —— 派生不出 DIY 那一份`);
+    throw new DiyPresetSourceError(`${nameOf(sourceId)}没有 plugins 表，无法派生 DIY 模式`);
   }
   return rows.map((row, index) => {
     const parsed = rowAt(row, `${nameOf(sourceId)}第 ${index + 1} 行`);
     if (typeof parsed.name !== 'string' || parsed.name === '') {
-      throw new DiyPresetSourceError(`${nameOf(sourceId)}第 ${index + 1} 行没有插件名`);
+      throw new DiyPresetSourceError(`${nameOf(sourceId)}第 ${index + 1} 行缺少插件名`);
     }
     return parsed;
   });
@@ -97,7 +97,7 @@ function clonedPluginsOf(source: Row, sourceId: string): Row[] {
 function takeRow(plugins: Row[], id: string, sourceId: string): Row {
   const index = plugins.findIndex((row) => row.id === id);
   if (index < 0) {
-    throw new DiyPresetSourceError(`${nameOf(sourceId)}里找不到 \`${id}\` 那一行 —— DIY 的差分锚点变了`);
+    throw new DiyPresetSourceError(`${nameOf(sourceId)}里没有 \`${id}\` 行 —— DIY 的差分锚点变了`);
   }
   return plugins.splice(index, 1)[0] as Row;
 }
@@ -124,7 +124,7 @@ function sourceOrder(left: DiyPresetSourceRow, right: DiyPresetSourceRow): numbe
 }
 
 /**
- * 在 loader 的行里找某个显式声明过的模式；没有（或那一行被关掉）就算不知道。
+ * 在 loader 的行里找某个显式声明过的模式；没有（或该行被关掉）就算不知道。
  * @param entries loader 的 `entries()`（递归给全部行）。
  * @param id 模式 id（dsh 声明的 `config.id`）。
  */
@@ -133,7 +133,7 @@ export function presetConfigOf(entries: Iterable<DshLoaderEntry>, id: string): u
 }
 
 /**
- * 在 loader 的行里找 dsh 的 `standard` 模式；没有（或那一行被关掉）就算不知道。
+ * 在 loader 的行里找 dsh 的 `standard` 模式；没有（或该行被关掉）就算不知道。
  * @param entries loader 的 `entries()`（递归给全部行）。
  */
 export function standardPresetConfigOf(entries: Iterable<DshLoaderEntry>): unknown {
@@ -168,7 +168,7 @@ export function diyPresetSourcesOf(entries: Iterable<DshLoaderEntry>): readonly 
  * 差分只有三处：`skill-filesystem` 与 `tool-skill` 一起搬到末尾（前者加 `customSkillDirs` 指向工作台的
  * `skills/`）、末尾补 `tool-cordis`、`tool-plugin-manager` 打开（工作台只活在 profile 里）。
  * 其余行原样跟着来源模式走，所以 dsh 加工具 / 改 config 时不需要重新生成任何文件。
- * @param source 来源模式的声明（loader 里那一行收到的 config）。
+ * @param source 来源模式的声明（loader 中该行收到的 config）。
  * @param skillsDir 工作台的 `skills/` 绝对路径。
  * @param sourceId 来源模式的 id，报错时点名用。
  */

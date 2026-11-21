@@ -82,7 +82,7 @@ const SPECS: readonly SettingsPickSpec[] = [
   {
     id: 'diyPresetSource',
     route: WORKBENCH_DIY_PRESETS_ROUTE,
-    settingsFailedKey: 'diyPresetSource.readFailed',
+    settingsFailedKey: 'workbenchSettings.readFailed',
     emptyKey: 'diyPresetSource.empty',
     unavailable: true,
     incomplete: (catalog) => catalog !== undefined && 'ready' in catalog && !catalog.ready,

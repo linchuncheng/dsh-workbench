@@ -54,8 +54,8 @@ export function registerDiyPreset(ctx: DshHostContext, port: DiyPresetSourcePort
     if (now() >= until) {
       gaveUp = true;
       ctx.logger?.warn?.(
-        `[dsh-workbench] 等了 ${DEADLINE_MS}ms 仍没拿到可派的 dsh 模式 —— ` +
-          '本次不注册「工作台 DIY 模式」（dsh 的 loader 里没有可派的模式声明？）',
+        `[dsh-workbench] 等了 ${DEADLINE_MS}ms 仍没有可用的 dsh 模式声明 —— ` +
+          '本次不注册「工作台 DIY 模式」',
       );
       return;
     }
@@ -89,8 +89,8 @@ export function registerDiyPreset(ctx: DshHostContext, port: DiyPresetSourcePort
     if (fallback.ok) {
       ctx.logger?.warn?.(
         wanted.retry
-          ? `[dsh-workbench] dsh 里没有「${source}」这个模式；DIY 模式改从「${DIY_PRESET_SOURCE_DEFAULT}」派生`
-          : `[dsh-workbench] 「${source}」没法派生 DIY 模式；改从「${DIY_PRESET_SOURCE_DEFAULT}」派生`,
+          ? `[dsh-workbench] dsh 里没有「${source}」这个模式；DIY 模式改为从「${DIY_PRESET_SOURCE_DEFAULT}」派生`
+          : `[dsh-workbench] 「${source}」无法派生 DIY 模式；改为从「${DIY_PRESET_SOURCE_DEFAULT}」派生`,
       );
     }
     return fallback;
@@ -122,7 +122,7 @@ export function registerDiyPreset(ctx: DshHostContext, port: DiyPresetSourcePort
     }
     active = { source, off };
     ctx.logger?.info?.(
-      `[dsh-workbench] 「工作台 DIY 模式」从「${derived.source}」现场派生（${derived.definition.plugins.length} 行）`,
+      `[dsh-workbench] 「工作台 DIY 模式」从「${derived.source}」派生（${derived.definition.plugins.length} 行）`,
     );
   }
 
@@ -151,5 +151,5 @@ export function registerDiyPreset(ctx: DshHostContext, port: DiyPresetSourcePort
       active = undefined;
       if (current !== undefined) void current.off();
     };
-  }, 'dsh-workbench: DIY 模式按用户选中的来源从本次 dsh 现场派生（没有生成物）');
+  }, 'dsh-workbench: DIY 模式按用户选中的模式从 dsh 当前声明派生（无生成物）');
 }

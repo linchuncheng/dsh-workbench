@@ -64,18 +64,18 @@ export const zhSettings = {
   'configSync.failed': '同步失败，请重试。',
 
   'diyPresetSource.nav': 'DIY 模式继承自',
-  'diyPresetSource.lead': '「工作台 DIY 模式」在这个模式的基础上增加 DIY 用的工具与技能；默认是标准模式，从下一个新会话开始生效。',
+  'diyPresetSource.lead': '增加 DIY 工具与技能；默认标准模式，从新会话开始生效。',
   'diyPresetSource.standard': '标准模式',
   'diyPresetSource.ptc': 'PTC 模式',
   'diyPresetSource.minimal': '极简模式',
   'diyPresetSource.cordis': '创造模式',
   'diyPresetSource.unusable': '{name}（不可用）',
-  'diyPresetSource.storedUnavailable': '选中的模式现在没法作为来源；DIY 模式暂时按标准模式派生。',
+  'diyPresetSource.storedUnavailable': '选中的模式不可用；DIY 模式暂时以标准模式为基础。',
   'diyPresetSource.readFailed': '无法读取模式列表，请重试。',
   'diyPresetSource.reading': '读取中…',
   'diyPresetSource.search': '搜索模式',
-  'diyPresetSource.empty': '没有可用的模式。',
-  'diyPresetSource.failed': '保存设置失败',
+  'diyPresetSource.empty': '没有可用的模式。请先在 dsh 中修复或新建一个模式。',
+  'diyPresetSource.failed': '保存设置失败，请重试。',
 
 } as const;
 
@@ -145,17 +145,17 @@ export const enSettings: Record<keyof typeof zhSettings, string> = {
   'configSync.failed': 'Sync failed. Try again.',
 
   'diyPresetSource.nav': 'DIY mode inherits from',
-  'diyPresetSource.lead': 'Workbench DIY mode adds the tools and skills it needs on top of this mode; Standard mode is the default, and changes apply from the next new session.',
+  'diyPresetSource.lead': 'Adds DIY tools and skills; defaults to Standard mode and applies to new sessions.',
   'diyPresetSource.standard': 'Standard mode',
   'diyPresetSource.ptc': 'PTC mode',
   'diyPresetSource.minimal': 'Minimal mode',
   'diyPresetSource.cordis': 'Creator mode',
   'diyPresetSource.unusable': '{name} (unavailable)',
-  'diyPresetSource.storedUnavailable': 'The selected mode cannot be used as a source right now; DIY mode is derived from Standard mode for now.',
+  'diyPresetSource.storedUnavailable': 'The selected mode is unavailable; DIY mode is based on Standard mode for now.',
   'diyPresetSource.readFailed': 'Could not read the mode list. Try again.',
   'diyPresetSource.reading': 'Reading…',
   'diyPresetSource.search': 'Search modes',
-  'diyPresetSource.empty': 'No usable modes.',
-  'diyPresetSource.failed': 'Could not save the setting',
+  'diyPresetSource.empty': 'No usable modes. Fix or create one in dsh first.',
+  'diyPresetSource.failed': 'Could not save this setting. Try again.',
 
 };

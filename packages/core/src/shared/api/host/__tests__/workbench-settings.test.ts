@@ -241,9 +241,9 @@ describe('工作台设置（本机文件）', () => {
   it('diyPresetSource 不是非空字符串就当场拒，文件一个字节都不动', () => {
     const store = createWorkbenchSettingsStore({ root });
 
-    expect(() => store.apply({ diyPresetSource: '' })).toThrow(/diyPresetSource/);
-    expect(() => store.apply({ diyPresetSource: '  ' })).toThrow(/diyPresetSource/);
-    expect(() => store.apply({ diyPresetSource: 3 })).toThrow(/diyPresetSource/);
+    expect(() => store.apply({ diyPresetSource: '' })).toThrow(/DIY 模式/);
+    expect(() => store.apply({ diyPresetSource: '  ' })).toThrow(/DIY 模式/);
+    expect(() => store.apply({ diyPresetSource: 3 })).toThrow(/DIY 模式/);
     expect(fs.existsSync(settingsFile())).toBe(false);
     expect(store.read().diyPresetSource).toBe('standard');
   });
