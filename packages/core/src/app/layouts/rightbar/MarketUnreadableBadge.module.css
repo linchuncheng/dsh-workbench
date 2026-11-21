@@ -1,0 +1,27 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dsw-space-1);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--dsw-font-size-sm);
+  font-weight: var(--dsw-font-weight-medium);
+}
+
+.lead {
+  margin: 0;
+  color: var(--dsw-color-text-secondary);
+  font-size: var(--dsw-font-size-xs);
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--dsw-space-4);
+  font-size: var(--dsw-font-size-xs);
+}
+
+.line {
+  word-break: break-all;
+}

@@ -2,7 +2,7 @@ import { Fragment, createElement as h } from 'react';
 import type { MarketBodyProps, MarketSceneExtras } from './market-body-props';
 import { MarketBody } from './market-body';
 import { MarketChecking, MarketEmpty } from './MarketStates';
-import { MarketUnreadableNote } from './market-unreadable-note';
+import { MarketUnreadableBadge } from './market-unreadable-badge';
 import { MarketDetailPage } from './market-detail-page';
 import { SharedDetailPage } from './market-shared-detail';
 import { UninstallConfirm } from './market-uninstall';
@@ -80,7 +80,7 @@ export function MarketSceneView({
   if (nothing) {
     return (
       <>
-        {unreadable.length === 0 ? null : <MarketUnreadableNote text={unreadable.join('；')} />}
+        {h(MarketUnreadableBadge, { t, lines: unreadable })}
         <MarketEmpty t={t} />
       </>
     );

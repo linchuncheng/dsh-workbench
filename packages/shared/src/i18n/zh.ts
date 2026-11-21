@@ -163,6 +163,7 @@ export const zh = {
   'market.unreadable.title': '有模块读不出来',
   'market.unreadable.lead': '它们没有出现在已安装清单里。',
   'market.unreadable.copy': '复制全部',
+  'market.unreadable.copied': '已复制',
   'panels.market.sectionInstalled': '已安装模块',
   'panels.market.sectionPending': '未就绪',
   'panels.market.sectionShared': '共用依赖',
