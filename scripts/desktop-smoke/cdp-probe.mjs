@@ -468,13 +468,13 @@ async function confirmInstall(cdp, budgetMs = 60_000) {
       const clicked = await dialogInstallState(cdp, true);
       clicks += 1;
       const moved = await waitDialogMoved(cdp, 15_000);
-      log(`install 第 ${clicks} 次点击：${clicked.clicked === true ? 'clicked' : 'missing'}，弹层${moved ? '已开始' : '没动'}`);
+      log(`install 第 ${clicks} 次点击：${JSON.stringify({ clicked: clicked.clicked === true, moved })}`);
       if (moved) return true;
       continue;
     }
     await sleep(500);
   }
-  log(`confirm install 等到超时：${last}（点了 ${clicks} 次）`);
+  log(`confirm install 等到超时：${last}（${clicks} 次点击）`);
   return false;
 }
 
@@ -506,7 +506,7 @@ async function waitMarketOutcome(cdp, budgetMs) {
     if (marketOutcomeRe.test(body)) return body;
     await sleep(POLL_MS);
   }
-  throw new Error(`market-install 等不到结果：弹层没给「已安装 / 安装失败 / 已取消」，页面也没有结果文案`);
+  throw new Error('market-install 等不到结果：浮层与页面都没有「已安装 / 安装失败 / 已取消」');
 }
 
 async function waitForBody(cdp, pattern, budgetMs, label) {
@@ -1046,12 +1046,12 @@ async function smokeMarket(cdp) {
 
   const doneBody = await waitMarketOutcome(cdp, MODULE_WAIT_MS);
   if (addModuleFailedRe.test(doneBody)) {
-    await fail(cdp, '模块安装失败（弹层给了失败或取消）', doneBody);
+    await fail(cdp, '模块安装失败（结果是失败或取消）', doneBody);
   }
   result.installed = addModuleInstalledRe.test(doneBody) || /Installed:|restart once/u.test(doneBody);
   result.restartHint = /restart/u.test(doneBody);
   log(`market-install 结果：${JSON.stringify({ installed: result.installed, restart: result.restartHint })}`);
-  log(`关闭弹层：${await closeAddModuleDialog(cdp)}`);
+  log(`关闭浮层：${await closeAddModuleDialog(cdp)}`);
   await sleep(1500);
   writeText(`${prefix}-market-installed.txt`, await bodyOf(cdp));
   mark('market-installed');

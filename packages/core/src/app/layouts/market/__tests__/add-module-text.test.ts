@@ -238,7 +238,8 @@ describe('添加模块浮层：文案与来源选项（按 dsh 插件页的骨�
         kind: 'git',
         repo: 'e.coding.net/baiguokeji/UEDYHSJ/dsh-workbench-market',
         ref: 'e87c7a1',
-        dir: '/artifacts/@dsh-workbench/module-llm-wallet-details',
+        refKind: 'commit',
+        dir: 'artifacts/@dsh-workbench/module-llm-wallet-details',
       },
       origins: [],
     });
@@ -246,6 +247,7 @@ describe('添加模块浮层：文案与来源选项（按 dsh 插件页的骨�
       kind: 'git',
       repo: 'git.example.com/a/b',
       ref: 'feature/wallet-details',
+      refKind: 'branch',
     });
   });
 

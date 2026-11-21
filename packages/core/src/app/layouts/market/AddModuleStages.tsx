@@ -71,7 +71,11 @@ export function AddModulePreview({ t, state }: { t: Translate; state: AddModuleS
           <p className={styles.subjectMeta}>{t('panels.market.add.sourceRepo', { repo: source.repo })}</p>
         ) : null}
         {source.kind === 'git' && source.ref !== undefined ? (
-          <p className={styles.subjectMeta}>{t('panels.market.add.sourceRef', { ref: source.ref })}</p>
+          <p className={styles.subjectMeta}>
+            {t(source.refKind === 'branch' ? 'panels.market.add.sourceBranch' : 'panels.market.add.sourceRef', {
+              ref: source.ref,
+            })}
+          </p>
         ) : null}
         {source.kind === 'git' && source.dir !== undefined ? (
           <p className={styles.subjectMeta}>{t('panels.market.add.sourceDirectory', { path: source.dir })}</p>

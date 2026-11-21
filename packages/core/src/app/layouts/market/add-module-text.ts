@@ -14,7 +14,13 @@ export type AddModulePhase = 'idle' | 'inspecting' | 'preview' | 'installing' | 
 
 export type PreviewSource =
   | { readonly kind: 'registry'; readonly registry: string }
-  | { readonly kind: 'git'; readonly repo: string; readonly ref?: string; readonly dir?: string }
+  | {
+      readonly kind: 'git';
+      readonly repo: string;
+      readonly ref?: string;
+      readonly refKind?: 'commit' | 'branch';
+      readonly dir?: string;
+    }
   | { readonly kind: 'path'; readonly dir: string }
   | { readonly kind: 'tarball' };
 
@@ -65,11 +71,12 @@ export function previewSourceOf(spec: string, kind: BundleSpecKind): PreviewSour
   const hash = spec.indexOf('#');
   const ref = hash === -1 ? '' : (spec.slice(hash + 1).split('&')[0] ?? '').trim();
   const dir = marketSpecPath(spec);
+  const commit = COMMIT.test(ref);
   return {
     kind: 'git',
     repo,
-    ...(ref === '' ? {} : { ref: COMMIT.test(ref) ? ref.slice(0, 7) : ref }),
-    ...(dir === undefined ? {} : { dir: `/${dir}` }),
+    ...(ref === '' ? {} : commit ? { ref: ref.slice(0, 7), refKind: 'commit' as const } : { ref, refKind: 'branch' as const }),
+    ...(dir === undefined ? {} : { dir }),
   };
 }
 

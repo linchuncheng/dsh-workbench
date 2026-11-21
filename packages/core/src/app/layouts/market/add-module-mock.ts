@@ -89,7 +89,7 @@ export const ADD_MODULE_MOCKS: readonly AddModuleMock[] = [
   })),
   previewMock(
     'preview-git',
-    '预览（git 来源）',
+    '预览（Git 来源）',
     'git+ssh://git@git.example.com/acme/dsh-workbench-market.git#e87c7a16fa5&path:/artifacts/@acme/module-wallet-details',
     modulePreview({
       name: '@acme/module-wallet-details',
@@ -99,7 +99,8 @@ export const ADD_MODULE_MOCKS: readonly AddModuleMock[] = [
         kind: 'git',
         repo: 'git.example.com/acme/dsh-workbench-market',
         ref: 'e87c7a1',
-        dir: '/artifacts/@acme/module-wallet-details',
+        refKind: 'commit',
+        dir: 'artifacts/@acme/module-wallet-details',
       },
     }),
   ),

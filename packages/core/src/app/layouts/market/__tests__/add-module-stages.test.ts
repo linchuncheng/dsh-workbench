@@ -65,9 +65,21 @@ describe('添加模块浮层那两屏（插件态）', () => {
     expect(shown).toContain('@acme/module-wallet-details');
     expect(shown).toContain('仓库：git.example.com/acme/dsh-workbench-market');
     expect(shown).toContain('提交：e87c7a1');
-    expect(shown).toContain('目录：/artifacts/@acme/module-wallet-details');
+    expect(shown).toContain('目录：artifacts/@acme/module-wallet-details');
     expect(shown).not.toContain('默认安装源');
     expect(shown).not.toContain('git+ssh://');
+  });
+
+  it('★ 指向分支时那行不能写「提交」：分支或标签就是分支或标签', () => {
+    const base = stateOf('preview-git');
+    const preview = {
+      ...base.preview!,
+      source: { kind: 'git' as const, repo: 'git.example.com/acme/market', ref: 'main', refKind: 'branch' as const },
+    };
+    const shown = texts(AddModulePreview({ t, state: { ...base, preview } })).join('|');
+
+    expect(shown).toContain('分支或标签：main');
+    expect(shown).not.toContain('提交：main');
   });
 
   it('模块声明了 origins：预览里把会读的站摆出来', () => {
