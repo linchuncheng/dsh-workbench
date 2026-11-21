@@ -50,7 +50,7 @@ describe('已安装模块的读取', () => {
     expect(unreadable[0]?.reason).not.toBe('');
   });
 
-  it('★ 包根本没装上：也说清楚是「没装上」，不是含糊的读不到', () => {
+  it('★ 包根本没安装：说清楚是找不到文件，不是含糊的读不到', () => {
     fs.writeFileSync(
       path.join(dir, 'package.json'),
       JSON.stringify({ dependencies: { 'acme-missing': '1.0.0' } }),
@@ -59,7 +59,7 @@ describe('已安装模块的读取', () => {
 
     const read = readInstalledModule(dir, 'acme-missing');
     expect(read.kind).toBe('unknown');
-    expect(read.kind === 'unknown' ? read.reason : '').toContain('没装上');
+    expect(read.kind === 'unknown' ? read.reason : '').toBe('找不到这个模块的文件');
     expect(unreadableModules(dir)).toHaveLength(1);
   });
 });
