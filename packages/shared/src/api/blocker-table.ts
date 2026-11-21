@@ -2,6 +2,7 @@ import type { Translate } from '../lib/dsh-client.js';
 import type { CapabilityPayload } from '../contract/workbench-contract.js';
 import type { ApiError } from './workbench-client.js';
 import type { BlockerAction, ModuleBlocker } from '../contract/blocker.js';
+import { DIAG_FALLBACK_CODE, diagSpecOf, isDiagCode } from '../contract/blocker.js';
 import { shortenPath } from '../lib/ui.js';
 
 function retryAction(t: Translate): BlockerAction {
@@ -19,6 +20,21 @@ function copyAction(t: Translate, text: string): BlockerAction {
  * @param context 判定现场；platform 缺省时标题不带平台名。
  * @returns 一定有一张卡，actions 至少一颗「重试」。
  */
+export function blockerOfDiag(
+  code: string,
+  t: Translate,
+  detail: string | null = null,
+): ModuleBlocker {
+  const spec = diagSpecOf(isDiagCode(code) ? code : DIAG_FALLBACK_CODE);
+  return {
+    id: `diag:${spec?.code ?? DIAG_FALLBACK_CODE}`,
+    severity: 'block',
+    title: t(spec?.messageKey ?? 'diag.code.unknownCode'),
+    ...(detail === null ? {} : { detail }),
+    actions: [retryAction(t)],
+  };
+}
+
 export function blockerOfError(
   error: ApiError | undefined,
   t: Translate,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Translate } from '../../lib/dsh-client.js';
 import type { CapabilityPayload } from '../../contract/workbench-contract.js';
 import type { NeedState } from '../../contract/unit-capability.js';
-import { blockerOf, blockerOfCapability, blockerOfError } from '../blocker-table.js';
+import { blockerOf, blockerOfCapability, blockerOfDiag, blockerOfError } from '../blocker-table.js';
 
 const t: Translate = (key, params) => (params === undefined ? key : `${key}(${JSON.stringify(params)})`);
 
@@ -392,5 +392,25 @@ describe('blockerOf', () => {
       url: 'https://example.com/login',
       inline: true,
     });
+  });
+});
+
+describe('blockerOfDiag', () => {
+  const t = ((key: string) => key) as never;
+
+  it('★ 认识的诊断码取它自己的标题，不再是一句通用话', () => {
+    const blocker = blockerOfDiag('READ_FAILED', t, '磁盘读不了');
+
+    expect(blocker.id).toBe('diag:READ_FAILED');
+    expect(blocker.title).toBe('diag.code.readFailed');
+    expect(blocker.detail).toBe('磁盘读不了');
+    expect(blocker.actions?.some((one) => one.kind === 'retry')).toBe(true);
+  });
+
+  it('★ 不认识的码退回兜底那条，并保留原始码', () => {
+    const blocker = blockerOfDiag('NOPE', t);
+
+    expect(blocker.id).toBe('diag:DIAG_UNKNOWN_CODE');
+    expect(blocker.title).toBe('diag.code.unknownCode');
   });
 });
