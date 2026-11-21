@@ -28,6 +28,7 @@ import { useModuleVersions } from './use-module-versions';
 import { useMarketReload } from './use-market-reload';
 import { useMarketPanelScroll } from './use-market-panel-scroll';
 import { AddModuleDialog } from './AddModuleDialog';
+import type { AddModulePreset } from './use-add-module';
 import styles from './MarketPage.module.css';
 
 export const MARKET_PANEL_ID = 'workbench-market';
@@ -118,11 +119,11 @@ function MarketPanel({
   const install = useMarketInstallState();
   const runtimeCapabilities = useRuntimeCapabilities();
 
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<AddModulePreset | null>(null);
   const [acting, setActing] = useState(false);
   const { tab, setTab } = useMarketTab();
   const { installedDetailOpen, discoverDetailOpen, setInstalledDetailOpen, setDiscoverDetailOpen, installedPanel, discoverPanel, trackInstalledScroll, trackDiscoverScroll } = useMarketPanelScroll();
-  const openAddModule = useCallback((): void => setAdding(true), []);
+  const openAddModule = useCallback((): void => setAdding({ spec: '' }), []);
 
   const updates = useMemo(() => marketUpdatesOf(modules), [modules]);
   const installed = modules === null ? undefined : withClientRefusals(modules, units.refusals());
@@ -212,8 +213,9 @@ function MarketPanel({
         />
         <AddModuleDialog
           t={t}
-          open={adding}
-          onClose={() => setAdding(false)}
+          open={adding !== null}
+          {...(adding === null || adding.spec === '' ? {} : { preset: adding })}
+          onClose={() => setAdding(null)}
           onInstalled={() => reload({ force: true })}
         />
       </div>
@@ -228,8 +230,8 @@ function MarketPanel({
         <DiscoverPanel
           t={t}
           active={tab === 'discover'}
-          onInstalled={() => reload({ force: true })}
           onShowInstalled={() => setTab('installed')}
+          onAddModule={setAdding}
           onDetailChange={setDiscoverDetailOpen}
         />
       </div>

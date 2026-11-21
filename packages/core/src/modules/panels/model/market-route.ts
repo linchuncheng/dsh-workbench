@@ -175,6 +175,26 @@ export async function replaceDshBundle(
   return settle(deps, spec, options, await installOnce(deps, spec, options));
 }
 
+export async function replaceRouted(
+  deps: ReplaceBundleDeps,
+  spec: string,
+  options?: BundleInstallOptions,
+): Promise<BundleInstallOutcome> {
+  const supply = deps.supply ?? requireSupply();
+  const route = await supply.packageRouteOf({
+    spec,
+    ...(deps.seam === undefined ? {} : { seam: deps.seam }),
+    ...(deps.registry === undefined ? {} : { registry: deps.registry }),
+  });
+  if (route?.kind !== 'dsh-module') return replaceDshBundle(deps, spec, options);
+  const { remove: _remove, ...rest } = deps;
+  return installModuleRow(
+    { ...rest, spec, ...(options === undefined ? {} : { options }) },
+    spec,
+    route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim(),
+  );
+}
+
 function installOptions(options: BundleInstallOptions | undefined) {
   return {
     ...(options?.registry === undefined ? {} : { registry: options.registry }),

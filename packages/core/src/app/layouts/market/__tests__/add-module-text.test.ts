@@ -13,6 +13,7 @@ import {
   previewOf,
   registryName,
   problemKey,
+  registryChoiceFrom,
   registryOf,
   restartWhy,
   restartWhyKey,
@@ -324,5 +325,20 @@ describe('添加模块浮层：文案与来源选项（按 dsh 插件页的骨�
       'panels.market.add.removedRestart',
     );
     expect(verdictKey(change({ application: 'failed' }))).toBe('panels.market.add.failed');
+  });
+});
+
+describe('发现页把规格交过来时，源怎么落', () => {
+  it('★ 带了源 → 落成自定义那一档（原样保留，不改写）', () => {
+    expect(registryChoiceFrom('https://npm.corp.example/team/')).toEqual({
+      kind: 'custom',
+      value: 'https://npm.corp.example/team/',
+    });
+  });
+
+  it('没有源 / 空串 → 交给原本记住的那一档', () => {
+    expect(registryChoiceFrom(undefined)).toBeUndefined();
+    expect(registryChoiceFrom('')).toBeUndefined();
+    expect(registryChoiceFrom('   ')).toBeUndefined();
   });
 });

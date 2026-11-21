@@ -11,14 +11,10 @@ import type {
 } from '@/kernel/contract/market-index';
 import { useHostWrite } from '@/shared/hooks/use-host-write';
 import { readMarketDiscover, readMarketSources } from '@/shared/hooks/market-queries';
-import { isShippedApplication } from '@dsh-workbench/shared/contract/protocol/bundle-install';
 import { CAPABILITY_FACT } from '@/shared/hooks/use-capabilities';
 import { subscribeFactRevision } from '@/shared/hooks/use-facts';
-import { appliedUnitsOf, changeFailure, changeOf } from '../rightbar/market-change';
-import { publishMarketApplied, usePublishMarketInstalling } from '../rightbar/market-install';
 import {
   DISCOVER_PAGE_SIZE,
-  displayTitleOf,
   filterEntries,
   localeNow,
   sortEntries,
@@ -45,22 +41,6 @@ function sourceRowsOf(sources: readonly MarketSourceConfig[]): readonly Discover
   }));
 }
 
-export type InstallVerdict =
-  | { readonly kind: 'done' }
-  | { readonly kind: 'cancelled' }
-  | { readonly kind: 'failed'; readonly text: string }
-  | { readonly kind: 'quiet' };
-
-export function installVerdictOf(value: unknown, t: Translate): InstallVerdict {
-  const change = changeOf(value);
-  if (change === undefined) return { kind: 'quiet' };
-  if (isShippedApplication(change.application)) return { kind: 'done' };
-  if (change.application === 'cancelled') return { kind: 'cancelled' };
-  if (change.application !== 'failed') return { kind: 'quiet' };
-  const reason = changeFailure(change, t) ?? t('panels.market.add.reason.unknown');
-  return { kind: 'failed', text: t('panels.discover.failed', { reason }) };
-}
-
 export interface DiscoverController {
   readonly t: Translate;
   readonly locale: string;
@@ -84,11 +64,7 @@ export interface DiscoverController {
   readonly choice: InstallTarget | null;
   readonly notice: string | null;
   readonly writeFailed: string | null;
-  readonly provisionFailed: string | null;
   readonly busy: boolean;
-  readonly installing: string | null;
-  readonly cancelling: boolean;
-  readonly installDisabled: boolean;
   readonly addingSource: boolean;
   readonly manageOpen: boolean;
   readonly problem: { readonly id: string; readonly kind: string; readonly detail: string } | null;
@@ -115,10 +91,13 @@ export interface DiscoverController {
   readonly removeSourceById: (id: string) => void;
   readonly selectSource: (id: string) => void;
   readonly install: (url?: string) => void;
-  readonly cancelInstall: () => void;
 }
 
-export function useDiscover(t: Translate, active: boolean, onInstalled: () => void): DiscoverController {
+export function useDiscover(
+  t: Translate,
+  active: boolean,
+  onAddModule: (preset: { readonly spec: string; readonly registry?: string | undefined }) => void,
+): DiscoverController {
   const [payload, setPayload] = useState<DiscoverPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [slow, setSlow] = useState(false);
@@ -132,14 +111,10 @@ export function useDiscover(t: Translate, active: boolean, onInstalled: () => vo
   const [manageOpen, setManageOpen] = useState(false);
   const [initOpen, setInitOpen] = useState(false);
   const [choice, setChoice] = useState<InstallTarget | null>(null);
-  const [installing, setInstalling] = useState<{ readonly name: string; readonly requestId: string } | null>(null);
-  const [cancelling, setCancelling] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [addingSource, setAddingSource] = useState(false);
   const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
   const [knownSources, setKnownSources] = useState<KnownSources | null>(null);
-  const [installToken] = useState(() => `market-install:${globalThis.crypto.randomUUID()}`);
-  usePublishMarketInstalling(installToken, installing !== null);
   const loaded = useRef(false);
   const loadTicket = useRef(0);
   const sourceTicket = useRef(0);
@@ -150,8 +125,6 @@ export function useDiscover(t: Translate, active: boolean, onInstalled: () => vo
     resource: 'market-sources',
     networkText: t('panels.discover.failed'),
   });
-  const provision = useHostWrite({ channel: 'provision', networkText: t('panels.discover.failed') });
-  const cancel = useHostWrite({ channel: 'provision', networkText: t('panels.discover.failed') });
 
   const loadSources = useCallback(async (): Promise<void> => {
     const ticket = sourceTicket.current + 1;
@@ -381,53 +354,19 @@ export function useDiscover(t: Translate, active: boolean, onInstalled: () => vo
   };
 
   const install = (url?: string): void => {
-    if (choice === null || installing !== null) return;
+    if (choice === null) return;
     const source = choice.version.source;
     const target = marketInstallTarget(
       choice.entry.name,
       choice.version.version,
       source.type === 'git' && url !== undefined ? { ...source, url } : source,
     );
-    const name = displayTitleOf(choice.entry, locale);
-    const requestId = globalThis.crypto.randomUUID();
     setChoice(null);
     setNotice(null);
-    setInstalling({ name, requestId });
-    void provision
-      .send({
-        action: 'install-version',
-        spec: target.spec,
-        requestId,
-        ...(target.registry === undefined ? {} : { registry: target.registry }),
-      })
-      .then((outcome) => {
-        if (!outcome.ok) return;
-        publishMarketApplied(appliedUnitsOf(outcome.value));
-        const verdict = installVerdictOf(outcome.value, t);
-        if (verdict.kind === 'failed') {
-          provision.fail(verdict.text);
-          onInstalled();
-          return;
-        }
-        if (verdict.kind === 'cancelled') {
-          setNotice(t('panels.discover.installCancelled', { name }));
-          onInstalled();
-          return;
-        }
-        if (verdict.kind !== 'done') return;
-        setNotice(t('panels.discover.installedDone', { name }));
-        onInstalled();
-      })
-      .finally(() => {
-        setInstalling(null);
-        setCancelling(false);
-      });
-  };
-
-  const cancelInstall = (): void => {
-    if (installing === null || cancelling) return;
-    setCancelling(true);
-    void cancel.send({ action: 'cancel-install', requestId: installing.requestId });
+    onAddModule({
+      spec: target.spec,
+      ...(target.registry === undefined ? {} : { registry: target.registry }),
+    });
   };
 
   const reload = (): void => {
@@ -459,11 +398,7 @@ export function useDiscover(t: Translate, active: boolean, onInstalled: () => vo
     choice,
     notice,
     writeFailed: sources.failed,
-    provisionFailed: provision.failed,
     busy: sources.busy,
-    installing: installing === null ? null : installing.name,
-    cancelling,
-    installDisabled: installing !== null,
     addingSource,
     manageOpen,
     problem,
@@ -483,10 +418,7 @@ export function useDiscover(t: Translate, active: boolean, onInstalled: () => vo
     openDetail: (name) => setDetail(name),
     closeDetail: () => setDetail(null),
     setDetailEntry: setDetail,
-    setChoice: (value) => {
-      if (value !== null && installing !== null) return;
-      setChoice(value);
-    },
+    setChoice,
     setManageOpen,
     setInitOpen,
     initialize,
@@ -496,7 +428,6 @@ export function useDiscover(t: Translate, active: boolean, onInstalled: () => vo
     removeSourceById,
     selectSource,
     install,
-    cancelInstall,
   };
 }
 

@@ -10,10 +10,9 @@ export interface DiscoverVersionsProps {
   readonly locale: string;
   readonly entry: DiscoverEntry;
   readonly onInstall: (entry: DiscoverEntry, version: DiscoverVersionRow) => void;
-  readonly installDisabled?: boolean;
 }
 
-export function DiscoverVersions({ t, locale, entry, onInstall, installDisabled = false }: DiscoverVersionsProps) {
+export function DiscoverVersions({ t, locale, entry, onInstall }: DiscoverVersionsProps) {
   const latest = latestVersionOf(entry);
   return (
     <ul className={styles.discoverVersions} aria-label={t('panels.discover.versionsLabel', { name: entry.name })}>
@@ -46,7 +45,6 @@ export function DiscoverVersions({ t, locale, entry, onInstall, installDisabled 
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={installDisabled}
                 aria-label={t('panels.discover.installVersionTitle', {
                   name: entry.name,
                   version: version.version,

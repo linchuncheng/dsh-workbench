@@ -1062,23 +1062,6 @@
   min-width: 0;
 }
 
-.discoverInstallBar {
-  display: flex;
-  align-items: center;
-  gap: var(--wb-len-8);
-  margin: 0;
-  padding: var(--wb-len-8) var(--wb-len-12);
-  border-radius: var(--dsw-radius-md);
-  background: var(--dsw-alias-bg-module-platform);
-  font: var(--dsw-font-xs-13);
-}
-
-.discoverInstallText {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
 .discoverDialog {
   width: min(var(--wb-len-560), calc(100vw - var(--wb-len-32)));
 }

@@ -18,6 +18,7 @@ import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
 import {
   heldWizardPhase,
   previewOf,
+  registryChoiceFrom,
   registryOf,
   registryOptions,
   type AddModulePhase,
@@ -41,6 +42,11 @@ export interface AddModuleOutcome {
   readonly module: BundleModulePayload;
   readonly supply: BundleSupplyPayload;
   readonly plugin?: BundleInstalledPlugin;
+}
+
+export interface AddModulePreset {
+  readonly spec: string;
+  readonly registry?: string | undefined;
 }
 
 export interface AddModuleProblem {
@@ -83,12 +89,14 @@ function newRequestId(): string {
 export function useAddModule(options: {
   readonly onInstalled: () => void;
   readonly failedText: string;
+  readonly preset?: AddModulePreset | undefined;
 }): AddModuleState {
-  const { onInstalled, failedText } = options;
+  const { onInstalled, failedText, preset } = options;
   const [prefs] = useState(readRegistryPrefs);
-  const [spec, setSpec] = useState('');
-  const [choice, setChoice] = useState<RegistryChoice>(prefs.choice);
-  const [custom, setCustom] = useState(prefs.custom);
+  const presetChoice = registryChoiceFrom(preset?.registry);
+  const [spec, setSpec] = useState(preset?.spec ?? '');
+  const [choice, setChoice] = useState<RegistryChoice>(presetChoice ?? prefs.choice);
+  const [custom, setCustom] = useState(preset?.registry ?? prefs.custom);
   const [registryOpen, setRegistryOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [phase, setPhase] = useState<AddModulePhase>('idle');
@@ -152,6 +160,18 @@ export function useAddModule(options: {
       setPhase('preview');
     });
   }, [spec, registry]);
+
+  const autoChecked = useRef(false);
+
+  useEffect(() => {
+    if (preset === undefined || autoChecked.current) return;
+    if (spec.trim() === '') return;
+    autoChecked.current = true;
+    const id = setTimeout(check, 0);
+    return () => {
+      clearTimeout(id);
+    };
+  }, [preset, spec, check]);
 
   const install = useCallback(
     (approvedBuilds: readonly string[] = []): void => {

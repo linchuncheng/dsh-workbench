@@ -176,6 +176,11 @@ export function customRegistryAllowed(value: string): boolean {
   return /^https?:\/\//.test(value.trim());
 }
 
+export function registryChoiceFrom(registry: string | undefined): RegistryChoice | undefined {
+  const value = registry?.trim() ?? '';
+  return value === '' ? undefined : { kind: 'custom', value };
+}
+
 export function registryOf(choice: RegistryChoice, custom: string): string | undefined {
   if (choice.kind === 'custom') return customRegistryAllowed(custom) ? custom.trim() : undefined;
   return choice.value === '' ? undefined : choice.value;

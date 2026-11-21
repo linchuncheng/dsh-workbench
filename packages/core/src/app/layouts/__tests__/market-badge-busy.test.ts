@@ -31,12 +31,19 @@ describe('左栏那枚徽标：更新跑着的那一单元不许点亮（接线�
 });
 
 describe('左栏那枚徽标：装的过程中 / 刚装完那一下（接线判据）', () => {
-  it('★ 两个装入口都发「正在装」与「已经落地的那一单元」', () => {
-    for (const file of ['market/use-add-module.ts', 'market/use-discover.ts']) {
-      const hook = read(file);
-      expect(hook, file).toContain('usePublishMarketInstalling(');
-      expect(hook, file).toContain('publishMarketApplied(appliedUnitsOf(');
-    }
+  it('★ 装入口只有一份：添加模块对话框发「正在装」与「已经落地的那一单元」', () => {
+    const hook = read('market/use-add-module.ts');
+
+    expect(hook).toContain('usePublishMarketInstalling(');
+    expect(hook).toContain('publishMarketApplied(appliedUnitsOf(');
+  });
+
+  it('★ 发现页不再自己装：只把规格交给添加模块对话框', () => {
+    const discover = read('market/use-discover.ts');
+
+    expect(discover).toContain('onAddModule(');
+    expect(discover).not.toContain("action: 'install-version'");
+    expect(discover).not.toContain('usePublishMarketInstalling(');
   });
 
   it('★ 入口徽标读数带上这两份事实（漏传 = 判据白写）', () => {
