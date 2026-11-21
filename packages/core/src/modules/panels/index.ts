@@ -57,6 +57,7 @@ import { capabilityBriefOf } from './model/capability-brief';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
 import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedReason } from './model/closed-tool';
 import { registerToolboxTools } from './model/toolbox-tools';
+import { diagExportAction } from '@/shared/api/host/diag-export-action';
 import { registerDiagTools } from './model/diag-tool';
 import { panelsUnit, screenOnlyToolsFor } from './unit';
 
@@ -384,6 +385,7 @@ export const panelsHost: UnitOwnedFace = {
       },
       actions: [
         marketSourcesAction(marketSources, marketInit),
+        diagExportAction(ctx),
       ],
       prefs: { resource: PANELS_PREF_RESOURCE, handle: (payload: unknown) => applyPanelsPref(panels, payload) },
       provision: {
