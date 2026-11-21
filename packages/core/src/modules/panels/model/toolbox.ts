@@ -1,7 +1,7 @@
 import type { UnitManifest } from '@dsh-workbench/shared';
 import type { McpServerPacks, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
-import { DIY_PACK_TOOLS, MANAGE_TOOLS, TOOLBOX_TOOLS } from '../unit';
+import { DIY_PACK_TOOLS, MANAGE_TOOLS, RESIDENT_TOOLS } from '../unit';
 
 export { PACK_TARGET_LIMIT } from '../unit';
 
@@ -164,9 +164,9 @@ export function createToolbox(options: {
       for (const name of pack.tools) allowed.add(name);
     }
     for (const name of allowed) deny.delete(name);
-    for (const name of TOOLBOX_TOOLS) deny.delete(name);
+    for (const name of RESIDENT_TOOLS) deny.delete(name);
     for (const name of options.flowDenied?.(context) ?? []) {
-      if (!(TOOLBOX_TOOLS as readonly string[]).includes(name)) deny.add(name);
+      if (!(RESIDENT_TOOLS as readonly string[]).includes(name)) deny.add(name);
     }
     return deny;
   };

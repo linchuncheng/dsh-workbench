@@ -119,11 +119,11 @@ describe('工具面是常驻上下文：话要一句顶一句', () => {
     );
   });
 
-  it('★ diy 包：DIY 25 + 调试 4 + 录制 4，共 33 把；开包才付这份钱（2026-11-17 实测 5014：结束那句「缺材料先不结束」）', () => {
+  it('★ diy 包：DIY 26 + 调试 4 + 录制 4，共 34 把；开包才付这份钱（2026-11-17 实测 5014：结束那句「缺材料先不结束」）', () => {
     const tools = registered('diy');
     const total = tools.reduce((sum, tool) => sum + promptTextOf(tool).length, 0);
 
-    expect(tools).toHaveLength(33);
+    expect(tools).toHaveLength(34);
     expect(total, `${TOTAL_OF('diy')} / 预算 ${String(DIY_CHAR_BUDGET)}`).toBeLessThanOrEqual(
       DIY_CHAR_BUDGET,
     );

@@ -13,6 +13,7 @@ import {
   DIY_BORROWED_TOOLS,
   DIY_PACK_TOOLS,
   MANAGE_TOOLS,
+  RESIDENT_TOOLS,
   TOOLBOX_TOOLS,
   panelsUnit,
 } from '../unit';
@@ -116,7 +117,7 @@ describe('panelsHost', () => {
 
     const denied = result.gate?.deniedTools({ workspace: '/w/a', preset: null, session: 's-1' }) ?? [];
 
-    expect(denied).toHaveLength(ALL_TOOLS.length - TOOLBOX_TOOLS.length);
+    expect(denied).toHaveLength(ALL_TOOLS.length - RESIDENT_TOOLS.length);
     expect(new Set(denied)).toEqual(new Set([...MANAGE_TOOLS, ...DIY_PACK_TOOLS]));
     for (const control of TOOLBOX_TOOLS) expect(denied).not.toContain(control);
   });

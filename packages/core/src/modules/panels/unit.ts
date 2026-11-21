@@ -63,6 +63,8 @@ export const TOOLBOX_LIST_TOOL = 'workbench_toolbox_list';
 export const TOOLBOX_OPEN_TOOL = 'workbench_toolbox_open';
 export const TOOLBOX_CLOSE_TOOL = 'workbench_toolbox_close';
 
+export const DIAG_TOOL = 'workbench_diag';
+
 export const TOOLBOX_TOOLS = [TOOLBOX_LIST_TOOL, TOOLBOX_OPEN_TOOL, TOOLBOX_CLOSE_TOOL] as const;
 
 export const PACK_TARGET_LIMIT = 8;
@@ -102,7 +104,10 @@ export const DIY_TOOLS = [
   DIY_LOGS_STOP_TOOL,
 ] as const;
 
+export const RESIDENT_TOOLS = [...TOOLBOX_TOOLS, DIAG_TOOL] as const;
+
 export const ALL_TOOLS = [
+  DIAG_TOOL,
   TOOLBOX_LIST_TOOL,
   TOOLBOX_OPEN_TOOL,
   TOOLBOX_CLOSE_TOOL,
@@ -141,6 +146,7 @@ export const ALL_TOOLS = [
 export type PanelsToolName = (typeof ALL_TOOLS)[number];
 
 export const READ_TOOLS = [
+  DIAG_TOOL,
   DIY_STEP_TOOL,
   TOOLBOX_LIST_TOOL,
   TOOLBOX_OPEN_TOOL,
@@ -277,7 +283,7 @@ export const DIY_PACK_TOOLS = [
 ] as const satisfies readonly PanelsToolName[];
 
 type PackAssigned =
-  | (typeof TOOLBOX_TOOLS)[number]
+  | (typeof RESIDENT_TOOLS)[number]
   | (typeof MANAGE_TOOLS)[number]
   | (typeof DIY_PACK_TOOLS)[number];
 type Unassigned = Exclude<PanelsToolName, PackAssigned>;
