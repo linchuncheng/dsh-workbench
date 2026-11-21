@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createDiagRecorder } from '../../runtime/diag-records.js';
 import { createUnitConfig, type UnitConfigStore } from '../unit-config.js';
 
 interface Config {
@@ -120,5 +121,47 @@ describe('单元配置的读写器', () => {
     config.write({ name: 'a' });
     config.reset();
     expect(config.read()).toEqual(FALLBACK);
+  });
+});
+
+describe('读不出来的配置：落一条诊断记录', () => {
+  function recorderOf() {
+    let at = 1_000;
+    return createDiagRecorder({ clock: () => (at += 10), nextCorrId: () => 'c-1', level: 'info' });
+  }
+
+  it('★ 形状不对时记 CONFIG_CORRUPT，带文件与原因，只记一次', () => {
+    const store = memoryStore();
+    store.write('config.json', ['这不是我们要的形状']);
+    const diag = recorderOf();
+    const config = createUnitConfig({
+      store,
+      file: 'config.json',
+      fallback: FALLBACK,
+      normalize: (raw) => {
+        if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error('不是一份配置');
+        return normalize(raw);
+      },
+      diag,
+    });
+
+    config.read();
+    config.read();
+
+    const records = diag.recent({ code: 'CONFIG_CORRUPT' });
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ class: 'user', area: 'settings', detail: { path: 'config.json' } });
+    expect(typeof records[0]?.detail?.['reason']).toBe('string');
+  });
+
+  it('读得出来时零记录（成功不留痕）', () => {
+    const store = memoryStore();
+    store.write('config.json', { name: '工作台', limit: 1 });
+    const diag = recorderOf();
+    const config = createUnitConfig({ store, file: 'config.json', fallback: FALLBACK, normalize, diag });
+
+    config.read();
+
+    expect(diag.recent()).toHaveLength(0);
   });
 });

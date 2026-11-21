@@ -1,3 +1,5 @@
+import type { DiagRecorder } from '../runtime/diag-records.js';
+
 const CORRUPT_DIR = '.corrupt';
 
 /**
@@ -18,6 +20,7 @@ export interface UnitConfigOptions<T> {
   readonly fallback: T;
   readonly normalize: (raw: unknown) => T;
   readonly logger?: { warn?(message: string): void } | undefined;
+  readonly diag?: DiagRecorder | undefined;
 }
 
 /**
@@ -44,6 +47,7 @@ export function createUnitConfig<T>({
   fallback,
   normalize,
   logger,
+  diag,
 }: UnitConfigOptions<T>): UnitConfig<T> {
   let broken = false;
   let raw: unknown = null;
@@ -54,6 +58,11 @@ export function createUnitConfig<T>({
     logger?.warn?.(
       `[dsh-workbench] ${file} 读不出来（${reason}）：这次先按默认值处理；下一次写入会把它备份到 ${CORRUPT_DIR}/，不会直接盖掉`,
     );
+    diag?.once(`config-corrupt:${file}`, {
+      code: 'CONFIG_CORRUPT',
+      level: 'error',
+      detail: { path: file, reason },
+    });
   };
   return {
     read() {
