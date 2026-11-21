@@ -68,7 +68,7 @@ export function MarketBody({
         keepHead
         headAction={
           <Fragment>
-            {h(MarketUnreadableBadge, { t, lines: unreadable })}
+            {h(MarketUnreadableBadge, { t, rows: unreadable })}
             {checks.modules}
           </Fragment>
         }

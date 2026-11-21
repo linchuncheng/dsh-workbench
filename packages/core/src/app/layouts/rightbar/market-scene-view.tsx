@@ -80,7 +80,7 @@ export function MarketSceneView({
   if (nothing) {
     return (
       <>
-        {h(MarketUnreadableBadge, { t, lines: unreadable })}
+        {h(MarketUnreadableBadge, { t, rows: unreadable })}
         <MarketEmpty t={t} />
       </>
     );

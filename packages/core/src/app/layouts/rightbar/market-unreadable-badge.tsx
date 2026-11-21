@@ -1,48 +1,64 @@
-import { createElement as h } from 'react';
+import { createElement as h, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
-import { Button, HoverCard, IconWarningOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives';
-import { unreadableBadgeText, unreadableLead, unreadableTitle } from './market-unreadable-text';
+import { Button, IconWarningOutlineRegular, Modal } from '@deepseek-ai/dsh-client-ui-primitives';
+import { unreadableBadgeText, unreadableLead, unreadableTitle, type UnreadableModuleRow } from './market-unreadable-text';
 import styles from './MarketUnreadableBadge.module.css';
+
+function lineOf(row: UnreadableModuleRow): string {
+  return row.pkg === '' ? row.reason : `${row.pkg}：${row.reason}`;
+}
 
 export function MarketUnreadableBadge({
   t,
-  lines,
+  rows,
 }: {
   readonly t: Translate;
-  readonly lines: readonly string[];
+  readonly rows: readonly UnreadableModuleRow[];
 }): JSX.Element | null {
-  if (lines.length === 0) return null;
-  const content = (
-    <div className={styles.card}>
-      <p className={styles.title}>{unreadableTitle(t)}</p>
-      <p className={styles.lead}>{unreadableLead(t)}</p>
-      <ul className={styles.list}>
-        {lines.map((line) => (
-          <li key={line} className={styles.line}>
-            {line}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (rows.length === 0) return null;
+
+  const copyAll = (): void => {
+    void globalThis.navigator?.clipboard?.writeText(rows.map(lineOf).join('\n')).then(() => {
+      setCopied(true);
+      globalThis.setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
   return (
-    <HoverCard
-      variant="compact"
-      copyText={lines.join('\n')}
-      copyLabel={t('market.unreadable.copy')}
-      copiedLabel={t('market.unreadable.copied')}
-      anchor={
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          aria-label={unreadableBadgeText(t, lines.length)}
-          title={unreadableBadgeText(t, lines.length)}
-        >
-          <IconWarningOutlineRegular size={14} aria-hidden="true" />
-        </Button>
-      }
-      content={content}
-    />
+    <span className={styles.seat}>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        aria-label={unreadableBadgeText(t, rows.length)}
+        title={unreadableBadgeText(t, rows.length)}
+        onClick={() => setOpen(true)}
+      >
+        <IconWarningOutlineRegular size={14} aria-hidden="true" />
+      </Button>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={unreadableTitle(t)}
+        tone="warning"
+        description={unreadableLead(t)}
+        closeLabel={t('market.unreadable.close')}
+        footer={
+          <Button type="button" size="sm" variant="primary" onClick={copyAll}>
+            {copied ? t('market.unreadable.copied') : t('market.unreadable.copy')}
+          </Button>
+        }
+      >
+        <ul className={styles.list}>
+          {rows.map((row) => (
+            <li key={`${row.pkg}:${row.reason}`} className={styles.line}>
+              {lineOf(row)}
+            </li>
+          ))}
+        </ul>
+      </Modal>
+    </span>
   );
 }

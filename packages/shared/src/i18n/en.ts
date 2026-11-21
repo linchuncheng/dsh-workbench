@@ -165,6 +165,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'market.unreadable.lead': 'They are missing from the installed list.',
   'market.unreadable.copy': 'Copy all',
   'market.unreadable.copied': 'Copied',
+  'market.unreadable.close': 'Close',
   'panels.market.sectionInstalled': 'Installed modules',
   'panels.market.sectionPending': 'Not ready',
   'panels.market.sectionShared': 'Shared dependencies',

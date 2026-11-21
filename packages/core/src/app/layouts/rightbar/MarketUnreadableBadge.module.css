@@ -1,27 +1,21 @@
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dsw-space-1);
-}
-
-.title {
-  margin: 0;
-  font-size: var(--dsw-font-size-sm);
-  font-weight: var(--dsw-font-weight-medium);
-}
-
-.lead {
-  margin: 0;
-  color: var(--dsw-color-text-secondary);
-  font-size: var(--dsw-font-size-xs);
+.seat {
+  display: inline-flex;
+  align-items: center;
 }
 
 .list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dsw-space-2);
   margin: 0;
-  padding-left: var(--dsw-space-4);
-  font-size: var(--dsw-font-size-xs);
+  padding: 0;
+  list-style: none;
 }
 
 .line {
+  display: flex;
+  gap: var(--dsw-space-2);
+  align-items: baseline;
+  font-size: var(--dsw-font-size-sm);
   word-break: break-all;
 }

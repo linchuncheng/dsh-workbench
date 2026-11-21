@@ -13,7 +13,7 @@ export interface MarketBodyProps {
   readonly shown: readonly MarketRow[];
   readonly pluginList: readonly MarketRow[];
   readonly installedList: readonly MarketRow[];
-  readonly unreadable?: readonly string[] | undefined;
+  readonly unreadable?: readonly { readonly pkg: string; readonly reason: string }[] | undefined;
   readonly pending: Pending | null;
   readonly failed: MarketFailure | null;
   readonly notice: string | null;

@@ -9,7 +9,6 @@ import { MIN_BUSY_MS } from '@dsh-workbench/shared';
 import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
 
 import { marketSettled } from './market-freshness';
-import { marketUnreadableText } from './market-unreadable-text';
 import { useMarketChecks } from './use-market-checks';
 
 import { useSelfUpdateBusyRefresh, useSelfUpdateTold, useSettleHold } from './market-settle-hold';
@@ -262,8 +261,7 @@ export function MarketView({
   useSettleHold({ pending, landed, t, onChanged, selfUpdate: effectiveSelfUpdate, setPending, setFailed });
   useSelfUpdateBusyRefresh(effectiveSelfUpdate?.busy === true && mock === undefined, onChanged);
   const nothing = marketNothingOf(shown, self, installedList, pluginList);
-  const unreadableRows = mock?.unreadable ?? unreadable;
-  const unreadableText = marketUnreadableText({ t, unreadable: unreadableRows, readFailure });
+  const unreadableRows = mock?.unreadable ?? (unreadable.length > 0 ? unreadable : readFailure === null ? [] : [{ pkg: '', reason: readFailure }]);
   const { checks, recheck, rechecking: checkingShown } = useMarketChecks(
     { t, mock, installed, plugins, modulesCheck, pluginsCheck, pending, onCheck, onChanged, setFailed, checking: freshness.checking },
   );
@@ -276,7 +274,7 @@ export function MarketView({
       shown={shown}
       pluginList={pluginList}
       installedList={installedList}
-      unreadable={unreadableText}
+      unreadable={unreadableRows}
       pending={pending}
       failed={failed}
       notice={notice}
