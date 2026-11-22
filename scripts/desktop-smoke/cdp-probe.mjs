@@ -26,7 +26,6 @@ const addPluginSpec = (
   flagValue('--add-plugin') || (addPluginFlagged ? (process.env.DESKTOP_SMOKE_PLUGIN ?? FIXTURE.plugin) : '')
 ).trim();
 const expectDiyDefault = process.argv.includes('--expect-diy-default');
-const skipModuleCard = process.argv.includes('--skip-module-card');
 const workbenchSpec = process.env.DESKTOP_WORKBENCH_SPEC ?? '@dsh-workbench/core';
 const marketSource = process.env.DESKTOP_SMOKE_MARKET ?? FIXTURE.market;
 const moduleName = process.env.DESKTOP_SMOKE_MODULE ?? FIXTURE.module;
@@ -1412,28 +1411,7 @@ function titlesOfManifests(units) {
   return titles;
 }
 
-async function verifyRunningVersion(cdp, body) {
-  if (expectedRunningVersion === '') return;
-  const payload = await workbenchVersionOf(cdp, false);
-  const running = typeof payload?.workbench?.running === 'string' ? payload.workbench.running : '';
-  writeText(`${prefix}-verify-running.json`, `${JSON.stringify(payload, null, 2)}\n`);
-  if (running !== expectedRunningVersion) {
-    await fail(
-      cdp,
-      `重启后跑的工作台版本不对：接口 running=${JSON.stringify(running)}，期望 ${JSON.stringify(expectedRunningVersion)}`,
-      body,
-    );
-  }
-}
-
 async function verifyFeatures(cdp) {
-  if (skipModuleCard) {
-    const body = await bodyOf(cdp);
-    await writeVerifyEvidence(cdp, body, await unitsOf(cdp));
-    await verifyRunningVersion(cdp, body);
-    mark('module-card-skipped');
-    return { skippedModuleCard: true };
-  }
   const startedAt = Date.now();
   let reloaded = false;
   let reloadCard = false;
@@ -1451,7 +1429,18 @@ async function verifyFeatures(cdp) {
     log(`verify wait :: host units ${ids.join(',') || '（空）'} :: cards ${cards.join(',') || '（无）'} :: ${tailBody(body, 140)}`);
     if (cards.includes(`wb-card-${target}`) && /hello, workbench/u.test(body)) {
       await writeVerifyEvidence(cdp, body, units);
-      await verifyRunningVersion(cdp, body);
+      if (expectedRunningVersion !== '') {
+        const payload = await workbenchVersionOf(cdp, false);
+        const running = typeof payload?.workbench?.running === 'string' ? payload.workbench.running : '';
+        writeText(`${prefix}-verify-running.json`, `${JSON.stringify(payload, null, 2)}\n`);
+        if (running !== expectedRunningVersion) {
+          await fail(
+            cdp,
+            `重启后跑的工作台版本不对：接口 running=${JSON.stringify(running)}，期望 ${JSON.stringify(expectedRunningVersion)}`,
+            body,
+          );
+        }
+      }
       mark('module-card');
       return { card: true, units: ids };
     }
