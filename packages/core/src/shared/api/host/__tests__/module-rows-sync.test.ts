@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 describe('把「不是 bundle 的模块」同步成 profile patch 里的行', () => {
-  it('★ 只给不在 bundles 的模块写行，bundles 里的不写', () => {
+  it('★ 在 bundles 里、但没声明 dsh.bundle 的模块也写行（bundles 载不动它）', () => {
     const root = profile(['@dsh-workbench/core', '@pagoda-dsh-workbench/module-argocd'], {
       '@dsh-workbench/core': 'link:/core',
       '@dsh-workbench/module-hello': 'link:/hello',
@@ -43,10 +43,25 @@ describe('把「不是 bundle 的模块」同步成 profile patch 里的行', ()
       modules: modules(['hello', '@dsh-workbench/module-hello'], ['argocd', '@pagoda-dsh-workbench/module-argocd']),
     });
     expect(out.changed).toBe(true);
-    expect(out.added).toEqual(['wb-hello']);
+    expect(out.added).toEqual(['wb-hello', 'wb-argocd']);
     expect(moduleRowsIn(fs.readFileSync(path.join(root, 'cordis.patch.yml'), 'utf8'))).toEqual([
       { id: 'wb-hello', name: '@dsh-workbench/module-hello' },
+      { id: 'wb-argocd', name: '@pagoda-dsh-workbench/module-argocd' },
     ]);
+  });
+
+  it('★ 声明了 dsh.bundle 的模块不写行（组合包自己装）', () => {
+    const root = profile(['@dsh-workbench/core', '@dsh-workbench/module-hello'], {
+      '@dsh-workbench/core': 'link:/core',
+      '@dsh-workbench/module-hello': 'link:/hello',
+    });
+    const out = syncModuleRows({
+      profileDir: root,
+      modules: [{ unit: 'hello', pkg: '@dsh-workbench/module-hello', version: '1.0.0', local: false, fromRegistry: true, shipsBundle: true }],
+    });
+
+    expect(out.added).toEqual([]);
+    expect(out.rows).toEqual([]);
   });
 
   it('★ 再同步一次什么都不改（幂等）', () => {
@@ -73,7 +88,7 @@ describe('把「不是 bundle 的模块」同步成 profile patch 里的行', ()
     expect(moduleRowsIn(fs.readFileSync(path.join(root, 'cordis.patch.yml'), 'utf8'))).toEqual([]);
   });
 
-  it('★ 模块被选进 bundles 之后，行被撤掉（不能两条源）', () => {
+  it('★ 模块被选进 bundles 但没声明 dsh.bundle，行留着（撤了它就没东西装载）', () => {
     const root = profile(['@dsh-workbench/core'], {
       '@dsh-workbench/core': 'link:/core',
       '@dsh-workbench/module-hello': 'link:/hello',
@@ -89,8 +104,10 @@ describe('把「不是 bundle 的模块」同步成 profile patch 里的行', ()
       'utf8',
     );
     const out = syncModuleRows({ profileDir: root, modules: modules(['hello', '@dsh-workbench/module-hello']) });
-    expect(out.removed).toEqual(['wb-hello']);
-    expect(moduleRowsIn(fs.readFileSync(path.join(root, 'cordis.patch.yml'), 'utf8'))).toEqual([]);
+    expect(out.removed).toEqual([]);
+    expect(moduleRowsIn(fs.readFileSync(path.join(root, 'cordis.patch.yml'), 'utf8'))).toEqual([
+      { id: 'wb-hello', name: '@dsh-workbench/module-hello' },
+    ]);
   });
 
   it('没有 profile 目录 → 一个字节都不写', () => {

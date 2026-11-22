@@ -36,7 +36,6 @@ export function syncModuleRows(input: SyncModuleRowsInput): SyncModuleRowsResult
       pkg: module.pkg,
       ...(module.shipsBundle === undefined ? {} : { shipsBundle: module.shipsBundle }),
     })),
-    bundles,
   );
   const rowsFor = new Set(desired.map((row) => row.name));
   const stuck = input.modules

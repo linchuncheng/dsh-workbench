@@ -20,13 +20,9 @@ export function moduleRowId(unit: string): string {
   return `${ROW_PREFIX}${unit}`;
 }
 
-export function moduleRowsFrom(
-  modules: readonly ModuleRowSource[],
-  bundles: readonly string[],
-): readonly ModuleRow[] {
-  const bundled = new Set(bundles);
+export function moduleRowsFrom(modules: readonly ModuleRowSource[]): readonly ModuleRow[] {
   return modules
-    .filter((module) => !bundled.has(module.pkg) && module.shipsBundle !== true)
+    .filter((module) => module.shipsBundle !== true)
     .map((module) => ({ id: moduleRowId(module.unit), name: module.pkg }));
 }
 

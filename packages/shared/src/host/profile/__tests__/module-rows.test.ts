@@ -25,18 +25,20 @@ describe('模块行的 id 与来源', () => {
     expect(moduleRowId('coding-analysis')).toBe('wb-coding-analysis');
   });
 
-  it('★ 已经是 bundle 的模块不再写行（会重复装载）', () => {
+  it('★ 在 bundles 里但没声明 dsh.bundle 的模块照写行（否则永远加载不起来）', () => {
     const modules = [
       { unit: 'hello', pkg: '@dsh-workbench/module-hello' },
-      { unit: 'argocd', pkg: '@pagoda-dsh-workbench/module-argocd' },
+      { unit: 'zentao-stories', pkg: '@pagoda-dsh-workbench/module-zentao-stories' },
     ];
-    expect(moduleRowsFrom(modules, ['@pagoda-dsh-workbench/module-argocd'])).toEqual([
+
+    expect(moduleRowsFrom(modules)).toEqual([
       { id: 'wb-hello', name: '@dsh-workbench/module-hello' },
+      { id: 'wb-zentao-stories', name: '@pagoda-dsh-workbench/module-zentao-stories' },
     ]);
   });
 
   it('★ 包里还声明着 dsh.bundle → 也不写行（否则行和组合包两份装载）', () => {
-    const rows = moduleRowsFrom([{ unit: 'hello', pkg: HELLO.name, shipsBundle: true }], []);
+    const rows = moduleRowsFrom([{ unit: 'hello', pkg: HELLO.name, shipsBundle: true }]);
 
     expect(rows).toEqual([]);
   });
@@ -46,7 +48,7 @@ describe('模块行的 id 与来源', () => {
       { unit: 'b', pkg: '@a/b' },
       { unit: 'a', pkg: '@a/a' },
     ];
-    expect(moduleRowsFrom(modules, []).map((row) => row.id)).toEqual(['wb-b', 'wb-a']);
+    expect(moduleRowsFrom(modules).map((row) => row.id)).toEqual(['wb-b', 'wb-a']);
   });
 });
 
