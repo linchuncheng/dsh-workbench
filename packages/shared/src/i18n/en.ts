@@ -221,9 +221,11 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.failure.auth': 'Install failed: no credentials for this source',
   'panels.market.failure.sandbox': 'Install failed: the system blocked it',
   'panels.market.failure.installTitle': 'Installation failed',
+  'panels.market.failure.installTitleOf': 'Installation failed: {pkg}',
   'panels.market.failure.retryAdvice':
     'Click Update to retry; if it still fails, expand the output below and send it to the module author.',
   'panels.market.failure.copyOutput': 'Copy output',
+  'panels.market.failure.copyOutputHint': 'Raw output copied.',
   'panels.market.failure.unknown': 'Install failed: cause not recognised',
   'panels.market.failure.factOwner': '{path} belongs to {owner}, and this account ({me}) cannot write to it. Change ownership back to this account; the system will ask for your login password.',
   'panels.market.failure.factMode': '{path} is mode {mode}, so this account cannot write to it.',

@@ -97,15 +97,16 @@ export function installCardOf(
   const fact = change !== undefined && RETRY_CODES.has(failureCode(change))
     ? `${reason} ${t('panels.market.failure.retryAdvice')}`
     : reason;
+  const pkg = (change?.target ?? '').trim();
   return {
-    title: t('panels.market.failure.installTitle'),
+    title: pkg === '' ? t('panels.market.failure.installTitle') : t('panels.market.failure.installTitleOf', { pkg }),
     fact,
     fixLabel: t('panels.market.failure.copyOutput'),
     fix: output,
-    copiedHint: t('panels.market.failure.copiedHint'),
+    copiedHint: t('panels.market.failure.copyOutputHint'),
     command: '',
     output,
-    exitCode: null,
+    exitCode: change?.packageResult?.exitCode ?? null,
   };
 }
 

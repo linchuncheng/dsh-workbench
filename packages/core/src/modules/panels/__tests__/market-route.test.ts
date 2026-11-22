@@ -11,7 +11,7 @@ import { fakeSeamOf } from './seam-fake';
 import type { DshShell } from '@dsh-workbench/shared/host';
 import type { BundleChange, BundleInstallRequest } from '@/kernel/contract/bundle-install';
 import type { BundleManager, ProvisionProblem, Seam, SupplyPort } from '@dsh-workbench/shared/host';
-import { diagnoseInstallFailure, planStepText, refusalReason } from '@dsh-workbench/shared/host';
+import { diagnoseInstallFailure, planStepText, PlanStepError, refusalReason } from '@dsh-workbench/shared/host';
 import { createMarketService } from '../model/market';
 import { sourceProblemText } from '../model/market-dependency';
 import { installError } from '../model/market-install-error';
@@ -338,6 +338,27 @@ describe('插件那条路失败：回结构化失败（不抛），诊断信息�
     expect(detail).toContain(COMMAND);
     expect(detail).toContain('npm ERR! code EACCES');
     expect(outcome.plugin).toBeUndefined();
+  });
+
+  it('★ 命令非零退出 → 失败结果带上真实退出码（卡片据此显示「退出码 127」）', async () => {
+    const dir = dirOf('profile');
+    const { deps } = rig({ spec: '@t/module-a@1.1.9', supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });
+    const step = { kind: 'run' as const, line: "'pnpm' add --dir '/x' '@t/module-a@1.1.9' --save-exact" };
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: dir,
+      options: { route: 'module' },
+      runAll: async () => {
+        throw new PlanStepError(step, 127, 'bash: nope');
+      },
+    });
+
+    expect(outcome.change).toMatchObject({
+      application: 'failed',
+      errorCode: 'operation-error',
+      packageResult: { exitCode: 127, output: expect.stringContaining('退出码 127') },
+    });
   });
 
   it('★ 失败时台账回滚、不走 settle（不记来源、不探供给）', async () => {

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
+import { splitShellLine } from '../platform/ops/shell-text.js';
 
 export interface PnpmCommand {
   readonly command: string;
@@ -21,7 +22,10 @@ function modulesOf(profileDir: string): Readonly<Record<string, unknown>> {
 
 export function profilePnpmCommand(profileDir: string, env: NodeJS.ProcessEnv = process.env): PnpmCommand {
   const configured = env.DSH_WB_PNPM?.trim();
-  if (configured !== undefined && configured !== '') return { command: configured, args: [] };
+  if (configured !== undefined && configured !== '') {
+    const [command, ...args] = splitShellLine(configured);
+    if (command !== undefined) return { command, args };
+  }
   const modules = modulesOf(profileDir);
   const storeDir = typeof modules['storeDir'] === 'string' ? modules['storeDir'].trim() : '';
   const withStore = (command: PnpmCommand): PnpmCommand =>

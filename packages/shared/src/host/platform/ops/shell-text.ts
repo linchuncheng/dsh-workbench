@@ -38,6 +38,57 @@ export function quoteShellArgFor(value: unknown, platform?: NodeJS.Platform | Ho
 }
 
 /**
+ * 把一条已经拼好的 shell 行拆回 argv：认得单引号、双引号与反斜杠转义，连续空白算一个分隔。
+ * @param line - 一条 shell 命令行（通常是 `quoteShellArg` 拼出来的）。
+ * @returns 拆好的参数；空行得到空数组。
+ */
+export function splitShellLine(line: string): readonly string[] {
+  const words: string[] = [];
+  let current = '';
+  let inWord = false;
+  let quote: string | undefined;
+  const flush = (): void => {
+    if (!inWord) return;
+    words.push(current);
+    current = '';
+    inWord = false;
+  };
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line.charAt(index);
+    if (quote !== undefined) {
+      if (char === quote) {
+        quote = undefined;
+      } else if (char === '\\' && quote === '"' && index + 1 < line.length) {
+        index += 1;
+        current += line.charAt(index);
+      } else {
+        current += char;
+      }
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      inWord = true;
+      continue;
+    }
+    if (char === '\\' && index + 1 < line.length) {
+      index += 1;
+      current += line.charAt(index);
+      inWord = true;
+      continue;
+    }
+    if (char === ' ' || char === '\t' || char === '\n' || char === '\r') {
+      flush();
+      continue;
+    }
+    current += char;
+    inWord = true;
+  }
+  flush();
+  return words;
+}
+
+/**
  * 按当前平台把值裹成 shell 字面量；跨平台代码要固定平台时用 `quoteShellArgFor`。
  * @param value - 任意值；不是字符串的先 `String()`。
  * @returns 可安全拼进当前平台 shell 命令的一段文本。

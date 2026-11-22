@@ -1,9 +1,7 @@
-import type { PluginPlanStep, Seam } from '@dsh-workbench/shared/host';
+import type { BundleManager, InstalledModule, PluginPlanStep, Seam } from '@dsh-workbench/shared/host';
 import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bundle-install';
-import type { BundleManager } from '@dsh-workbench/shared/host';
-import type { InstalledModule } from '@dsh-workbench/shared/host';
 import {
-  approveBuilds, declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, profileBundlesOf,
+  approveBuilds, declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, PlanStepError, profileBundlesOf,
   profilePnpmCommand, quoteShellArg, recordPendingBuilds, refusalReason, splitNpmSpec, WorkbenchDataError,
 } from '@dsh-workbench/shared/host';
 import { requireSupply, localDirOf, type SupplyPort } from '@dsh-workbench/shared/host';
@@ -111,6 +109,7 @@ function routedFailure(
   errorDetail: string,
   pendingBuilds: readonly string[] = [],
   errorCode = 'operation-error',
+  exitCode: number | null = null,
 ): BundleInstallOutcome {
   return outcomeOf(deps, pkg, {
     application: 'failed',
@@ -120,6 +119,9 @@ function routedFailure(
     errorCode: pendingBuilds.length === 0 ? errorCode : 'build-blocked',
     errorDetail,
     ...(pendingBuilds.length === 0 ? {} : { pendingBuilds }),
+    ...(exitCode === null
+      ? {}
+      : { packageResult: { exitCode, output: errorDetail, truncated: false, logPath: '' } }),
   });
 }
 
@@ -344,7 +346,15 @@ async function installModuleRow(
   } catch (error) {
     if (error instanceof PlanCancelledError) return routedCancelled(deps, pkg);
     const pending = pendingFrom(deps, outputOfError(error));
-    return routedFailure(deps, pkg, failureDetailOf(error), pending);
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 安装命令没跑成：${failureDetailOf(error)}`);
+    return routedFailure(
+      deps,
+      pkg,
+      failureDetailOf(error),
+      pending,
+      'operation-error',
+      error instanceof PlanStepError ? error.exitCode : null,
+    );
   }
   try {
     await wireModule(deps, pkg);
