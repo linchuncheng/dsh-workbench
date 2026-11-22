@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +6,7 @@ import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { fakeSeamOf } from './seam-fake';
 import { unitTitleKey } from '@dsh-workbench/shared';
 import type { SupplySource, UnitManifest } from '@dsh-workbench/shared';
+import { pendingBuildsOf, recordPendingBuilds } from '@dsh-workbench/shared/host';
 import type { NeedState, UnitCapability } from '@dsh-workbench/shared/host';
 import { createMarketService } from '../model/market';
 
@@ -199,6 +200,51 @@ describe('createMarketService：install', () => {
     expect(probe.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('★ pnpm 拦了构建脚本：记成待批（写 --dir 那本的 allowBuilds），不当作装好了', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-market-policy-'));
+    const command = `pnpm add --dir '${dir}' 'opencli-plugin-demo@1.0.0' --allow-build=opencli-plugin-demo`;
+    const fake = createFakeShell([
+      {
+        exitCode: 1,
+        stderr: 'ERR_PNPM_IGNORED_BUILDS  Ignored build scripts: @jackwener/opencli\nRun "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.\n',
+      },
+    ]);
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [unit('issues')],
+      probe: probeWith({
+        issues: { unit: 'issues', status: 'missing', needs: [missingState('demo', { command, steps: undefined })] },
+      }),
+      seam: fakeSeamOf(fake.shell),
+    });
+
+    await expect(market.install('issues')).rejects.toMatchObject({ code: 'build-blocked', pendingBuilds: ['@jackwener/opencli'] });
+    expect(pendingBuildsOf(dir)).toEqual(['@jackwener/opencli']);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('★ 批准之后重跑：待批改成允许，pnpm 照跑', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-market-policy-'));
+    recordPendingBuilds(dir, 'Ignored build scripts: @jackwener/opencli');
+    const command = `pnpm add --dir '${dir}' 'opencli-plugin-demo@1.0.0' --allow-build=opencli-plugin-demo`;
+    const fake = createFakeShell([{ stdout: '' }]);
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [unit('issues')],
+      probe: probeWith({
+        issues: { unit: 'issues', status: 'missing', needs: [missingState('demo', { command, steps: undefined })] },
+      }),
+      seam: fakeSeamOf(fake.shell),
+    });
+
+    await market.install('issues', { approvedBuilds: ['@jackwener/opencli'] });
+
+    expect(fake.commands()).toEqual([`pnpm add --dir '${dir}' 'opencli-plugin-demo@1.0.0' --allow-build=opencli-plugin-demo`]);
+    expect(pendingBuildsOf(dir)).toEqual([]);
+    expect(readFileSync(join(dir, 'pnpm-workspace.yaml'), 'utf8')).toContain('true');
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('★ 装之前**强探** —— 幂等判断不许拿缓存的旧结论', async () => {
     const probe = probeWith({ issues: { unit: 'issues', status: 'missing', needs: [missingState()] } });
     const fake = createFakeShell([{ stdout: '' }]);
@@ -324,6 +370,63 @@ describe('createMarketService：update', () => {
 
     expect(fake.commands()).toEqual(["'opencli' plugin update 'demo'"]);
     expect(onInstalled).not.toHaveBeenCalled();
+  });
+
+  it('★ 更新时 pnpm 拦了构建脚本 → 记待批、报 build-blocked；批准后重跑', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-market-policy-'));
+    const command = `pnpm add --dir '${dir}' 'opencli-plugin-demo@1.1.0' --allow-build=opencli-plugin-demo`;
+    let first = true;
+    const probe = async (id: string): Promise<UnitCapability> => {
+      const outdated = first;
+      first = false;
+      return {
+        unit: id,
+        status: outdated ? 'outdated' : 'ok',
+        needs: [outdated ? outdatedState('demo', { command }) : okState()],
+      };
+    };
+    const blocked = createFakeShell([
+      {
+        exitCode: 1,
+        stderr: 'ERR_PNPM_IGNORED_BUILDS  Ignored build scripts: sharp\nRun "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.\n',
+      },
+    ]);
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [unit('issues')],
+      probe,
+      seam: fakeSeamOf(blocked.shell),
+    });
+
+    await expect(market.update('issues')).rejects.toMatchObject({
+      code: 'build-blocked',
+      pendingBuilds: ['sharp'],
+    });
+    expect(pendingBuildsOf(dir)).toEqual(['sharp']);
+
+    let retryFirst = true;
+    const retryProbe = async (id: string): Promise<UnitCapability> => {
+      const outdated = retryFirst;
+      retryFirst = false;
+      return {
+        unit: id,
+        status: outdated ? 'outdated' : 'ok',
+        needs: [outdated ? outdatedState('demo', { command }) : okState()],
+      };
+    };
+    const retried = createFakeShell([{ stdout: '' }]);
+    const again = createMarketService({
+      command: 'opencli',
+      manifests: [unit('issues')],
+      probe: retryProbe,
+      seam: fakeSeamOf(retried.shell),
+    });
+
+    await again.update('issues', { approvedBuilds: ['sharp'] });
+
+    expect(retried.commands()).toEqual([command]);
+    expect(pendingBuildsOf(dir)).toEqual([]);
+    rmSync(dir, { recursive: true, force: true });
   });
 
   it('★ 更新命令跑完还是旧的样子 → 抛出原因（不许静默）', async () => {

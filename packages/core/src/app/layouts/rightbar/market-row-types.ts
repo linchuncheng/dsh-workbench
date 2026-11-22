@@ -8,6 +8,8 @@ export interface MarketFailure {
   readonly message: string;
   readonly failure?: InstallFailure;
   readonly card?: FailureCardModel;
+  readonly action?: MarketRowAction;
+  readonly pendingBuilds?: readonly string[];
 }
 
 export type MarketRowAction =

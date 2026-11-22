@@ -1,6 +1,11 @@
 import { pluginRetentionOf, quoteShellArg, type PluginLedgerEntry } from '@dsh-workbench/shared/host';
 import { requireSupply, type PluginPlanStep, type Seam, type SupplyPort } from '@dsh-workbench/shared/host';
 import { sourceProblemText } from './market-dependency';
+import { runInstallStep } from './market-pending-builds';
+
+export interface PluginUpdateOptions {
+  readonly approvedBuilds?: readonly string[] | undefined;
+}
 import { pluginNameOf, type PluginFiles } from './plugin-name';
 import type { PluginLedger } from './plugin-ledger';
 
@@ -54,7 +59,7 @@ export function pluginSweptText(pkg: string): string {
 }
 
 export interface PluginActions {
-  update(pkg: string): Promise<PluginUpdateOutcome>;
+  update(pkg: string, options?: PluginUpdateOptions): Promise<PluginUpdateOutcome>;
   uninstall(pkg: string): Promise<PluginUninstallOutcome>;
   sweep(claimedBy?: (plugin: string) => readonly string[]): Promise<readonly string[]>;
 }
@@ -123,7 +128,7 @@ export function createPluginActions(options: {
   }
 
   return {
-    async update(pkg) {
+    async update(pkg, updateOptions) {
       const { entry } = requireHeld(pkg);
       if (entry.local === true || entry.registry === undefined) {
         throw new Error(`「${entry.package}」从本地安装，没有可查询的新版本。`);
@@ -144,7 +149,10 @@ export function createPluginActions(options: {
         ...(entry.name === undefined ? {} : { pluginName: entry.name }),
       });
       if (!plan.ok) throw new Error(sourceProblemText(plan.problem, plan.env));
-      await runAll(plan.steps);
+      await runInstallStep({ command: plan.line, steps: plan.steps }, updateOptions?.approvedBuilds, supply.buildPolicyDirs?.() ?? [], {
+        run: (line) => runAll([{ kind: 'run', line }]),
+        runAll,
+      });
       logger?.info?.(`[dsh-workbench] 把 ${entry.package} 更新到 ${latest}`);
       return { name: pluginNameOf(entry, pluginFilesOf()) ?? entry.name ?? entry.package };
     },

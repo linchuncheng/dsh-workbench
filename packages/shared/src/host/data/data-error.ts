@@ -5,11 +5,19 @@ export class WorkbenchDataError extends Error {
   readonly project?: unknown;
   readonly helpUrl?: string;
   readonly failure?: unknown;
+  readonly pendingBuilds?: readonly string[];
 
   constructor(
     code: string,
     message: string,
-    extra: { detail?: string; hint?: string; project?: unknown; helpUrl?: string; failure?: unknown } = {},
+    extra: {
+      detail?: string;
+      hint?: string;
+      project?: unknown;
+      helpUrl?: string;
+      failure?: unknown;
+      pendingBuilds?: readonly string[];
+    } = {},
   ) {
     super(message);
     this.name = 'WorkbenchDataError';
@@ -18,6 +26,6 @@ export class WorkbenchDataError extends Error {
     if (extra.hint !== undefined) this.hint = extra.hint;
     if (extra.project !== undefined) this.project = extra.project;
     if (extra.helpUrl !== undefined) this.helpUrl = extra.helpUrl;
-    if (extra.failure !== undefined) this.failure = extra.failure;
+    if (extra.failure !== undefined) this.failure = extra.failure; if (extra.pendingBuilds !== undefined) this.pendingBuilds = extra.pendingBuilds;
   }
 }

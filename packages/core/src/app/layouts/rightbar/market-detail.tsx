@@ -70,6 +70,7 @@ export interface MarketDetailProps extends InstalledDetailTabProps, InstalledDet
   readonly onBack: () => void;
   readonly onRequest: (action: MarketRowAction) => void;
   readonly onDefault?: ((next: boolean) => void) | undefined;
+  readonly onApproveBuilds?: (() => void) | undefined;
   readonly dependencies?: readonly DetailDependency[] | undefined;
   readonly runtime?: MarketRuntimeFact | undefined;
 }
@@ -84,6 +85,7 @@ export function MarketDetail({
   onBack,
   onRequest,
   onDefault,
+  onApproveBuilds,
   onRecheck,
   rechecking,
   tab,
@@ -145,7 +147,13 @@ export function MarketDetail({
           <Fragment>
             {installedDescription(info)}
             {notice === null ? null : <p className={styles.discoverDetailText}>{notice}</p>}
-            <MarketRowFailure t={t} failure={failure} onRecheck={onRecheck} rechecking={rechecking} />
+            <MarketRowFailure
+              t={t}
+              failure={failure}
+              onRecheck={onRecheck}
+              rechecking={rechecking}
+              onApprove={onApproveBuilds}
+            />
             {row.hint === undefined ? null : <p className={styles.discoverMuted}>{t(row.hint.key, row.hint.params)}</p>}
             {noteText === null ? null : (
               <p className={row.note?.tone === 'alert' ? styles.discoverError : styles.discoverMuted}>

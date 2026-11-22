@@ -52,7 +52,7 @@ function toErrorPayload(error: unknown): Record<string, unknown> {
       ...(data.hint === undefined ? {} : { hint: data.hint }),
       ...(data.helpUrl === undefined ? {} : { helpUrl: data.helpUrl }),
       ...(data.project === undefined ? {} : { project: data.project }),
-      ...(data.failure === undefined ? {} : { failure: data.failure }),
+      ...(data.failure === undefined ? {} : { failure: data.failure }), ...(data.pendingBuilds === undefined ? {} : { pendingBuilds: data.pendingBuilds }),
     };
   }
   return { code: 'internal', message: error instanceof Error ? error.message : String(error) };

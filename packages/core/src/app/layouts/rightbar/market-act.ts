@@ -66,8 +66,12 @@ export interface MarketActOptions {
   readonly onChanged: (options?: MarketReloadOptions) => void;
 }
 
+export interface MarketActRunOptions {
+  readonly approvedBuilds?: readonly string[] | undefined;
+}
+
 export interface MarketAct {
-  (id: string, action: MarketRowAction): Promise<void>;
+  (id: string, action: MarketRowAction, options?: MarketActRunOptions): Promise<void>;
   many(ids: readonly string[], action: MarketRowAction): Promise<void>;
 }
 
@@ -77,7 +81,7 @@ export function marketActOf(options: MarketActOptions): MarketAct {
   const changed = (reload?: MarketReloadOptions): void => {
     if (!quiet) onChanged(reload);
   };
-  const act = async (id: string, action: MarketRowAction): Promise<void> => {
+  const act = async (id: string, action: MarketRowAction, options?: MarketActRunOptions): Promise<void> => {
     if (mocked) return;
     const row = rowOf(id);
     const label = row === undefined ? undefined : marketRowTitle(row, t);
@@ -116,23 +120,26 @@ export function marketActOf(options: MarketActOptions): MarketAct {
       seats.setFailed({ id, message: t('panels.market.failed', { reason: t('panels.market.noMarketSource') }) });
       return;
     }
+    const builds = options?.approvedBuilds === undefined ? {} : { approvedBuilds: [...options.approvedBuilds] };
     const outcome = await send(
       action === 'dismiss-followup'
-        ? { action, id: row?.followUp?.id ?? '' }
+        ? { action, id: row?.followUp?.id ?? '', ...builds }
         : dependency
-          ? { action, id }
+          ? { action, id, ...builds }
           : byName
             ? {
                 action,
                 name: row?.pkg ?? '',
+                ...builds,
               }
             : spec === undefined
-              ? { action, unit: id }
+              ? { action, unit: id, ...builds }
               : {
                   action,
                   spec,
                   requestId: globalThis.crypto.randomUUID(),
                   ...(market?.route === undefined ? {} : { route: market.route }),
+                  ...builds,
                 },
     );
     if (!outcome.ok) {
@@ -143,6 +150,9 @@ export function marketActOf(options: MarketActOptions): MarketAct {
         id,
         message: t('panels.market.failed', { reason: outcome.message }),
         ...(outcome.failure === undefined ? {} : { failure: outcome.failure }),
+        ...(outcome.pendingBuilds === undefined
+          ? {}
+          : { pendingBuilds: outcome.pendingBuilds, action }),
       });
       return;
     }
@@ -195,7 +205,12 @@ export function marketActOf(options: MarketActOptions): MarketAct {
     if (failure !== undefined) {
       seats.setPending(null);
       seats.setHeld(undefined);
-      seats.setFailed({ id, message: failure, ...cardOf() });
+      seats.setFailed({
+        id,
+        message: failure,
+        ...cardOf(),
+        ...(change?.pendingBuilds === undefined ? {} : { pendingBuilds: change.pendingBuilds, action }),
+      });
       return;
     }
     const until = swapUntil(action, change?.application, next.latest);
@@ -220,6 +235,7 @@ export function marketActOf(options: MarketActOptions): MarketAct {
         message: t('panels.market.failed', { reason }),
         ...stuck,
         ...(install === undefined ? {} : { card: install }),
+        ...(change?.pendingBuilds === undefined ? {} : { pendingBuilds: change.pendingBuilds, action }),
       });
     }
   };

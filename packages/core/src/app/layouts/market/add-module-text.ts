@@ -7,6 +7,7 @@ import type {
   BundleInspectionPlugin,
   BundleRegistries,
   BundleSpecKind,
+  BundleSupplyPayload,
   RestartReason,
 } from '@/kernel/contract/bundle-install';
 
@@ -354,6 +355,13 @@ const SUPPLY_KEYS: Readonly<Record<string, string | undefined>> = {
 
 export function supplyKey(state: string): string | undefined {
   return SUPPLY_KEYS[state];
+}
+
+export function pendingBuildsOfOutcome(outcome: {
+  readonly change: Pick<BundleChange, 'pendingBuilds'>;
+  readonly supply: Pick<BundleSupplyPayload, 'pendingBuilds'>;
+}): readonly string[] {
+  return [...new Set([...(outcome.change.pendingBuilds ?? []), ...(outcome.supply.pendingBuilds ?? [])])];
 }
 
 export function restartWhyKey(reason: RestartReason | undefined): string | undefined {

@@ -36,6 +36,7 @@ export interface SharedDetailProps extends InstalledDetailTabProps, InstalledDet
   readonly failure: MarketFailure | null;
   readonly onBack: () => void;
   readonly onAct: (action: MarketRowAction) => void;
+  readonly onApproveBuilds?: (() => void) | undefined;
 }
 
 export function sharedPackageOf(row: SharedRow): string | undefined {
@@ -50,6 +51,7 @@ export function SharedDetail({
   failure,
   onBack,
   onAct,
+  onApproveBuilds,
   onRecheck,
   rechecking,
   tab,
@@ -103,7 +105,13 @@ export function SharedDetail({
         children: (
           <Fragment>
             {installedDescription(info)}
-            <MarketRowFailure t={t} failure={failure} onRecheck={onRecheck} rechecking={rechecking} />
+            <MarketRowFailure
+              t={t}
+              failure={failure}
+              onRecheck={onRecheck}
+              rechecking={rechecking}
+              onApprove={onApproveBuilds}
+            />
             <section className={styles.discoverSection}>
               <h4 className={styles.discoverSectionTitle}>{t('panels.market.detailSharedTitle')}</h4>
               {detailFacts({ t, facts })}

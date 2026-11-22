@@ -22,6 +22,7 @@ import {
   registryOptions,
   resultKindOf,
   specNameOf,
+  pendingBuildsOfOutcome,
   supplyKey,
   verdictKey,
 } from '../add-module-text';
@@ -372,6 +373,19 @@ describe('添加模块浮层：文案与来源选项（按 dsh 插件页的骨�
       'panels.market.add.removedRestart',
     );
     expect(verdictKey(change({ application: 'failed' }))).toBe('panels.market.add.failed');
+  });
+});
+
+describe('批准清单：装包与装依赖两处的一份合集', () => {
+  it('两处都有 → 合起来去重；只有一处 → 就那一处', () => {
+    expect(
+      pendingBuildsOfOutcome({
+        change: { pendingBuilds: ['sharp'] },
+        supply: { pendingBuilds: ['sharp', '@jackwener/opencli'] },
+      }),
+    ).toEqual(['sharp', '@jackwener/opencli']);
+    expect(pendingBuildsOfOutcome({ change: {}, supply: { pendingBuilds: ['esbuild'] } })).toEqual(['esbuild']);
+    expect(pendingBuildsOfOutcome({ change: { pendingBuilds: ['esbuild'] }, supply: {} })).toEqual(['esbuild']);
   });
 });
 

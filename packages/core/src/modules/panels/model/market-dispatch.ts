@@ -2,7 +2,7 @@ import type { ProvisionAction, ProvisionRequest } from '@dsh-workbench/shared/ho
 import type { BundleCancellation, BundleChange } from '@/kernel/contract/bundle-install';
 import type { InstalledModule } from '@dsh-workbench/shared/host';
 import type { BundleSupply, MarketEntry, MarketService } from './market';
-import type { BundleInstallOptions } from './market-types';
+import type { BundleInstallOptions, SupplyInstallOptions } from './market-types';
 import type { PluginKept } from './plugin-actions';
 import type { SharedDependency } from './market-dependency';
 
@@ -79,13 +79,17 @@ function installOptionsOf(request: ProvisionRequest): BundleInstallOptions {
   return options;
 }
 
+function supplyOptionsOf(request: ProvisionRequest): SupplyInstallOptions {
+  return request.approvedBuilds === undefined ? {} : { approvedBuilds: request.approvedBuilds };
+}
+
 export async function dispatchMarket(
   market: MarketService,
   request: ProvisionRequest,
 ): Promise<ProvisionResult> {
   if (isDependency(request.action)) {
     const id = request.id ?? '';
-    const shared = await market.updateDependency(id);
+    const shared = await market.updateDependency(id, supplyOptionsOf(request));
     return { ok: true, action: request.action, shared };
   }
   if (request.action === 'install-bundle' || request.action === 'install-version') {
@@ -97,9 +101,9 @@ export async function dispatchMarket(
     return { ok: true, action: request.action, ...outcome };
   }
   if (request.action === 'update-bundle') {
-    const outcome = await market.updateBundle(request.unit ?? '');
+    const outcome = await market.updateBundle(request.unit ?? '', supplyOptionsOf(request));
     return outcome === null
-      ? { ok: true, action: 'update', module: await market.update(request.unit ?? '') }
+      ? { ok: true, action: 'update', module: await market.update(request.unit ?? '', supplyOptionsOf(request)) }
       : { ok: true, action: 'update-bundle', ...outcome };
   }
   if (request.action === 'remove-bundle') {
@@ -121,11 +125,11 @@ export async function dispatchMarket(
     return { ok: true, action: 'dismiss-followup' };
   }
   if (request.action === 'update-workbench') {
-    const outcome = await market.updateWorkbench(request.name ?? '');
+    const outcome = await market.updateWorkbench(request.name ?? '', supplyOptionsOf(request));
     return { ok: true, action: 'update-workbench', change: outcome.change };
   }
   if (request.action === 'update-plugin') {
-    await market.updatePlugin(request.name ?? '');
+    await market.updatePlugin(request.name ?? '', supplyOptionsOf(request));
     return { ok: true, action: 'update-plugin' };
   }
   if (request.action === 'uninstall-plugin') {
@@ -149,7 +153,13 @@ export async function dispatchMarket(
     };
   }
   if (request.action === 'update') {
-    return { ok: true, action: 'update', module: await market.update(unit) };
+    return { ok: true, action: 'update', module: await market.update(unit, supplyOptionsOf(request)) };
   }
-  return { ok: true, action: 'install', module: await market.install(unit) };
+  return {
+    ok: true,
+    action: 'install',
+    module: await market.install(unit, {
+      ...(request.approvedBuilds === undefined ? {} : { approvedBuilds: request.approvedBuilds }),
+    }),
+  };
 }

@@ -8,15 +8,16 @@ import type {
 } from '@dsh-workbench/shared/host';
 import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bundle-install';
 import {
-  approveBuilds, declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, PlanStepError, planStepText,
+  declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, PlanStepError, planStepText,
   profileBundlesOf,
   profilePnpmCommand, quoteShellArg, recordPendingBuilds, refusalReason, splitNpmSpec, storeMismatchIn, WorkbenchDataError,
 } from '@dsh-workbench/shared/host';
 import { requireSupply, localDirOf, type SupplyPort } from '@dsh-workbench/shared/host';
+import { approveBuildsOrProblem } from './market-pending-builds';
 import { sourceProblemText } from './market-dependency';
 import { pluginNameOf, type PluginFiles } from './plugin-name';
 import type { PluginLedger } from './plugin-ledger';
-import type { BundleInstallOptions, BundleInstallOutcome, BundleSupply } from './market-types';
+import type { BundleInstallOptions, BundleInstallOutcome, BundleSupply, SupplyInstallOptions } from './market-types';
 
 export interface SyncRowsSnapshot {
   readonly added: readonly string[];
@@ -36,7 +37,7 @@ export interface BundleInstallDeps {
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
   readonly ledger?: PluginLedger | undefined;
   readonly runAll: (steps: readonly PluginPlanStep[], options?: { readonly signal?: AbortSignal | undefined }) => Promise<void>;
-  readonly supplyAfter: (module: InstalledModule, change: BundleChange) => Promise<BundleSupply>;
+  readonly supplyAfter: (module: InstalledModule, change: BundleChange, options?: SupplyInstallOptions) => Promise<BundleSupply>;
   readonly rememberSource: (
     manager: BundleManager,
     pkg: string,
@@ -395,7 +396,8 @@ async function installModuleRow(
   const approved = deps.options?.approvedBuilds;
   if (approved !== undefined && approved.length > 0) {
     try {
-      approveBuilds(profileDir, approved);
+      const problem = approveBuildsOrProblem(approved, [profileDir, ...(deps.supply?.buildPolicyDirs?.() ?? [])]);
+      if (problem !== undefined) return routedFailure(deps, pkg, problem);
     } catch (error) {
       return routedFailure(deps, pkg, error instanceof Error ? error.message : String(error));
     }
@@ -458,11 +460,9 @@ async function installModuleRow(
     deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已安装到工作台配置，但这些包的构建脚本没有运行：${skipped.join('、')}`);
   }
   const reload = await reloadRows(deps, pkg, rowIds);
-  if (reload.applied) {
-    deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装并已热加载：profile 依赖 + 一条模块行`);
-  } else {
-    deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装：profile 依赖 + 一条模块行，等重启加载`);
-  }
+  deps.logger?.info?.(
+    `[dsh-workbench] ${pkg} 按工作台模块安装${reload.applied ? '并已热加载' : '，等重启加载'}：profile 依赖 + 一条模块行`,
+  );
   const change: BundleChange = {
     application: reload.applied ? 'applied' : 'restart-required',
     stage: 'install',
@@ -472,7 +472,7 @@ async function installModuleRow(
     ...(skipped.length === 0 ? {} : { pendingBuilds: skipped }),
   };
   const module = deps.installed?.(pkg) ?? { kind: 'unknown', pkg };
-  return { change, module, supply: await deps.supplyAfter(module, change) };
+  return { change, module, supply: await deps.supplyAfter(module, change, deps.options) };
 }
 
 export async function installRouted(deps: BundleInstallDeps): Promise<BundleInstallOutcome> {

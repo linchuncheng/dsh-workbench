@@ -3,6 +3,7 @@ import type { BundleManager, Seam, SupplyPort } from '@dsh-workbench/shared/host
 import { PLUGIN_ID, hasModuleRow, profileBundlesOf, quoteShellArg, requireSupply, storeMismatchIn } from '@dsh-workbench/shared/host';
 import type { InstalledModule, ProfileModule } from '@dsh-workbench/shared/host';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
+import { approveBuildsOrProblem } from './market-pending-builds';
 import { replaceRouted, type ReplaceBundleDeps } from './market-route';
 import { verifyBundleUpdate } from './market-verify';
 import { swapExternally } from './market-swap-stuck';
@@ -23,6 +24,8 @@ export interface BundleUpdateDeps {
   readonly dshHome?: string | undefined;
   readonly profileName?: string | undefined;
   readonly prereleaseChannels?: (() => readonly string[]) | undefined;
+  readonly approvedBuilds?: readonly string[] | undefined;
+  readonly buildPolicyDirs?: readonly string[] | undefined;
   readonly swapWaitMs?: number | undefined;
   readonly swapPollMs?: number | undefined;
 }
@@ -111,6 +114,11 @@ export async function updateModuleBundle(
   deps: BundleUpdateDeps,
 ): Promise<BundleInstallOutcome | null> {
   const supply = deps.supply ?? requireSupply();
+  const problem = approveBuildsOrProblem(deps.approvedBuilds, [
+    deps.profileDir,
+    ...(deps.buildPolicyDirs ?? []),
+  ]);
+  if (problem !== undefined) throw new Error(problem);
   const found = (deps.modules?.() ?? []).find((item) => item.unit === unit);
   if (found === undefined) return null;
   if (found.local === true) {
@@ -163,6 +171,7 @@ export async function updateModuleBundle(
     forwarded === null
       ? await replaceRouted(deps.routeDeps, spec, {
           ...(registry === undefined ? {} : { registry }),
+          ...(deps.approvedBuilds === undefined ? {} : { approvedBuilds: deps.approvedBuilds }),
         })
       : {
           change: forwarded.change,

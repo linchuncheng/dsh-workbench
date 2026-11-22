@@ -137,6 +137,7 @@ export function AddModuleResult({ t, state }: { t: Translate; state: AddModuleSt
   });
   const name = outcome.module.kind === 'module' ? outcome.module.unit : outcome.module.pkg;
   const why = restartWhy(outcome.change, t);
+  const approving = builds.length > 0;
 
   return (
     <div className={styles.body}>
@@ -173,7 +174,7 @@ export function AddModuleResult({ t, state }: { t: Translate; state: AddModuleSt
         )}
       </div>
 
-      {kind === 'plugin' && plugin !== undefined ? (
+      {approving ? null : kind === 'plugin' && plugin !== undefined ? (
         <p className={styles.result}>{t('panels.market.add.installedPlugin', { ...runtimeTermsOf(t), name: plugin.name ?? plugin.pkg })}</p>
       ) : kind === 'failed' ? (
         <p className={styles.resultWarn} role="alert">
@@ -184,7 +185,7 @@ export function AddModuleResult({ t, state }: { t: Translate; state: AddModuleSt
           <p className={styles.resultWarn}>{t('panels.market.add.doneRestart')}</p>
           {why === undefined ? null : <p className={styles.resultMeta}>{why}</p>}
         </Fragment>
-      ) : kind === 'quiet' ? null : (
+      ) : kind === 'quiet' || outcome.supply.state === 'failed' ? null : (
         <p className={styles.result}>{t('panels.market.add.tookEffect')}</p>
       )}
 
@@ -199,11 +200,12 @@ export function AddModuleResult({ t, state }: { t: Translate; state: AddModuleSt
       )}
 
       {supply === undefined ||
+      approving ||
       (outcome.supply.state !== 'failed' && (kind === 'failed' || kind === 'cancelled')) ? null : (
         <p className={supplyTone(outcome.supply.state)}>{t(supply, { reason: outcome.supply.reason ?? '' })}</p>
       )}
-      {state.failure === null ? null : <p className={styles.problem}>{state.failure}</p>}
-      {outcome.change.errorDetail === undefined ? null : (
+      {state.failure === null || approving ? null : <p className={styles.problem}>{state.failure}</p>}
+      {outcome.change.errorDetail === undefined || approving ? null : (
         <Fragment>
           <p className={styles.detailLabel}>{t('panels.market.add.details')}</p>
           <p className={styles.detail}>{outcome.change.errorDetail}</p>

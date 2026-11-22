@@ -39,21 +39,28 @@ export function MarketSceneView({
   onBack,
 }: MarketBodyProps & MarketSceneExtras) {
   if (detailShared !== undefined) {
+    const sharedFailure = failed?.id === detailShared.id ? failed : null;
     return (
       <SharedDetailPage
         key={detailShared.id}
         t={t}
         row={detailShared}
         pending={pending}
-        failure={failed?.id === detailShared.id ? failed : null}
+        failure={sharedFailure}
         onBack={onBack}
         onAct={(action) => void act(detailShared.id, action)}
+        onApproveBuilds={() => {
+          if (sharedFailure?.pendingBuilds !== undefined && sharedFailure.action !== undefined) {
+            void act(detailShared.id, sharedFailure.action, { approvedBuilds: sharedFailure.pendingBuilds });
+          }
+        }}
         onRecheck={onRecheck}
         rechecking={rechecking}
       />
     );
   }
   if (detailRow !== undefined) {
+    const moduleFailure = failed?.id === detailRow.id ? failed : null;
     return (
       <MarketDetailPage
         key={detailRow.id}
@@ -61,7 +68,7 @@ export function MarketSceneView({
         row={detailRow}
         dependencies={detailDependencies}
         pending={pending}
-        failure={failed?.id === detailRow.id ? failed : null}
+        failure={moduleFailure}
         notice={notice}
         boardBusy={boardBusy}
         confirming={confirming}

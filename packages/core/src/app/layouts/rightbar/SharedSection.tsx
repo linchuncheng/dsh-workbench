@@ -5,8 +5,7 @@ import { Spinner } from '@dsh-workbench/shared';
 import { sharedActions, type SharedRow } from './market-rows';
 import { DependencyLine } from './dependency-line';
 import type { MarketFailure } from './market-row-types';
-import { FailureCard } from './FailureCard';
-import { failureCardOf } from './failure-card-text';
+import { MarketRowFailure } from './market-section';
 import { marketSectionIcon } from './market-section-icon';
 import { sharedRowKind } from './market-row-icon';
 import { ACTION_LABEL_KEY, PROGRESS_KEY, UPDATE_ACTIONS, type Pending } from './market-view-text';
@@ -56,6 +55,7 @@ function SharedLine({
   pending,
   failure,
   onAct,
+  onApprove,
   onOpenDetail,
   onRecheck,
   rechecking,
@@ -65,6 +65,7 @@ function SharedLine({
   pending: Pending | null;
   failure: MarketFailure | null;
   onAct: (action: MarketRowAction) => void;
+  onApprove?: (() => void) | undefined;
   onOpenDetail?: ((id: string) => void) | undefined;
   onRecheck: () => void;
   rechecking: boolean;
@@ -92,13 +93,13 @@ function SharedLine({
         <SharedActions t={t} actions={actions} running={running} locked={locked} onAct={onAct} />
       </div>
 
-      {failure === null ? null : failure.failure === undefined ? (
-        <div className={styles.marketFailure}>{failure.message}</div>
-      ) : (
-        <div className={styles.marketFailureSeat}>
-          <FailureCard t={t} model={failureCardOf(failure.failure, t)} onRecheck={onRecheck} rechecking={rechecking} />
-        </div>
-      )}
+      <MarketRowFailure
+        t={t}
+        failure={failure}
+        onRecheck={onRecheck}
+        rechecking={rechecking}
+        onApprove={onApprove}
+      />
     </li>
   );
 }
@@ -117,7 +118,11 @@ export function SharedSection({
   readonly rows: readonly SharedRow[];
   readonly pending: Pending | null;
   readonly failureOf: (id: string) => MarketFailure | null;
-  readonly act: (id: string, action: MarketRowAction) => Promise<void>;
+  readonly act: (
+    id: string,
+    action: MarketRowAction,
+    options?: { readonly approvedBuilds?: readonly string[] | undefined },
+  ) => Promise<void>;
   readonly onOpenDetail?: ((id: string) => void) | undefined;
   readonly onRecheck: () => void;
   readonly rechecking: boolean;
@@ -141,6 +146,12 @@ export function SharedSection({
             pending={pending}
             failure={failureOf(row.id)}
             onAct={(action) => void act(row.id, action)}
+            onApprove={() => {
+              const failed = failureOf(row.id);
+              if (failed?.pendingBuilds !== undefined && failed.action !== undefined) {
+                void act(row.id, failed.action, { approvedBuilds: failed.pendingBuilds });
+              }
+            }}
             onOpenDetail={onOpenDetail}
             onRecheck={onRecheck}
             rechecking={rechecking}

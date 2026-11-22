@@ -13,6 +13,7 @@ export function supplyPortOf(ctx: DshHostContext): SupplyPort {
   const pluginRuntimeField = modules.pluginRuntimeField;
   const cliCatalogPath = modules.cliCatalogPath;
   const vendorPluginsDir = modules.vendorPluginsDir;
+  const buildPolicyDirs = modules.buildPolicyDirs;
   const runtimeInstallCommand = modules.runtimeInstallCommand;
   return {
     env,
@@ -33,6 +34,7 @@ export function supplyPortOf(ctx: DshHostContext): SupplyPort {
     ...(pluginRuntimeField === undefined ? {} : { pluginRuntimeField: () => pluginRuntimeField() }),
     ...(cliCatalogPath === undefined ? {} : { cliCatalogPath: () => cliCatalogPath() }),
     ...(vendorPluginsDir === undefined ? {} : { vendorPluginsDir: () => vendorPluginsDir() }),
+    buildPolicyDirs: () => buildPolicyDirs?.() ?? [],
     ...(runtimeInstallCommand === undefined ? {} : { runtimeInstallCommand: () => runtimeInstallCommand() }),
     beforeLibInstall: () => modules.beforeLibInstall(),
     afterLibInstall: () => modules.afterLibInstall(),

@@ -241,6 +241,7 @@ export interface BundleModulePayload {
 export interface BundleSupplyPayload {
   readonly state: BundleSupplyState;
   readonly reason?: string;
+  readonly pendingBuilds?: readonly string[];
 }
 
 export type PluginPackageKind = 'runtime-plugin';

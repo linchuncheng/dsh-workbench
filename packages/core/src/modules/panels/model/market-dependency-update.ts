@@ -5,10 +5,13 @@ import {
   type SharedDependency,
 } from './market-dependency';
 import { dependencyStillBehind } from './market-verify';
+import { runInstallStep } from './market-pending-builds';
 
 export interface DependencyUpdateDeps {
   readonly capabilityOf: (unit: string, force?: boolean) => Promise<UnitCapability>;
   readonly runAll: (steps: readonly PluginPlanStep[]) => Promise<void>;
+  readonly approvedBuilds?: readonly string[] | undefined;
+  readonly buildPolicyDirs?: readonly string[] | undefined;
   readonly snapshot: () => Promise<readonly SharedDependency[]>;
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
 }
@@ -31,7 +34,12 @@ export async function updateDependencyRow(
     if (behind !== undefined) throw new Error(`这一行没有可执行的更新命令：${behind}`);
     return deps.snapshot();
   }
-  await deps.runAll(commands);
+  const head = commands[0];
+  const line = head === undefined || head.kind !== 'run' ? '' : head.line;
+  await runInstallStep({ command: line, steps: commands }, deps.approvedBuilds, deps.buildPolicyDirs ?? [], {
+    run: (one) => deps.runAll([{ kind: 'run', line: one }]),
+    runAll: deps.runAll,
+  });
   const after = new Map<string, UnitCapability>();
   for (const [index, manifest] of target.declarers.entries())
     after.set(manifest.id, await deps.capabilityOf(manifest.id, index === 0));

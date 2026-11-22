@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWorkspaceStore } from '@dsh-workbench/shared/host';
 const PLUGIN_MANIFEST_FILE = 'opencli-plugin.json';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
-import { profileModules } from '@dsh-workbench/shared/host';
+import { pendingBuildsOf, profileModules, recordPendingBuilds } from '@dsh-workbench/shared/host';
 import { syncModuleRows } from '@/shared/api/host/module-rows-sync';
 import { fakeSeamOf } from './seam-fake';
 import type { DshShell } from '@dsh-workbench/shared/host';
@@ -635,6 +635,7 @@ describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，
     });
 
     expect(supplyAfter).toHaveBeenCalledTimes(1);
+    expect(supplyAfter).toHaveBeenCalledWith(expect.anything(), expect.anything(), undefined);
     expect(outcome.supply).toMatchObject({ state: 'installed' });
     expect(outcome.change.application).toBe('applied');
   });
@@ -987,6 +988,30 @@ describe('模块安装遇到被拦的构建脚本：记账、可批准、批准�
     expect(outcome.change).toMatchObject({ application: 'applied', stage: 'install' });
     expect(outcome.change.pendingBuilds).toEqual(['sharp']);
     expect(warn.mock.calls[0]?.[0]).toContain('构建脚本没有运行');
+  });
+
+  it('★ 批准跨 profile 与插件策略目录：插件依赖的名字也能批，两本策略各改各的', async () => {
+    const profileDir = profileWith('packages:\n  - .\nallowBuilds:\n  sharp: set this to true or false\n');
+    const vendorDir = dirOf('vendor');
+    recordPendingBuilds(vendorDir, 'Ignored build scripts: @jackwener/opencli');
+    const supply = {
+      ...moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }),
+      buildPolicyDirs: () => [vendorDir],
+    } as SupplyPort;
+    const { deps } = rig({ spec: '@t/module-a', supply });
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir,
+      options: { approvedBuilds: ['sharp', '@jackwener/opencli'] },
+      runAll: async () => undefined,
+      syncRows: () => ({ added: [], removed: [], rows: [] }),
+    });
+
+    expect(policyOf(profileDir)).toContain('sharp: true');
+    expect(pendingBuildsOf(vendorDir)).toEqual([]);
+    expect(policyOf(vendorDir)).toContain('true');
+    expect(outcome.change.application).toBe('applied');
   });
 
   it('★ 带 approvedBuilds 重装：先把策略改成允许，再跑 pnpm', async () => {

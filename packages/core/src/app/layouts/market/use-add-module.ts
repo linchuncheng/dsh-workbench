@@ -18,6 +18,7 @@ import { useHostWrite } from '@/shared/hooks/use-host-write';
 import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
 import {
   heldWizardPhase,
+  pendingBuildsOfOutcome,
   previewOf,
   registryChoiceFrom,
   registryOf,
@@ -286,7 +287,7 @@ export function useAddModule(options: {
     failure,
     installFailure,
     removing,
-    builds: outcome?.change.pendingBuilds ?? [],
+    builds: outcome === null ? [] : pendingBuildsOfOutcome(outcome),
     setSpec,
     setChoice: choose,
     setCustom: chooseCustom,

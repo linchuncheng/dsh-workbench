@@ -29,11 +29,19 @@ export interface BundleInstallOptions {
   readonly route?: ProvisionInstallRoute | undefined;
 }
 
+export interface SupplyInstallOptions {
+  readonly approvedBuilds?: readonly string[] | undefined;
+}
+
 export type BundleSupply =
   | { readonly state: 'not-a-module' }
   | { readonly state: 'no-needs' }
   | { readonly state: 'installed'; readonly entry: MarketEntry }
-  | { readonly state: 'failed'; readonly reason: string }
+  | {
+      readonly state: 'failed';
+      readonly reason: string;
+      readonly pendingBuilds?: readonly string[] | undefined;
+    }
   | { readonly state: 'pending-restart' };
 
 export interface BundleInstallOutcome {
@@ -52,18 +60,18 @@ export interface BundleRemoveOutcome {
 
 export interface MarketService {
   list(): Promise<{ readonly modules: MarketEntry[]; readonly shared: readonly SharedDependency[] }>;
-  install(unit: string): Promise<MarketEntry>;
-  update(unit: string): Promise<MarketEntry>;
+  install(unit: string, options?: SupplyInstallOptions): Promise<MarketEntry>;
+  update(unit: string, options?: SupplyInstallOptions): Promise<MarketEntry>;
   uninstall(unit: string): Promise<UninstallResult>;
-  updateDependency(id: string): Promise<readonly SharedDependency[]>;
+  updateDependency(id: string, options?: SupplyInstallOptions): Promise<readonly SharedDependency[]>;
   installBundle(spec: string, options?: BundleInstallOptions): Promise<BundleInstallOutcome>;
   replaceBundle(spec: string, options?: BundleInstallOptions): Promise<BundleInstallOutcome>;
-  updateBundle(unit: string): Promise<BundleInstallOutcome | null>;
-  updateWorkbench(pkg: string): Promise<BundleInstallOutcome>;
+  updateBundle(unit: string, options?: SupplyInstallOptions): Promise<BundleInstallOutcome | null>;
+  updateWorkbench(pkg: string, options?: SupplyInstallOptions): Promise<BundleInstallOutcome>;
   migrateWorkbench(): Promise<{ readonly added: number; readonly files: number }>;
   dismissFollowUp(id: string): Promise<void>;
   removeBundle(pkg: string): Promise<BundleRemoveOutcome>;
   cancelInstall(requestId: string): Promise<BundleCancellation | null>;
-  updatePlugin(pkg: string): Promise<PluginUpdateOutcome>;
+  updatePlugin(pkg: string, options?: SupplyInstallOptions): Promise<PluginUpdateOutcome>;
   uninstallPlugin(pkg: string): Promise<PluginUninstallOutcome>;
 }

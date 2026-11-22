@@ -43,12 +43,22 @@ export function MarketDetailPage({
   readonly onBack: () => void;
   readonly onConfirming: (id: string | null) => void;
   readonly onDefault: (id: string, next: boolean) => Promise<void>;
-  readonly onAct: (id: string, action: MarketRowAction) => Promise<void>;
+  readonly onAct: (
+    id: string,
+    action: MarketRowAction,
+    options?: { readonly approvedBuilds?: readonly string[] | undefined },
+  ) => Promise<void>;
   readonly onRecheck: () => void;
   readonly rechecking: boolean;
   readonly dependencies?: readonly DetailDependency[] | undefined;
 }) {
   const [tab, setTab] = useState<DetailTab>('overview');
+  const retryAction = failure?.action;
+  const retryBuilds = failure?.pendingBuilds;
+  const onApproveBuilds =
+    retryAction === undefined || retryBuilds === undefined
+      ? undefined
+      : (): void => void onAct(row.id, retryAction, { approvedBuilds: retryBuilds });
   const info = useInstalledInfo(row.pkg);
   const runtimes = useRuntimeStatuses();
   const runtime =
@@ -69,6 +79,7 @@ export function MarketDetailPage({
           CONFIRM_ACTIONS.includes(action) ? onConfirming(row.id) : void onAct(row.id, action)
         }
         onDefault={(next) => void onDefault(row.id, next)}
+        onApproveBuilds={onApproveBuilds}
         onRecheck={onRecheck}
         rechecking={rechecking}
         tab={tab}

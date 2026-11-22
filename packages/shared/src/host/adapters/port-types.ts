@@ -112,6 +112,7 @@ export interface ModulePort {
   pluginRuntimeField?(): string;
   cliCatalogPath?(): string;
   vendorPluginsDir?(): string;
+  buildPolicyDirs?(): readonly string[];
   runtimeInstallCommand?(): string;
   beforeLibInstall(): void;
   afterLibInstall(): void;

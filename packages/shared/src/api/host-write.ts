@@ -22,4 +22,5 @@ export type WriteOutcome<T> =
       readonly detail?: string;
       readonly helpUrl?: string;
       readonly failure?: InstallFailure;
+      readonly pendingBuilds?: readonly string[];
     };

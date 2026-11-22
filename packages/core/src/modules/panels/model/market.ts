@@ -1,7 +1,6 @@
 import { basename } from 'node:path';
 import type { Need, UnitManifest } from '@dsh-workbench/shared';
 import { needsOf as needsOfManifest } from '@dsh-workbench/shared/host';
-import type { BundleChange } from '@/kernel/contract/bundle-install';
 import type { BundleManager, UnitCapability } from '@dsh-workbench/shared/host';
 import type {
   InstalledModule,
@@ -46,14 +45,16 @@ import { createEnvDropper } from './market-env';
 import type { RegistryFixDeps } from './market-registry';
 import { createPluginActions, type PluginReferences } from './plugin-actions';
 import { restartLogLine } from './market-restart';
+import { approveBuildsOrProblem, runInstallStep } from './market-pending-builds';
+import { createSupplyAfter } from './market-supply-after';
 import type { PluginLedger } from './plugin-ledger';
 import type {
   BundleInstallOptions,
   BundleInstallOutcome,
-  BundleSupply,
   MarketAction,
   MarketEntry,
   MarketService,
+  SupplyInstallOptions,
 } from './market-types';
 export type { SharedDependency } from './market-dependency';
 export type {
@@ -182,12 +183,11 @@ export function createMarketService(options: {
     return target;
   }
 
-  async function updateDependencyRow(id: string): Promise<readonly SharedDependency[]> {
-    const target = requireDependency(id);
-    return runDependencyUpdate(target, {
-      capabilityOf,
-      runAll,
-      snapshot: async () => (await snapshot()).shared,
+  function updateDependencyRow(id: string, options?: SupplyInstallOptions): Promise<readonly SharedDependency[]> {
+    return runDependencyUpdate(requireDependency(id), {
+      capabilityOf, runAll, snapshot: async () => (await snapshot()).shared,
+      ...(options?.approvedBuilds === undefined ? {} : { approvedBuilds: options.approvedBuilds }),
+      buildPolicyDirs: supply.buildPolicyDirs?.() ?? [],
       ...(logger === undefined ? {} : { logger }),
     });
   }
@@ -223,20 +223,10 @@ export function createMarketService(options: {
     }
   }
 
-  async function supplyAfter(module: InstalledModule, change: BundleChange): Promise<BundleSupply> {
-    if (module.kind !== 'module') return { state: 'not-a-module' };
-    const declared = declaredNeeds(module.unit);
-    if (declared === undefined) {
-      return change.application === 'restart-required' ? { state: 'pending-restart' } : { state: 'no-needs' };
-    }
-    const needs = declared.filter((need) => need.kind === 'extension' || need.kind === 'lib').length;
-    if (needs === 0) return { state: 'no-needs' };
-    try {
-      return { state: 'installed', entry: await service.install(module.unit) };
-    } catch (error) {
-      return { state: 'failed', reason: error instanceof Error ? error.message : String(error) };
-    }
-  }
+  const supplyAfter = createSupplyAfter({
+    declaredNeeds,
+    install: (unit, options) => service.install(unit, options),
+  });
 
   const registryFix: RegistryFixDeps = {
     ...(registries === undefined ? {} : { registries }),
@@ -295,7 +285,7 @@ export function createMarketService(options: {
       return snapshot();
     },
 
-    async install(unit) {
+    async install(unit, options) {
       requireKnown(unit);
       const declared = declaredNeeds(unit);
       const before = await probeBeforeInstall(unit, declared, capabilityOf);
@@ -321,8 +311,8 @@ export function createMarketService(options: {
         }
         logger?.info?.(`[dsh-workbench] 跑安装命令：${state.kind}:${state.name} → ${state.command}`);
         if (state.kind === 'lib') supply.beforeLibInstall();
-        if (state.steps === undefined || state.steps.length === 0) await run(state.command);
-        else await runAll(state.steps);
+        const step = { command: state.command, ...(state.steps === undefined ? {} : { steps: state.steps }) };
+        await runInstallStep(step, options?.approvedBuilds, supply.buildPolicyDirs?.() ?? [], { run, runAll });
         supply.afterLibInstall();
       }
       await probeSharing({ action: 'install', unit });
@@ -332,8 +322,12 @@ export function createMarketService(options: {
       return looseEntry(unit, after);
     },
 
-    async update(unit) {
+    async update(unit, options) {
       requireKnown(unit);
+      const approved = options?.approvedBuilds;
+      const buildDirs = supply.buildPolicyDirs?.() ?? [];
+      const runLine = (line: string): Promise<void> =>
+        runInstallStep({ command: line }, approved, buildDirs, { run, runAll });
       const before = await capabilityOf(unit, true, declaredNeeds(unit));
       const stale = before.needs.filter(
         (state) =>
@@ -349,9 +343,9 @@ export function createMarketService(options: {
         if (withLibs) supply.beforeLibInstall();
         try {
           if (merged !== undefined) {
-            await run(merged);
+            await runLine(merged);
           } else {
-            for (const line of lines) await run(line);
+            for (const line of lines) await runLine(line);
           }
         } finally {
           if (withLibs) supply.afterLibInstall();
@@ -457,7 +451,7 @@ export function createMarketService(options: {
       return installControl.cancel(requestId) ?? requireBundles().cancel(requestId);
     },
 
-    async updateBundle(unit) {
+    async updateBundle(unit, options) {
       const manager = requireBundles();
       const home = dshHome?.();
       const profile = profileName?.() ?? (profileDir === undefined || profileDir === null ? undefined : basename(profileDir));
@@ -471,6 +465,8 @@ export function createMarketService(options: {
         ...(profileDir === undefined || profileDir === null ? {} : { profileDir }),
         ...(home === undefined ? {} : { dshHome: home }),
         ...(prereleaseChannels === undefined ? {} : { prereleaseChannels }),
+        ...(options?.approvedBuilds === undefined ? {} : { approvedBuilds: options.approvedBuilds }),
+        buildPolicyDirs: supply.buildPolicyDirs?.() ?? [],
       ...(reconcile === undefined ? {} : { reconcile }),
         routeDeps: routeDeps(manager),
         sweep: async () => {
@@ -482,7 +478,10 @@ export function createMarketService(options: {
         ...(logger === undefined ? {} : { logger }),
       });
     },
-    async updateWorkbench(pkg) {
+    async updateWorkbench(pkg, installOptions) {
+      const dirs = [profileDir, ...(supply.buildPolicyDirs?.() ?? [])];
+      const problem = approveBuildsOrProblem(installOptions?.approvedBuilds, dirs);
+      if (problem !== undefined) throw new Error(problem);
       return updateWorkbenchOnce({
         supply,
         asked: pkg,
@@ -501,15 +500,14 @@ export function createMarketService(options: {
         },
         ...(options.selfUpdate === undefined ? {} : { selfUpdate: options.selfUpdate }),
         ...(prereleaseChannels === undefined ? {} : { prereleaseChannels }),
-      ...(reconcile === undefined ? {} : { reconcile }),
         running: runningVersionOf(import.meta.url),
         dshVersion: () => (profileDir === undefined || profileDir === null ? undefined : dshVersionIn(profileDir)),
         ...(logger === undefined ? {} : { logger }),
       });
     },
 
-    async updatePlugin(pkg) {
-      const outcome = await plugins.update(pkg);
+    async updatePlugin(pkg, options) {
+      const outcome = await plugins.update(pkg, options);
       await reprobePlugin(pkg, outcome.name);
       return outcome;
     },

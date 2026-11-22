@@ -5,6 +5,12 @@ export function writeRoute(channel: WriteChannel, resource: string): string {
   return `${channel}/${resource}`;
 }
 
+function pendingBuildsOf(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const names = value.filter((name): name is string => typeof name === 'string' && name !== '');
+  return names.length === 0 ? undefined : names;
+}
+
 function installFailureOf(value: unknown): InstallFailure | undefined {
   if (typeof value !== 'object' || value === null) return undefined;
   const record = value as Record<string, unknown>;
@@ -22,6 +28,7 @@ export function writeOutcomeOf<T>(response: ApiResponse<T> | null, networkText: 
             readonly detail?: unknown;
             readonly helpUrl?: unknown;
             readonly failure?: unknown;
+            readonly pendingBuilds?: unknown;
           }
         | undefined;
       readonly text?: unknown;
@@ -32,12 +39,13 @@ export function writeOutcomeOf<T>(response: ApiResponse<T> | null, networkText: 
     const helpUrl =
       typeof box.error?.helpUrl === 'string' && box.error.helpUrl !== '' ? box.error.helpUrl : undefined;
     const failure = installFailureOf(box.error?.failure);
+    const pendingBuilds = pendingBuildsOf(box.error?.pendingBuilds);
     return {
       ok: false,
       message: own ?? fallback,
       ...(detail === undefined ? {} : { detail }),
       ...(helpUrl === undefined ? {} : { helpUrl }),
-      ...(failure === undefined ? {} : { failure }),
+      ...(failure === undefined ? {} : { failure }), ...(pendingBuilds === undefined ? {} : { pendingBuilds }),
     };
   }
   return { ok: true, value: response };

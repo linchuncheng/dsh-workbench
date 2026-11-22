@@ -20,6 +20,7 @@ import {
 import { UPDATE_ACTIONS, actionLabelKey, depsOnlyInstall, progressKeyOf, type Pending } from './market-view-text';
 import { packageIcon, marketRowKind } from './market-row-icon';
 import type { MarketSectionIcon } from './market-section-icon';
+import { BuildApproval } from './BuildApproval';
 import { FailureCard } from './FailureCard';
 import { failureCardOf } from './failure-card-text';
 import styles from '../market/MarketPage.module.css';
@@ -127,13 +128,23 @@ export function MarketRowFailure({
   failure,
   onRecheck,
   rechecking,
+  onApprove,
 }: {
   readonly t: Translate;
   readonly failure: MarketFailure | null;
   readonly onRecheck: () => void;
   readonly rechecking: boolean;
+  readonly onApprove?: (() => void) | undefined;
 }) {
   if (failure === null) return null;
+  const builds = failure.pendingBuilds ?? [];
+  if (builds.length > 0 && onApprove !== undefined) {
+    return (
+      <div className={styles.marketFailureSeat}>
+        <BuildApproval t={t} packages={builds} onApprove={onApprove} />
+      </div>
+    );
+  }
   const model =
     failure.card ?? (failure.failure === undefined ? undefined : failureCardOf(failure.failure, t));
   if (model !== undefined) {
@@ -266,6 +277,7 @@ function MarketLine({
   pending,
   failure,
   onAct,
+  onApprove,
   onDefault,
   onOpenDetail,
   boardBusy,
@@ -277,6 +289,7 @@ function MarketLine({
   pending: Pending | null;
   failure: MarketFailure | null;
   onAct: (action: MarketRowAction) => void;
+  onApprove?: (() => void) | undefined;
   onDefault?: ((next: boolean) => void) | undefined;
   onOpenDetail?: ((id: string) => void) | undefined;
   boardBusy?: boolean | undefined;
@@ -339,7 +352,7 @@ function MarketLine({
         />
       </div>
 
-      <MarketRowFailure t={t} failure={failure} onRecheck={onRecheck} rechecking={rechecking} />
+      <MarketRowFailure t={t} failure={failure} onRecheck={onRecheck} rechecking={rechecking} onApprove={onApprove} />
     </li>
   );
 }
@@ -369,7 +382,7 @@ export function MarketSection({
   readonly rows: readonly MarketRow[];
   readonly pending: Pending | null;
   readonly failureOf: (id: string) => MarketFailure | null;
-  readonly act: (id: string, action: MarketRowAction) => Promise<void>;
+  readonly act: (id: string, action: MarketRowAction, options?: { approvedBuilds?: readonly string[] | undefined }) => Promise<void>;
   readonly onDefault?: ((id: string, next: boolean) => void) | undefined;
   readonly onOpenDetail?: ((id: string) => void) | undefined;
   readonly boardBusy?: boolean | undefined;
@@ -411,6 +424,12 @@ export function MarketSection({
               pending={pending}
               failure={failureOf(row.id)}
               onAct={(action) => request(row.id, action)}
+              onApprove={() => {
+                const failed = failureOf(row.id);
+                if (failed?.pendingBuilds !== undefined && failed.action !== undefined) {
+                  void act(row.id, failed.action, { approvedBuilds: failed.pendingBuilds });
+                }
+              }}
               onDefault={(next) => onDefault?.(row.id, next)}
               onOpenDetail={onOpenDetail}
               boardBusy={boardBusy}
