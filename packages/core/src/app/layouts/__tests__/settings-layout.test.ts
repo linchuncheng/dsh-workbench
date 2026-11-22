@@ -6,21 +6,24 @@ const section = readFileSync(new URL('workbench-settings/WorkbenchSettingsSectio
 
 const at = (needle: string): number => section.indexOf(needle);
 
-describe('设置页顺序：先设置组，再整份配置', () => {
-  it('★ 三个设置组由 registry 渲染，排在整份配置之前', () => {
-    expect(at('SETTINGS_GROUPS.map')).toBeGreaterThan(-1);
-    expect(at("t('workbenchSettings.wholesale')")).toBeGreaterThan(at('SETTINGS_GROUPS.map'));
+describe('设置页：一行一个设置，整份配置的操作收在「高级」', () => {
+  it('★ 设置行按固定顺序排，中间不插分组标题', () => {
+    expect(at('<SidebarEditionItem')).toBeGreaterThan(-1);
+    expect(at('{settingsPickRows(t)}')).toBeGreaterThan(at('<SidebarEditionItem'));
+    expect(at('<McpOnDemandItem')).toBeGreaterThan(at('{settingsPickRows(t)}'));
+    expect(at('<UpdatePrereleaseItem')).toBeGreaterThan(at('<McpOnDemandItem'));
+    expect(at("t('workbenchSettings.advanced')")).toBeGreaterThan(at('<UpdatePrereleaseItem'));
   });
 
-  it('★ 配置同步与新建工作台留在「整个工作台的配置」组里', () => {
-    const wholesale = section.slice(at("t('workbenchSettings.wholesale')"));
-    expect(wholesale).toContain('<ConfigSyncItem');
-    expect(wholesale).toContain('<NewWorkbenchItem');
+  it('★ 配置同步与新建工作台都在「高级」里', () => {
+    const advanced = section.slice(at("t('workbenchSettings.advanced')"));
+    expect(advanced).toContain('<ConfigSyncItem');
+    expect(advanced).toContain('<NewWorkbenchItem');
   });
 
-  it('★ 只放设置与配置操作：不放只读信息', () => {
+  it('★ 只放设置与配置操作：不放只读信息，也不另起分组', () => {
     expect(section).not.toContain('AdapterSetItem');
     expect(section).not.toContain('WorkbenchFacts');
-    expect(section).not.toContain('workbenchSettings.environment');
+    expect(section).not.toContain('SettingsGroup');
   });
 });

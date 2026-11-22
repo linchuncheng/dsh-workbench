@@ -3,8 +3,7 @@
   display: flex;
   align-items: center;
   gap: var(--wb-len-8);
-  min-width: var(--wb-len-120);
-  max-width: var(--wb-len-240);
+  width: var(--wb-len-180);
   min-height: var(--wb-len-28);
   padding: var(--wb-len-4) var(--wb-len-10);
   border: var(--wb-len-0-5) solid var(--dsw-alias-border-l4);

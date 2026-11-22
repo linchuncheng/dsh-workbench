@@ -49,12 +49,6 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
-.scope {
-  font-size: var(--dsw-font-xxs-12-font-size);
-  line-height: var(--wb-line-18);
-  color: var(--dsw-alias-label-secondary);
-}
-
 .tail {
   flex: none;
   display: inline-flex;

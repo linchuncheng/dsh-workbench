@@ -14,7 +14,6 @@ export interface WorkbenchToggleItemProps {
   readonly title: string;
   readonly description: string;
   readonly failed: string;
-  readonly hint?: string | undefined;
 }
 
 export function WorkbenchToggleItem({
@@ -23,7 +22,6 @@ export function WorkbenchToggleItem({
   title,
   description,
   failed,
-  hint,
 }: WorkbenchToggleItemProps): JSX.Element {
   const settings = useWorkbenchSettings(t, failed);
   const [override, setOverride] = useState<boolean | null>(null);
@@ -41,7 +39,6 @@ export function WorkbenchToggleItem({
     <SettingsRow
       title={title}
       description={description}
-      hint={hint}
       error={settings.error}
       control={
         <SettingsControl t={t} readFailed={settings.readFailed} onRetry={settings.retry}>

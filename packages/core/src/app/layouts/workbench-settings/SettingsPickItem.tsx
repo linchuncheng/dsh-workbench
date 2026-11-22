@@ -24,7 +24,6 @@ export interface SettingsPickItemProps<TCatalog> {
   readonly t: Translate;
   readonly title: string;
   readonly description: string;
-  readonly hint?: string | undefined;
   readonly catalogRoute: string;
   readonly settingsFailedText: string;
   readonly catalogFailedText: string;
@@ -81,7 +80,6 @@ export function SettingsPickItem<TCatalog>(props: SettingsPickItemProps<TCatalog
     <SettingsRow
       title={props.title}
       description={props.description}
-      hint={props.hint}
       error={
         write.failed ??
         (settingsFailed ? props.settingsFailedText : catalogFailed ? props.catalogFailedText : null)

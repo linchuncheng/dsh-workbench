@@ -1,7 +1,7 @@
 /** 「工作台设置」这一组的词条：配置同步 / 新建工作台。 */
 export const zhSettings = {
   'profileCreate.nav': '新建工作台',
-  'profileCreate.lead': '用现有配置复制一份独立的工作台配置。',
+  'profileCreate.lead': '复制一份独立的工作台配置。',
   'profileCreate.name': '新工作台的名字',
   'profileCreate.nameHint': '例如 wb2（只用字母、数字、点、下划线或短横线）',
   'profileCreate.source': '来源工作台配置',
@@ -20,10 +20,9 @@ export const zhSettings = {
   'profileCreate.reading': '正在读取工作台配置…',
   'profileCreate.noProfiles': '这台机器上还没有可用的来源工作台配置。',
   'profileCreate.failed': '创建失败，请查看下面的输出。',
-  'profileCreate.scope': '影响范围：当前工作台不受影响；新工作台要单独启动。',
 
   'configSync.nav': '配置同步',
-  'configSync.lead': '只同步修改已有插件设置的行；挂载新插件的行不会同步。',
+  'configSync.lead': '只同步已有插件的设置行；新插件的行不同步。',
   'configSync.source': '来源',
   'configSync.sourceBroken': '无法读取它的配置',
   'configSync.sourceRows': '{name} 中有 {count} 行可以同步',
@@ -63,10 +62,9 @@ export const zhSettings = {
   'configSync.noSource': '这台机器上只有工作台这一份配置，没有可同步的来源',
   'configSync.emptyProviders': '工作台还没有配置模型供应商。可以从上方来源同步模型供应商相关行，或直接到「模型」中配置。',
   'configSync.failed': '同步失败，请重试。',
-  'configSync.scope': '影响范围：只写这份工作台的配置文件；会话、项目与已安装的模块不动。',
 
-  'diyPresetSource.nav': '工作台 DIY 继承自',
-  'diyPresetSource.lead': '「工作台 DIY」用到的工具与技能从这个模式取；默认标准模式。',
+  'diyPresetSource.nav': 'DIY 模式继承自',
+  'diyPresetSource.lead': 'DIY 模式的基础能力来自于这个模式；新会话生效。',
   'diyPresetSource.standard': '标准模式',
   'diyPresetSource.ptc': 'PTC 模式',
   'diyPresetSource.minimal': '极简模式',
@@ -84,7 +82,7 @@ export const zhSettings = {
 /** 上面那组的中文对照。 */
 export const enSettings: Record<keyof typeof zhSettings, string> = {
   'profileCreate.nav': 'New workbench',
-  'profileCreate.lead': 'Copy the existing configuration into a separate workbench configuration.',
+  'profileCreate.lead': 'Copies this configuration into a separate workbench.',
   'profileCreate.name': 'New workbench name',
   'profileCreate.nameHint': 'e.g. wb2 (letters, digits, dot, underscore or dash)',
   'profileCreate.source': 'Source configuration',
@@ -103,10 +101,9 @@ export const enSettings: Record<keyof typeof zhSettings, string> = {
   'profileCreate.reading': 'Reading workbench configurations…',
   'profileCreate.noProfiles': 'This machine has no source configuration yet.',
   'profileCreate.failed': 'The workbench was not created; see the output below.',
-  'profileCreate.scope': 'Impact: the current workbench is not affected; the new one starts separately.',
 
   'configSync.nav': 'Config sync',
-  'configSync.lead': 'Only rows that change settings of plugins the workbench already has are synced; rows that mount a new plugin are not.',
+  'configSync.lead': 'Syncs settings rows of plugins you already have; rows that add plugins are skipped.',
   'configSync.source': 'Source',
   'configSync.sourceBroken': 'Cannot read its configuration',
   'configSync.sourceRows': '{name} has {count} rows that can be synced',
@@ -146,10 +143,9 @@ export const enSettings: Record<keyof typeof zhSettings, string> = {
   'configSync.noSource': 'This machine has only this workbench configuration and no source to sync from',
   'configSync.emptyProviders': 'The workbench has no model providers configured yet. Sync the model-provider rows from a source above, or configure them directly under Models.',
   'configSync.failed': 'Sync failed. Try again.',
-  'configSync.scope': 'Impact: writes only this workbench configuration; sessions, projects and installed modules are untouched.',
 
-  'diyPresetSource.nav': 'Workbench DIY inherits from',
-  'diyPresetSource.lead': 'Tools and skills for Workbench DIY come from this mode; Standard mode by default.',
+  'diyPresetSource.nav': 'DIY mode inherits from',
+  'diyPresetSource.lead': 'The base capabilities of DIY mode come from this mode. New sessions only.',
   'diyPresetSource.standard': 'Standard mode',
   'diyPresetSource.ptc': 'PTC mode',
   'diyPresetSource.minimal': 'Minimal mode',

@@ -4,10 +4,9 @@ import { WorkbenchToggleItem } from './WorkbenchToggleItem';
 
 export interface McpOnDemandItemProps {
   readonly t: Translate;
-  readonly hint?: string | undefined;
 }
 
-export function McpOnDemandItem({ t, hint }: McpOnDemandItemProps): JSX.Element {
+export function McpOnDemandItem({ t }: McpOnDemandItemProps): JSX.Element {
   return (
     <WorkbenchToggleItem
       t={t}
@@ -15,7 +14,6 @@ export function McpOnDemandItem({ t, hint }: McpOnDemandItemProps): JSX.Element 
       title={t('mcpOnDemand.nav')}
       description={t('mcpOnDemand.lead')}
       failed={t('mcpOnDemand.failed')}
-      hint={hint}
     />
   );
 }
