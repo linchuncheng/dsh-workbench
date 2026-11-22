@@ -60,6 +60,12 @@ describe('左栏那枚徽标：装的过程中 / 刚装完那一下（接线判�
     expect(panel).toContain('settling={mock === undefined ? held : undefined}');
   });
 
+  it('★ 装模块一步到位：装完包接着装它声明的依赖（用户理解的「安装」）', () => {
+    const dialog = read('market/use-add-module.ts');
+
+    expect(dialog).toContain("write.send({ action: 'install', unit })");
+  });
+
   it('★ 强探之后补一次：t=0 那拍模块还没加载起来，读数得再刷一次', () => {
     const reload = read('market/use-market-reload.ts');
 

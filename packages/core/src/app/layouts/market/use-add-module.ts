@@ -160,7 +160,7 @@ export function useAddModule(options: {
           ...(preset?.route === undefined ? {} : { route: preset.route }),
           ...(approvedBuilds.length === 0 ? {} : { approvedBuilds: [...approvedBuilds] }),
         })
-        .then((response) => {
+        .then(async (response) => {
           if (generationRef.current !== mine) return;
           if (!response.ok) {
             setFailure(response.message);
@@ -176,6 +176,15 @@ export function useAddModule(options: {
             ...(value.plugin === undefined ? {} : { plugin: value.plugin }),
           });
           publishMarketApplied(appliedUnitsOf(value));
+          const unit = value.module.kind === 'module' ? value.module.unit : undefined;
+          if (unit !== undefined) {
+            const deps = await write.send({ action: 'install', unit });
+            if (generationRef.current !== mine) return;
+            if (!deps.ok) {
+              setFailure(deps.message);
+              setInstallFailure(deps.failure ?? null);
+            }
+          }
           setPhase('result');
           if (value.change.application === 'applied' || value.change.application === 'restart-required') {
             onInstalled();
