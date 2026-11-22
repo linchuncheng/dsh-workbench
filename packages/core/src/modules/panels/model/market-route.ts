@@ -28,6 +28,7 @@ export interface SyncRowsSnapshot {
 export interface BundleInstallDeps {
   readonly spec: string;
   readonly options?: BundleInstallOptions | undefined;
+  readonly pkgHint?: string | undefined;
   readonly registry?: string | undefined;
   readonly command: string;
   readonly seam?: Seam | undefined;
@@ -223,7 +224,7 @@ export async function replaceRouted(
   if (route?.kind === 'dsh-module') {
     return installAsModule(rest, spec, options, route.pkg ?? pkgNameOf(spec));
   }
-  return retryBundle(deps, spec, options, true);
+  return retryBundle({ ...deps, pkgHint: route?.pkg }, spec, options, true);
 }
 
 function installOptions(options: BundleInstallOptions | undefined) {
@@ -250,7 +251,7 @@ async function settle(
   options: BundleInstallOptions | undefined,
   change: BundleChange,
 ): Promise<BundleInstallOutcome> {
-  const pkg = bundleNameOf(change, spec);
+  const pkg = deps.pkgHint ?? bundleNameOf(change, spec);
   const module = deps.installed?.(pkg) ?? { kind: 'unknown', pkg };
   const registry =
     options?.registry ?? (module.kind === 'module' ? module.registry : undefined);
@@ -260,10 +261,7 @@ async function settle(
     registry,
     module.kind === 'module' ? module.version : undefined,
   );
-  if (module.kind === 'module') {
-    await wireModule(deps, pkg);
-    await reloadRows(deps, pkg, (deps.syncRows?.()?.rows ?? []).filter((one) => one.name === pkg).map((one) => one.id));
-  }
+  await wireModule(deps, pkg);
   return { change, module, supply: await deps.supplyAfter(module, change) };
 }
 
@@ -488,7 +486,9 @@ export async function installRouted(deps: BundleInstallDeps): Promise<BundleInst
   if (route?.kind === 'dsh-module') {
     return installModuleRow(deps, spec, route.pkg ?? pkgNameOf(spec));
   }
-  if (route === undefined || route.kind === 'dsh-bundle') return retryBundle(deps, spec, options, false);
+  if (route === undefined || route.kind === 'dsh-bundle') {
+    return retryBundle({ ...deps, ...(route?.pkg === undefined ? {} : { pkgHint: route.pkg }) }, spec, options, false);
+  }
 
   const pkg = route.pkg ?? pkgNameOf(spec);
   if (route.kind === 'neither') {

@@ -871,6 +871,34 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
     expect(outcome.change.application).toBe('applied');
   });
 
+  it('★ git 路径末段不是包名（/packages/module-hello）→ 用源给的包名补名单，别拿末段瞎猜', async () => {
+    const dir = profileAt({
+      pkg: '@dsh-workbench/module-hello',
+      version: '1.1.14-beta.2',
+      bundles: [],
+      shipsBundle: true,
+    });
+    const spec = `github:org/market#${'a'.repeat(40)}&path:/packages/module-hello`;
+    const { deps } = rig({
+      spec,
+      supply: pluginSupply(() => ({ kind: 'dsh-bundle', pkg: '@dsh-workbench/module-hello' })),
+    });
+    const { manager, setEnabled } = togglingManager(dir, (request) => ({
+      application: 'applied',
+      stage: 'install',
+      changed: true,
+      target: request.spec,
+    }));
+
+    const outcome = await installRouted({ ...deps, manager, profileDir: dir });
+
+    expect(setEnabled).toHaveBeenCalledWith('@dsh-workbench/module-hello', true);
+    expect(outcome.change.application).toBe('applied');
+    expect(
+      JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).dsh.profile.bundles,
+    ).toEqual(['@dsh-workbench/module-hello']);
+  });
+
   it('★ 源只说"是模块"、没给包名，spec 又是 git 路径式 → 仍按 path 末段认包名', async () => {
     const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: true });
     const spec = `git+ssh://git@host/org/repo.git#${'a'.repeat(40)}&path:/artifacts/@t/module-a`;
