@@ -57,6 +57,19 @@ export function bumpCapabilityEpoch(): void {
   epoch += 1;
 }
 
+const REPROBE_MS = 3000;
+
+let reprobe: ReturnType<typeof setTimeout> | undefined;
+
+export function scheduleCapabilityReprobe(delayMs: number = REPROBE_MS): void {
+  if (reprobe !== undefined) clearTimeout(reprobe);
+  reprobe = setTimeout(() => {
+    reprobe = undefined;
+    bumpCapabilityEpoch();
+    void runCapabilityRead({ force: true, silent: true });
+  }, delayMs);
+}
+
 let current: CapabilityMap | null = null;
 
 const listeners = new Set<() => void>();

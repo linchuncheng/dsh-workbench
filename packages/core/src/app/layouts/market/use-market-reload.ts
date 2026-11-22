@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { bumpCapabilityEpoch, markNextProbeSilent } from '@/shared/hooks/use-capabilities';
+import {
+  bumpCapabilityEpoch,
+  markNextProbeSilent,
+  scheduleCapabilityReprobe,
+} from '@/shared/hooks/use-capabilities';
 import { MARKET_STALE_MS, shouldProbeOnEnter } from '../rightbar/market-freshness';
 import {
   bumpModuleVersionsEpoch,
@@ -38,6 +42,7 @@ export function useMarketReload(input: MarketReloadInput): MarketReload {
         bumpModuleVersionsEpoch();
         bumpCapabilityEpoch();
         forceProbe();
+        scheduleCapabilityReprobe();
       } else {
         reloadCapability();
       }

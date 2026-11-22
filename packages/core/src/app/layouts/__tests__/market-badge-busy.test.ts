@@ -60,6 +60,12 @@ describe('左栏那枚徽标：装的过程中 / 刚装完那一下（接线判�
     expect(panel).toContain('settling={mock === undefined ? held : undefined}');
   });
 
+  it('★ 强探之后补一次：t=0 那拍模块还没加载起来，读数得再刷一次', () => {
+    const reload = read('market/use-market-reload.ts');
+
+    expect(reload).toContain('scheduleCapabilityReprobe()');
+  });
+
   it('★ 市场页也带上「正在装」：那几拍的行说「检测中」，不落「状态未知 + 重启再试」', () => {
     const panel = read('market/panel.tsx');
     const view = read('rightbar/MarketView.tsx');
