@@ -35,7 +35,6 @@ import {
 } from './add-module-registry-prefs';
 import { appliedUnitsOf } from '../rightbar/market-change';
 import { publishMarketApplied, usePublishMarketInstalling } from '../rightbar/market-install';
-import { markMarketRestart } from '../rightbar/market-restart';
 
 export type { AddModulePhase, AddModulePreview } from './add-module-text';
 
@@ -177,10 +176,6 @@ export function useAddModule(options: {
             ...(value.plugin === undefined ? {} : { plugin: value.plugin }),
           });
           publishMarketApplied(appliedUnitsOf(value));
-          const restarted = value.module?.kind === 'module' ? value.module.unit : undefined;
-          if (value.change.application === 'restart-required' && restarted !== undefined) {
-            markMarketRestart([restarted]);
-          }
           setPhase('result');
           if (value.change.application === 'applied' || value.change.application === 'restart-required') {
             onInstalled();

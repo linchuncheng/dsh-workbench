@@ -171,7 +171,7 @@ export function installedRows(
     const drifted = !outdated && declared !== undefined && declared !== module.installed;
     const loaded = titles.has(module.unit);
     const refused = refusalReasons(module.refused, module.clientRefused);
-    const pending = !loaded && refused.length === 0;
+    const missingRoster = !loaded && refused.length === 0;
     const titleKey = titles.get(module.unit);
     const remembered = titleKey === undefined ? names?.get(module.unit) : undefined;
     const note =
@@ -188,9 +188,9 @@ export function installedRows(
       id: module.unit,
       titleKey: titleKey ?? module.unit,
       ...(remembered === undefined ? {} : { label: remembered }),
-      state: outdated ? 'outdated' : refused.length > 0 ? 'unusable' : pending ? 'inactive' : 'installed',
-      ...(pending
-        ? { hint: { key: 'panels.market.moduleRestartHint' } as const }
+      state: outdated ? 'outdated' : refused.length > 0 ? 'unusable' : missingRoster ? 'unknown' : 'installed',
+      ...(missingRoster && !outdated
+        ? { hint: { key: 'panels.market.uncheckedHint' } as const }
         : blocked === undefined
           ? {}
           : { hint: updateBlockHintOf(blocked) }),
@@ -277,10 +277,8 @@ function stateOf(
   capability: CapabilityMap[string] | undefined,
   manifest: UnitManifest,
   installed: boolean,
-  restarting: boolean,
 ): MarketState {
   if (capability === undefined) {
-    if (restarting) return 'inactive';
     return installed && supplyNeedsOf(manifest).length === 0 ? 'installed' : 'unknown';
   }
   if (capability.released === true) return 'missing';
@@ -403,11 +401,11 @@ export function marketUpdatesOf(
 
 export function checkingRows(
   rows: readonly MarketRow[],
-  scope: { readonly all: boolean; readonly units: ReadonlySet<string> },
+  scope: { readonly units: ReadonlySet<string> },
 ): MarketRow[] {
   return rows.map((row) => {
     if (row.state !== 'unknown' && row.state !== 'unchecked') return row;
-    if (!scope.all && !scope.units.has(row.id)) return row;
+    if (!scope.units.has(row.id)) return row;
     return { ...row, state: 'checking', hint: undefined, note: undefined };
   });
 }
@@ -419,7 +417,6 @@ export function marketRows(
   defaults: ReadonlySet<string> = new Set(),
   changed: Readonly<Record<string, number>> = {},
   held: ReadonlySet<string> = new Set(),
-  restartPending: ReadonlySet<string> = new Set(),
 ): MarketRow[] {
   const rows: MarketRow[] = [];
   for (const manifest of manifests) {
@@ -431,8 +428,8 @@ export function marketRows(
     const state: MarketState =
       capabilities === null
         ? 'checking'
-        : stateOf(capability, manifest, entry !== undefined, restartPending.has(manifest.id));
-    const onMachine = isOnMachine(state);
+        : stateOf(capability, manifest, entry !== undefined);
+    const onMachine = isOnMachine(state) || entry !== undefined;
     const reAdopt = capability?.released === true && !installDeclared;
 
     const moduleUpdate =
@@ -470,7 +467,7 @@ export function marketRows(
       state: shown,
       canInstall: !depsOnly && state !== 'installed' && (install || reAdopt),
       canUpdate: onMachine && isOutdated(capability),
-      canUninstall: onMachine,
+      canUninstall: entry !== undefined || isOnMachine(state),
       ...(staleDeps.length === 0 ? {} : { staleDeps: staleDeps.length }),
       ...(hint === undefined ? {} : { hint }),
       ...(entry === undefined

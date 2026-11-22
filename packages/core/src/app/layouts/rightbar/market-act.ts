@@ -4,7 +4,6 @@ import type { BundleChange } from '@/kernel/contract/bundle-install';
 import type { MarketFailure, MarketRow } from './market-row-types';
 import { marketRowTitle, type MarketRowAction } from './market-rows';
 import { changeFailure, changeOf } from './market-change';
-import { markMarketRestart } from './market-restart';
 import { installCardOf, updateStuckCardOf } from './failure-card-text';
 import { updateVerdictOf, updateVerdictText, type UpdatedModule } from './market-update-verdict';
 import { holdOf, type HeldRow, type Pending } from './market-view-text';
@@ -201,12 +200,6 @@ export function marketActOf(options: MarketActOptions): MarketAct {
     }
     const until = swapUntil(action, change?.application, next.latest);
     const application = change?.application ?? (assumedApplied(action) ? 'applied' : undefined);
-    if (
-      (application === 'applied' || application === 'restart-required') &&
-      (action === 'install' || action === 'update' || action === 'update-bundle' || action === 'install-version')
-    ) {
-      markMarketRestart([id]);
-    }
     const readBack = awaitsReadBack(action, application, next.version);
     seats.setPending(
       until === undefined && !readBack

@@ -179,7 +179,7 @@ describe('failureCardOf（卡片上那三行 + 能照抄的那条）', () => {
     expect(card.fix).toContain('Unauthorized');
   });
 
-  it('★ 认不出原因 → 不再说"无法写入某个路径"：事实就是认不出，复制的话带输出摘要', () => {
+  it('★ 认不出原因但有摘要 → 事实直接写摘要里的那句，别说「原因未识别」', () => {
     const withParams: Translate = (key, params) =>
       params === undefined ? key : `${key} ${JSON.stringify(params)}`;
     const card = failureCardOf(
@@ -194,13 +194,14 @@ describe('failureCardOf（卡片上那三行 + 能照抄的那条）', () => {
       withParams,
     );
 
-    expect(card.title).toBe('panels.market.failure.unknown');
-    expect(card.fact).toBe('panels.market.failure.factUnknown {"code":"1"}');
+    expect(card.title).toBe('panels.market.failure.title');
+    expect(card.fact).toBe(
+      'panels.market.failure.factSummary {"code":"1","reason":"Plugin \\"cmdb\\" is not installed."}',
+    );
     expect(card.fix).toContain('panels.market.failure.askAgentUnknown');
-    expect(card.fix).toContain('is not installed');
   });
 
-  it('认不出原因又没有摘要 → 退到输出的第一行，别把理由空着', () => {
+  it('没有摘要 → 退到输出的第一行，别把理由空着', () => {
     const withParams: Translate = (key, params) =>
       params === undefined ? key : `${key} ${JSON.stringify(params)}`;
     const card = failureCardOf(
@@ -208,7 +209,20 @@ describe('failureCardOf（卡片上那三行 + 能照抄的那条）', () => {
       withParams,
     );
 
+    expect(card.fact).toBe('panels.market.failure.factSummary {"code":"?","reason":"something odd"}');
     expect(card.fix).toContain('something odd');
+  });
+
+  it('输出也是空的 → 才说「原因未识别」', () => {
+    const withParams: Translate = (key, params) =>
+      params === undefined ? key : `${key} ${JSON.stringify(params)}`;
+    const card = failureCardOf(
+      failure({ kind: 'unknown', fix: { kind: 'handoff' }, exitCode: 1, output: '\n' }),
+      withParams,
+    );
+
+    expect(card.title).toBe('panels.market.failure.unknown');
+    expect(card.fact).toBe('panels.market.failure.factUnknown {"code":"1"}');
   });
 
   it('盘满 → 给一条能看出谁占了地方的命令', () => {

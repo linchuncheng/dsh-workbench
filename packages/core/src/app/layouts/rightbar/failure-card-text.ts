@@ -172,14 +172,14 @@ export function failureCardOf(failure: InstallFailure, t: Translate): FailureCar
     });
   }
   if (failure.kind === 'unknown') {
+    const reason = failureReasonOf(failure, t);
+    const empty = reason === t('panels.market.failure.noReason');
     return agentCardOf(failure, t, {
-      title: t(TITLE_KEY[failure.kind]),
-      fact: t('panels.market.failure.factUnknown', { code }),
-      fix: t('panels.market.failure.askAgentUnknown', {
-        command: failure.command,
-        code,
-        reason: failureReasonOf(failure, t),
-      }),
+      title: t(empty ? TITLE_KEY[failure.kind] : 'panels.market.failure.title'),
+      fact: empty
+        ? t('panels.market.failure.factUnknown', { code })
+        : t('panels.market.failure.factSummary', { code, reason }),
+      fix: t('panels.market.failure.askAgentUnknown', { command: failure.command, code, reason }),
     });
   }
   const where = path === '' ? t('panels.market.failure.nowhere') : path;

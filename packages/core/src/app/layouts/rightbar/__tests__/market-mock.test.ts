@@ -187,7 +187,7 @@ describe('MARKET_MOCKS', () => {
     );
 
     expect(states).toEqual(new Set(['installed', 'outdated', 'missing', 'unknown', 'checking']));
-    expect(installedStates).toEqual(new Set(['inactive', 'unusable', 'outdated']));
+    expect(installedStates).toEqual(new Set(['unknown', 'unusable', 'outdated']));
     expect(installedActionSets).toEqual(new Set(['remove-bundle', 'update-bundle,remove-bundle']));
     expect(actionSets).toEqual(new Set(['uninstall', 'update,uninstall', 'update-bundle,uninstall', 'install', '',]));
   });

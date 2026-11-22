@@ -117,9 +117,9 @@ export function installedMocks(input: {
       expect: {
         rows: 0,
         installed: 1,
-        installedState: 'inactive',
+        installedState: 'unknown',
         installedActions: ['remove-bundle'],
-        installedHint: 'panels.market.moduleRestartHint',
+        installedHint: 'panels.market.uncheckedHint',
       },
     },
     {
@@ -135,7 +135,6 @@ export function installedMocks(input: {
         installed: 1,
         installedState: 'outdated',
         installedActions: ['update-bundle', 'remove-bundle'],
-        installedHint: 'panels.market.moduleRestartHint',
       },
     },
     {
@@ -148,7 +147,7 @@ export function installedMocks(input: {
       expect: {
         rows: 0,
         installed: 1,
-        installedState: 'inactive',
+        installedState: 'unknown',
         installedActions: ['remove-bundle'],
       },
     },

@@ -80,15 +80,13 @@ describe('marketRows', () => {
     expect(row?.hint).toEqual({ key: 'panels.market.uncheckedHint' });
   });
 
-  it('★ 确认要等重启（宽限期已过）→ 未生效 + 重启后生效，不是状态未知', () => {
+  it('★ 没有「重启标记」这层了：能力表没结论就是状态未知，不替它编一个未生效', () => {
     const updates = { issues: { installed: '1.9.0', pkg: '@a/issues' } };
-    const stale = marketRows([unit('issues')], {}, updates, new Set(), {}, new Set(), new Set(['issues']));
+    const stale = marketRows([unit('issues')], {}, updates);
 
-    expect(stale[0]?.state).toBe('inactive');
-    expect(stale[0]?.hint).toEqual({ key: 'panels.market.moduleRestartHint' });
+    expect(stale[0]?.state).toBe('unknown');
+    expect(stale[0]?.hint).toEqual({ key: 'panels.market.uncheckedHint' });
     expect(stale[0]?.version).toEqual({ installed: '1.9.0' });
-    expect(stale[0]?.canUninstall).toBe(true);
-    expect(marketSections(stale)[0]?.id).toBe('installed');
   });
 
   it('未装 + 来源解析得出 → 只能装（不能更新/卸载一个没装的东西）', () => {
@@ -328,7 +326,7 @@ describe('marketActions', () => {
 describe('marketSections：装的那一刻行别跳栏', () => {
   it('★ 正在检测 / 暂未生效，但本机有这一版 → 仍在「已安装」，不跳到未就绪', () => {
     const checking = marketRows([unit('issues')], {}, { issues: { installed: '1.1.9', pkg: '@a/issues' } });
-    const checkingRowsShown = checkingRows(checking, { all: true, units: new Set() });
+    const checkingRowsShown = checkingRows(checking, { units: new Set() });
     const installedOnly = installedRows([{ unit: 'local-a', pkg: '@a/local', installed: '1.1.9' }], [], new Set());
 
     expect(marketSections(checkingRowsShown)[0]?.id).toBe('installed');
@@ -407,18 +405,18 @@ describe('marketHasUpdates', () => {
 
 
 describe('checkingRows：装的过程中 / 刚装完那一下的读数缺口', () => {
-  const scoped = (units: readonly string[]) => ({ all: false, units: new Set(units) });
+  const scoped = (units: readonly string[]) => ({ units: new Set(units) });
 
   it('★ 能力表还没跟上：正在装 / 刚装完的那一单元说「检测中」，不挂「重启再试」', () => {
     const rows = marketRows([unit('issues')], {});
     expect(rows[0]?.state).toBe('unknown');
     expect(rows[0]?.hint).toEqual({ key: 'panels.market.uncheckedHint' });
 
-    expect(checkingRows(rows, { all: true, units: new Set() })[0]).toMatchObject({
+    expect(checkingRows(rows, scoped(['issues']))[0]).toMatchObject({
       state: 'checking',
       hint: undefined,
     });
-    expect(checkingRows(rows, scoped(['issues']))[0]?.state).toBe('checking');
+    expect(checkingRows(rows, scoped(['other']))[0]?.state).toBe('unknown');
   });
 
   it('★ 探针自己说检测不了（unchecked）同一处理', () => {
@@ -438,7 +436,7 @@ describe('checkingRows：装的过程中 / 刚装完那一下的读数缺口', (
 
   it('★ 不在装、也不是它 → 原样（判据没被放宽）', () => {
     const rows = marketRows([unit('issues')], {});
-    expect(checkingRows(rows, { all: false, units: new Set() })[0]).toBe(rows[0]);
+    expect(checkingRows(rows, scoped([]))[0]).toBe(rows[0]);
     expect(checkingRows(rows, scoped(['other']))[0]).toBe(rows[0]);
   });
 
@@ -447,7 +445,7 @@ describe('checkingRows：装的过程中 / 刚装完那一下的读数缺口', (
       [unit('issues'), unit('builds')],
       { ...installed('issues'), ...missing({}, 'builds') },
     );
-    const next = checkingRows(rows, { all: true, units: new Set() });
+    const next = checkingRows(rows, scoped(['issues', 'builds']));
 
     expect(next[0]?.state).toBe('installed');
     expect(next[1]?.state).toBe('missing');

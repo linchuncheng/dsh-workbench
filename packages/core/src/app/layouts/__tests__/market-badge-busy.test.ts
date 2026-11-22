@@ -53,10 +53,10 @@ describe('左栏那枚徽标：装的过程中 / 刚装完那一下（接线判�
     expect(panel).toMatch(/marketHintOf\(\{[\s\S]*?\.\.\.install,/);
   });
 
-  it('★ 装完（applied）那一单元在市场上也先按住（行不许闪「未生效」）', () => {
+  it('★ 装完（applied）那一单元在市场上也先按住（这份读数只用来画进度，不改行状态）', () => {
     const panel = read('market/panel.tsx');
 
-    expect(panel).toContain('install.applied.size === 0 ? settling : new Set([...settling, ...install.applied])');
+    expect(panel).toContain('const held = install.applied;');
     expect(panel).toContain('settling={mock === undefined ? held : undefined}');
   });
 

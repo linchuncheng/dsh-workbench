@@ -228,6 +228,8 @@ export const zh = {
   'panels.market.failure.factMode': '{path} 的权限是 {mode}，当前账号没有写权限。',
   'panels.market.failure.factSpace': '{path} 所在的磁盘满了。',
   'panels.market.failure.factAuth': '{registry} 拒绝了这次请求（401/403）：这台机器上没有它的登录凭据，或当前账号没有权限。',
+  'panels.market.failure.title': '安装失败',
+  'panels.market.failure.factSummary': '命令失败（退出码 {code}）：{reason}',
   'panels.market.failure.factUnknown': '命令失败（退出码 {code}），原因没能自动认出来。',
   'panels.market.failure.factStuck': '这条命令在受限环境中运行，无法写入 {path}。',
   'panels.market.failure.thisSource': '这个源',

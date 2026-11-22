@@ -11,7 +11,6 @@ import {
   marketHasUpdates,
   marketRows,
   marketUpdatesOf,
-  refusalReasons,
   sharedRows,
 } from './market-rows';
 import { workbenchRow } from './market-workbench-row';
@@ -29,7 +28,6 @@ export interface MarketHintInput {
   readonly busy?: ReadonlySet<string> | undefined;
   readonly installing?: boolean | undefined;
   readonly applied?: ReadonlySet<string> | undefined;
-  readonly restartPending?: ReadonlySet<string> | undefined;
 }
 
 interface Signal {
@@ -71,17 +69,6 @@ function isUnknown(row: MarketRow, rosterRead: boolean): boolean {
   return row.state === 'unchecked' || (rosterRead && row.state === 'unknown');
 }
 
-function awaitsRestart(
-  manifests: readonly UnitManifest[],
-  installed: readonly InstalledWorkbenchModule[],
-): boolean {
-  const loaded = new Set(manifests.map((manifest) => manifest.id));
-  return installed.some(
-    (module) =>
-      !loaded.has(module.unit) && refusalReasons(module.refused, module.clientRefused).length === 0,
-  );
-}
-
 export function marketHintOf(input: MarketHintInput): PanelHint | null {
   const installing = input.installing === true;
   const held = new Set([...(input.busy ?? []), ...(input.applied ?? [])]);
@@ -96,7 +83,6 @@ export function marketHintOf(input: MarketHintInput): PanelHint | null {
     new Set(),
     {},
     new Set(),
-    input.restartPending ?? new Set(),
   );
   const listed = new Set(catalog.map((row) => row.id));
   const self = workbenchRow(input.workbench, input.selfUpdate, input.toldAt);
@@ -111,12 +97,7 @@ export function marketHintOf(input: MarketHintInput): PanelHint | null {
     on ? [{ key, tone }] : [];
   const signals: readonly Signal[] = [
     ...signal(PROBLEM_KEY, 'danger', rows.some(isProblem)),
-    ...signal(
-      RESTART_KEY,
-      'warning',
-      rows.some((row) => isRestart(row, installing)) ||
-        (!installing && awaitsRestart(input.manifests, installed)),
-    ),
+    ...signal(RESTART_KEY, 'warning', rows.some((row) => isRestart(row, installing))),
     ...signal(FOLLOWUP_KEY, 'warning', rows.some((row) => row.state === 'pending-followup')),
     ...signal(UNKNOWN_KEY, 'warning', !installing && rows.some((row) => isUnknown(row, rosterRead))),
     ...signal(

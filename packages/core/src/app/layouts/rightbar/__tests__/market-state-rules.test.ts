@@ -118,11 +118,11 @@ describe('装没装：本机的名单说了算，没得探不等于不知道', (
     expect(marketActions(row as never)).toEqual(['uninstall']);
   });
 
-  it('★ 但要探依赖时，没结论仍旧是「状态未知」—— 不替它担保', () => {
+  it('★ 但要探依赖时，没结论仍旧是「状态未知」—— 但装着的就能卸', () => {
     const row = marketRows([unit('issues', 'demo')], {}, { issues: { installed: '0.1.0' } })[0];
 
     expect(row?.state).toBe('unknown');
-    expect(row?.canUninstall).toBe(false);
+    expect(row?.canUninstall).toBe(true);
   });
 
   it('★ 本机名单里没有它、又没结论 → 还是「状态未知」（不是已安装）', () => {
@@ -249,8 +249,8 @@ describe('异常的行：那颗「全局默认」照画，但禁用', () => {
     expect(marketSwitchLocked(refused as never)).toBe(true);
   });
 
-  it('★ 未生效 ⇒ 钮是能动的（重启完正好用上；面板配置页现在看不到它）', () => {
-    expect(notLoaded?.state).toBe('inactive');
+  it('★ 还没载入（状态未知）⇒ 钮是能动的（载入后正好用上）', () => {
+    expect(notLoaded?.state).toBe('unknown');
     expect(notLoaded?.defaultShown).toBe(true);
     expect(marketSwitchLocked(notLoaded as never)).toBe(false);
   });
@@ -288,7 +288,7 @@ describe('异常的行：那颗「全局默认」照画，但禁用', () => {
 });
 
 describe('段落：装了但市场还没认识它的，也在「已安装模块」那一段', () => {
-  it('★ 未生效 / 不可用 的行与能用的模块同段；没装的才进「未安装」', () => {
+  it('★ 还没载入 / 不可用 的行与能用的模块同段；没装的才进「未安装」', () => {
     const rows = marketRows(
       [unit('issues', 'demo')],
       capability('issues', 'missing', { provision: 'ready' }),
@@ -306,7 +306,7 @@ describe('段落：装了但市场还没认识它的，也在「已安装模块�
 
     expect(sections.map((section) => section.id)).toEqual(['installed', 'not-installed']);
     expect(sections[0]?.rows.map((row) => row.id)).toEqual(['inventory', 'old']);
-    expect(sections[0]?.rows.map((row) => row.state)).toEqual(['inactive', 'unusable']);
+    expect(sections[0]?.rows.map((row) => row.state)).toEqual(['unknown', 'unusable']);
     expect(sections[1]?.rows.map((row) => row.id)).toEqual(['issues']);
   });
 });

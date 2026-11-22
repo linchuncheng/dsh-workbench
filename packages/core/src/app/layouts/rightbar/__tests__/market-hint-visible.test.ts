@@ -111,7 +111,7 @@ describe('左栏入口那枚标签：与市场页读同一份模块版本', () =
 });
 
 describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / 有新版本）', () => {
-  it('★ 装了没生效（未生效）→ 「重启后生效」，不是模块异常', () => {
+  it('★ 装了还没载入 → 「状态未知」（未生效那一档不再由我们产出）', () => {
     expect(
       marketHintOf({
         manifests: [MANIFEST],
@@ -119,7 +119,7 @@ describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / �
         modules: [],
         installed: [{ unit: 'ghost', pkg: '@a/ghost', installed: '1.0.0' }],
       }),
-    ).toEqual(RESTART);
+    ).toEqual({ labelKey: 'panels.market.unchecked', tone: 'warning' });
   });
 
   it('★ 工作台 running ≠ installed（重启后生效）→ 同一档「重启后生效」', () => {
@@ -250,7 +250,7 @@ describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / �
     ).toEqual(NEW);
   });
 
-  it('★ 未生效 + 源上有新版本 → 仍然是「重启后生效」（黄 state 盖不住「装了没载入」）', () => {
+  it('★ 源上有新版本 → 「有新版本」（outdated 是结论，压过「状态未知」）', () => {
     expect(
       marketHintOf({
         manifests: [MANIFEST],
@@ -258,7 +258,7 @@ describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / �
         modules: [{ unit: 'ghost', pkg: '@a/ghost', installed: '1.0.0', latest: '1.1.0' }],
         installed: [{ unit: 'ghost', pkg: '@a/ghost', installed: '1.0.0', latest: '1.1.0' }],
       }),
-    ).toEqual({ ...RESTART, moreKeys: ['panels.market.hasNew'] });
+    ).toEqual({ labelKey: 'panels.market.hasNew', tone: 'warning' });
   });
 
   it('★ 市场目录里没有、本机装着的模块：名单要按全部 manifests 翻（传窄了会假红）', () => {
@@ -397,8 +397,8 @@ describe('更新跑着的那一单元：徽标当它不在名单里（不许闪�
     expect(marketHintOf({ ...MID_UPDATE, busy: new Set(['ghost']) })).toBeNull();
   });
 
-  it('同一份输入、不标 busy → 照旧是「重启后生效」（判据没被放宽）', () => {
-    expect(marketHintOf(MID_UPDATE)).toEqual({ ...RESTART, moreKeys: ['panels.market.hasNew'] });
+  it('同一份输入、不标 busy → 「有新版本」（不再报重启）', () => {
+    expect(marketHintOf(MID_UPDATE)).toEqual({ labelKey: 'panels.market.hasNew', tone: 'warning' });
   });
 
   it('★ busy 只管那一个单元：别的模块等重启、别的问题照旧亮', () => {
@@ -411,7 +411,10 @@ describe('更新跑着的那一单元：徽标当它不在名单里（不许闪�
         ],
         busy: new Set(['ghost']),
       }),
-    ).toEqual(RESTART);
+    ).toEqual({
+      labelKey: 'panels.market.unchecked',
+      tone: 'warning',
+    });
     expect(
       marketHintOf({
         ...MID_UPDATE,
@@ -455,7 +458,7 @@ const ERROR_CASES = {
 } satisfies Partial<Record<MarketState, () => MarketHintInput>>;
 
 const RESTART_CASES = {
-  inactive: () => ({
+  unknown: () => ({
     manifests: [MANIFEST],
     capabilities: OK,
     modules: [],
@@ -488,18 +491,20 @@ describe('状态点与入口标签的对应', () => {
     }
   });
 
-  it('★ 等重启那两格是黄点，且落进 restart 那一档', () => {
-    for (const [state, make] of Object.entries(RESTART_CASES)) {
-      expect(MARKET_DOT[state as MarketState], state).toBe('warning');
-      expect(marketHintOf(make()), state).toEqual(RESTART);
-    }
+  it('★ 等重启那一格是黄点，且落进 restart 那一档；装了没载入那一格是「状态未知」', () => {
+    expect(MARKET_DOT['pending-restart']).toBe('warning');
+    expect(marketHintOf(RESTART_CASES['pending-restart']())).toEqual(RESTART);
+    expect(marketHintOf(RESTART_CASES.unknown())).toEqual({
+      labelKey: 'panels.market.unchecked',
+      tone: 'warning',
+    });
   });
 
   it('★ 每格夹具真的产出那个 state（不然穷尽性是空转：塌成同一档也照样绿）', () => {
     const listed: ReadonlySet<string> = new Set();
 
-    expect(installedRows(RESTART_CASES.inactive().installed ?? [], [MANIFEST], listed)[0]?.state).toBe(
-      'inactive',
+    expect(installedRows(RESTART_CASES.unknown().installed ?? [], [MANIFEST], listed)[0]?.state).toBe(
+      'unknown',
     );
     expect(installedRows(ERROR_CASES.unusable().installed ?? [], [MANIFEST], listed)[0]?.state).toBe(
       'unusable',
@@ -524,9 +529,9 @@ describe('安装进行中 / 刚装上：徽标不许按半截读数说话', () =
     expect(marketHintOf(UNKNOWN)).toEqual({ labelKey: 'panels.market.unchecked', tone: 'warning' });
   });
 
-  it('★ 正在装：装机名单已经有了、客户端还没挂上的那一行不报「重启后生效」', () => {
+  it('★ 正在装：装机名单已经有了、客户端还没挂上的那一行不报问题', () => {
     expect(marketHintOf({ ...WAITING, installing: true })).toBeNull();
-    expect(marketHintOf(WAITING)).toEqual(RESTART);
+    expect(marketHintOf(WAITING)).toEqual({ labelKey: 'panels.market.unchecked', tone: 'warning' });
   });
 
   it('★ 正在装：工作台自己那档「重启后生效」照旧亮（那不是安装的副作用）', () => {
@@ -570,7 +575,7 @@ describe('安装进行中 / 刚装上：徽标不许按半截读数说话', () =
           { unit: 'other', pkg: '@a/other', installed: '1.0.0' },
         ],
       }),
-    ).toEqual(RESTART);
+    ).toEqual({ labelKey: 'panels.market.unchecked', tone: 'warning' });
   });
 
   it('★ 正在装也不许盖掉真正的异常（红档照旧）', () => {
@@ -587,7 +592,10 @@ describe('安装进行中 / 刚装上：徽标不许按半截读数说话', () =
     ).toEqual(PROBLEM);
   });
 
-  it('★ 说要重启的那种（没有 applied）当场按真实状态说，不压后', () => {
-    expect(marketHintOf({ ...WAITING, installing: false })).toEqual(RESTART);
+  it('★ 没载入的那种（没有 applied）当场按真实状态说，不压后', () => {
+    expect(marketHintOf({ ...WAITING, installing: false })).toEqual({
+      labelKey: 'panels.market.unchecked',
+      tone: 'warning',
+    });
   });
 });

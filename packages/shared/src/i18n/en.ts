@@ -232,6 +232,8 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.failure.factMode': '{path} is mode {mode}, so this account cannot write to it.',
   'panels.market.failure.factSpace': 'The disk holding {path} is full.',
   'panels.market.failure.factAuth': '{registry} rejected the request (401/403): this machine has no login credentials for it, or the account lacks permission.',
+  'panels.market.failure.title': 'Install failed',
+  'panels.market.failure.factSummary': 'Command failed (exit code {code}): {reason}',
   'panels.market.failure.factUnknown': 'The command failed (exit code {code}), and the cause could not be identified automatically.',
   'panels.market.failure.factStuck': 'This command runs in a restricted environment and cannot write to {path}.',
   'panels.market.failure.thisSource': 'this source',

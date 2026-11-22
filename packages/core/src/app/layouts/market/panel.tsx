@@ -16,7 +16,6 @@ import { marketHintOf } from '../rightbar/market-hint';
 import { useSelfUpdateTold } from '../rightbar/market-settle-hold';
 import { useMarketBusy } from '../rightbar/market-busy';
 import { useMarketInstallState } from '../rightbar/market-install';
-import { useMarketRestart } from '../rightbar/market-restart';
 import { MarketView } from '../rightbar/MarketView';
 import { pluginMarketOf, useRuntimeCapabilities } from '@/shared/hooks/use-runtime-capabilities';
 import type { TitleResolve } from '../rightbar/market-names';
@@ -24,7 +23,6 @@ import { DiscoverPanel } from './DiscoverPanel';
 import { MarketHeader } from './market-header';
 import { useMarketTab } from './market-tab';
 import { useEnabledUnits } from '../rightbar/use-panels';
-import { useSettlingModules } from './use-settling-modules';
 import { useModuleVersions } from './use-module-versions';
 import { useMarketReload } from './use-market-reload';
 import { useMarketPanelScroll } from './use-market-panel-scroll';
@@ -60,7 +58,6 @@ function makeMarketEntryIcon(units: ClientUnitRegistry) {
     const installed = modules === null ? undefined : withClientRefusals(modules, units.refusals());
     const busy = useMarketBusy();
     const install = useMarketInstallState();
-    const restart = useMarketRestart();
     const hint = marketHintOf({
       manifests,
       installable,
@@ -72,7 +69,6 @@ function makeMarketEntryIcon(units: ClientUnitRegistry) {
       selfUpdate,
       toldAt,
       busy,
-      restartPending: restart.confirmed,
       ...install,
     });
 
@@ -138,12 +134,7 @@ function MarketPanel({
     reloadVersions,
   });
 
-  const settling = useSettlingModules(
-    (installed ?? []).map((module) => module.unit).join('|'),
-    manifests.map((manifest) => manifest.id).join('|'),
-    Object.keys(capabilities ?? {}).join('|'),
-  );
-  const held = install.applied.size === 0 ? settling : new Set([...settling, ...install.applied]);
+  const held = install.applied;
 
   const freshness: MarketFreshness = {
     loaded: capabilities !== null,
