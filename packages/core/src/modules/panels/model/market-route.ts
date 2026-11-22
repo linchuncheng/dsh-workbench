@@ -6,8 +6,6 @@ import type {
   ProfileReload,
   Seam,
 } from '@dsh-workbench/shared/host';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bundle-install';
 import {
   declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, PlanStepError, planStepText,
@@ -262,22 +260,11 @@ async function settle(
     registry,
     module.kind === 'module' ? module.version : undefined,
   );
-  await wireProfileModule(deps, pkg);
+  if (module.kind === 'module') {
+    await wireModule(deps, pkg);
+    await reloadRows(deps, pkg, (deps.syncRows?.()?.rows ?? []).filter((one) => one.name === pkg).map((one) => one.id));
+  }
   return { change, module, supply: await deps.supplyAfter(module, change) };
-}
-
-function profilePackageAt(dir: string, pkg: string): boolean {
-  return existsSync(join(dir, 'node_modules', pkg, 'package.json'));
-}
-
-async function wireProfileModule(
-  deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
-  pkg: string,
-): Promise<void> {
-  const dir = deps.profileDir;
-  if (dir === undefined || dir === null) return;
-  if (!profilePackageAt(dir, pkg)) return;
-  await wireModule(deps, pkg);
 }
 
 function pkgNameOf(spec: string): string {
@@ -344,7 +331,7 @@ async function wireModule(deps: Omit<BundleInstallDeps, 'spec' | 'options'>, pkg
 }
 
 async function reloadRows(
-  deps: BundleInstallDeps,
+  deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
   pkg: string,
   rows: readonly string[],
 ): Promise<ProfileReload> {

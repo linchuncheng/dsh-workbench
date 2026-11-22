@@ -854,7 +854,15 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
       target: request.spec,
     }));
 
-    const outcome = await installRouted({ ...deps, manager, profileDir: dir });
+    const outcome = await installRouted({
+      ...deps,
+      manager,
+      profileDir: dir,
+      installed: (pkg) =>
+        pkg === '@t/module-a'
+          ? { kind: 'module', pkg, unit: 'a', version: '1.0.0' }
+          : { kind: 'unknown', pkg },
+    });
 
     expect(setEnabled).toHaveBeenCalledWith('@t/module-a', true);
     expect(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).dsh.profile.bundles).toEqual([

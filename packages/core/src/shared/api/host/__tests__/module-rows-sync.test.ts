@@ -120,14 +120,14 @@ describe('把「不是 bundle 的模块」同步成 profile patch 里的行', ()
     });
   });
 
-  it('★ 还声明着 dsh.bundle 的包：不写行，但记进 stuck（迁移没做完）', () => {
+  it('★ 声明着 dsh.bundle 却不在名单里：照样写行（不然它永远装不上），也不再记 stuck', () => {
     const root = profile(['@dsh-workbench/core'], { '@dsh-workbench/core': 'link:/core' });
     const out = syncModuleRows({
       profileDir: root,
       modules: [{ unit: 'old', pkg: '@a/old', version: '1.0.0', local: false, fromRegistry: true, shipsBundle: true }],
     });
-    expect(out.rows).toEqual([]);
-    expect(out.stuck).toEqual(['@a/old']);
+    expect(out.added).toEqual(['wb-old']);
+    expect(out.stuck).toEqual([]);
   });
 
   it('已有的用户层原样保留', () => {
