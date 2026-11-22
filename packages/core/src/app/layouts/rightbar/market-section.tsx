@@ -196,7 +196,7 @@ export function MarketRowControls({
                 key={action}
                 type="button"
                 size="sm"
-                variant={action === 'install' || action === 'migrate-workbench' ? 'primary' : 'outline'}
+                variant="outline"
                 className={danger ? 'wb-dangerAction' : update ? styles.marketUpdateAction : undefined}
                 icon={danger ? <IconTrashOutlineRegular size={13} /> : undefined}
                 aria-label={

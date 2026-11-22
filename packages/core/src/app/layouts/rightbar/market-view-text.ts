@@ -8,21 +8,6 @@ import type { MarketRow, MarketRowAction, ModuleUpdateMap } from './market-rows'
 import type { SharedRow } from './market-shared-rows';
 import { MODULE_SETTLE_MS, settleLanded } from './market-settle';
 
-export const PROGRESS_KEY: Readonly<Record<MarketRowAction, string>> = {
-  install: 'panels.market.installing',
-  update: 'panels.market.updating',
-  'update-bundle': 'panels.market.updating',
-  'install-version': 'panels.market.updating',
-  'remove-bundle': 'panels.market.uninstalling',
-  uninstall: 'panels.market.uninstalling',
-  'update-dependency': 'panels.market.updating',
-  'update-plugin': 'panels.market.updating',
-  'uninstall-plugin': 'panels.market.uninstalling',
-  'update-workbench': 'panels.market.updating',
-  'migrate-workbench': 'panels.market.migrating',
-  'dismiss-followup': 'panels.market.dismissing',
-};
-
 export const ACTION_LABEL_KEY: Readonly<Record<MarketRowAction, string>> = {
   install: 'panels.market.install',
   update: 'panels.market.update',
@@ -38,10 +23,34 @@ export const ACTION_LABEL_KEY: Readonly<Record<MarketRowAction, string>> = {
   'dismiss-followup': 'panels.market.dismissFollowUp',
 };
 
+const PROGRESS_OF_LABEL: Readonly<Record<string, string>> = {
+  'panels.market.install': 'panels.market.installing',
+  'panels.market.installDeps': 'panels.market.installingDeps',
+  'panels.market.update': 'panels.market.updating',
+  'panels.market.updateDeps': 'panels.market.updating',
+  'panels.market.uninstall': 'panels.market.uninstalling',
+  'panels.market.migrateAction': 'panels.market.migrating',
+  'panels.market.dismissFollowUp': 'panels.market.dismissing',
+};
+
+export const PROGRESS_KEY: Readonly<Record<MarketRowAction, string>> = (() => {
+  const out: Record<string, string> = {};
+  for (const action of Object.keys(ACTION_LABEL_KEY) as MarketRowAction[]) {
+    out[action] = PROGRESS_OF_LABEL[ACTION_LABEL_KEY[action]] ?? 'panels.market.working';
+  }
+  return out as Readonly<Record<MarketRowAction, string>>;
+})();
+
+function depsOnlyInstall(row: MarketRow | undefined, action: MarketRowAction): boolean {
+  if (action !== 'install' || row === undefined) return false;
+  return row.local === true || row.version?.installed !== undefined;
+}
+
 export function actionLabelKey(row: MarketRow | undefined, action: MarketRowAction): string {
   if (action === 'update' && row?.staleDeps !== undefined && row.moduleUpdate === undefined) {
     return 'panels.market.updateDeps';
   }
+  if (depsOnlyInstall(row, action)) return 'panels.market.installDeps';
   return ACTION_LABEL_KEY[action];
 }
 
@@ -49,7 +58,7 @@ export function progressKeyOf(row: MarketRow | undefined, action: MarketRowActio
   if (action === 'update' && row?.staleDeps !== undefined && row.moduleUpdate === undefined) {
     return 'panels.market.updatingDeps';
   }
-  return PROGRESS_KEY[action];
+  return PROGRESS_OF_LABEL[actionLabelKey(row, action)] ?? PROGRESS_KEY[action];
 }
 
 export const UPDATE_ACTIONS: readonly MarketRowAction[] = (
