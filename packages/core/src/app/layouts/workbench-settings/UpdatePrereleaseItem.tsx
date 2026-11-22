@@ -1,8 +1,10 @@
 import { createElement as h, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
-import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives';
+import { IconChevronDownOutlineRegular, Menu } from '@deepseek-ai/dsh-client-ui-primitives';
+import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { PrereleaseChannel } from '@/kernel/contract/workbench-settings';
 import { PRERELEASE_CHANNELS } from '@/kernel/contract/workbench-settings';
+import { SettingsControl } from './SettingsControl';
 import { SettingsRow } from './SettingsRow';
 import { useWorkbenchSettings } from './use-workbench-settings';
 import styles from './UpdatePrereleaseItem.module.css';
@@ -17,27 +19,33 @@ const LABEL_KEYS: Readonly<Record<PrereleaseChannel, string>> = {
   alpha: 'updatePrerelease.channel.alpha',
 };
 
+function isChannel(value: string): value is PrereleaseChannel {
+  return (PRERELEASE_CHANNELS as readonly string[]).includes(value);
+}
+
 export function UpdatePrereleaseItem({ t }: UpdatePrereleaseItemProps): JSX.Element {
   const settings = useWorkbenchSettings(t, t('updatePrerelease.failed'));
+  const [open, setOpen] = useState(false);
   const [override, setOverride] = useState<readonly PrereleaseChannel[] | null>(null);
   const stored = settings.snapshot?.settings.prereleaseChannels;
   const selected = override ?? stored ?? [];
   const disabled = stored === undefined || settings.busy;
 
-  const toggle = (channel: PrereleaseChannel, next: boolean): void => {
-    const wanted = next
-      ? PRERELEASE_CHANNELS.filter((one) => selected.includes(one) || one === channel)
-      : selected.filter((one) => one !== channel);
+  const toggle = (id: string): void => {
+    if (!isChannel(id)) return;
+    const wanted = selected.includes(id)
+      ? selected.filter((one) => one !== id)
+      : PRERELEASE_CHANNELS.filter((one) => selected.includes(one) || one === id);
     setOverride(wanted);
     void settings.send({ prereleaseChannels: wanted }).then((outcome) => {
       if (!outcome.ok) setOverride(null);
     });
   };
 
-  const summary =
-    selected.length === 0
-      ? t('updatePrerelease.summaryNone')
-      : t('updatePrerelease.summary', { channels: selected.join('、') });
+  const items: readonly MenuEntry[] = PRERELEASE_CHANNELS.map((channel) => ({
+    id: channel,
+    label: t(LABEL_KEYS[channel]),
+  }));
 
   return (
     <SettingsRow
@@ -45,27 +53,35 @@ export function UpdatePrereleaseItem({ t }: UpdatePrereleaseItemProps): JSX.Elem
       description={t('updatePrerelease.lead')}
       error={settings.error}
       control={
-        settings.readFailed ? (
-          <Button variant="ghost" size="sm" onClick={settings.retry}>
-            {t('blocker.retry')}
-          </Button>
-        ) : undefined
+        <SettingsControl t={t} readFailed={settings.readFailed} onRetry={settings.retry}>
+          <Menu
+            open={open}
+            onClose={() => setOpen(false)}
+            items={items}
+            selectedIds={selected}
+            onSelect={toggle}
+            portal
+            anchor={
+              <button
+                type="button"
+                className={styles.select}
+                disabled={disabled}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-label={t('updatePrerelease.pick')}
+                onClick={() => setOpen((value) => !value)}
+              >
+                <span className={styles.value}>
+                  {selected.length === 0 ? t('updatePrerelease.none') : selected.join('、')}
+                </span>
+                <span className={styles.chevron} aria-hidden="true">
+                  <IconChevronDownOutlineRegular size={14} />
+                </span>
+              </button>
+            }
+          />
+        </SettingsControl>
       }
-    >
-      <div className={styles.channels}>
-        {PRERELEASE_CHANNELS.map((channel) => (
-          <div key={channel} className={styles.channel}>
-            <Switch
-              checked={selected.includes(channel)}
-              disabled={disabled}
-              label={t(LABEL_KEYS[channel])}
-              onChange={(next) => toggle(channel, next)}
-            />
-            <span className={styles.channelLabel}>{t(LABEL_KEYS[channel])}</span>
-          </div>
-        ))}
-      </div>
-      <p className={styles.summary}>{summary}</p>
-    </SettingsRow>
+    />
   );
 }

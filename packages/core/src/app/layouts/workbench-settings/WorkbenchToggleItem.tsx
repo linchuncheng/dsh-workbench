@@ -1,7 +1,8 @@
 import { createElement as h, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
-import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives';
+import { Switch } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { WorkbenchSettings } from '@/kernel/contract/workbench-settings';
+import { SettingsControl } from './SettingsControl';
 import { SettingsRow } from './SettingsRow';
 import { useWorkbenchSettings } from './use-workbench-settings';
 
@@ -40,18 +41,14 @@ export function WorkbenchToggleItem({
       description={description}
       error={settings.error}
       control={
-        settings.readFailed ? (
-          <Button variant="ghost" size="sm" onClick={settings.retry}>
-            {t('blocker.retry')}
-          </Button>
-        ) : (
+        <SettingsControl t={t} readFailed={settings.readFailed} onRetry={settings.retry}>
           <Switch
             checked={checked}
             disabled={stored === undefined || settings.busy}
             label={title}
             onChange={toggle}
           />
-        )
+        </SettingsControl>
       }
     />
   );
