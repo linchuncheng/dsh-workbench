@@ -61,6 +61,21 @@ function readAll(file, maxBytes = 262_144) {
   return text.length > maxBytes ? `${text.slice(0, maxBytes)}\n…（截断，共 ${text.length} 字符）` : text;
 }
 
+function sessionPresetsOf() {
+  const dir = join(dshHome, 'storages', 'session_projcache', 'sessions');
+  const files = safe(() => readdirSync(dir), []);
+  const names = Array.isArray(files) ? files.filter((name) => name.endsWith('.json')) : [];
+  if (names.length === 0) return `${dir}（没有投影缓存）`;
+  const rows = [];
+  for (const name of names.slice(0, 40)) {
+    const text = safe(() => readFileSync(join(dir, name), 'utf8'), '');
+    const parsed = safe(() => JSON.parse(text), undefined);
+    const preset = parsed?.record?.rows?.agentPreset?.val;
+    rows.push(`${name.slice(0, 20)} agentPreset=${JSON.stringify(preset ?? null)}`);
+  }
+  return rows.join('\n');
+}
+
 function treeOf(root, depth, limit = 400) {
   if (!existsSync(root)) return `${root}（不存在）`;
   const out = [];
@@ -362,6 +377,7 @@ async function main() {
 
   section(`workbench home tree（${workbenchHome}）`);
   push(treeOf(workbenchHome, 4));
+  push(`install-trace: ${readAll(join(workbenchHome, 'install-trace.log'))}`);
 
   section('seed.log');
   push(readAll(join(workbenchHome, 'seed.log')));
@@ -371,6 +387,16 @@ async function main() {
 
   section('profile package.json');
   push(readAll(manifest));
+
+  section('profile node_modules');
+  const installedModule = join(profileDir, 'node_modules', FIXTURE.module);
+  push(`模块包落下去了：${existsSync(join(installedModule, 'package.json')) ? '是' : '否'}（${installedModule}）`);
+  push(`模块 dist：${existsSync(join(installedModule, 'dist')) ? '在' : '不在'}`);
+  push(`profile 锁文件：${existsSync(join(profileDir, 'pnpm-lock.yaml')) ? '在' : '不在'}`);
+  push(treeOf(join(profileDir, 'node_modules'), 1, 80));
+
+  section('session presets');
+  push(sessionPresetsOf());
 
   section('profile cordis.patch.yml');
   push(readAll(join(profileDir, 'cordis.patch.yml')));

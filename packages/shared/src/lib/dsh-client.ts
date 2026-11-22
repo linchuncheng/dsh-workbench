@@ -197,11 +197,11 @@ export type DshSessionsRemote = Pick<DshClientRemoteSession, 'create' | 'openWor
 type DshClientRemoteSession = import('@deepseek-ai/dsh-api-gateway/client').ClientRemote['session'];
 
 /**
- * remote.agentPresets 写口：给还没开跑的会话挑模式。
+ * remote.agentPresets 写口：给还没开跑的会话挑模式，读名册里的默认模式。
  */
 export type DshAgentPresetsRemote = Pick<
   import('@deepseek-ai/dsh-api-gateway/client').ClientRemote['agentPresets'],
-  'select'
+  'select' | 'list'
 >;
 
 /**

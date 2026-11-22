@@ -159,7 +159,7 @@ jobs:
             $app2 = Start-App 9223 $out2 $err2
             if (-not (Wait-Page 9223)) { throw 'restart still produced no page' }
           }
-          Invoke-Logged 'probe-after-restart' { node scripts/desktop-smoke/cdp-probe.mjs 9223 desktop-${{ inputs.label }}-after-restart.png --verify-only --expect-workbench }
+          Invoke-Logged 'probe-after-restart' { node scripts/desktop-smoke/cdp-probe.mjs 9223 desktop-${{ inputs.label }}-after-restart.png --verify-only --expect-workbench --expect-diy-default }
           Stop-App
           $app5 = Start-App 9226 $out5 $err5
           "add-plugin desktop pid: $($app5.Id)"

@@ -179,7 +179,7 @@ jobs:
             start_app 9223
             wait_page 9223 || { echo 'restart still produced no page'; exit 1; }
           fi
-          run_logged probe-after-restart node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9223 desktop-mac-after-restart.png --verify-only --expect-workbench
+          run_logged probe-after-restart node "$GITHUB_WORKSPACE/scripts/desktop-smoke/cdp-probe.mjs" 9223 desktop-mac-after-restart.png --verify-only --expect-workbench --expect-diy-default
           stop_app
           start_app 9226
           if ! wait_page 9226; then echo 'add-plugin instance produced no page'; exit 1; fi

@@ -24,6 +24,7 @@ const addPluginFlagged = process.argv.some(
 const addPluginSpec = (
   flagValue('--add-plugin') || (addPluginFlagged ? (process.env.DESKTOP_SMOKE_PLUGIN ?? FIXTURE.plugin) : '')
 ).trim();
+const expectDiyDefault = process.argv.includes('--expect-diy-default');
 const workbenchSpec = process.env.DESKTOP_WORKBENCH_SPEC ?? '@dsh-workbench/core';
 const marketSource = process.env.DESKTOP_SMOKE_MARKET ?? FIXTURE.market;
 const moduleName = process.env.DESKTOP_SMOKE_MODULE ?? FIXTURE.module;
@@ -42,6 +43,9 @@ const MARKET_WAIT_MS = 300_000;
 const BRIDGE_WAIT_MS = 600_000;
 const BRIDGE_RETRY_MS = 15_000;
 const MODULE_WAIT_MS = 90_000;
+const WORKSHOP_TITLE = '工作台DIY';
+const DIY_MODE_NAME = '工作台 DIY 模式';
+const DEFAULT_MODE_NAMES = ['Standard mode', '标准模式'];
 const POLL_MS = 2000;
 const DIALOG_SELECTOR = '[role="dialog"], [aria-modal="true"], dialog[open]';
 const addOpenTexts = copyOf('panels.market.add.open');
@@ -1476,6 +1480,42 @@ async function verifyFeatures(cdp) {
   );
 }
 
+async function modeChips(cdp) {
+  const result = await cdp.send('Runtime.evaluate', {
+    expression: `JSON.stringify([...document.querySelectorAll('button[aria-haspopup="menu"]')]
+      .map((node) => (node.innerText ?? '').replaceAll('\\n', ' ').trim())
+      .filter((text) => text !== ''))`,
+    returnByValue: true,
+  });
+  try {
+    const parsed = JSON.parse(result.result?.value ?? '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    log(`模式位读不到（页面在重载？）：${String(error?.message ?? error)}`);
+    return [];
+  }
+}
+
+async function verifyDiyDefault(cdp, snapshot) {
+  const body = await bodyOf(cdp);
+  const chips = await modeChips(cdp);
+  writeText(`${prefix}-diy.json`, `${JSON.stringify({ chips, body: tailBody(body, 400) }, null, 2)}\n`);
+  log(`DIY 默认：chips=${JSON.stringify(chips)}`);
+  if (!body.includes(WORKSHOP_TITLE)) {
+    await fail(cdp, `新装用户没落在「${WORKSHOP_TITLE}」工作区`, body, snapshot);
+  }
+  const picked = chips.some((text) => text.includes(DIY_MODE_NAME)) || body.includes(DIY_MODE_NAME);
+  if (!picked) {
+    await fail(cdp, `新装用户的模式不是「${DIY_MODE_NAME}」（模式位读到 ${JSON.stringify(chips)}）`, body, snapshot);
+  }
+  const leftover = (chips.length === 0 ? [body] : chips).filter((text) =>
+    DEFAULT_MODE_NAMES.some((name) => text.includes(name)));
+  if (leftover.length > 0) {
+    await fail(cdp, `模式位还挂着 dsh 的默认模式：${JSON.stringify(leftover.map((text) => text.slice(0, 40)))}`, body, snapshot);
+  }
+  mark('diy-default');
+}
+
 async function main() {
   await waitForCdp();
   let pages = await waitForPages();
@@ -1515,6 +1555,7 @@ async function main() {
 
   if (installViaUi) await installFromPluginPage(cdp);
   const snapshot = await waitForGateAndReady(cdp);
+  if (expectDiyDefault) await verifyDiyDefault(cdp, snapshot);
   if (addPluginFlagged && addPluginSpec === '') {
     await fail(
       cdp,

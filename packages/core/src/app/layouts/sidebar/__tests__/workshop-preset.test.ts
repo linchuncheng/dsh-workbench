@@ -17,7 +17,9 @@ function sessionOf(input: { blank?: boolean; preset?: string | null }): SessionS
   };
 }
 
-function harness(input: { path?: string; session?: SessionSummary | null; presets?: boolean } = {}) {
+function harness(
+  input: { path?: string; session?: SessionSummary | null; presets?: boolean; defaultPreset?: string } = {},
+) {
   const select = vi.fn(() => Promise.resolve({ ok: true }));
   const listeners = new Set<() => void>();
   let byId: SessionsSnapshot['byId'] = input.session === null ? {} : { s1: input.session ?? sessionOf({}) };
@@ -47,7 +49,19 @@ function harness(input: { path?: string; session?: SessionSummary | null; preset
   };
   const ctx = {
     get: (name: string) => (name === 'sessions' ? sessions : undefined),
-    remote: input.presets === false ? {} : { agentPresets: { select } },
+    remote:
+      input.presets === false
+        ? {}
+        : {
+            agentPresets: {
+              select,
+              list: () =>
+                Promise.resolve({
+                  ok: true as const,
+                  value: { presets: [{ id: input.defaultPreset ?? 'standard', isDefault: true }] },
+                }),
+            },
+          },
     workspaces: { list: { getSnapshot: () => workspaces, subscribe } },
   } as unknown as DshClientContext;
   return {
@@ -81,10 +95,16 @@ describe('工坊空白会话补 DIY 模式', () => {
     expect(select).toHaveBeenCalledTimes(1);
   });
 
-  it('用户显式选过（标准模式记成 standard）→ 不碰；开跑之后也不碰', () => {
+  it('★ dsh 建会话就把默认模式写进 header（standard）—— 那不算用户选过，照样补', () => {
     const standard = harness({ session: sessionOf({ preset: 'standard' }) });
     installWorkshopPreset(standard.ctx);
-    expect(standard.select).not.toHaveBeenCalled();
+    expect(standard.select).toHaveBeenCalledWith('s1', DIY_PRESET_ID);
+  });
+
+  it('用户选了别的模式就不碰；开跑之后也不碰', () => {
+    const chosen = harness({ session: sessionOf({ preset: 'ptc' }) });
+    installWorkshopPreset(chosen.ctx);
+    expect(chosen.select).not.toHaveBeenCalled();
 
     const started = harness({ session: sessionOf({ blank: false }) });
     installWorkshopPreset(started.ctx);

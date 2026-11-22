@@ -56,9 +56,21 @@ describe('workshopPresetUpgrade（dsh 自己起的工坊会话补模式）', () 
     expect(workshopPresetUpgrade({ workshop: true, blank: true, preset: null })).toBe(DIY_PRESET_ID);
   });
 
-  it('用户显式选过就不碰（标准模式记的是 standard，不是空）', () => {
-    expect(workshopPresetUpgrade({ workshop: true, blank: true, preset: 'standard' })).toBeUndefined();
-    expect(workshopPresetUpgrade({ workshop: true, blank: true, preset: 'cordis' })).toBeUndefined();
+  it('★ dsh 建会话时把默认模式写进 header（standard）—— 那不算"用户选过"，照样补 DIY', () => {
+    expect(workshopPresetUpgrade({ workshop: true, blank: true, preset: 'standard' })).toBe(DIY_PRESET_ID);
+    expect(
+      workshopPresetUpgrade({ workshop: true, blank: true, preset: 'standard', defaultPreset: 'standard' }),
+    ).toBe(DIY_PRESET_ID);
+    expect(
+      workshopPresetUpgrade({ workshop: true, blank: true, preset: 'minimal', defaultPreset: 'minimal' }),
+    ).toBe(DIY_PRESET_ID);
+  });
+
+  it('用户选了别的模式就不碰（宿主默认不是 standard 时，选 standard 也照此算）', () => {
+    expect(workshopPresetUpgrade({ workshop: true, blank: true, preset: 'ptc' })).toBeUndefined();
+    expect(
+      workshopPresetUpgrade({ workshop: true, blank: true, preset: 'standard', defaultPreset: 'ptc' }),
+    ).toBeUndefined();
   });
 
   it('开跑之后不改（dsh 已锁模式）/ 别的项目一条都不碰', () => {

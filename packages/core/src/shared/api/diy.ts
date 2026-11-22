@@ -1,4 +1,4 @@
-import { DIY_PRESET_ID, WORKSHOP_RELATIVE } from '@/kernel/contract/diy';
+import { DIY_PRESET_ID, DIY_PRESET_SOURCE_DEFAULT, WORKSHOP_RELATIVE } from '@/kernel/contract/diy';
 
 export { DIY_PRESET_ID, WORKSHOP_PAST_TITLES, WORKSHOP_RELATIVE, WORKSHOP_TITLE } from '@/kernel/contract/diy';
 
@@ -20,8 +20,11 @@ export function workshopPresetUpgrade(input: {
   readonly workshop: boolean;
   readonly blank: boolean;
   readonly preset: unknown;
+  readonly defaultPreset?: string | undefined;
 }): string | undefined {
   if (!input.workshop || !input.blank) return undefined;
-  if (input.preset !== undefined && input.preset !== null) return undefined;
+  const preset = typeof input.preset === 'string' ? input.preset : '';
+  const unchanged = preset === '' || preset === (input.defaultPreset ?? DIY_PRESET_SOURCE_DEFAULT);
+  if (!unchanged) return undefined;
   return DIY_PRESET_ID;
 }
