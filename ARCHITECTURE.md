@@ -598,7 +598,8 @@ export function createAdapterSet(ctx): AdapterSet {
 
 - **模块**：有 npm 包名、`package.json`、构建产物的工作台包；**不是** dsh 插件页里的组合包。
   它装成 profile 的普通依赖，并在 profile 的 `cordis.patch.yml` 里占一行（`wb-<unit>`）被装载；
-  包里不声明 `dsh.bundle`，因此 dsh 的插件页不出现它。
+  包里不声明 `dsh.bundle`，因此 dsh 的插件页不出现它。`dsh.bundle` 只作为**老包兼容**保留：
+  仍声明它的包按组合包装载（进 `dsh.profile.bundles`、不写行），启动日志会点名建议重发去掉。
 - **单元**：模块在工作台里的那一格：id、卡片（可选）、工具、挂载面。
 
 一个包 = 一个单元；一个单元在宿主与浏览器各有一半。安装后即启用，不提供启用/停用，只能卸载
@@ -637,7 +638,9 @@ export function createAdapterSet(ctx): AdapterSet {
 }
 ```
 
-- 只有**组合包**才声明 `dsh.bundle.patch`；工作台模块不声明它，靠市场写入的那一行装载。
+- 只有**组合包**（含还没重发的老模块）才声明 `dsh.bundle.patch`；工作台模块不声明它，
+  靠市场写入的那一行装载。**新模块不要再声明 `dsh.bundle`**：装载方式以「在不在
+  `dsh.profile.bundles` 里」为准，两种声明同时出现在一个包里只会让插件页多一行。
 - `apiVersion` 管形状；不认就不装、不挂。v3 把卡片标题挪成顶层的 `title`（`{ zh, en }` 字面量，`card` 只剩 `order`），v2 声明会被拒收并给迁移提示；v2 起 `env` 换成 `needs`。
 - `needs` 只有四种 `kind`：`bin`（机器上的命令）/ `extension`（运行时插件）/ `lib`（共用 npm 依赖）/ `env`（环境变量）。
   未知 `kind` / `source.kind` 判红；need 内未知字段降为警告，`x-` 前缀忽略；`purpose` 必填。
@@ -785,12 +788,19 @@ core 读清单（bundles ∪ dependencies） ──► UnitManifest
 装载器只认 profile 的 patch 行；模块的 id 必须等于包名（`dsh.workbench.unit` 决定
 `workbenchUnits` 里的那一格，行 id 用 `wb-<unit>` 只是工作台的命名空间）。
 
-**已经在 profile 里的模块怎么迁过来**：先在模块自己的仓库去掉 `dsh.bundle` 并重发（两样都声明时按
-组合包走，插件页还会出现它），把新版装进 profile，然后从 `dsh.profile.bundles` 里去掉这个包
-（插件页取消启用即可）。下次启动 `syncModuleRows` 看到「是依赖、不在 bundles 里、有
-`dsh.workbench.unit`」，自动补上 `wb-<unit>` 那一行。迁移过程中不会出现「组合包 + 行」两份装载：
-还在 bundles 里的模块不写行，包里**仍声明着** `dsh.bundle` 的模块也不写行（启动日志里会逐个点名，
-提示先重发包）。
+**已经在 profile 里的模块怎么迁过来**：从 `dsh.profile.bundles` 里去掉这个包（插件页取消启用即可），
+再在模块自己的仓库去掉 `dsh.bundle` 重发一版。规则按「在不在名单里」判，不看声明：
+
+| 在 `dsh.profile.bundles` 里 | 声明了 `dsh.bundle` | 装载方式 |
+|---|---|---|
+| 是 | 是 | 按组合包装载，不写行；启动日志点名，建议重发去掉该字段 |
+| 是 | 否 | 组合包（不是工作台模块） |
+| 否 | 是 | 写 `wb-<unit>` 行（只装一份），启动日志点名 |
+| 否 | 否 | 写 `wb-<unit>` 行（正常路径） |
+
+也就是说：**先摘名单，下一次启动 `syncModuleRows` 就会补上 `wb-<unit>`**；不会出现「组合包 + 行」
+两份装载。市场装模块时会把包名一起带过来（`install-bundle` 请求的 `pkg`），宿主按它核对名单，
+不靠 git 路径末段推包名。
 
 ### 5.8 状态与配置
 

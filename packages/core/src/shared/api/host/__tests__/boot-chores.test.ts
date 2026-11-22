@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -32,6 +32,39 @@ describe('启动这一拍：先落 boot 记录，再接着排没跑完的更新'
   it('★ 问不到版本（跑在源码上那种）→ 不写记录、也不抛', () => {
     vi.stubEnv('DSH_WORKBENCH_HOME', join(dir, 'nowhere'));
     expect(bootChores({ ctx: {} as never, supply: undefined, home: dir, profileDir: null })).toBeUndefined();
+  });
+});
+
+describe('启动这一拍点名旧包：还声明 dsh.bundle 的模块', () => {
+  it('★ 声明着 dsh.bundle 且已在名单里 → 启动日志点名，提示重发去掉', () => {
+    const root = join(dir, 'legacy');
+    vi.stubEnv('DSH_WORKBENCH_HOME', join(root, 'workbench'));
+    const profileDir = join(root, 'profile');
+    mkdirSync(profileDir, { recursive: true });
+    writeFileSync(
+      join(profileDir, 'package.json'),
+      JSON.stringify({
+        name: 'p',
+        dsh: { profile: { bundles: ['@a/old'] } },
+        dependencies: { '@a/old': '1.0.0' },
+      }),
+      'utf8',
+    );
+    const lines: string[] = [];
+    bootChores({
+      ctx: {} as never,
+      supply: {
+        profileModules: () => [{ pkg: '@a/old', unit: 'old', version: '1.0.0', shipsBundle: true }],
+        startSelfUpdate: () => ({ started: false, reason: 'none' }),
+      } as never,
+      home: root,
+      profileDir,
+      version: '1.2.3-beta.3',
+      log: (line) => lines.push(line),
+    });
+
+    expect(lines.join('\n')).toContain('还声明着 dsh.bundle');
+    expect(lines.join('\n')).toContain('@a/old');
   });
 });
 

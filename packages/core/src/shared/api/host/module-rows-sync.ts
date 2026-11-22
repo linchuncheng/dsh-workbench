@@ -21,10 +21,13 @@ export interface SyncModuleRowsResult {
   readonly added: readonly string[];
   readonly removed: readonly string[];
   readonly stuck: readonly string[];
+  readonly legacy: readonly string[];
 }
 
 export function syncModuleRows(input: SyncModuleRowsInput): SyncModuleRowsResult {
-  if (input.profileDir === null) return { changed: false, rows: [], added: [], removed: [], stuck: [] };
+  if (input.profileDir === null) {
+    return { changed: false, rows: [], added: [], removed: [], stuck: [], legacy: [] };
+  }
   const path = join(input.profileDir, 'cordis.patch.yml');
   const present = existsSync(path);
   const text = present ? readFileSync(path, 'utf8') : '';
@@ -41,6 +44,9 @@ export function syncModuleRows(input: SyncModuleRowsInput): SyncModuleRowsResult
   const stuck = input.modules
     .filter((module) => !rowsFor.has(module.pkg) && !bundles.includes(module.pkg))
     .map((module) => module.pkg);
+  const legacy = input.modules
+    .filter((module) => module.shipsBundle === true && bundles.includes(module.pkg))
+    .map((module) => module.pkg);
   const next = withModuleRows(text, desired);
   const changed = next !== text;
   if (changed) writePatchFile(path, next);
@@ -53,6 +59,7 @@ export function syncModuleRows(input: SyncModuleRowsInput): SyncModuleRowsResult
     added: [...afterIds].filter((id) => !beforeIds.has(id)),
     removed: [...beforeIds].filter((id) => !afterIds.has(id)),
     stuck,
+    legacy,
   };
 }
 

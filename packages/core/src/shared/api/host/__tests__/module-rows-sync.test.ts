@@ -117,6 +117,7 @@ describe('把「不是 bundle 的模块」同步成 profile patch 里的行', ()
       added: [],
       removed: [],
       stuck: [],
+      legacy: [],
     });
   });
 
@@ -128,6 +129,20 @@ describe('把「不是 bundle 的模块」同步成 profile patch 里的行', ()
     });
     expect(out.added).toEqual(['wb-old']);
     expect(out.stuck).toEqual([]);
+    expect(out.legacy).toEqual([]);
+  });
+
+  it('★ 声明 dsh.bundle 且已在名单里：按组合包装载，同时记进 legacy 好点名劝重发', () => {
+    const root = profile(['@dsh-workbench/core', '@a/old'], {
+      '@dsh-workbench/core': 'link:/core',
+      '@a/old': 'link:/old',
+    });
+    const out = syncModuleRows({
+      profileDir: root,
+      modules: [{ unit: 'old', pkg: '@a/old', version: '1.0.0', local: false, fromRegistry: true, shipsBundle: true }],
+    });
+    expect(out.rows).toEqual([]);
+    expect(out.legacy).toEqual(['@a/old']);
   });
 
   it('已有的用户层原样保留', () => {

@@ -73,6 +73,11 @@ export function bootChores(input: BootChoresInput): string | undefined {
             `[dsh-workbench] 模块行已同步：添加 ${sync.added.join('、') || '无'}；移除 ${sync.removed.join('、') || '无'}`,
           );
         }
+        if (sync.legacy.length > 0) {
+          input.log?.(
+            `[dsh-workbench] ${sync.legacy.join('、')} 还声明着 dsh.bundle（旧包兼容，按组合包装载）：请重发一版去掉这个字段，下次启动就会自动改走模块行`,
+          );
+        }
         if (sync.stuck.length > 0) {
           input.log?.(
             `[dsh-workbench] ${sync.stuck.join('、')} 还声明着 dsh.bundle，没有为它写模块行：请先在模块自己的仓库里去掉这个字段并重新发布，再迁移`,
