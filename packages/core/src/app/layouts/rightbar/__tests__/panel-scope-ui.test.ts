@@ -155,7 +155,7 @@ describe('两屏的分工：市场管机器级默认、面板管本工作区', (
     const shared = read('SharedSection.tsx');
     const section = read('market-section.tsx');
 
-    expect(section).toMatch(/<StateDot state=\{MARKET_DOT\[row\.state\]\} size=\{9\} \/>/);
+    expect(section).toMatch(/<StateDot state=\{marketDotOf\(row\)\} size=\{9\} \/>/);
     expect(shared).toContain('<DependencyLine');
     expect(read('dependency-line.tsx')).toMatch(/<StateDot state=\{SHARED_DOT\[state\]\} size=\{9\} \/>/);
     expect(shared).toMatch(/UPDATE_ACTIONS\.includes\(action\) \? styles\.marketUpdateAction : undefined/);

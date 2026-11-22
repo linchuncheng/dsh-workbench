@@ -11,13 +11,13 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { MarketFailure, MarketRow, MarketRowAction } from './market-row-types';
 import {
-  MARKET_DOT,
   MARKET_STATE_KEY,
   marketActions,
+  marketDotOf,
   marketRowTitle,
   marketSwitchLocked,
 } from './market-rows';
-import { UPDATE_ACTIONS, actionLabelKey, progressKeyOf, type Pending } from './market-view-text';
+import { UPDATE_ACTIONS, actionLabelKey, depsOnlyInstall, progressKeyOf, type Pending } from './market-view-text';
 import { packageIcon, marketRowKind } from './market-row-icon';
 import type { MarketSectionIcon } from './market-section-icon';
 import { FailureCard } from './FailureCard';
@@ -97,7 +97,7 @@ export function MarketLineStatus({
       {row.state === 'checking' ? (
         <Spinner size={14} />
       ) : (
-        <StateDot state={MARKET_DOT[row.state]} size={9} />
+        <StateDot state={marketDotOf(row)} size={9} />
       )}
       <span className={styles.marketStateText}>{stateText}</span>
       {row.staleDeps === undefined || row.moduleUpdate !== undefined ? null : (
@@ -177,6 +177,7 @@ export function MarketRowControls({
   const locked = pending !== null;
   const actions = marketActions(row);
   const switchLocked = marketSwitchLocked(row);
+  const depsLocked = row.state === 'missing' && row.version?.installed !== undefined;
   const [migrationOpen, setMigrationOpen] = useState(false);
   const [dismissOpen, setDismissOpen] = useState(false);
   return (
@@ -190,7 +191,7 @@ export function MarketRowControls({
         <span className={styles.marketActions}>
           {actions.map((action) => {
             const danger = CONFIRM_DANGER.includes(action);
-            const update = UPDATE_ACTIONS.includes(action);
+            const update = UPDATE_ACTIONS.includes(action) || depsOnlyInstall(row, action);
             return (
               <Button
                 key={action}
@@ -217,7 +218,13 @@ export function MarketRowControls({
       )}
       {row.defaultShown === undefined ? null : (
         <Tip
-          label={t(switchLocked ? 'panels.market.defaultLocked' : 'panels.market.defaultHint')}
+          label={t(
+            depsLocked
+              ? 'panels.market.defaultNeedsDeps'
+              : switchLocked
+                ? 'panels.market.defaultLocked'
+                : 'panels.market.defaultHint',
+          )}
         >
           <span className={styles.marketSwitchSeat}>
             <Switch

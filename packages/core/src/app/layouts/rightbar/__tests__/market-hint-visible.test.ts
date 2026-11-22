@@ -146,6 +146,36 @@ describe('左栏入口那枚标签：三档（模块异常 / 重启后生效 / �
     ).toEqual(PROBLEM);
   });
 
+  it('★ 装好了却缺依赖 → 红档「模块异常」（Tab 只收粗档，细文案留给行）', () => {
+    expect(
+      marketHintOf({
+        manifests: [MANIFEST],
+        capabilities: { hello: { unit: 'hello', status: 'missing', needs: [] } },
+        modules: [{ unit: 'hello', pkg: 'pkg-hello', installed: '0.1.8' }],
+      }),
+    ).toEqual(PROBLEM);
+  });
+
+  it('目录里还没装的模块不算异常：标签只认装到本机的那份', () => {
+    expect(
+      marketHintOf({
+        manifests: [MANIFEST],
+        capabilities: { hello: { unit: 'hello', status: 'missing', needs: [] } },
+        modules: [],
+      }),
+    ).toBeNull();
+  });
+
+  it('★ 版本不一致（unsupported）→ 同一档「模块异常」', () => {
+    expect(
+      marketHintOf({
+        manifests: [MANIFEST],
+        capabilities: { hello: { unit: 'hello', status: 'unsupported', needs: [] } },
+        modules: [{ unit: 'hello', pkg: 'pkg-hello', installed: '0.1.8' }],
+      }),
+    ).toEqual(PROBLEM);
+  });
+
   it('★ opencli 插件装坏了 → 模块异常', () => {
     expect(
       marketHintOf({

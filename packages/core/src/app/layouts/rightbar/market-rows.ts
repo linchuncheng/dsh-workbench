@@ -30,7 +30,7 @@ export type {
 } from './market-row-types';
 export type { SharedRow, SharedState } from './market-shared-rows';
 export { SHARED_DOT, SHARED_STATE_KEY, sharedActions, sharedRows } from './market-shared-rows';
-type MarketDot = 'ongoing' | 'done' | 'warning' | 'idle' | 'error';
+export type MarketDot = 'ongoing' | 'done' | 'warning' | 'idle' | 'error';
 
 const MARKET_STATE_TABLE: Readonly<
   Record<MarketState, { readonly key: string; readonly dot: MarketDot }>
@@ -229,8 +229,14 @@ export function installedRows(
 
 const SWITCH_LOCKED: ReadonlySet<MarketState> = new Set(['unusable', 'broken']);
 
+export function marketDotOf(row: MarketRow): MarketDot {
+  if (row.state === 'missing' && row.version?.installed !== undefined) return 'error';
+  return MARKET_DOT[row.state];
+}
+
 export function marketSwitchLocked(row: MarketRow): boolean {
-  return SWITCH_LOCKED.has(row.state);
+  if (SWITCH_LOCKED.has(row.state)) return true;
+  return row.state === 'missing' && row.version?.installed !== undefined;
 }
 
 export function marketActions(row: MarketRow): MarketRowAction[] {

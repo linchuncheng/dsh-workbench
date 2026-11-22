@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { extensionNeedOf, fakeNpmSource, manifestOf } from '@dsh-workbench/shared/testing';
 import { installedToShow } from '../market-installed-list';
 import { marketRows } from '../market-rows';
-import { actionLabelKey, progressKeyOf } from '../market-view-text';
+import { actionLabelKey, depsOnlyInstall, progressKeyOf } from '../market-view-text';
 
 const NEED = extensionNeedOf('demo', { commands: ['x'], sources: [fakeNpmSource] });
 
@@ -23,6 +23,14 @@ describe('安装按钮怎么说：装模块还是装依赖', () => {
 
     expect(actionLabelKey(row, 'install')).toBe('panels.market.install');
     expect(progressKeyOf(row, 'install')).toBe('panels.market.installing');
+  });
+
+  it('★ 「安装依赖」钮跟「更新依赖」同一套黄色：靠动作语义判，不靠动作名', () => {
+    const installed = marketRows([unit], {}, { argocd: { installed: '1.1.9', pkg: '@a/argocd' } })[0];
+
+    expect(depsOnlyInstall(installed, 'install')).toBe(true);
+    expect(depsOnlyInstall(marketRows([unit], {})[0], 'install')).toBe(false);
+    expect(depsOnlyInstall(installed, 'update')).toBe(false);
   });
 
   it('更新那一档不受影响：依赖有新版仍然叫「更新依赖」', () => {

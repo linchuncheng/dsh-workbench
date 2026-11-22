@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { MarketState } from '../market-row-types';
-import { MARKET_DOT, MARKET_STATE_KEY } from '../market-rows';
+import { MARKET_DOT, MARKET_STATE_KEY, marketDotOf } from '../market-rows';
 
 const ALL_STATES: Readonly<Record<MarketState, true>> = {
   checking: true,
@@ -24,6 +24,14 @@ describe('marketRows：状态点', () => {
     expect(MARKET_DOT.outdated).toBe('warning');
     expect(MARKET_DOT['pending-followup']).toBe('warning');
     expect(MARKET_DOT.missing).not.toBe('warning');
+  });
+
+  it('★ 装好了却缺依赖 ⇒ 红点（跑不起来），目录里没装的仍是灰点', () => {
+    const depsMissing = { id: 'four', state: 'missing', version: { installed: '0.1.0' } } as never;
+    const notInstalled = { id: 'five', state: 'missing' } as never;
+
+    expect(marketDotOf(depsMissing)).toBe('error');
+    expect(marketDotOf(notInstalled)).toBe('idle');
   });
 
   it('已装是绿点、检测中会动、不知道是灰的', () => {

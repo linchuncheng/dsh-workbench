@@ -8,6 +8,8 @@ export function isOnMachine(state: MarketState): boolean {
     state === 'pending-restart' ||
     state === 'inactive' ||
     state === 'unusable' ||
-    state === 'broken'
+    state === 'broken' ||
+    state === 'unsupported' ||
+    state === 'pending-followup'
   );
 }

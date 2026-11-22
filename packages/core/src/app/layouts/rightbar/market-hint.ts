@@ -2,7 +2,7 @@ import type { ModuleVersion, WorkbenchSelfUpdate, WorkbenchVersion } from '@/ker
 import type { InstalledPlugin } from '@/shared/api/installed-plugins';
 import type { CapabilityMap } from '@/shared/hooks/use-capabilities';
 import type { UnitManifest } from '@dsh-workbench/shared';
-import type { PanelHint } from '../panel-hint';
+import type { PanelHint, PanelHintTone } from '../panel-hint';
 import { installedPluginRows } from './market-plugin-rows';
 import type { InstalledWorkbenchModule, MarketRow } from './market-rows';
 import {
@@ -32,6 +32,11 @@ export interface MarketHintInput {
   readonly restartPending?: ReadonlySet<string> | undefined;
 }
 
+interface Signal {
+  readonly key: string;
+  readonly tone: PanelHintTone;
+}
+
 const PROBLEM_KEY = 'panels.market.hasProblem';
 
 const RESTART_KEY = 'panels.market.pendingRestart';
@@ -50,6 +55,8 @@ function isProblem(row: MarketRow): boolean {
     row.broken === true ||
     row.state === 'broken' ||
     row.state === 'unusable' ||
+    row.state === 'unsupported' ||
+    (row.state === 'missing' && row.version?.installed !== undefined) ||
     row.note?.key === 'panels.market.moduleRefused' ||
     (row.workbench === true && SELF_UPDATE_NOTES.has(row.note?.key ?? ''))
   );
@@ -99,37 +106,30 @@ export function marketHintOf(input: MarketHintInput): PanelHint | null {
     ...installedPluginRows(input.plugins ?? []),
     ...(self === undefined ? [] : [self]),
   ];
-  const problem = rows.some(isProblem);
-  const restart =
-    rows.some((row) => isRestart(row, installing)) ||
-    (!installing && awaitsRestart(input.manifests, installed));
-  const followUp = rows.some((row) => row.state === 'pending-followup');
   const rosterRead = input.modules !== null;
-  const unknown = !installing && rows.some((row) => isUnknown(row, rosterRead));
-  const updates = marketHasUpdates(rows, sharedRows(marketable, input.capabilities));
-  const more: string[] = [];
-  if (problem) {
-    if (restart) more.push(RESTART_KEY);
-    if (followUp) more.push(FOLLOWUP_KEY);
-    if (unknown) more.push(UNKNOWN_KEY);
-    if (updates) more.push(UPDATES_KEY);
-    return { labelKey: PROBLEM_KEY, tone: 'danger', ...(more.length === 0 ? {} : { moreKeys: more }) };
-  }
-  if (restart) {
-    if (followUp) more.push(FOLLOWUP_KEY);
-    if (unknown) more.push(UNKNOWN_KEY);
-    if (updates) more.push(UPDATES_KEY);
-    return { labelKey: RESTART_KEY, tone: 'warning', ...(more.length === 0 ? {} : { moreKeys: more }) };
-  }
-  if (followUp) {
-    if (unknown) more.push(UNKNOWN_KEY);
-    if (updates) more.push(UPDATES_KEY);
-    return { labelKey: FOLLOWUP_KEY, tone: 'warning', ...(more.length === 0 ? {} : { moreKeys: more }) };
-  }
-  if (unknown) {
-    if (updates) more.push(UPDATES_KEY);
-    return { labelKey: UNKNOWN_KEY, tone: 'warning', ...(more.length === 0 ? {} : { moreKeys: more }) };
-  }
-  if (updates) return { labelKey: UPDATES_KEY, tone: 'warning' };
-  return null;
+  const signal = (key: string, tone: PanelHintTone, on: boolean): readonly Signal[] =>
+    on ? [{ key, tone }] : [];
+  const signals: readonly Signal[] = [
+    ...signal(PROBLEM_KEY, 'danger', rows.some(isProblem)),
+    ...signal(
+      RESTART_KEY,
+      'warning',
+      rows.some((row) => isRestart(row, installing)) ||
+        (!installing && awaitsRestart(input.manifests, installed)),
+    ),
+    ...signal(FOLLOWUP_KEY, 'warning', rows.some((row) => row.state === 'pending-followup')),
+    ...signal(UNKNOWN_KEY, 'warning', !installing && rows.some((row) => isUnknown(row, rosterRead))),
+    ...signal(
+      UPDATES_KEY,
+      'warning',
+      marketHasUpdates(rows, sharedRows(marketable, input.capabilities)),
+    ),
+  ];
+  const [first, ...rest] = signals;
+  if (first === undefined) return null;
+  return {
+    labelKey: first.key,
+    tone: first.tone,
+    ...(rest.length === 0 ? {} : { moreKeys: rest.map((one) => one.key) }),
+  };
 }

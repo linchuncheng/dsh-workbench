@@ -108,6 +108,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'runtime.pluginArea': 'the plugin area',
   'panels.market.defaultHint': 'When on, every workspace is enabled by default; you can still turn it off in a single workspace’s panel setup.',
   'panels.market.defaultLabel': 'On by default everywhere',
+  'panels.market.defaultNeedsDeps': 'This module is missing dependencies — install them first, then enable it.',
   'panels.market.defaultLocked': 'This version is not usable — update or uninstall it first.',
   'panels.followAll': 'Restore the default everywhere',
   'panels.followAllConfirmTitle': 'Restore the default everywhere?',

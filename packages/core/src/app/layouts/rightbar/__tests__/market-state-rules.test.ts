@@ -255,6 +255,25 @@ describe('异常的行：那颗「全局默认」照画，但禁用', () => {
     expect(marketSwitchLocked(notLoaded as never)).toBe(false);
   });
 
+  it('★ 装在本机上的都归「已安装」：版本不一致、旧数据待迁移也算，不落「未就绪」', () => {
+    const rows = [
+      ...marketRows([unit('a')], capability('a', 'unsupported'), { a: { installed: '1.0.0', pkg: '@a/a' } }),
+      ...marketRows([unit('b')], capability('b', 'ok'), { b: { installed: '1.0.0', pkg: '@a/b' } }),
+    ].map((row) => ({ ...row, state: row.id === 'b' ? ('pending-followup' as const) : row.state }));
+
+    for (const row of rows) expect(marketSections([row])[0]?.id, row.id).toBe('installed');
+  });
+
+  it('★ 装好了却缺依赖 ⇒ 开关锁住：先装依赖，不然打开也跑不起来', () => {
+    const depsMissing = marketRows([unit('four')], capability('four', 'missing', { provision: 'ready' }), {
+      four: { installed: '0.1.0' },
+    })[0];
+    const notInstalled = marketRows([unit('five')], capability('five', 'missing', { provision: 'ready' }))[0];
+
+    expect(marketSwitchLocked(depsMissing as never)).toBe(true);
+    expect(marketSwitchLocked(notInstalled as never)).toBe(false);
+  });
+
   it('★ 好好的 / 有新版本 / 只是没装 ⇒ 都不禁用', () => {
     const rows = [
       ...marketRows([unit('hello')], capability('hello', 'ok'), { hello: { installed: '0.1.0' } }),

@@ -41,7 +41,7 @@ export const PROGRESS_KEY: Readonly<Record<MarketRowAction, string>> = (() => {
   return out as Readonly<Record<MarketRowAction, string>>;
 })();
 
-function depsOnlyInstall(row: MarketRow | undefined, action: MarketRowAction): boolean {
+export function depsOnlyInstall(row: MarketRow | undefined, action: MarketRowAction): boolean {
   if (action !== 'install' || row === undefined) return false;
   return row.local === true || row.version?.installed !== undefined;
 }

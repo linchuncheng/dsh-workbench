@@ -107,6 +107,7 @@ export const zh = {
   'runtime.pluginArea': '插件区',
   'panels.market.defaultHint': '开启后，所有工作区默认启用；也可以在单个工作区的面板配置中关闭。',
   'panels.market.defaultLabel': '全局默认开启',
+  'panels.market.defaultNeedsDeps': '这个模块还缺依赖 —— 先点「安装依赖」，再回来打开。',
   'panels.market.defaultLocked': '当前版本不可用，请先更新或卸载。',
   'panels.followAll': '全部恢复默认',
   'panels.followAllConfirmTitle': '全部恢复默认？',
