@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { parse } from 'yaml';
 import { splitShellLine } from '../platform/ops/shell-text.js';
 
@@ -20,21 +20,32 @@ function modulesOf(profileDir: string): Readonly<Record<string, unknown>> {
   }
 }
 
-export function profilePnpmCommand(profileDir: string, env: NodeJS.ProcessEnv = process.env): PnpmCommand {
+function bundledPnpmOf(execPath: string): string | undefined {
+  const candidate = join(dirname(execPath), '..', '..', 'pnpm', 'bin', 'pnpm.cjs');
+  return existsSync(candidate) ? candidate : undefined;
+}
+
+function configuredCommand(env: NodeJS.ProcessEnv): PnpmCommand | undefined {
   const configured = env.DSH_WB_PNPM?.trim();
-  if (configured !== undefined && configured !== '') {
-    const [command, ...args] = splitShellLine(configured);
-    if (command !== undefined) return { command, args };
-  }
+  if (configured === undefined || configured === '') return undefined;
+  const [command, ...args] = splitShellLine(configured);
+  return command === undefined ? undefined : { command, args };
+}
+
+export function profilePnpmCommand(profileDir: string, env: NodeJS.ProcessEnv = process.env): PnpmCommand {
   const modules = modulesOf(profileDir);
   const storeDir = typeof modules['storeDir'] === 'string' ? modules['storeDir'].trim() : '';
   const withStore = (command: PnpmCommand): PnpmCommand =>
     storeDir === '' ? command : { ...command, storeDir };
   const manager = typeof modules['packageManager'] === 'string' ? modules['packageManager'].trim() : '';
-  if (manager === '') return withStore({ command: 'pnpm', args: [] });
+  const configured = configuredCommand(env);
+  const fallback = configured ?? { command: 'pnpm', args: [] };
+  if (manager === '') return withStore(fallback);
   const version = manager.startsWith('pnpm@') ? manager.slice('pnpm@'.length) : '';
   const corepackHome = env.COREPACK_HOME?.trim() || join(homedir(), '.cache', 'node', 'corepack');
-  const cached = join(corepackHome, 'v1', 'pnpm', version, 'bin', 'pnpm.cjs');
-  if (version !== '' && existsSync(cached)) return withStore({ command: process.execPath, args: [cached] });
+  const cached = version === '' ? undefined : join(corepackHome, 'v1', 'pnpm', version, 'bin', 'pnpm.cjs');
+  const pnpmCjs = (cached !== undefined && existsSync(cached) ? cached : undefined) ?? bundledPnpmOf(process.execPath);
+  if (pnpmCjs !== undefined) return withStore({ command: process.execPath, args: [pnpmCjs] });
+  if (configured !== undefined) return withStore(fallback);
   return withStore({ command: 'corepack', args: [manager] });
 }

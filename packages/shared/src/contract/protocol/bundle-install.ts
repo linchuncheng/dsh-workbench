@@ -142,6 +142,7 @@ export interface BundlePackageResult {
   readonly output: string;
   readonly truncated: boolean;
   readonly logPath: string;
+  readonly command?: string;
   readonly kind?: BundleFailureKind;
 }
 

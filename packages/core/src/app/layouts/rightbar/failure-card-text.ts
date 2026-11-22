@@ -104,7 +104,7 @@ export function installCardOf(
     fixLabel: t('panels.market.failure.copyOutput'),
     fix: output,
     copiedHint: t('panels.market.failure.copyOutputHint'),
-    command: '',
+    command: change?.packageResult?.command ?? '',
     output,
     exitCode: change?.packageResult?.exitCode ?? null,
   };

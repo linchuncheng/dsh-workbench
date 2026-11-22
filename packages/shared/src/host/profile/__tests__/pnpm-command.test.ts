@@ -47,10 +47,13 @@ describe('模块安装用哪个 pnpm：跟 profile 当初装它的是同一个�
     });
   });
 
-  it('DSH_WB_PNPM 显式指定时优先（用于没有 corepack 的机器）', () => {
+  it('★ profile 记着 pnpm 版本时优先用它（树是那个 pnpm 装的），DSH_WB_PNPM 只兜底', () => {
     const dir = profileWith('packageManager: pnpm@11.21.0\n');
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-corepack-empty-'));
+    roots.push(home);
+    const env = { DSH_WB_PNPM: '/opt/pnpm', COREPACK_HOME: home };
 
-    expect(profilePnpmCommand(dir, { DSH_WB_PNPM: '/opt/pnpm' })).toEqual({ command: '/opt/pnpm', args: [] });
+    expect(profilePnpmCommand(dir, env)).toEqual({ command: '/opt/pnpm', args: [] });
   });
 
   it('★ DSH_WB_PNPM 是已经裹好的整段（preflight 写的）→ 拆回 argv，别把引号当路径的一部分', () => {
@@ -63,6 +66,16 @@ describe('模块安装用哪个 pnpm：跟 profile 当初装它的是同一个�
     expect(profilePnpmCommand(dir, { DSH_WB_PNPM: "'/Users/ksen/.dsh/workbench/pnpm-10/node_modules/.bin/pnpm'" })).toEqual({
       command: '/Users/ksen/.dsh/workbench/pnpm-10/node_modules/.bin/pnpm',
       args: [],
+    });
+  });
+
+  it('★ 显式指定时也带上 profile 记的 storeDir（HOME 被改过也不会换 store）', () => {
+    const dir = profileWith('storeDir: /Users/x/Library/pnpm/store/v11\n');
+
+    expect(profilePnpmCommand(dir, { DSH_WB_PNPM: "'/opt/pnpm'" })).toEqual({
+      command: '/opt/pnpm',
+      args: [],
+      storeDir: '/Users/x/Library/pnpm/store/v11',
     });
   });
 

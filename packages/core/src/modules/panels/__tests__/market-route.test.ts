@@ -337,6 +337,7 @@ describe('插件那条路失败：回结构化失败（不抛），诊断信息�
     expect(detail).toContain('npm ERR! line-10');
     expect(detail).toContain(COMMAND);
     expect(detail).toContain('npm ERR! code EACCES');
+    expect(outcome.change.packageResult).toMatchObject({ exitCode: 1, command: COMMAND });
     expect(outcome.plugin).toBeUndefined();
   });
 

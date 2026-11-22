@@ -1,7 +1,8 @@
-import type { BundleManager, InstalledModule, PluginPlanStep, Seam } from '@dsh-workbench/shared/host';
+import type { BundleManager, InstallFailure, InstalledModule, PluginPlanStep, Seam } from '@dsh-workbench/shared/host';
 import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bundle-install';
 import {
-  approveBuilds, declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, PlanStepError, profileBundlesOf,
+  approveBuilds, declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, PlanStepError, planStepText,
+  profileBundlesOf,
   profilePnpmCommand, quoteShellArg, recordPendingBuilds, refusalReason, splitNpmSpec, WorkbenchDataError,
 } from '@dsh-workbench/shared/host';
 import { requireSupply, localDirOf, type SupplyPort } from '@dsh-workbench/shared/host';
@@ -110,6 +111,7 @@ function routedFailure(
   pendingBuilds: readonly string[] = [],
   errorCode = 'operation-error',
   exitCode: number | null = null,
+  command = '',
 ): BundleInstallOutcome {
   return outcomeOf(deps, pkg, {
     application: 'failed',
@@ -119,10 +121,36 @@ function routedFailure(
     errorCode: pendingBuilds.length === 0 ? errorCode : 'build-blocked',
     errorDetail,
     ...(pendingBuilds.length === 0 ? {} : { pendingBuilds }),
-    ...(exitCode === null
+    ...(exitCode === null && command === ''
       ? {}
-      : { packageResult: { exitCode, output: errorDetail, truncated: false, logPath: '' } }),
+      : {
+          packageResult: {
+            exitCode: exitCode ?? 0,
+            output: errorDetail,
+            truncated: false,
+            logPath: '',
+            ...(command === '' ? {} : { command }),
+          },
+        }),
   });
+}
+
+function routedFailureOf(
+  deps: BundleInstallDeps,
+  pkg: string,
+  error: unknown,
+  pendingBuilds: readonly string[] = [],
+): BundleInstallOutcome {
+  const failure = error instanceof WorkbenchDataError ? (error.failure as InstallFailure | undefined) : undefined;
+  return routedFailure(
+    deps,
+    pkg,
+    failureDetailOf(error),
+    pendingBuilds,
+    'operation-error',
+    failure?.exitCode ?? (error instanceof PlanStepError ? error.exitCode : null),
+    failure?.command ?? (error instanceof PlanStepError ? planStepText(error.step) : ''),
+  );
 }
 
 function pendingFrom(deps: BundleInstallDeps, output: string): readonly string[] {
@@ -347,14 +375,7 @@ async function installModuleRow(
     if (error instanceof PlanCancelledError) return routedCancelled(deps, pkg);
     const pending = pendingFrom(deps, outputOfError(error));
     deps.logger?.warn?.(`[dsh-workbench] ${pkg} 安装命令没跑成：${failureDetailOf(error)}`);
-    return routedFailure(
-      deps,
-      pkg,
-      failureDetailOf(error),
-      pending,
-      'operation-error',
-      error instanceof PlanStepError ? error.exitCode : null,
-    );
+    return routedFailureOf(deps, pkg, error, pending);
   }
   try {
     await wireModule(deps, pkg);
@@ -438,7 +459,8 @@ export async function installRouted(deps: BundleInstallDeps): Promise<BundleInst
     await deps.runAll(plan.steps);
   } catch (error) {
     deps.ledger?.drop(pkg);
-    return routedFailure(deps, pkg, failureDetailOf(error));
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 插件安装没跑成：${failureDetailOf(error)}`);
+    return routedFailureOf(deps, pkg, error);
   }
   deps.ledger?.complete(pkg, installedPluginName(spec, pkg, deps.ledger.pluginFiles));
   deps.logger?.info?.(`[dsh-workbench] 把 ${pkg} 装进了运行时的插件区`);

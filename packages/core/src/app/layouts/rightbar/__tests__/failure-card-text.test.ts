@@ -100,13 +100,20 @@ describe('installCardOf（安装失败那一行：一句话原因 + 下一步 + 
         target: '@pagoda-dsh-workbench/module-cmdb',
         errorCode: 'operation-error',
         errorDetail: '命令失败（退出码 127）：bash: nope',
-        packageResult: { exitCode: 127, output: '命令失败（退出码 127）：bash: nope', truncated: false, logPath: '' },
+        packageResult: {
+          exitCode: 127,
+          command: "'pnpm' add --dir '/x' '@a/mod' --save-exact",
+          output: '命令失败（退出码 127）：bash: nope',
+          truncated: false,
+          logPath: '',
+        },
       } as never,
       t,
       '安装过程中出错。',
     );
 
     expect(card?.exitCode).toBe(127);
+    expect(card?.command).toBe("'pnpm' add --dir '/x' '@a/mod' --save-exact");
     expect(card?.title).toBe('panels.market.failure.installTitleOf');
   });
 
