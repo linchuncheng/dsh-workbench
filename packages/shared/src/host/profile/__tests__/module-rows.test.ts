@@ -94,6 +94,14 @@ describe('写模块行', () => {
     expect(moduleRowsIn(next)).toEqual([HELLO]);
   });
 
+  it('★ 去掉最后一行：留下注释 + []，而不是只剩注释（dsh 会拒绝非数组的 patch）', () => {
+    const withOne = withModuleRows('# 注释\n[]\n', [HELLO]);
+    const empty = withModuleRows(withOne, []);
+    expect(empty).toContain('# 注释');
+    expect(empty.trimEnd().endsWith('[]')).toBe(true);
+    expect(moduleRowsIn(empty)).toEqual([]);
+  });
+
   it('★ 再写一次不叠加（原地替换那一块）', () => {
     const once = withModuleRows(OTHER, [HELLO]);
     const twice = withModuleRows(once, [HELLO]);

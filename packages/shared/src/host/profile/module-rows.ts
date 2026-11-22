@@ -71,6 +71,11 @@ function emptyFlowSequenceRange(text: string): { readonly from: number; readonly
   return { from: range[0], to: range[1] };
 }
 
+function hasArrayContent(text: string): boolean {
+  const document = parseDocument(text, { logLevel: 'silent' });
+  return document.errors.length === 0 && isSeq(document.contents);
+}
+
 export function withModuleRows(text: string, rows: readonly ModuleRow[]): string {
   const lines = text.split('\n');
   const blocks = spannedBlocks(text);
@@ -106,7 +111,8 @@ export function withModuleRows(text: string, rows: readonly ModuleRow[]): string
   const first = output.findIndex((line) => line.trim() !== '');
   const kept = first === -1 ? [] : output.slice(first);
   const joined = kept.join('\n');
-  return joined === '' ? '' : joined.endsWith('\n') ? joined : `${joined}\n`;
+  const text2 = joined === '' ? '' : joined.endsWith('\n') ? joined : `${joined}\n`;
+  return hasArrayContent(text2) ? text2 : `${text2}[]\n`;
 }
 
 export function hasModuleRow(profileDir: string, pkg: string): boolean {
