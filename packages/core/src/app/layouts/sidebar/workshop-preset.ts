@@ -25,7 +25,7 @@ export function installWorkshopPreset(ctx: DshClientContext): () => void {
         upgrade();
       })
       .catch((error: unknown) => {
-        console.warn(`[dsh-workbench] 读不到 dsh 的默认模式，工坊会话按标准模式判 —— ${String(error)}`);
+        console.warn(`[dsh-workbench] 读不到 dsh 的默认模式，工坊会话按标准模式处理 —— ${String(error)}`);
       });
   };
 

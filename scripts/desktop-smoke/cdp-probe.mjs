@@ -1502,7 +1502,7 @@ async function readJsonFile(file) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (error) {
-    log(`读不了 ${file}：${String(error?.message ?? error)}`);
+    log(`读不到 ${file}：${String(error?.message ?? error)}`);
     return null;
   }
 }

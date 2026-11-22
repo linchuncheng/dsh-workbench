@@ -599,7 +599,7 @@ export function createAdapterSet(ctx): AdapterSet {
 - **模块**：有 npm 包名、`package.json`、构建产物的工作台包；**不是** dsh 插件页里的组合包。
   它装成 profile 的普通依赖，并在 profile 的 `cordis.patch.yml` 里占一行（`wb-<unit>`）被装载；
   包里不声明 `dsh.bundle`，因此 dsh 的插件页不出现它。`dsh.bundle` 只作为**老包兼容**保留：
-  仍声明它的包按组合包装载（进 `dsh.profile.bundles`、不写行），启动日志会点名建议重新发布去掉。
+  仍声明它的包按组合包装载（进 `dsh.profile.bundles`、不写行）；启动日志会点名，请在重新发布时去掉。
 - **单元**：模块在工作台里的那一格：id、卡片（可选）、工具、挂载面。
 
 一个包 = 一个单元；一个单元在宿主与浏览器各有一半。安装后即启用，不提供启用/停用，只能卸载
@@ -789,16 +789,16 @@ core 读清单（bundles ∪ dependencies） ──► UnitManifest
 `workbenchUnits` 里的那一格，行 id 用 `wb-<unit>` 只是工作台的命名空间）。
 
 **已经在 profile 里的模块怎么迁过来**：从 `dsh.profile.bundles` 里去掉这个包（插件页取消启用即可），
-再在模块自己的仓库去掉 `dsh.bundle` 重新发布一版。规则按「在不在名单里」判，不看声明：
+再在模块自己的仓库去掉 `dsh.bundle`，重新发布一版。规则按「在不在名单里」判，不看声明：
 
 | 在 `dsh.profile.bundles` 里 | 声明了 `dsh.bundle` | 装载方式 |
 |---|---|---|
-| 是 | 是 | 按组合包装载，不写行；启动日志点名，建议重新发布去掉该字段 |
+| 是 | 是 | 按组合包装载，不写行；启动日志点名，请在重新发布时去掉该字段 |
 | 是 | 否 | 组合包（不是工作台模块） |
 | 否 | 是 | 写 `wb-<unit>` 行（只装一份），启动日志点名 |
 | 否 | 否 | 写 `wb-<unit>` 行（正常路径） |
 
-也就是说：**先摘名单，下一次启动 `syncModuleRows` 就会补上 `wb-<unit>`**；不会出现「组合包 + 行」
+也就是说：**先把它从名单里去掉，下一次启动 `syncModuleRows` 就会补上 `wb-<unit>`**；不会出现「组合包 + 行」
 两份装载。市场装模块时把包名一起发给宿主（`install-bundle` 请求的 `pkg`），宿主按它核对名单，
 不再从 git 路径末段推包名。
 

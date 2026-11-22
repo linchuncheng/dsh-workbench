@@ -63,7 +63,7 @@ describe('启动这一拍点名旧包：还声明 dsh.bundle 的模块', () => {
       log: (line) => lines.push(line),
     });
 
-    expect(lines.join('\n')).toContain('还声明着 dsh.bundle');
+    expect(lines.join('\n')).toContain('仍声明着 dsh.bundle');
     expect(lines.join('\n')).toContain('@a/old');
   });
 });
