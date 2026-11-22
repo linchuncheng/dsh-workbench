@@ -4,6 +4,7 @@ import {
   approveBuilds,
   blockedBuildNames,
   pendingBuildsOf,
+  pendingBuildsProblem,
   recordPendingBuilds,
   WorkbenchDataError,
 } from '@dsh-workbench/shared/host';
@@ -45,9 +46,7 @@ export function approveBuildsOrProblem(
 ): string | undefined {
   if (names === undefined || names.length === 0) return undefined;
   const unmatched = approveBuildsIn(names, dirs);
-  return unmatched.length === 0
-    ? undefined
-    : `这些包不在等待批准的清单里：${unmatched.join('、')}。请重新安装一次，再查看最新的等待批准清单。`;
+  return unmatched.length === 0 ? undefined : pendingBuildsProblem(unmatched);
 }
 
 export interface InstallStep {
@@ -64,7 +63,7 @@ export function blockedBuildsError(error: unknown, pending: readonly string[]): 
   const data = error instanceof WorkbenchDataError ? error : undefined;
   return new WorkbenchDataError(
     'build-blocked',
-    error instanceof Error ? error.message : String(error),
+    `安装脚本等待批准：${pending.join('、')}。用户批准后重试。`,
     {
       ...(data?.detail === undefined ? {} : { detail: data.detail }),
       ...(data?.failure === undefined ? {} : { failure: data.failure }),

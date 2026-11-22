@@ -76,13 +76,15 @@ export function recordPendingBuilds(profileDir: string | null, output: string): 
   return [...pending, ...added];
 }
 
+export function pendingBuildsProblem(names: readonly string[]): string {
+  return `这些包已不在等待批准的清单里：${names.join('、')}。请重新操作一次。`;
+}
+
 export function approveBuilds(profileDir: string | null, names: readonly string[]): void {
   if (profileDir === null || names.length === 0) return;
   const { document, pending } = readPolicy(profileDir);
   const stale = names.filter((name) => !pending.includes(name));
-  if (stale.length > 0) {
-    throw new Error(`这些包不在等待批准的清单里：${stale.join('、')}。请重新安装一次，再查看最新的等待批准清单。`);
-  }
+  if (stale.length > 0) throw new Error(pendingBuildsProblem(stale));
   for (const name of names) document.setIn(['allowBuilds', name], true);
   writeTextFile(policyPath(profileDir), `${String(document)}\n`, { mode: 0o600 });
 }

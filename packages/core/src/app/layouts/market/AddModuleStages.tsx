@@ -191,11 +191,11 @@ export function AddModuleResult({ t, state }: { t: Translate; state: AddModuleSt
 
       {builds.length === 0 ? null : (
         <div className={styles.approval}>
-          <p className={styles.approvalTitle}>{t('panels.market.add.approveTitle')}</p>
+          <p className={styles.approvalTitle}>{t('panels.market.approve.title')}</p>
           <p className={styles.approvalText}>
-            {t('panels.market.add.approveHint', { packages: builds.join('、') })}
+            {t('panels.market.approve.hint', { packages: builds.join('、') })}
           </p>
-          <p className={styles.approvalCaution}>{t('panels.market.add.approveCaution')}</p>
+          <p className={styles.approvalCaution}>{t('panels.market.approve.caution')}</p>
         </div>
       )}
 

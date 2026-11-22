@@ -141,7 +141,7 @@ export function MarketRowFailure({
   if (builds.length > 0 && onApprove !== undefined) {
     return (
       <div className={styles.marketFailureSeat}>
-        <BuildApproval t={t} packages={builds} onApprove={onApprove} />
+        <BuildApproval t={t} packages={builds} action={failure.action} onApprove={onApprove} />
       </div>
     );
   }

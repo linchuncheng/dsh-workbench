@@ -70,7 +70,11 @@ describe('被 pnpm 拦下的构建脚本：记账、放行、再重跑', () => {
         },
         runAll: async () => undefined,
       }),
-    ).rejects.toMatchObject({ code: 'build-blocked', pendingBuilds: ['sharp'] });
+    ).rejects.toMatchObject({
+      code: 'build-blocked',
+      pendingBuilds: ['sharp'],
+      message: '安装脚本等待批准：sharp。用户批准后重试。',
+    });
 
     expect(pendingBuildsOf(dir)).toEqual(['sharp']);
     expect(pendingBuildsOfError(error)).toBeUndefined();

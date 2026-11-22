@@ -113,7 +113,7 @@ function AddModuleContent({
           </Button>
           {builds.length === 0 ? null : (
             <Button type="button" variant="primary" size="md" onClick={() => state.install(builds)}>
-              {t('panels.market.add.approveRun')}
+              {t('panels.market.approve.install')}
             </Button>
           )}
           {failed && builds.length === 0 ? (

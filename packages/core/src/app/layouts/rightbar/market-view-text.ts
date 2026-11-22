@@ -65,6 +65,10 @@ export const UPDATE_ACTIONS: readonly MarketRowAction[] = (
   Object.keys(ACTION_LABEL_KEY) as MarketRowAction[]
 ).filter((action) => ACTION_LABEL_KEY[action] === 'panels.market.update');
 
+export function approveKeyOf(action: MarketRowAction | undefined): string {
+  return action === 'install' ? 'panels.market.approve.install' : 'panels.market.approve.update';
+}
+
 export interface HeldRow {
   readonly id: string;
   readonly row: MarketRow;
