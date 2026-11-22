@@ -1,5 +1,6 @@
-import type { BundleManager, InstalledModule, Seam, SupplyPort } from '@dsh-workbench/shared/host';
+import type { BundleManager, InstalledModule, ProfileReload, Seam, SupplyPort } from '@dsh-workbench/shared/host';
 import { syncModuleRows } from '@/shared/api/host/module-rows-sync';
+import type { SyncRowsSnapshot } from './market-route';
 import type { InstallRunner } from './market-install-run';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
 import type { RegistryFixDeps } from './market-registry';
@@ -21,15 +22,16 @@ export interface RouteDepsInput {
   readonly installed?: ((pkg: string) => InstalledModule) | undefined;
   readonly ledger?: PluginLedger | undefined;
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
+  readonly reconcile?: ((rows: readonly string[]) => Promise<ProfileReload>) | undefined;
 }
 
 export function syncModuleRowsOf(
   profileDir: string | null | undefined,
   supply: Pick<SupplyPort, 'profileModules'>,
-): () => void {
+): () => SyncRowsSnapshot | undefined {
   return () => {
-    if (profileDir === undefined || profileDir === null) return;
-    syncModuleRows({ profileDir, modules: supply.profileModules(profileDir) });
+    if (profileDir === undefined || profileDir === null) return undefined;
+    return syncModuleRows({ profileDir, modules: supply.profileModules(profileDir) });
   };
 }
 
@@ -50,6 +52,7 @@ export function routeDepsOf(input: RouteDepsInput): ReplaceBundleDeps {
       removeDshBundle({ manager, pkg, profileDir, registryFix, ...(logger === undefined ? {} : { logger }) }),
     ...(input.seam === undefined ? {} : { seam: input.seam }),
     ...(input.installed === undefined ? {} : { installed: input.installed }),
+    ...(input.reconcile === undefined ? {} : { reconcile: input.reconcile }),
     ...(input.ledger === undefined ? {} : { ledger: input.ledger }),
     ...(logger === undefined ? {} : { logger }),
   };

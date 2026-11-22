@@ -1,8 +1,9 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect } from 'react';
 
+import { marketStore, useMarketStore, type MarketStore } from './market-store';
 import { WORKBENCH_SWAP_MS } from './market-settle';
 
-const listeners = new Set<() => void>();
+const channel: MarketStore = marketStore();
 let published = new Map<string, number>();
 let live: ReadonlySet<string> = new Set();
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -21,15 +22,10 @@ export function publishMarketBusy(ids: readonly string[]): void {
   refresh(now);
 }
 
-export function subscribeMarketBusy(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
+export const subscribeMarketBusy = channel.subscribe;
 
 export function useMarketBusy(): ReadonlySet<string> {
-  return useSyncExternalStore(subscribeMarketBusy, marketBusyIds);
+  return useMarketStore(channel, marketBusyIds);
 }
 
 export function usePublishMarketBusy(id: string | null): void {
@@ -58,7 +54,7 @@ function refresh(now: number): void {
   const next = new Set(published.keys());
   if (!sameSet(live, next)) {
     live = next;
-    for (const listener of [...listeners]) listener();
+    channel.notify();
   }
   schedule(now);
 }

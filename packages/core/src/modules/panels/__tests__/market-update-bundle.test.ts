@@ -461,6 +461,7 @@ describe('行加载的模块：更新只走 profile，不叫 dsh 的插件管理
         },
         syncRows: () => {
           synced.push('sync');
+          return { added: [], removed: [], rows: [] };
         },
       },
     });

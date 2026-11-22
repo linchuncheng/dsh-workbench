@@ -1,4 +1,11 @@
-import type { BundleManager, InstallFailure, InstalledModule, PluginPlanStep, Seam } from '@dsh-workbench/shared/host';
+import type {
+  BundleManager,
+  InstallFailure,
+  InstalledModule,
+  PluginPlanStep,
+  ProfileReload,
+  Seam,
+} from '@dsh-workbench/shared/host';
 import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bundle-install';
 import {
   approveBuilds, declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, PlanStepError, planStepText,
@@ -10,6 +17,12 @@ import { sourceProblemText } from './market-dependency';
 import { pluginNameOf, type PluginFiles } from './plugin-name';
 import type { PluginLedger } from './plugin-ledger';
 import type { BundleInstallOptions, BundleInstallOutcome, BundleSupply } from './market-types';
+
+export interface SyncRowsSnapshot {
+  readonly added: readonly string[];
+  readonly removed: readonly string[];
+  readonly rows: readonly { readonly id: string; readonly name: string }[];
+}
 
 export interface BundleInstallDeps {
   readonly spec: string;
@@ -32,7 +45,8 @@ export interface BundleInstallDeps {
   ) => Promise<void>;
   readonly remove?: ((pkg: string) => Promise<BundleChange>) | undefined;
   readonly profileDir?: string | null | undefined;
-  readonly syncRows?: (() => void) | undefined;
+  readonly syncRows?: (() => SyncRowsSnapshot | undefined) | undefined;
+  readonly reconcile?: ((rows: readonly string[]) => Promise<ProfileReload>) | undefined;
   readonly outputOf?: (() => string) | undefined;
 }
 
@@ -311,6 +325,22 @@ async function wireModule(deps: Omit<BundleInstallDeps, 'spec' | 'options'>, pkg
   }
 }
 
+async function reloadRows(
+  deps: BundleInstallDeps,
+  pkg: string,
+  rows: readonly string[],
+): Promise<ProfileReload> {
+  if (deps.reconcile === undefined) return { applied: true };
+  if (rows.length === 0) return { applied: false };
+  try {
+    return await deps.reconcile(rows);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已装好，但没有热加载：${detail}`);
+    return { applied: false };
+  }
+}
+
 function profileInstallLine(profileDir: string): string {
   const pnpm = profilePnpmCommand(profileDir);
   const prefix = [pnpm.command, ...pnpm.args].map(quoteShellArg).join(' ');
@@ -407,8 +437,10 @@ async function installModuleRow(
       errorDetail: `dsh.profile.bundles: ${detail}`,
     });
   }
+  let rowIds: readonly string[];
   try {
-    deps.syncRows?.();
+    const synced = deps.syncRows?.();
+    rowIds = (synced?.rows ?? []).filter((row) => row.name === pkg).map((row) => row.id);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已安装到 profile，但模块行没有写入：${detail}`);
@@ -425,12 +457,18 @@ async function installModuleRow(
   if (skipped.length > 0) {
     deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已安装到工作台配置，但这些包的构建脚本没有运行：${skipped.join('、')}`);
   }
-  deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装：profile 依赖 + 一条模块行`);
+  const reload = await reloadRows(deps, pkg, rowIds);
+  if (reload.applied) {
+    deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装并已热加载：profile 依赖 + 一条模块行`);
+  } else {
+    deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装：profile 依赖 + 一条模块行，等重启加载`);
+  }
   return outcomeOf(deps, pkg, {
-    application: 'applied',
+    application: reload.applied ? 'applied' : 'restart-required',
     stage: 'install',
     changed: true,
     target: pkg,
+    ...(reload.reason === undefined ? {} : { restartReason: reload.reason }),
     ...(skipped.length === 0 ? {} : { pendingBuilds: skipped }),
   });
 }

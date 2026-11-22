@@ -270,8 +270,10 @@ function stateOf(
   capability: CapabilityMap[string] | undefined,
   manifest: UnitManifest,
   installed: boolean,
+  restarting: boolean,
 ): MarketState {
   if (capability === undefined) {
+    if (restarting) return 'inactive';
     return installed && supplyNeedsOf(manifest).length === 0 ? 'installed' : 'unknown';
   }
   if (capability.released === true) return 'missing';
@@ -451,6 +453,7 @@ export function marketRows(
   defaults: ReadonlySet<string> = new Set(),
   changed: Readonly<Record<string, number>> = {},
   held: ReadonlySet<string> = new Set(),
+  restartPending: ReadonlySet<string> = new Set(),
 ): MarketRow[] {
   const rows: MarketRow[] = [];
   for (const manifest of manifests) {
@@ -460,7 +463,9 @@ export function marketRows(
     const entry = updates[manifest.id];
     const local = entry?.local === true;
     const state: MarketState =
-      capabilities === null ? 'checking' : stateOf(capability, manifest, entry !== undefined);
+      capabilities === null
+        ? 'checking'
+        : stateOf(capability, manifest, entry !== undefined, restartPending.has(manifest.id));
     const onMachine = isOnMachine(state);
     const reAdopt = capability?.released === true && !installDeclared;
 
@@ -486,11 +491,13 @@ export function marketRows(
       moduleUpdate === undefined ? (depsOnly ? 'installed' : state) : 'outdated';
     const note = noteOf(shown, capability, manifest);
     const hint: MarketHint | undefined =
-      moduleUpdate?.blocked === undefined
-        ? shown === 'unknown' || shown === 'unchecked'
+      moduleUpdate?.blocked !== undefined
+        ? updateBlockHintOf(moduleUpdate.blocked)
+        : shown === 'unknown' || shown === 'unchecked'
           ? { key: 'panels.market.uncheckedHint' }
-          : undefined
-        : updateBlockHintOf(moduleUpdate.blocked);
+          : shown === 'inactive'
+            ? { key: 'panels.market.moduleRestartHint' }
+            : undefined;
     rows.push({
       id: manifest.id,
       titleKey: manifest.titleKey,

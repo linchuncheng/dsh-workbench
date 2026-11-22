@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 
+import { markMarketRestart } from './market-restart';
 import { MODULE_SETTLE_MS } from './market-settle';
 
 export interface MarketInstallState {
@@ -66,6 +67,7 @@ export function publishMarketApplied(units: readonly string[]): void {
   for (const unit of new Set(units)) {
     if (unit !== '' && !applied.has(unit)) applied.set(unit, now);
   }
+  markMarketRestart([...new Set(units)]);
   refresh(now);
 }
 

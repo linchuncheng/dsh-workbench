@@ -3,7 +3,13 @@ import type { UnitManifest } from '@dsh-workbench/shared';
 import { needsOf as needsOfManifest } from '@dsh-workbench/shared/host';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
 import type { BundleManager } from '@dsh-workbench/shared/host';
-import type { InstalledModule, LibNeed, ProfileModule, ProfilePackage } from '@dsh-workbench/shared/host';
+import type {
+  InstalledModule,
+  LibNeed,
+  ProfileModule,
+  ProfilePackage,
+  ProfileReload,
+} from '@dsh-workbench/shared/host';
 import type { RegistryNotebook } from '@dsh-workbench/shared/host';
 import { hasModuleRow, requireSupply, type SupplyPort, type UnitMountDeps } from '@dsh-workbench/shared/host';
 import type { Seam } from '@dsh-workbench/shared/host';
@@ -75,6 +81,7 @@ export function createMarketService(options: {
   profileName?: (() => string | null) | undefined;
   selfUpdate?: ((request: SelfUpdateRequest, onError: (message: string) => void) => SelfUpdateStart) | undefined;
   prereleaseChannels?: (() => readonly string[]) | undefined;
+  reconcile?: ((rows: readonly string[]) => Promise<ProfileReload>) | undefined;
   runMigration?: WorkbenchFollowUpDeps['runMigration'];
   logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
   supply?: SupplyPort | undefined;
@@ -100,6 +107,7 @@ export function createMarketService(options: {
     dshHome,
     profileName,
     prereleaseChannels,
+    reconcile,
   } = options;
   const supply = supplyOption ?? requireSupply();
   const command = options.command;
@@ -384,6 +392,7 @@ export function createMarketService(options: {
             pkg,
             runAll,
             syncRows: syncModuleRowsOf(profileDir, supply),
+            ...(reconcile === undefined ? {} : { reconcile }),
             ...(logger === undefined ? {} : { logger }),
           })
         : await removeDshBundle({
@@ -421,6 +430,7 @@ export function createMarketService(options: {
         ...(profileDir === undefined || profileDir === null ? {} : { profileDir }),
         ...(home === undefined ? {} : { dshHome: home }),
         ...(prereleaseChannels === undefined ? {} : { prereleaseChannels }),
+      ...(reconcile === undefined ? {} : { reconcile }),
         routeDeps: routeDeps(manager),
         sweep: async () => {
           await plugins.sweep((plugin) => envDropper.usersOf(plugin, undefined, catalog()));
@@ -450,6 +460,7 @@ export function createMarketService(options: {
         },
         ...(options.selfUpdate === undefined ? {} : { selfUpdate: options.selfUpdate }),
         ...(prereleaseChannels === undefined ? {} : { prereleaseChannels }),
+      ...(reconcile === undefined ? {} : { reconcile }),
         running: runningVersionOf(import.meta.url),
         dshVersion: () => (profileDir === undefined || profileDir === null ? undefined : dshVersionIn(profileDir)),
         ...(logger === undefined ? {} : { logger }),

@@ -80,6 +80,7 @@ export * from './host/profile/config-sync.js';
 export * from './host/profile/dsh-plugins.js';
 export * from './host/profile/build-approval.js';
 export * from './host/profile/module-rows.js';
+export * from './host/profile/hmr-reload.js';
 export * from './host/profile/pnpm-command.js';
 export * from './host/profile/profile-bundles.js';
 export * from './host/profile/profile-create.js';

@@ -544,12 +544,73 @@ describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，
       ...deps,
       registry: 'https://npm.example.com/team/',
       profileDir: '/tmp/wb-profile',
-      syncRows: () => {},
+      syncRows: () => ({ added: [], removed: [], rows: [] }),
     });
 
     expect(commands.map((line) => line.replace(/^& /u, ''))).toEqual([
       `'pnpm' add --dir '/tmp/wb-profile' '@t/module-a@1.2.0' --save-exact --registry 'https://npm.example.com/team/'`,
     ]);
+  });
+
+  it('★ 装完让 dsh 热加载这一行：成功就是 applied，传的正是模块行的 id', async () => {
+    const { deps } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+    const reconcile = vi.fn(async () => ({ applied: true }));
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: '/tmp/wb-profile',
+      runAll: async () => undefined,
+      syncRows: () => ({
+        added: ['wb-module-a'],
+        removed: [],
+        rows: [{ id: 'wb-module-a', name: '@t/module-a' }],
+      }),
+      reconcile,
+    });
+
+    expect(reconcile).toHaveBeenCalledWith(['wb-module-a']);
+    expect(outcome.change.application).toBe('applied');
+  });
+
+  it('★ 这台 dsh 没有 HMR → 说清楚要重启，别装作已经生效', async () => {
+    const { deps } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: '/tmp/wb-profile',
+      runAll: async () => undefined,
+      syncRows: () => ({
+        added: ['wb-module-a'],
+        removed: [],
+        rows: [{ id: 'wb-module-a', name: '@t/module-a' }],
+      }),
+      reconcile: async () => ({ applied: false, reason: 'no-hmr' }),
+    });
+
+    expect(outcome.change).toMatchObject({ application: 'restart-required', restartReason: 'no-hmr' });
+  });
+
+  it('★ 热加载自己炸了也不改口成装失败：装是装上了，报重启', async () => {
+    const { deps } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+    const warn = vi.fn();
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: '/tmp/wb-profile',
+      runAll: async () => undefined,
+      syncRows: () => ({
+        added: ['wb-module-a'],
+        removed: [],
+        rows: [{ id: 'wb-module-a', name: '@t/module-a' }],
+      }),
+      reconcile: async () => {
+        throw new Error('recompose failed');
+      },
+      logger: { warn },
+    });
+
+    expect(warn.mock.calls.some((call) => String(call[0]).includes('没有热加载'))).toBe(true);
+    expect(outcome.change.application).toBe('restart-required');
   });
 
   it('没有 profile 目录 → 失败，不跑命令', async () => {
@@ -790,9 +851,7 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
       ...deps,
       manager,
       profileDir: dir,
-      syncRows: () => {
-        syncModuleRows({ profileDir: dir, modules: profileModules(dir) });
-      },
+      syncRows: () => syncModuleRows({ profileDir: dir, modules: profileModules(dir) }),
     });
 
     expect(commands).toHaveLength(1);
@@ -833,7 +892,12 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
       setEnabled,
     };
 
-    const outcome = await installRouted({ ...deps, manager, profileDir: dir, syncRows: () => {} });
+    const outcome = await installRouted({
+      ...deps,
+      manager,
+      profileDir: dir,
+      syncRows: () => ({ added: [], removed: [], rows: [] }),
+    });
 
     expect(setEnabled).toHaveBeenCalledTimes(1);
     expect(outcome.change).toMatchObject({ application: 'failed', errorCode: 'bundle-list-failed' });
@@ -872,7 +936,7 @@ describe('模块安装遇到被拦的构建脚本：记账、可批准、批准�
         throw new Error('pnpm failed\nIgnored build scripts: sharp, esbuild');
       },
       outputOf: () => '',
-      syncRows: () => {},
+      syncRows: () => ({ added: [], removed: [], rows: [] }),
     });
 
     expect(outcome.change).toMatchObject({ application: 'failed', errorCode: 'build-blocked' });
@@ -890,7 +954,7 @@ describe('模块安装遇到被拦的构建脚本：记账、可批准、批准�
       profileDir,
       runAll: async () => undefined,
       outputOf: () => 'Progress: resolved 12\nIgnored build scripts: sharp',
-      syncRows: () => {},
+      syncRows: () => ({ added: [], removed: [], rows: [] }),
       logger: { warn, info: () => {} },
     });
 
@@ -909,7 +973,7 @@ describe('模块安装遇到被拦的构建脚本：记账、可批准、批准�
       options: { approvedBuilds: ['sharp'] },
       runAll: async () => undefined,
       outputOf: () => 'Done in 3.1s',
-      syncRows: () => {},
+      syncRows: () => ({ added: [], removed: [], rows: [] }),
     });
 
     expect(policyOf(profileDir)).toContain('sharp: true');
@@ -925,7 +989,7 @@ describe('模块安装遇到被拦的构建脚本：记账、可批准、批准�
       profileDir,
       options: { approvedBuilds: ['sharp', '手抖写错'] },
       runAll: async () => undefined,
-      syncRows: () => {},
+      syncRows: () => ({ added: [], removed: [], rows: [] }),
     });
 
     expect(commands).toEqual([]);

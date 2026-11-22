@@ -1,4 +1,4 @@
-import { createElement as h } from 'react';
+import { createElement as h, useEffect } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
 import type { UnitManifest } from '@dsh-workbench/shared';
 import { useHostWrite } from '@/shared/hooks/use-host-write';
@@ -17,6 +17,7 @@ import { useMarketDetail } from './use-market-detail';
 import { detailDependenciesFor } from './market-detail-deps';
 import { marketNothingOf, marketPluginReadOf } from './market-plugins-held';
 import { marketLandedOf } from './market-landed';
+import { loadedMarketUnits, useMarketRestart } from './market-restart';
 import type { MarketFreshness } from './market-freshness';
 import type { InstalledPlugin } from '@/shared/api/installed-plugins';
 import {
@@ -119,6 +120,11 @@ function useMarketScene(input: {
   readonly busyId: string | null;
 } {
   const { t, titleOf, manifests, installable, capabilities, updates, installed, settling, installing, mock, defaults, changed, pending, failed, heldPlugins } = input;
+  const restartPending = useMarketRestart();
+  useEffect(() => {
+    if (capabilities === null) return;
+    loadedMarketUnits(Object.keys(capabilities));
+  }, [capabilities]);
   const names = marketNamesOf(t, installed ?? [], titleOf, mock !== undefined);
   const catalog = mock?.manifests ?? manifests;
   const marketable = mock === undefined ? marketCatalog(manifests, installable) : catalog;
@@ -127,7 +133,7 @@ function useMarketScene(input: {
   const source = liveManifests(marketable, effective, installedIds);
   const byDefault = new Set(defaults);
   const updateMap = mock?.updates ?? updates ?? {};
-  const rows = checkingRows(marketRows(source, effective, updateMap, byDefault, changed, heldPlugins), {
+  const rows = checkingRows(marketRows(source, effective, updateMap, byDefault, changed, heldPlugins, restartPending), {
     all: installing,
     units: settling ?? NO_UNITS,
   });

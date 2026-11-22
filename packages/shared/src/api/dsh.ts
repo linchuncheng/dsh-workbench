@@ -26,6 +26,7 @@ import type { ProfileContext } from '@deepseek-ai/dsh-app-boot';
 import type { IndexInjection, WebRoute } from '@deepseek-ai/dsh-host-webserver';
 import type { dshHomePath } from '@deepseek-ai/dsh-home-paths';
 import type { PluginInstallRequestId, PluginManager } from '@deepseek-ai/dsh-plugin-manager';
+import type Hmr from '@deepseek-ai/dsh-hmr';
 import type { ApprovalService } from '@deepseek-ai/dsh-user-approval';
 import type { SandboxPolicyService } from '@deepseek-ai/dsh-sandbox-policy';
 import type { ShellExecution, ShellExecutor } from '@deepseek-ai/dsh-shell';
@@ -60,6 +61,9 @@ export type { AssembleContext as DshAssemblyContext };
 
 /** 一条 index 注入行（`webserver/index-inject` 表里的项）。 */
 export type { IndexInjection as DshIndexRow };
+
+/** dsh 的 HMR 服务（服务名 `hmr`）：profile 改写后让它重算一遍。 */
+export type DshHmr = Pick<Hmr, 'runExclusive' | 'reconcileProfile'>;
 
 /** dsh 的插件管理服务（服务名 `pluginManager`）：装卸组合包、列版本、读来源。 */
 export type { PluginManager as DshPluginManager };

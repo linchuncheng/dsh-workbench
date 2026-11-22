@@ -79,6 +79,20 @@ describe('marketRows', () => {
     expect(row?.hint).toEqual({ key: 'panels.market.uncheckedHint' });
   });
 
+  it('★ 刚装完、还没被这一进程加载（等重启）→ 未生效 + 重启后生效，不是状态未知', () => {
+    const updates = { issues: { installed: '1.9.0', pkg: '@a/issues' } };
+    const pending = new Set(['issues']);
+    const rows = marketRows([unit('issues')], {}, updates, new Set(), {}, new Set(), pending);
+    const row = rows[0];
+
+    expect(row?.state).toBe('inactive');
+    expect(row?.hint).toEqual({ key: 'panels.market.moduleRestartHint' });
+    expect(row?.version).toEqual({ installed: '1.9.0' });
+    expect(row?.canUninstall).toBe(true);
+    expect(row?.canUpdate).toBe(false);
+    expect(marketSections(rows)[0]?.id).toBe('installed');
+  });
+
   it('未装 + 来源解析得出 → 只能装（不能更新/卸载一个没装的东西）', () => {
     const row = marketRows([unit('issues')], missing({ provision: 'ready' }))[0];
 

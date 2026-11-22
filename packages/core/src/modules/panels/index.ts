@@ -1,6 +1,6 @@
 import type { UnitManifest } from '@dsh-workbench/shared';
-import type { DshHostContext, LongTaskBase, LongTaskRegistry, RecordStore, UnitOwnedFace } from '@dsh-workbench/shared/host';
-import { DIY_DEBUG_SERVICE, DIY_RECORD_SERVICE, MCP_TOOLS_SERVICE, TOOLBOX_SERVICE, adaptersOf, createDebugStore, createLongTaskRegistry, createRecordStore, supplyNeedsOf, PANELS_SERVICE, dshHome, seamOf, supplyPortOf, workbenchRoot } from '@dsh-workbench/shared/host';
+import type { DshHostContext, LongTaskBase, LongTaskRegistry, ProfileReload, RecordStore, UnitOwnedFace } from '@dsh-workbench/shared/host';
+import { DIY_DEBUG_SERVICE, DIY_RECORD_SERVICE, MCP_TOOLS_SERVICE, TOOLBOX_SERVICE, adaptersOf, createDebugStore, createLongTaskRegistry, createRecordStore, supplyNeedsOf, PANELS_SERVICE, dshHome, reconcileProfileRows, seamOf, supplyPortOf, workbenchRoot } from '@dsh-workbench/shared/host';
 import type { McpToolsPort, ToolboxPort, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { basename, join } from 'node:path';
 import { registeredWorkspacePathOf } from '@/shared/api/host/workspace-root';
@@ -186,6 +186,7 @@ export const panelsHost: UnitOwnedFace = {
     });
     const prereleaseChannels = (): readonly string[] =>
       (ctx.get(WORKBENCH_SETTINGS_SERVICE) as WorkbenchSettingsStore | undefined)?.read().prereleaseChannels ?? [];
+    const reconcile = (rows: readonly string[]): Promise<ProfileReload> => reconcileProfileRows(ctx, rows);
     const seam = seamOf(ctx);
     const moduleManifests = (): readonly UnitManifest[] => {
       const list = manifests();
@@ -206,6 +207,7 @@ export const panelsHost: UnitOwnedFace = {
       modules: () => supply.profileModules(profileDir),
       workbench: (pkg) => supply.readProfilePackage(profileDir, pkg),
       prereleaseChannels,
+      reconcile,
       registries: supply.createRegistryNotebook(profileDir),
       profileDir,
       ledger,

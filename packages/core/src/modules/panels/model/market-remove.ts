@@ -1,8 +1,9 @@
 import { join } from 'node:path';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
-import type { BundleManager, PluginPlanStep } from '@dsh-workbench/shared/host';
+import type { BundleManager, PluginPlanStep, ProfileReload } from '@dsh-workbench/shared/host';
 import { forgetPackageSource, hostCommandStep, packageSourceOf, profilePnpmCommand, quoteShellArg, scopeOf } from '@dsh-workbench/shared/host';
 import { retryAfterRegistryFix, type RegistryFixDeps } from './market-registry';
+import type { SyncRowsSnapshot } from './market-route';
 
 export interface RemoveBundleOptions {
   readonly manager: BundleManager;
@@ -85,7 +86,8 @@ export interface RemoveModuleRowOptions {
   readonly profileDir: string;
   readonly pkg: string;
   readonly runAll: (steps: readonly PluginPlanStep[]) => Promise<void>;
-  readonly syncRows: () => void;
+  readonly syncRows: (() => SyncRowsSnapshot | undefined) | undefined;
+  readonly reconcile?: ((rows: readonly string[]) => Promise<ProfileReload>) | undefined;
   readonly logger?: { warn?(message: string): void } | undefined;
 }
 
@@ -110,8 +112,9 @@ export async function removeWorkbenchModule(options: RemoveModuleRowOptions): Pr
       errorDetail: error instanceof Error ? error.message : String(error),
     };
   }
+  let removed: readonly string[];
   try {
-    options.syncRows();
+    removed = options.syncRows?.()?.removed ?? [];
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     options.logger?.warn?.(`[dsh-workbench] ${options.pkg} 已从 profile 卸载，但模块行没有删除：${detail}`);
@@ -124,5 +127,19 @@ export async function removeWorkbenchModule(options: RemoveModuleRowOptions): Pr
       errorDetail: `cordis.patch.yml: ${detail}`,
     };
   }
-  return { application: 'applied', stage: 'remove', changed: true, target: options.pkg };
+  const reload =
+    options.reconcile === undefined || removed.length === 0
+      ? { applied: true }
+      : await options.reconcile(removed).catch((error: unknown) => {
+          const detail = error instanceof Error ? error.message : String(error);
+          options.logger?.warn?.(`[dsh-workbench] ${options.pkg} 已卸载，但没有热卸载：${detail}`);
+          return { applied: false };
+        });
+  return {
+    application: reload.applied ? 'applied' : 'restart-required',
+    stage: 'remove',
+    changed: true,
+    target: options.pkg,
+    ...(reload.reason === undefined ? {} : { restartReason: reload.reason }),
+  };
 }

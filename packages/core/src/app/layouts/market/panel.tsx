@@ -16,6 +16,7 @@ import { marketHintOf } from '../rightbar/market-hint';
 import { useSelfUpdateTold } from '../rightbar/market-settle-hold';
 import { useMarketBusy } from '../rightbar/market-busy';
 import { useMarketInstallState } from '../rightbar/market-install';
+import { useMarketRestart } from '../rightbar/market-restart';
 import { MarketView } from '../rightbar/MarketView';
 import { pluginMarketOf, useRuntimeCapabilities } from '@/shared/hooks/use-runtime-capabilities';
 import type { TitleResolve } from '../rightbar/market-names';
@@ -59,6 +60,7 @@ function makeMarketEntryIcon(units: ClientUnitRegistry) {
     const installed = modules === null ? undefined : withClientRefusals(modules, units.refusals());
     const busy = useMarketBusy();
     const install = useMarketInstallState();
+    const restartPending = useMarketRestart();
     const hint = marketHintOf({
       manifests,
       installable,
@@ -70,6 +72,7 @@ function makeMarketEntryIcon(units: ClientUnitRegistry) {
       selfUpdate,
       toldAt,
       busy,
+      restartPending,
       ...install,
     });
 

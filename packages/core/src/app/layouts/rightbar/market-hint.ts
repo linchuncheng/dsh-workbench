@@ -29,6 +29,7 @@ export interface MarketHintInput {
   readonly busy?: ReadonlySet<string> | undefined;
   readonly installing?: boolean | undefined;
   readonly applied?: ReadonlySet<string> | undefined;
+  readonly restartPending?: ReadonlySet<string> | undefined;
 }
 
 const PROBLEM_KEY = 'panels.market.hasProblem';
@@ -80,7 +81,15 @@ export function marketHintOf(input: MarketHintInput): PanelHint | null {
     (manifest) => !held.has(manifest.id),
   );
   const installed = (input.installed ?? []).filter((module) => !held.has(module.unit));
-  const catalog = marketRows(marketable, input.capabilities, marketUpdatesOf(input.modules));
+  const catalog = marketRows(
+    marketable,
+    input.capabilities,
+    marketUpdatesOf(input.modules),
+    new Set(),
+    {},
+    new Set(),
+    input.restartPending ?? new Set(),
+  );
   const listed = new Set(catalog.map((row) => row.id));
   const self = workbenchRow(input.workbench, input.selfUpdate, input.toldAt);
   const rows = [
