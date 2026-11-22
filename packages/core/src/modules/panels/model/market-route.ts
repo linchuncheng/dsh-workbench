@@ -221,7 +221,7 @@ export async function replaceRouted(
   const supply = deps.supply ?? requireSupply();
   const route = await probeOf(supply, spec, deps.seam, deps.registry);
   if (route?.kind === 'dsh-module') {
-    return installAsModule(rest, spec, options, route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim());
+    return installAsModule(rest, spec, options, route.pkg ?? pkgNameOf(spec));
   }
   return retryBundle(deps, spec, options, true);
 }
@@ -482,11 +482,11 @@ export async function installRouted(deps: BundleInstallDeps): Promise<BundleInst
   const supply = deps.supply ?? requireSupply();
   const route = await probeOf(supply, spec, seam, registry);
   if (route?.kind === 'dsh-module') {
-    return installModuleRow(deps, spec, route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim());
+    return installModuleRow(deps, spec, route.pkg ?? pkgNameOf(spec));
   }
   if (route === undefined || route.kind === 'dsh-bundle') return retryBundle(deps, spec, options, false);
 
-  const pkg = route.pkg ?? splitNpmSpec(spec)?.name ?? spec.trim();
+  const pkg = route.pkg ?? pkgNameOf(spec);
   if (route.kind === 'neither') {
     deps.logger?.warn?.(`[dsh-workbench] 不装 ${pkg}：${refusalReason()}`);
     return outcomeOf(deps, pkg, {
