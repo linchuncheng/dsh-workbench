@@ -220,6 +220,10 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.failure.diskFull': 'Install failed: the disk is full',
   'panels.market.failure.auth': 'Install failed: no credentials for this source',
   'panels.market.failure.sandbox': 'Install failed: the system blocked it',
+  'panels.market.failure.installTitle': 'Installation failed',
+  'panels.market.failure.retryAdvice':
+    'Click Update to retry; if it still fails, expand the output below and send it to the module author.',
+  'panels.market.failure.copyOutput': 'Copy output',
   'panels.market.failure.unknown': 'Install failed: cause not recognised',
   'panels.market.failure.factOwner': '{path} belongs to {owner}, and this account ({me}) cannot write to it. Change ownership back to this account; the system will ask for your login password.',
   'panels.market.failure.factMode': '{path} is mode {mode}, so this account cannot write to it.',
@@ -429,11 +433,11 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.add.failurePnpmMissing': 'pnpm was not found, cannot install',
   'panels.market.add.failureInstalled':
     'This package is already installed in the current workbench. The same package cannot be replaced in place: uninstall it first, then install again. This uninstall did not succeed.',
-  'panels.market.add.failureGeneric': 'Something went wrong during installation; see Install details.',
+  'panels.market.add.failureGeneric': 'Something went wrong during installation.',
   'panels.market.add.failureBundleList':
-    'The module is installed in this workbench, but it is not in the module list that dsh loads, so it will not start. Fix that list as Install details describes, then restart the workbench.',
-  'panels.market.add.failureModuleRow': 'The module is installed in this workbench, but the module list in its configuration was not updated, so it will not load. Fix that list as Install details describes, then restart the workbench.',
-  'panels.market.add.failureModuleRowRemove': 'The module was removed from this workbench, but the module list in its configuration was not updated. Fix that list as Install details describes, then restart the workbench.',
+    'The module is installed in this workbench, but it is not in the module list that dsh loads, so it will not start. Fix that list, then restart the workbench.',
+  'panels.market.add.failureModuleRow': 'The module is installed in this workbench, but the module list in its configuration was not updated, so it will not load. Fix that list, then restart the workbench.',
+  'panels.market.add.failureModuleRowRemove': 'The module was removed from this workbench, but the module list in its configuration was not updated. Fix that list, then restart the workbench.',
   'panels.market.add.failureNoProfileDir': 'The directory for this workbench configuration cannot be found, so the module cannot be installed. Check the configuration directory in workbench settings, or install the workbench again.',
   'panels.market.add.failureIncompatible': 'This version needs {dsh}; the running dsh is {runtime}. Upgrade dsh first.',
   'panels.market.add.failureCredentials': 'This repository needs credentials, and this machine has none for it. Run a clone once in a terminal and set up a credential helper, or switch to the SSH address and try again.',

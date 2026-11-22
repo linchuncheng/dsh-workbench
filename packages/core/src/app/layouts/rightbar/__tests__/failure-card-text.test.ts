@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Translate } from '@dsh-workbench/shared';
 import type { InstallFailure } from '@dsh-workbench/shared';
-import { failureCardOf, ownerLabel, shellPath, updateStuckCardOf } from '../failure-card-text';
+import { failureCardOf, installCardOf, ownerLabel, shellPath, updateStuckCardOf } from '../failure-card-text';
 
 const t: Translate = (key, params) => {
   if (params === undefined) return key;
@@ -51,6 +51,46 @@ describe('updateStuckCardOf（更新没换上那张卡）', () => {
     });
 
     expect(card.fact).toBe('panels.market.add.failureStopProfile');
+  });
+});
+
+describe('installCardOf（安装失败那一行：一句话原因 + 下一步 + 原始输出）', () => {
+  it('★ 通用失败：原因那句 + 点「更新」重试 + 可复制的输出', () => {
+    const card = installCardOf(
+      { application: 'failed', errorCode: 'operation-error', errorDetail: 'ERR_PNPM_FETCH_401\nForbidden' } as never,
+      t,
+      '安装过程中出错。',
+    );
+
+    expect(card).toMatchObject({
+      title: 'panels.market.failure.installTitle',
+      fact: '安装过程中出错。 panels.market.failure.retryAdvice',
+      fixLabel: 'panels.market.failure.copyOutput',
+      fix: 'ERR_PNPM_FETCH_401\nForbidden',
+      output: 'ERR_PNPM_FETCH_401\nForbidden',
+      command: '',
+      exitCode: null,
+    });
+  });
+
+  it('★ 清单那类失败：原因本身已经说了怎么修，不再叠一句「重试」', () => {
+    const card = installCardOf(
+      {
+        application: 'failed',
+        errorCode: 'module-row-failed',
+        errorDetail: 'cordis.patch.yml: 写不进去',
+      } as never,
+      t,
+      '请修好这份清单，再重启工作台。',
+    );
+
+    expect(card?.fact).toBe('请修好这份清单，再重启工作台。');
+  });
+
+  it('没有原始输出就不出卡片（退回到一行红字，不编原因）', () => {
+    expect(installCardOf({ application: 'failed', errorCode: 'operation-error' } as never, t, 'x')).toBeUndefined();
+    expect(installCardOf({ application: 'failed', errorDetail: '   ' } as never, t, 'x')).toBeUndefined();
+    expect(installCardOf(undefined, t, 'x')).toBeUndefined();
   });
 });
 

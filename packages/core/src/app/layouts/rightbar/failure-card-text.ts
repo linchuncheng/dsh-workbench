@@ -1,14 +1,16 @@
 import type { InstallFailure, Translate } from '@dsh-workbench/shared';
+import type { BundleChange } from '@/kernel/contract/bundle-install';
+import { failureCode } from '../market/add-module-text';
 
 export interface FailureCardModel {
+  readonly command: string;
+  readonly output: string;
+  readonly exitCode: number | null;
   readonly title: string;
   readonly fact: string;
   readonly fixLabel: string;
   readonly fix: string;
   readonly copiedHint: string;
-  readonly command: string;
-  readonly output: string;
-  readonly exitCode: number | null;
 }
 
 const TITLE_KEY: Readonly<Record<InstallFailure['kind'], string>> = {
@@ -80,6 +82,30 @@ function agentCardOf(
     command: failure.command,
     output: failure.output,
     exitCode: failure.exitCode,
+  };
+}
+
+const RETRY_CODES: ReadonlySet<string> = new Set(['operation-error', 'not-bundle', 'invalid-spec']);
+
+export function installCardOf(
+  change: BundleChange | undefined,
+  t: Translate,
+  reason: string,
+): FailureCardModel | undefined {
+  const output = (change?.errorDetail ?? '').trim();
+  if (output === '') return undefined;
+  const fact = change !== undefined && RETRY_CODES.has(failureCode(change))
+    ? `${reason} ${t('panels.market.failure.retryAdvice')}`
+    : reason;
+  return {
+    title: t('panels.market.failure.installTitle'),
+    fact,
+    fixLabel: t('panels.market.failure.copyOutput'),
+    fix: output,
+    copiedHint: t('panels.market.failure.copiedHint'),
+    command: '',
+    output,
+    exitCode: null,
   };
 }
 

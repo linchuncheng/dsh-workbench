@@ -49,6 +49,7 @@ describe('安装失败：落一条诊断记录', () => {
       area: 'supply',
       subject: { pkg: '@a/mod@1.1.9' },
       detail: { action: 'install-bundle', reason: 'not-bundle', stage: 'install' },
+      cause: { code: 'not-bundle', message: 'declares no bundle' },
     });
   });
 

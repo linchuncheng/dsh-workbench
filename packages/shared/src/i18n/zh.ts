@@ -217,6 +217,9 @@ export const zh = {
   'panels.market.failure.diskFull': '安装失败：磁盘已满',
   'panels.market.failure.auth': '安装失败：没有这个源的凭据',
   'panels.market.failure.sandbox': '安装失败：被系统拦截',
+  'panels.market.failure.installTitle': '安装失败',
+  'panels.market.failure.retryAdvice': '请点「更新」重试；仍然失败时展开下面的输出，把它发给模块作者。',
+  'panels.market.failure.copyOutput': '复制输出',
   'panels.market.failure.unknown': '安装失败：原因未识别',
   'panels.market.failure.factOwner': '{path} 属于 {owner}，当前账号（{me}）无法写入。请把所有权改回当前账号，系统会要求输入开机密码。',
   'panels.market.failure.factMode': '{path} 的权限是 {mode}，当前账号没有写权限。',
@@ -426,12 +429,12 @@ export const zh = {
   'panels.market.add.failurePnpmMissing': '没有找到 pnpm，无法安装',
   'panels.market.add.failureInstalled':
     '这个包已安装在当前工作台中。同一个包无法就地覆盖，需要先卸载再安装；本次卸载也未成功。',
-  'panels.market.add.failureGeneric': '安装过程中出错，原因见「安装详情」。',
+  'panels.market.add.failureGeneric': '安装过程中出错。',
   'panels.market.add.failureBundleList':
-    '模块已安装到工作台配置，但没有进入 dsh 加载的模块清单，因此还不会加载。请按「安装详情」里的提示修好清单，再重启工作台。',
+    '模块已安装到工作台配置，但没有进入 dsh 加载的模块清单，因此还不会加载。请修好清单，再重启工作台。',
   'panels.market.add.failureModuleRow':
-    '模块已安装到工作台配置，但工作台配置里的模块清单没有更新，因此还不会加载。请按「安装详情」里的提示修好这份清单，再重启工作台。',
-  'panels.market.add.failureModuleRowRemove': '模块已从工作台配置移除，但模块清单没有更新。请按「安装详情」里的提示修好这份清单，再重启工作台。',
+    '模块已安装到工作台配置，但工作台配置里的模块清单没有更新，因此还不会加载。请修好这份清单，再重启工作台。',
+  'panels.market.add.failureModuleRowRemove': '模块已从工作台配置移除，但模块清单没有更新。请修好这份清单，再重启工作台。',
   'panels.market.add.failureNoProfileDir': '找不到这份工作台配置的目录，无法安装模块。请在工作台设置里检查配置目录，或重新安装工作台。',
   'panels.market.add.failureIncompatible': '这个版本需要 {dsh}，当前 dsh 为 {runtime}。请先升级 dsh 再安装。',
   'panels.market.add.failureCredentials': '这个仓库需要凭证，本机没有它的 git 凭据。请先在终端中执行一次 clone，并配置凭据助手，或改用 SSH 地址后重试。',

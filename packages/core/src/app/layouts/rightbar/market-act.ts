@@ -4,8 +4,8 @@ import type { BundleChange } from '@/kernel/contract/bundle-install';
 import type { MarketFailure, MarketRow } from './market-row-types';
 import { marketRowTitle, type MarketRowAction } from './market-rows';
 import { changeFailure, changeOf } from './market-change';
+import { installCardOf, updateStuckCardOf } from './failure-card-text';
 import { updateVerdictOf, updateVerdictText, type UpdatedModule } from './market-update-verdict';
-import { updateStuckCardOf } from './failure-card-text';
 import { holdOf, type HeldRow, type Pending } from './market-view-text';
 import { REMOVAL_ACTIONS, awaitsReadBack, swapUntil } from './market-settle';
 import type { MarketReloadOptions } from '../market/use-market-reload';
@@ -213,7 +213,14 @@ export function marketActOf(options: MarketActOptions): MarketAct {
     seats.setHeld(readBack ? undefined : holdOf(next, change?.application));
     const reason = changeFailure(change, t);
     if (reason !== undefined) {
-      seats.setFailed({ id, message: t('panels.market.failed', { reason }), ...cardOf(reason) });
+      const stuck = cardOf(reason);
+      const install = stuck.card === undefined ? installCardOf(change, t, reason) : undefined;
+      seats.setFailed({
+        id,
+        message: t('panels.market.failed', { reason }),
+        ...stuck,
+        ...(install === undefined ? {} : { card: install }),
+      });
     }
   };
 

@@ -23,6 +23,21 @@ function detailOf(request: ProvisionRequest, result: unknown): Record<string, st
   };
 }
 
+const CAUSE_LIMIT = 200;
+
+function causeOf(result: unknown): { readonly code: string; readonly message: string } | undefined {
+  const change = changeOf(result);
+  if (change === undefined) return undefined;
+  const detail = typeof change['errorDetail'] === 'string' ? change['errorDetail'] : '';
+  const line = detail
+    .split('\n')
+    .map((one) => one.trim())
+    .find((one) => one !== '');
+  if (line === undefined) return undefined;
+  const code = typeof change['errorCode'] === 'string' ? change['errorCode'] : 'install-failed';
+  return { code, message: line.length <= CAUSE_LIMIT ? line : `${line.slice(0, CAUSE_LIMIT)}…` };
+}
+
 function keyOf(request: ProvisionRequest): string {
   return `provision:${request.action}:${request.unit ?? request.id ?? request.spec ?? ''}`;
 }
@@ -33,6 +48,7 @@ export function withDiagProvision(handler: ProvisionHandler, diag?: DiagRecorder
     async handle(request: ProvisionRequest) {
       const result = await handler.handle(request);
       if (failedOf(result)) {
+        const cause = causeOf(result);
         diag?.once(keyOf(request), {
           code: 'SUPPLY_INSTALL_FAILED',
           level: 'error',
@@ -45,6 +61,7 @@ export function withDiagProvision(handler: ProvisionHandler, diag?: DiagRecorder
                 },
               }),
           detail: detailOf(request, result),
+          ...(cause === undefined ? {} : { cause }),
         });
       }
       return result;
