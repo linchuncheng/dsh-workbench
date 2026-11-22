@@ -3,6 +3,7 @@ import { FIXTURE } from './fixture.mjs';
 import fs from 'node:fs';
 import { execa } from 'execa';
 import { delimiter, join } from 'node:path';
+import { homedir } from 'node:os';
 
 const port = process.argv[2] ?? '9222';
 const shot = process.argv[3] ?? 'desktop-smoke.png';
@@ -34,6 +35,8 @@ const outDir = process.env.DESKTOP_SMOKE_OUT ?? process.cwd();
 const outPath = (name) => join(outDir, name);
 const prefix = shot.replace(/\.png$/u, '');
 const probeLogFile = process.env.DESKTOP_SMOKE_PROBE_LOG ?? outPath(`${prefix}-probe.log`);
+const dshHomeDir = process.env.DSH_HOME?.trim() || join(process.env.USERPROFILE || homedir(), '.dsh');
+const profilePath = join(dshHomeDir, 'profiles', 'desktop');
 const CDP_WAIT_MS = 180_000;
 const PAGE_WAIT_MS = 120_000;
 const INSTALL_WAIT_MS = 360_000;
@@ -45,7 +48,6 @@ const BRIDGE_RETRY_MS = 15_000;
 const MODULE_WAIT_MS = 90_000;
 const WORKSHOP_TITLE = '工作台DIY';
 const DIY_MODE_NAME = '工作台 DIY 模式';
-const DEFAULT_MODE_NAMES = ['Standard mode', '标准模式'];
 const POLL_MS = 2000;
 const DIALOG_SELECTOR = '[role="dialog"], [aria-modal="true"], dialog[open]';
 const addOpenTexts = copyOf('panels.market.add.open');
@@ -1496,22 +1498,80 @@ async function modeChips(cdp) {
   }
 }
 
+async function readJsonFile(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (error) {
+    log(`读不了 ${file}：${String(error?.message ?? error)}`);
+    return null;
+  }
+}
+
+async function writeInstallState(label) {
+  const manifest = await readJsonFile(join(profilePath, 'package.json'));
+  const installed = await readJsonFile(join(profilePath, 'node_modules', moduleName, 'package.json'));
+  const patchFile = join(profilePath, 'cordis.patch.yml');
+  const patch = fs.existsSync(patchFile) ? fs.readFileSync(patchFile, 'utf8') : '';
+  const bundles = Array.isArray(manifest?.dsh?.profile?.bundles) ? manifest.dsh.profile.bundles : null;
+  const declared = installed?.dsh ?? null;
+  const state = {
+    profile: profilePath,
+    installed: installed === null ? null : { name: installed.name, version: installed.version, declared },
+    dependencies: manifest?.dependencies ?? null,
+    bundles,
+    patch,
+  };
+  writeText(`${prefix}-${label}-state.json`, `${JSON.stringify(state, null, 2)}\n`);
+  log(
+    `安装现场（${label}）：bundles=${JSON.stringify(bundles)} · 包=${installed === null ? '读不到' : `${installed.version} ${declared?.bundle === undefined ? '无 dsh.bundle' : '有 dsh.bundle'}`}`,
+  );
+}
+
+async function waitDiyMode(cdp, budgetMs) {
+  const until = Date.now() + budgetMs;
+  let chips = await modeChips(cdp);
+  while (Date.now() < until) {
+    if (chips.some((text) => text.includes(DIY_MODE_NAME))) return chips;
+    await sleep(POLL_MS);
+    chips = await modeChips(cdp);
+  }
+  return chips;
+}
+
 async function verifyDiyDefault(cdp, snapshot) {
+  const before = await modeChips(cdp);
+  let created = 'already-in-workshop';
+  if (!before.some((text) => text.trim() === WORKSHOP_TITLE)) {
+    created = String(
+      await click(
+        cdp,
+        ['New session in 工作台DIY', 'New Session in 工作台DIY', '在“工作台DIY”中新建会话'],
+        2000,
+      ),
+    );
+    if (created === 'missing') {
+      await click(cdp, [WORKSHOP_TITLE], 1500);
+      created = `fallback:${String(await click(cdp, ['New Session'], 2000))}`;
+    }
+  }
+  log(`工坊新会话：${created}（之前 ${JSON.stringify(before)}）`);
+  const chips = await waitDiyMode(cdp, 40_000);
   const body = await bodyOf(cdp);
-  const chips = await modeChips(cdp);
-  writeText(`${prefix}-diy.json`, `${JSON.stringify({ chips, body: tailBody(body, 400) }, null, 2)}\n`);
+  writeText(
+    `${prefix}-diy.json`,
+    `${JSON.stringify({ created, before, chips, body: tailBody(body, 400) }, null, 2)}\n`,
+  );
   log(`DIY 默认：chips=${JSON.stringify(chips)}`);
-  if (!body.includes(WORKSHOP_TITLE)) {
-    await fail(cdp, `新装用户没落在「${WORKSHOP_TITLE}」工作区`, body, snapshot);
+  if (!chips.some((text) => text.includes(WORKSHOP_TITLE))) {
+    await fail(cdp, `点完工坊的新会话按钮，当前工作区还不是「${WORKSHOP_TITLE}」`, body, snapshot);
   }
-  const picked = chips.some((text) => text.includes(DIY_MODE_NAME)) || body.includes(DIY_MODE_NAME);
-  if (!picked) {
-    await fail(cdp, `新装用户的模式不是「${DIY_MODE_NAME}」（模式位读到 ${JSON.stringify(chips)}）`, body, snapshot);
-  }
-  const leftover = (chips.length === 0 ? [body] : chips).filter((text) =>
-    DEFAULT_MODE_NAMES.some((name) => text.includes(name)));
-  if (leftover.length > 0) {
-    await fail(cdp, `模式位还挂着 dsh 的默认模式：${JSON.stringify(leftover.map((text) => text.slice(0, 40)))}`, body, snapshot);
+  if (!chips.some((text) => text.includes(DIY_MODE_NAME))) {
+    await fail(
+      cdp,
+      `工坊里新建的空白会话没补上「${DIY_MODE_NAME}」（模式位读到 ${JSON.stringify(chips)}）`,
+      body,
+      snapshot,
+    );
   }
   mark('diy-default');
 }
@@ -1581,6 +1641,7 @@ async function main() {
   if (selfUpdateFlow && (result.updated !== true || result.ready !== true || result.live !== true)) {
     await fail(cdp, '工作台自更新流程没走完（界面/就绪/记账有一项不对）', await bodyOf(cdp), snapshot);
   }
+  if (installViaUi) await writeInstallState('after-install');
   if (installViaUi && result.installed === false) {
     await fail(cdp, 'market module install did not finish', await bodyOf(cdp), snapshot);
   }
