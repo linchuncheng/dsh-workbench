@@ -23,6 +23,7 @@ export interface RouteDepsInput {
   readonly ledger?: PluginLedger | undefined;
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
   readonly reconcile?: ((rows: readonly string[]) => Promise<ProfileReload>) | undefined;
+  readonly modules?: (() => readonly { readonly pkg: string }[]) | undefined;
 }
 
 export function syncModuleRowsOf(
@@ -45,6 +46,7 @@ export function routeDepsOf(input: RouteDepsInput): ReplaceBundleDeps {
     ...(input.outputOf === undefined ? {} : { outputOf: input.outputOf }),
     profileDir,
     syncRows: syncModuleRowsOf(profileDir, input.supply),
+    modules: () => input.supply.profileModules?.(profileDir ?? null) ?? [],
     rememberSource: (manager, pkg, registry, version) =>
       rememberInstalledSource(registryFix, manager, pkg, registry, version),
     supplyAfter: input.supplyAfter as ReplaceBundleDeps['supplyAfter'],

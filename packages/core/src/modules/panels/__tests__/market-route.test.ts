@@ -899,6 +899,33 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
     ).toEqual(['@dsh-workbench/module-hello']);
   });
 
+  it('★ 源没给包名、末段也不是真包名 → 按已装模块认出真包名，再补名单', async () => {
+    const dir = profileAt({
+      pkg: '@dsh-workbench/module-hello',
+      version: '1.1.14-beta.2',
+      bundles: [],
+      shipsBundle: true,
+    });
+    const spec = `github:org/market#${'a'.repeat(40)}&path:/packages/module-hello`;
+    const { deps } = rig({ spec, supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });
+    const { manager, setEnabled } = togglingManager(dir, (request) => ({
+      application: 'applied',
+      stage: 'install',
+      changed: true,
+      target: request.spec,
+    }));
+
+    const outcome = await installRouted({
+      ...deps,
+      manager,
+      profileDir: dir,
+      modules: () => [{ pkg: '@dsh-workbench/module-hello' }],
+    });
+
+    expect(setEnabled).toHaveBeenCalledWith('@dsh-workbench/module-hello', true);
+    expect(outcome.change.application).toBe('applied');
+  });
+
   it('★ 源只说"是模块"、没给包名，spec 又是 git 路径式 → 仍按 path 末段认包名', async () => {
     const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: true });
     const spec = `git+ssh://git@host/org/repo.git#${'a'.repeat(40)}&path:/artifacts/@t/module-a`;

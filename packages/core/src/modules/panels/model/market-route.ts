@@ -16,6 +16,7 @@ import { requireSupply, localDirOf, type SupplyPort } from '@dsh-workbench/share
 import { approveBuildsOrProblem } from './market-pending-builds';
 import { sourceProblemText } from './market-dependency';
 import { pluginNameOf, type PluginFiles } from './plugin-name';
+import { installedNameOf } from './market-installed-name';
 import type { PluginLedger } from './plugin-ledger';
 import type { BundleInstallOptions, BundleInstallOutcome, BundleSupply, SupplyInstallOptions } from './market-types';
 
@@ -29,6 +30,7 @@ export interface BundleInstallDeps {
   readonly spec: string;
   readonly options?: BundleInstallOptions | undefined;
   readonly pkgHint?: string | undefined;
+  readonly modules?: (() => readonly { readonly pkg: string }[]) | undefined;
   readonly registry?: string | undefined;
   readonly command: string;
   readonly seam?: Seam | undefined;
@@ -227,20 +229,17 @@ export async function replaceRouted(
   return retryBundle({ ...deps, pkgHint: route?.pkg }, spec, options, true);
 }
 
-function installOptions(options: BundleInstallOptions | undefined) {
-  return {
-    ...(options?.registry === undefined ? {} : { registry: options.registry }),
-    ...(options?.requestId === undefined ? {} : { requestId: options.requestId }),
-    ...(options?.approvedBuilds === undefined ? {} : { approvedBuilds: options.approvedBuilds }),
-  };
-}
-
 async function installOnce(
   deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
   spec: string,
   options: BundleInstallOptions | undefined,
 ): Promise<BundleChange> {
-  const change = await deps.manager.install({ spec, ...installOptions(options) });
+  const change = await deps.manager.install({
+    spec,
+    ...(options?.registry === undefined ? {} : { registry: options.registry }),
+    ...(options?.requestId === undefined ? {} : { requestId: options.requestId }),
+    ...(options?.approvedBuilds === undefined ? {} : { approvedBuilds: options.approvedBuilds }),
+  });
   if (change === null) throw new Error('插件管理器回的安装结果看不懂。');
   return change;
 }
@@ -251,7 +250,7 @@ async function settle(
   options: BundleInstallOptions | undefined,
   change: BundleChange,
 ): Promise<BundleInstallOutcome> {
-  const pkg = deps.pkgHint ?? bundleNameOf(change, spec);
+  const pkg = installedNameOf(deps.modules?.() ?? [], deps.pkgHint ?? bundleNameOf(change, spec));
   const module = deps.installed?.(pkg) ?? { kind: 'unknown', pkg };
   const registry =
     options?.registry ?? (module.kind === 'module' ? module.registry : undefined);
@@ -269,12 +268,7 @@ function pkgNameOf(spec: string): string {
   return marketSpecPackage(spec) ?? splitNpmSpec(spec)?.name ?? spec.trim();
 }
 
-function probeOf(
-  supply: SupplyPort,
-  spec: string,
-  seam: Seam | undefined,
-  registry: string | undefined,
-) {
+function probeOf(supply: SupplyPort, spec: string, seam: Seam | undefined, registry: string | undefined) {
   return supply.packageRouteOf({
     spec,
     ...(seam === undefined ? {} : { seam }),
