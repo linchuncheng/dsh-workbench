@@ -1,8 +1,8 @@
 import { basename } from 'node:path';
-import type { UnitManifest } from '@dsh-workbench/shared';
+import type { Need, UnitManifest } from '@dsh-workbench/shared';
 import { needsOf as needsOfManifest } from '@dsh-workbench/shared/host';
 import type { BundleChange } from '@/kernel/contract/bundle-install';
-import type { BundleManager } from '@dsh-workbench/shared/host';
+import type { BundleManager, UnitCapability } from '@dsh-workbench/shared/host';
 import type {
   InstalledModule,
   LibNeed,
@@ -30,7 +30,13 @@ import { installRouted, replaceRouted, type ReplaceBundleDeps } from './market-r
 import { updateModuleBundle } from './market-update-bundle';
 import { removeDshBundle, removeWorkbenchModule } from './market-remove';
 import { routeDepsOf, syncModuleRowsOf } from './market-route-deps';
-import { createMarketEntries } from './market-entry';
+import {
+  createMarketEntries,
+  declaredNeedsOf,
+  installableNeedsOf,
+  looseEntryOf,
+  probeBeforeInstall,
+} from './market-entry';
 import { supplyUpdateStillBehind } from './market-verify';
 import { updateDependencyRow as runDependencyUpdate } from './market-dependency-update';
 import type { SelfUpdateRequest, SelfUpdateStart } from '@dsh-workbench/shared/host';
@@ -60,6 +66,7 @@ export type {
   MarketService,
   UninstallResult,
 } from './market-types';
+
 export function createMarketService(options: {
   manifests: readonly UnitManifest[];
   manifestsNow?: (() => readonly UnitManifest[]) | undefined;
@@ -130,15 +137,16 @@ export function createMarketService(options: {
     return requireEntry(unit);
   };
 
-  async function entryLoose(unit: string): Promise<MarketEntry> {
-    const manifest = manifestOf(unit);
-    return {
-      unit,
-      titleKey: manifest?.titleKey ?? unit,
-      needs: manifest === undefined ? [] : needsOfManifest(manifest),
-      capability: await capabilityOf(unit, false),
-    };
-  }
+  const declaredNeeds = (unit: string): readonly Need[] | undefined =>
+    declaredNeedsOf(unit, { manifests: catalog, modules, profileDir, declarationOf: supply.moduleDeclarationOf });
+
+  const looseEntry = (unit: string, capability?: UnitCapability): Promise<MarketEntry> =>
+    looseEntryOf(unit, {
+      manifests: catalog,
+      needsOf: declaredNeeds,
+      capabilityOf,
+      ...(capability === undefined ? {} : { capability }),
+    });
 
   async function probeSharing(request: {
     readonly action: MarketAction;
@@ -217,13 +225,11 @@ export function createMarketService(options: {
 
   async function supplyAfter(module: InstalledModule, change: BundleChange): Promise<BundleSupply> {
     if (module.kind !== 'module') return { state: 'not-a-module' };
-    const manifest = catalog().find((item) => item.id === module.unit);
-    if (manifest === undefined) {
+    const declared = declaredNeeds(module.unit);
+    if (declared === undefined) {
       return change.application === 'restart-required' ? { state: 'pending-restart' } : { state: 'no-needs' };
     }
-    const needs = needsOfManifest(manifest).filter(
-      (need) => need.kind === 'extension' || need.kind === 'lib',
-    ).length;
+    const needs = declared.filter((need) => need.kind === 'extension' || need.kind === 'lib').length;
     if (needs === 0) return { state: 'no-needs' };
     try {
       return { state: 'installed', entry: await service.install(module.unit) };
@@ -291,9 +297,10 @@ export function createMarketService(options: {
 
     async install(unit) {
       requireKnown(unit);
-      const before = await capabilityOf(unit, true);
+      const declared = declaredNeeds(unit);
+      const before = await probeBeforeInstall(unit, declared, capabilityOf);
       logger?.info?.(
-        `[dsh-workbench] 安装依赖：unit=${unit} 状态=${before.status} 缺=${before.needs.filter((state) => state.status === 'missing').map((state) => `${state.kind}:${state.name}`).join(',') || '无'}`,
+        `[dsh-workbench] 安装依赖：unit=${unit} 声明=${installableNeedsOf(declared).map((need) => `${need.kind}:${need.name}`).join(',') || '无'} 状态=${before.status} 缺=${before.needs.filter((state) => state.status === 'missing').map((state) => `${state.kind}:${state.name}`).join(',') || '无'}`,
       );
       const absent = before.needs.filter(
         (state) =>
@@ -302,12 +309,11 @@ export function createMarketService(options: {
       );
       if (absent.length === 0) {
         onInstalled?.(unit);
-        return entryLoose(unit);
+        return looseEntry(unit);
       }
       for (const state of absent) {
         if (state.provision !== undefined && state.provision !== 'ready') {
-          const manifest = manifestOf(unit);
-          const need = manifest === undefined ? undefined : needsOfManifest(manifest).find((item) => item.name === state.name);
+          const need = (declared ?? []).find((item) => item.name === state.name);
           throw new Error(sourceProblemText(state.provision, sourceEnvOf(need)));
         }
         if (state.command === undefined) {
@@ -320,15 +326,15 @@ export function createMarketService(options: {
         supply.afterLibInstall();
       }
       await probeSharing({ action: 'install', unit });
+      const after = await capabilityOf(unit, true, declared);
       onInstalled?.(unit);
-      const after = await entryLoose(unit);
-      logger?.info?.(`[dsh-workbench] 依赖装完：unit=${unit} 结论=${after.capability.status}`);
-      return after;
+      logger?.info?.(`[dsh-workbench] 依赖装完：unit=${unit} 结论=${after.status}`);
+      return looseEntry(unit, after);
     },
 
     async update(unit) {
       requireKnown(unit);
-      const before = await capabilityOf(unit, true);
+      const before = await capabilityOf(unit, true, declaredNeeds(unit));
       const stale = before.needs.filter(
         (state) =>
           (state.kind === 'extension' || state.kind === 'lib') &&
@@ -364,7 +370,7 @@ export function createMarketService(options: {
         throw new Error(`没有可执行的更新命令（这一格还是旧的样子：${before.detail ?? ''}）`);
       }
       await probeSharing({ action: 'update', unit });
-      const entry = await entryLoose(unit);
+      const entry = await looseEntry(unit);
       const behind = supplyUpdateStillBehind(entry.capability);
       if (behind !== undefined) throw new Error(behind);
       return entry;
@@ -375,7 +381,7 @@ export function createMarketService(options: {
       const manifest = manifestOf(unit);
       const pkg = (modules?.() ?? []).find((item) => item.unit === unit)?.pkg;
       if (pkg !== undefined) {
-        const entry = await entryLoose(unit);
+        const entry = await looseEntry(unit);
         const { change, keptFor } = await service.removeBundle(pkg);
         const released = change.application === 'applied';
         return {
@@ -388,7 +394,7 @@ export function createMarketService(options: {
       const keptFor = await envDropper.drop(unit, manifest === undefined ? [] : needsOfManifest(manifest), before);
       await plugins.sweep();
       await probeSharing({ action: 'uninstall', unit });
-      const entry = await entryLoose(unit);
+      const entry = await looseEntry(unit);
       onUninstalled?.(unit);
       return {
         entry: { ...entry, capability: { ...entry.capability, released: true } },

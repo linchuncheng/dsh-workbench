@@ -613,6 +613,32 @@ describe('工作台模块（没有 dsh.bundle）：装进 profile + 写一行，
     expect(outcome.change.application).toBe('restart-required');
   });
 
+  it('★ 模块行装完回到 supplyAfter：依赖供给照旧跑，outcome.supply 不再是 no-needs', async () => {
+    const { deps } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
+    const supplyAfter = vi.fn(async () => ({
+      state: 'installed' as const,
+      entry: { unit: 'a', titleKey: 'a', needs: [], capability: { unit: 'a', status: 'ok' as const, needs: [] } },
+    }));
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: '/tmp/wb-profile',
+      runAll: async () => undefined,
+      syncRows: () => ({
+        added: ['wb-module-a'],
+        removed: [],
+        rows: [{ id: 'wb-module-a', name: '@t/module-a' }],
+      }),
+      reconcile: async () => ({ applied: true }),
+      installed: (pkg) => ({ kind: 'module', pkg, unit: 'a', version: '1.0.0' }),
+      supplyAfter,
+    });
+
+    expect(supplyAfter).toHaveBeenCalledTimes(1);
+    expect(outcome.supply).toMatchObject({ state: 'installed' });
+    expect(outcome.change.application).toBe('applied');
+  });
+
   it('没有 profile 目录 → 失败，不跑命令', async () => {
     const { deps, commands } = rig({ spec: '@t/module-a', supply: moduleSupply({ kind: 'dsh-module', pkg: '@t/module-a' }) });
 

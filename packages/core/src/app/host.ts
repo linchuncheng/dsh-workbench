@@ -26,13 +26,14 @@ import { basename } from 'node:path';
 import { registerFactStream } from '@/shared/api/host/events';
 import { WORKSHOP_TITLE } from '@/kernel/contract/diy';
 import { workshopPathOf } from '@/shared/api/host/diy';
-import { WORKBENCH_ADAPTERS, needsOf, resolveAdapterSet, type AdapterSet, type NeedProbeInput, type PluginRowsSource, type PluginUnitsPort, type UnitCapability, type WorkbenchConfig } from '@dsh-workbench/shared/host';
+import { WORKBENCH_ADAPTERS, needsOf, resolveAdapterSet, type AdapterSet, type NeedProbeInput, type PluginRowsSource, type PluginUnitsPort, type WorkbenchConfig } from '@dsh-workbench/shared/host';
 import { UNIT_MANIFESTS_ROUTE } from '@/kernel/contract/unit-manifests';
 import { LONG_TASKS_ROUTE } from '@/kernel/contract/long-tasks';
 import { liveLongTaskRows } from '@/shared/api/host/long-tasks';
 import { createContextInjector, installContextInject, type ContextRenderer } from '@/shared/api/host/context-inject';
 import type { DshHostContext, DshPromptAssembly, LongTaskBase, LongTaskRegistry, UnitCall, UnitMountResult, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { applyPlanFailures, declaredNotesOf, mountUnits, failureReasonOf, type UnitsPlan } from '@/kernel/host/mount-units';
+import { createUnitProbe } from '@/kernel/host/unit-probe';
 import { createUnitRegistry, installableUnitsOf, type HostUnit } from '@/kernel/host/unit-registry';
 import { bindRosterFacts } from '@/shared/api/host/unit-roster-facts';
 import { createDraftStore, createWorkspaceStore, withLibRunners } from '@dsh-workbench/shared/host';
@@ -159,8 +160,6 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     });
   });
   const liveManifests = (): readonly UnitManifest[] => units.manifests();
-  const manifestOf = (unit: string): UnitManifest | undefined =>
-    liveManifests().find((manifest) => manifest.id === unit);
   const hasEnvNeeds = (manifest: UnitManifest): boolean => needsOf(manifest).length > 0;
   const declaredNow = (): readonly UnitManifest[] => liveManifests().filter(hasEnvNeeds);
   const probeInput = (manifest: UnitManifest): NeedProbeInput => ({ unit: manifest.id,
@@ -168,16 +167,14 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   });
   const releasedOf = (unit: string): boolean =>
     (ctx.get(PANELS_SERVICE) as ReleasedLookup | undefined)?.isReleased(unit) ?? false;
-  const probeOne = async (unit: string, force = false): Promise<UnitCapability | undefined> => {
-    if (seam === undefined) return undefined;
-    const manifest = manifestOf(unit);
-    if (manifest === undefined || !hasEnvNeeds(manifest)) return undefined;
-    const common = { seam, runtimeCommands, runtimeReport, force };
-    const found = (await adapters.probe.probeUnits({ ...common, units: declaredNow().map(probeInput) })).find(
-      (row) => row.unit === unit,
-    );
-    return found === undefined ? undefined : { ...found, released: releasedOf(unit) };
-  };
+  const probeOne = createUnitProbe({
+    ...(seam === undefined ? {} : { seam }),
+    runtimeCommands,
+    ...(runtimeReport === undefined ? {} : { runtimeReport }),
+    inputs: () => declaredNow().map(probeInput),
+    released: releasedOf,
+    probe: (options) => adapters.probe.probeUnits(options),
+  });
   const store = createWorkspaceStore({ logger: ctx.logger, diag: diagRoutesOf(workbenchRoot()).recorder });
   const drafts = createDraftStore();
   ctx.effect(
@@ -285,7 +282,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
         libs: libRunners,
         git: adapters.git,
         commands: adapters.commands,
-        probe: (unit, options) => probeOne(unit, options?.force ?? false),
+        probe: (unit, options) => probeOne(unit, options?.force ?? false, options?.needs),
         values, surface,
         ...(seam === undefined ? {} : { seam }),
         longTasks: {

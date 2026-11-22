@@ -1,5 +1,6 @@
 import type { HostContext } from '../../contract/module-context.js';
 import type { UnitManifest } from '../../contract/unit.js';
+import type { Need } from '../../contract/needs.js';
 import type { RouteTable } from '../runtime/http.js';
 import type { LongTaskBase, LongTaskHost, LongTaskRegistry } from './long-task.js';
 import type { ProvisionHandler } from '../supply/provision.js';
@@ -36,7 +37,7 @@ export interface UnitMountDeps extends HostKit {
   readonly values?: ValueHandoff | undefined;
   readonly probe?: (
     unit: string,
-    options?: { readonly force?: boolean },
+    options?: { readonly force?: boolean; readonly needs?: readonly Need[] },
   ) => Promise<UnitCapability | undefined>;
   readonly longTasks?: LongTaskHost | undefined;
   readonly longTaskRuns?: (() => ReadonlyMap<string, LongTaskRegistry<LongTaskBase>>) | undefined;

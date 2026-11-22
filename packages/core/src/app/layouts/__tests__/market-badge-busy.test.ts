@@ -60,11 +60,12 @@ describe('左栏那枚徽标：装的过程中 / 刚装完那一下（接线判�
     expect(panel).toContain('settling={mock === undefined ? held : undefined}');
   });
 
-  it('★ 装模块一步到位：装完包接着装它声明的依赖（宿主收口，页面入口都走这里）', () => {
+  it('★ 装模块一步到位：装完包接着装它声明的依赖（模块行路径回到 supplyAfter）', () => {
+    const route = read('../../modules/panels/model/market-route.ts');
     const dispatch = read('../../modules/panels/model/market-dispatch.ts');
 
-    expect(dispatch).toContain("outcome.module.kind === 'module'");
-    expect(dispatch).toContain('await market.install(outcome.module.unit);');
+    expect(route).toContain('supply: await deps.supplyAfter(module, change)');
+    expect(dispatch).not.toContain('await market.install(outcome.module.unit);');
   });
 
   it('★ 强探之后补一次：t=0 那拍模块还没加载起来，读数得再刷一次', () => {

@@ -463,14 +463,16 @@ async function installModuleRow(
   } else {
     deps.logger?.info?.(`[dsh-workbench] ${pkg} 按工作台模块安装：profile 依赖 + 一条模块行，等重启加载`);
   }
-  return outcomeOf(deps, pkg, {
+  const change: BundleChange = {
     application: reload.applied ? 'applied' : 'restart-required',
     stage: 'install',
     changed: true,
     target: pkg,
     ...(reload.reason === undefined ? {} : { restartReason: reload.reason }),
     ...(skipped.length === 0 ? {} : { pendingBuilds: skipped }),
-  });
+  };
+  const module = deps.installed?.(pkg) ?? { kind: 'unknown', pkg };
+  return { change, module, supply: await deps.supplyAfter(module, change) };
 }
 
 export async function installRouted(deps: BundleInstallDeps): Promise<BundleInstallOutcome> {

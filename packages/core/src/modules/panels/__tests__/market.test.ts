@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -120,6 +120,83 @@ describe('createMarketService：install', () => {
     expect(fake.commands()).toEqual(["'opencli' plugin install 'git@x:demo.git'"]);
     expect(entry.unit).toBe('argocd');
     expect(entry.capability.status).toBe('missing');
+  });
+
+  it('★ 刚装完包、单元还没注册：按包声明探，不把「没结论」当「没有依赖」', async () => {
+    const profile = mkdtempSync(join(tmpdir(), 'wb-market-profile-'));
+    const pkg = '@pagoda-dsh-workbench/module-argocd';
+    mkdirSync(join(profile, 'node_modules', pkg), { recursive: true });
+    writeFileSync(
+      join(profile, 'node_modules', pkg, 'package.json'),
+      JSON.stringify({
+        name: pkg,
+        version: '1.1.9',
+        dsh: {
+          workbench: {
+            apiVersion: 3,
+            unit: 'argocd',
+            title: { zh: 'ArgoCD', en: 'ArgoCD' },
+            card: null,
+            tools: [],
+            host: { inject: [] },
+            needs: [
+              {
+                kind: 'extension',
+                runtime: 'opencli',
+                name: 'demo',
+                purpose: '测试',
+                sources: [{ kind: 'npm', package: 'opencli-plugin-demo' }],
+              },
+            ],
+          },
+        },
+      }),
+      'utf8',
+    );
+    const fake = createFakeShell([{ stdout: '' }]);
+    const probe = vi.fn(
+      async (id: string, options?: { readonly force?: boolean; readonly needs?: readonly unknown[] }): Promise<UnitCapability> =>
+        options?.needs === undefined || options.needs.length === 0
+          ? { unit: id, status: 'unchecked', needs: [], detail: '单元还没注册' }
+          : { unit: id, status: 'missing', needs: [missingState()] },
+    );
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [uiUnit],
+      modules: () => [{ unit: 'argocd', pkg, version: '1.1.9' }],
+      profileDir: profile,
+      probe,
+      seam: fakeSeamOf(fake.shell),
+    });
+
+    const entry = await market.install('argocd');
+
+    expect(probe).toHaveBeenCalledWith('argocd', { force: true, needs: expect.any(Array) });
+    expect(fake.commands()).toEqual(["'opencli' plugin install 'git@x:demo.git'"]);
+    expect(entry.needs.map((need) => need.name)).toEqual(['demo']);
+    rmSync(profile, { recursive: true, force: true });
+  });
+
+  it('★ 探针先给「没结论」→ 重探一次再决定，不把 unchecked 当成「不用装」', async () => {
+    const fake = createFakeShell([{ stdout: '' }]);
+    let calls = 0;
+    const probe = vi.fn(async (id: string): Promise<UnitCapability> => {
+      calls += 1;
+      return calls === 1
+        ? { unit: id, status: 'unchecked', needs: [], detail: '还没结论' }
+        : { unit: id, status: 'missing', needs: [missingState()] };
+    });
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [unit('issues')],
+      probe,
+      seam: fakeSeamOf(fake.shell),
+    });
+
+    await market.install('issues');
+
+    expect(fake.commands()).toEqual(["'opencli' plugin install 'git@x:demo.git'"]);
+    expect(probe.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it('★ 装之前**强探** —— 幂等判断不许拿缓存的旧结论', async () => {

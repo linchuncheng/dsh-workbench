@@ -94,9 +94,6 @@ export async function dispatchMarket(
       request.action === 'install-bundle'
         ? await market.installBundle(request.spec ?? '', options)
         : await market.replaceBundle(request.spec ?? '', options);
-    if (outcome.module.kind === 'module') {
-      await market.install(outcome.module.unit);
-    }
     return { ok: true, action: request.action, ...outcome };
   }
   if (request.action === 'update-bundle') {
