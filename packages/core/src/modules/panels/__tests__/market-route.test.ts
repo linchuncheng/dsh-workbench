@@ -926,6 +926,33 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
     expect(outcome.change.application).toBe('applied');
   });
 
+  it('★ 市场行给了包名（options.pkg）→ 直接用，不去猜、也不用等装完', async () => {
+    const dir = profileAt({
+      pkg: '@dsh-workbench/module-hello',
+      version: '1.1.14-beta.2',
+      bundles: [],
+      shipsBundle: true,
+    });
+    const spec = `github:org/market#${'a'.repeat(40)}&path:/packages/module-hello`;
+    const { deps } = rig({ spec, supply: pluginSupply(() => ({ kind: 'dsh-module' })) });
+    const { manager, setEnabled } = togglingManager(dir, (request) => ({
+      application: 'applied',
+      stage: 'install',
+      changed: true,
+      target: request.spec,
+    }));
+
+    const outcome = await installRouted({
+      ...deps,
+      manager,
+      profileDir: dir,
+      options: { route: 'module', pkg: '@dsh-workbench/module-hello' },
+    });
+
+    expect(setEnabled).toHaveBeenCalledWith('@dsh-workbench/module-hello', true);
+    expect(outcome.change.application).toBe('applied');
+  });
+
   it('★ 源没给包名、末段也不是真包名 → 按已装模块认出真包名，再补名单', async () => {
     const dir = profileAt({
       pkg: '@dsh-workbench/module-hello',

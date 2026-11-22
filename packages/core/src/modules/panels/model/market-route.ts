@@ -219,14 +219,14 @@ export async function replaceRouted(
   options?: BundleInstallOptions,
 ): Promise<BundleInstallOutcome> {
   const { remove: _remove, ...rest } = deps;
-  if (options?.route === 'module') return installAsModule(rest, spec, options);
+  if (options?.route === 'module') return installAsModule(rest, spec, options, options.pkg);
   if (options?.route === 'bundle') return retryBundle(deps, spec, options, true);
   const supply = deps.supply ?? requireSupply();
   const route = await probeOf(supply, spec, deps.seam, deps.registry);
   if (route?.kind === 'dsh-module') {
-    return installAsModule(rest, spec, options, route.pkg ?? pkgNameOf(spec));
+    return installAsModule(rest, spec, options, route.pkg ?? options?.pkg ?? pkgNameOf(spec));
   }
-  return retryBundle({ ...deps, pkgHint: route?.pkg }, spec, options, true);
+  return retryBundle({ ...deps, pkgHint: route?.pkg ?? options?.pkg }, spec, options, true);
 }
 
 async function installOnce(
@@ -293,7 +293,7 @@ function installAsModule(
   deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
   spec: string,
   options: BundleInstallOptions | undefined,
-  pkg: string = pkgNameOf(spec),
+  pkg: string = options?.pkg ?? pkgNameOf(spec),
 ): Promise<BundleInstallOutcome> {
   return installModuleRow({ ...deps, spec, ...(options === undefined ? {} : { options }) }, spec, pkg);
 }
@@ -476,15 +476,15 @@ async function installModuleRow(
 
 export async function installRouted(deps: BundleInstallDeps): Promise<BundleInstallOutcome> {
   const { spec, options, registry, seam } = deps;
-  if (options?.route === 'module') return installAsModule(deps, spec, options);
+  if (options?.route === 'module') return installAsModule(deps, spec, options, options.pkg);
   if (options?.route === 'bundle') return retryBundle(deps, spec, options, false);
   const supply = deps.supply ?? requireSupply();
   const route = await probeOf(supply, spec, seam, registry);
   if (route?.kind === 'dsh-module') {
-    return installModuleRow(deps, spec, route.pkg ?? pkgNameOf(spec));
+    return installModuleRow(deps, spec, route.pkg ?? options?.pkg ?? pkgNameOf(spec));
   }
   if (route === undefined || route.kind === 'dsh-bundle') {
-    return retryBundle({ ...deps, ...(route?.pkg === undefined ? {} : { pkgHint: route.pkg }) }, spec, options, false);
+    return retryBundle({ ...deps, pkgHint: route?.pkg ?? options?.pkg }, spec, options, false);
   }
 
   const pkg = route.pkg ?? pkgNameOf(spec);

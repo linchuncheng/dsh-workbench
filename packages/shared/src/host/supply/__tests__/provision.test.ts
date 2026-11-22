@@ -50,6 +50,16 @@ describe('provision 请求体：每类动作各有各的目标字段', () => {
     });
   });
 
+  it('★ install-bundle 带市场行给的包名（pkg）：末段不是包名时靠它写名单，空值不带', () => {
+    expect(parseProvisionBody({ action: 'install-bundle', spec: 'github:o/r#abc&path:/packages/x', pkg: '@o/x' })).toEqual({
+      ok: true,
+      request: { action: 'install-bundle', spec: 'github:o/r#abc&path:/packages/x', pkg: '@o/x' },
+    });
+    expect(
+      parseProvisionBody({ action: 'install-bundle', spec: '@a/b', pkg: '   ' }),
+    ).toEqual({ ok: true, request: { action: 'install-bundle', spec: '@a/b' } });
+  });
+
   it('install-bundle / install-version：带上界面知道的形态（route），不认识的值不带', () => {
     expect(parseProvisionBody({ action: 'install-version', spec: '@a/b@1.2.3', route: 'module' })).toEqual({
       ok: true,

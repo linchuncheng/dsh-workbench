@@ -58,6 +58,7 @@ export interface ProvisionRequest {
   readonly version?: string;
   readonly registry?: string;
   readonly route?: ProvisionInstallRoute;
+  readonly pkg?: string;
   readonly approvedBuilds?: readonly string[];
 }
 
@@ -131,6 +132,7 @@ export function parseProvisionBody(body: unknown): ProvisionParsed {
   const approvedBuilds = stringsOf(raw.approvedBuilds);
   const requestId = typeof raw.requestId === 'string' && raw.requestId.trim() !== '' ? raw.requestId.trim() : undefined;
   const route = raw.route === 'module' || raw.route === 'bundle' ? raw.route : undefined;
+  const pkg = typeof raw.pkg === 'string' && raw.pkg.trim() !== '' ? raw.pkg.trim() : undefined;
   return {
     ok: true,
     request: {
@@ -138,6 +140,7 @@ export function parseProvisionBody(body: unknown): ProvisionParsed {
       ...(registry === undefined ? {} : { registry }),
       ...(approvedBuilds === undefined ? {} : { approvedBuilds }),
       ...(requestId === undefined ? {} : { requestId }),
+      ...(pkg === undefined ? {} : { pkg }),
       ...(route === undefined ? {} : { route }),
     },
   };

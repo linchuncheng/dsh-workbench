@@ -68,15 +68,14 @@ function isDependency(action: ProvisionAction): action is 'update-dependency' {
   return action === 'update-dependency';
 }
 
-type MutableInstallOptions = { -readonly [K in keyof BundleInstallOptions]: BundleInstallOptions[K] };
-
 function installOptionsOf(request: ProvisionRequest): BundleInstallOptions {
-  const options: MutableInstallOptions = {};
-  if (request.registry !== undefined) options.registry = request.registry;
-  if (request.approvedBuilds !== undefined) options.approvedBuilds = request.approvedBuilds;
-  if (request.requestId !== undefined) options.requestId = request.requestId;
-  if (request.route !== undefined) options.route = request.route;
-  return options;
+  return {
+    registry: request.registry,
+    approvedBuilds: request.approvedBuilds,
+    requestId: request.requestId,
+    route: request.route,
+    pkg: request.pkg,
+  };
 }
 
 function supplyOptionsOf(request: ProvisionRequest): SupplyInstallOptions {

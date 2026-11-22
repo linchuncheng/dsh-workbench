@@ -27,6 +27,7 @@ export interface BundleInstallOptions {
   readonly requestId?: string | undefined;
   readonly signal?: AbortSignal | undefined;
   readonly route?: ProvisionInstallRoute | undefined;
+  readonly pkg?: string | undefined;
 }
 
 export interface SupplyInstallOptions {

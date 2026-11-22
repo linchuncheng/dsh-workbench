@@ -374,6 +374,7 @@ export function useDiscover(
       ...(description === '' ? {} : { description }),
       autoInstall: true,
       route: 'module',
+      pkg: choice.entry.name,
     });
   };
 

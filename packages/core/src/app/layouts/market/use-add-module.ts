@@ -49,6 +49,7 @@ export interface AddModuleOutcome {
 export interface AddModuleTarget {
   readonly registry?: string | undefined;
   readonly route?: InstallRoute | undefined;
+  readonly pkg?: string | undefined;
 }
 
 export interface AddModulePreset extends AddModuleTarget {
@@ -159,6 +160,7 @@ export function useAddModule(options: {
           ...(registry === undefined ? {} : { registry }),
           requestId: id,
           ...(preset?.route === undefined ? {} : { route: preset.route }),
+          ...(preset?.pkg === undefined ? {} : { pkg: preset.pkg }),
           ...(approvedBuilds.length === 0 ? {} : { approvedBuilds: [...approvedBuilds] }),
         })
         .then((response) => {
