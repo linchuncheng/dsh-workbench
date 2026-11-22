@@ -381,8 +381,9 @@ async function retryAsModule(
 async function installModuleRow(
   deps: BundleInstallDeps,
   spec: string,
-  pkg: string,
+  candidate: string,
 ): Promise<BundleInstallOutcome> {
+  const pkg = installedNameOf(deps.modules?.() ?? [], candidate);
   const profileDir = deps.profileDir;
   if (profileDir === undefined || profileDir === null) {
     return routedFailure(deps, pkg, 'profile dir is missing', [], 'no-profile-dir');
