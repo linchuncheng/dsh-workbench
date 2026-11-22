@@ -844,6 +844,25 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
     expect(outcome.module).toEqual({ kind: 'module', pkg: '@t/module-a', unit: 'a', version: '1.2.0' });
   });
 
+  it('★ dsh 装完没把它写进名单（依赖在、包在、名单缺）→ 我们补上，不然重启也不加载', async () => {
+    const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: true });
+    const { deps } = rig({ spec: '@t/module-a@1.0.0', supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });
+    const { manager, setEnabled } = togglingManager(dir, (request) => ({
+      application: 'applied',
+      stage: 'install',
+      changed: true,
+      target: request.spec,
+    }));
+
+    const outcome = await installRouted({ ...deps, manager, profileDir: dir });
+
+    expect(setEnabled).toHaveBeenCalledWith('@t/module-a', true);
+    expect(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).dsh.profile.bundles).toEqual([
+      '@t/module-a',
+    ]);
+    expect(outcome.change.application).toBe('applied');
+  });
+
   it('★ 源只说"是模块"、没给包名，spec 又是 git 路径式 → 仍按 path 末段认包名', async () => {
     const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: true });
     const spec = `git+ssh://git@host/org/repo.git#${'a'.repeat(40)}&path:/artifacts/@t/module-a`;
