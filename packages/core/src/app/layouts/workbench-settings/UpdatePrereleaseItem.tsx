@@ -72,7 +72,9 @@ export function UpdatePrereleaseItem({ t }: UpdatePrereleaseItemProps): JSX.Elem
                 onClick={() => setOpen((value) => !value)}
               >
                 <span className={styles.value}>
-                  {selected.length === 0 ? t('updatePrerelease.none') : selected.join('、')}
+                  {selected.length === 0
+                    ? t('updatePrerelease.none')
+                    : selected.join(t('updatePrerelease.separator'))}
                 </span>
                 <span className={styles.chevron} aria-hidden="true">
                   <IconChevronDownOutlineRegular size={14} />
