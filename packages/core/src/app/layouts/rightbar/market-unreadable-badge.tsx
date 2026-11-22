@@ -53,7 +53,7 @@ export function MarketUnreadableBadge({
         tone="warning"
         closeLabel={t('market.unreadable.close')}
         footer={
-          <Button type="button" size="sm" variant="primary" onClick={copyAll}>
+          <Button type="button" size="sm" variant="outline" onClick={copyAll}>
             {copied ? t('market.unreadable.copied') : t('market.unreadable.copy')}
           </Button>
         }
