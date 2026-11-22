@@ -383,7 +383,7 @@ async function installModuleRow(
   spec: string,
   candidate: string,
 ): Promise<BundleInstallOutcome> {
-  const pkg = installedNameOf(deps.modules?.() ?? [], candidate);
+  let pkg = installedNameOf(deps.modules?.() ?? [], candidate);
   const profileDir = deps.profileDir;
   if (profileDir === undefined || profileDir === null) {
     return routedFailure(deps, pkg, 'profile dir is missing', [], 'no-profile-dir');
@@ -422,18 +422,20 @@ async function installModuleRow(
     }
   }
   const output = deps.outputOf?.() ?? '';
+  pkg = installedNameOf(deps.modules?.() ?? [], pkg);
   try {
     await wireModule(deps, pkg);
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 已安装到工作台配置，但 dsh.profile.bundles 未同步：${detail}`);
+    deps.logger?.warn?.(
+      `[dsh-workbench] ${pkg} 已安装到工作台配置，但 dsh.profile.bundles 未同步：${error instanceof Error ? error.message : String(error)}`,
+    );
     return outcomeOf(deps, pkg, {
       application: 'failed',
       stage: 'install',
       changed: true,
       target: pkg,
       errorCode: 'bundle-list-failed',
-      errorDetail: `dsh.profile.bundles: ${detail}`,
+      errorDetail: `dsh.profile.bundles: ${error instanceof Error ? error.message : String(error)}`,
     });
   }
   let rowIds: readonly string[];
