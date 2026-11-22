@@ -103,6 +103,25 @@ describe('createMarketService：目录', () => {
 });
 
 describe('createMarketService：install', () => {
+  it('★ 本机 link 装的单元不在市场目录里：装依赖照跑，不报「市场里没有这个模块」', async () => {
+    const fake = createFakeShell([{ stdout: '' }]);
+    const market = createMarketService({
+      command: 'opencli',
+      manifests: [uiUnit],
+      modules: () => [
+        { unit: 'argocd', pkg: '@pagoda-dsh-workbench/module-argocd', version: '1.1.9', local: true },
+      ],
+      probe: probeWith({ argocd: { unit: 'argocd', status: 'missing', needs: [missingState()] } }),
+      seam: fakeSeamOf(fake.shell),
+    });
+
+    const entry = await market.install('argocd');
+
+    expect(fake.commands()).toEqual(["'opencli' plugin install 'git@x:demo.git'"]);
+    expect(entry.unit).toBe('argocd');
+    expect(entry.capability.status).toBe('missing');
+  });
+
   it('★ 装之前**强探** —— 幂等判断不许拿缓存的旧结论', async () => {
     const probe = probeWith({ issues: { unit: 'issues', status: 'missing', needs: [missingState()] } });
     const fake = createFakeShell([{ stdout: '' }]);

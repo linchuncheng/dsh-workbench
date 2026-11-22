@@ -113,12 +113,32 @@ export function createMarketService(options: {
   const command = options.command;
   const catalog = (): readonly UnitManifest[] => manifestsNow?.() ?? manifests;
 
-  const { capabilityOf, needsOf, entryOf } = createMarketEntries({
+  const { capabilityOf, requireEntry, entryOf } = createMarketEntries({
     catalog,
     ...(probe === undefined ? {} : { probe }),
   });
 
   const { run, runAll, outputOf } = createInstallRunner({ seam, supply });
+
+  const manifestOf = (unit: string): UnitManifest | undefined =>
+    catalog().find((item) => item.id === unit);
+
+  const requireKnown = (unit: string): UnitManifest | undefined => {
+    const manifest = manifestOf(unit);
+    if (manifest !== undefined) return manifest;
+    if ((modules?.() ?? []).some((item) => item.unit === unit)) return undefined;
+    return requireEntry(unit);
+  };
+
+  async function entryLoose(unit: string): Promise<MarketEntry> {
+    const manifest = manifestOf(unit);
+    return {
+      unit,
+      titleKey: manifest?.titleKey ?? unit,
+      needs: manifest === undefined ? [] : needsOfManifest(manifest),
+      capability: await capabilityOf(unit, false),
+    };
+  }
 
   async function probeSharing(request: {
     readonly action: MarketAction;
@@ -242,6 +262,7 @@ export function createMarketService(options: {
   const installControl = createInstallControl();
 
   async function installByRoute(spec: string, options?: BundleInstallOptions): Promise<BundleInstallOutcome> {
+    logger?.info?.(`[dsh-workbench] 安装组合包：${spec}`);
     const manager = requireBundles();
     const registry = options?.registry ?? (await manager.registries().catch(() => null))?.resolved ?? undefined;
     const watched = installControl.attach(options?.requestId, options);
@@ -254,6 +275,9 @@ export function createMarketService(options: {
       });
       const restart = restartLogLine(outcome?.change);
       if (restart !== undefined) logger?.info?.(restart);
+      logger?.info?.(
+        `[dsh-workbench] 组合包装完：application=${outcome?.change.application} kind=${outcome?.module.kind} pkg=${outcome?.module.pkg}`,
+      );
       return outcome;
     } finally {
       installControl.release(options?.requestId);
@@ -266,7 +290,11 @@ export function createMarketService(options: {
     },
 
     async install(unit) {
+      requireKnown(unit);
       const before = await capabilityOf(unit, true);
+      logger?.info?.(
+        `[dsh-workbench] 安装依赖：unit=${unit} 状态=${before.status} 缺=${before.needs.filter((state) => state.status === 'missing').map((state) => `${state.kind}:${state.name}`).join(',') || '无'}`,
+      );
       const absent = before.needs.filter(
         (state) =>
           state.status === 'missing' &&
@@ -274,16 +302,18 @@ export function createMarketService(options: {
       );
       if (absent.length === 0) {
         onInstalled?.(unit);
-        return entryOf(unit, false);
+        return entryLoose(unit);
       }
       for (const state of absent) {
         if (state.provision !== undefined && state.provision !== 'ready') {
-          const need = needsOf(unit).find((item) => item.name === state.name);
+          const manifest = manifestOf(unit);
+          const need = manifest === undefined ? undefined : needsOfManifest(manifest).find((item) => item.name === state.name);
           throw new Error(sourceProblemText(state.provision, sourceEnvOf(need)));
         }
         if (state.command === undefined) {
           throw new Error(`没有可执行的安装命令（${state.detail}）`);
         }
+        logger?.info?.(`[dsh-workbench] 跑安装命令：${state.kind}:${state.name} → ${state.command}`);
         if (state.kind === 'lib') supply.beforeLibInstall();
         if (state.steps === undefined || state.steps.length === 0) await run(state.command);
         else await runAll(state.steps);
@@ -291,10 +321,13 @@ export function createMarketService(options: {
       }
       await probeSharing({ action: 'install', unit });
       onInstalled?.(unit);
-      return entryOf(unit, false);
+      const after = await entryLoose(unit);
+      logger?.info?.(`[dsh-workbench] 依赖装完：unit=${unit} 结论=${after.capability.status}`);
+      return after;
     },
 
     async update(unit) {
+      requireKnown(unit);
       const before = await capabilityOf(unit, true);
       const stale = before.needs.filter(
         (state) =>
@@ -331,16 +364,18 @@ export function createMarketService(options: {
         throw new Error(`没有可执行的更新命令（这一格还是旧的样子：${before.detail ?? ''}）`);
       }
       await probeSharing({ action: 'update', unit });
-      const entry = await entryOf(unit, false);
+      const entry = await entryLoose(unit);
       const behind = supplyUpdateStillBehind(entry.capability);
       if (behind !== undefined) throw new Error(behind);
       return entry;
     },
 
     async uninstall(unit) {
+      requireKnown(unit);
+      const manifest = manifestOf(unit);
       const pkg = (modules?.() ?? []).find((item) => item.unit === unit)?.pkg;
       if (pkg !== undefined) {
-        const entry = await entryOf(unit, true);
+        const entry = await entryLoose(unit);
         const { change, keptFor } = await service.removeBundle(pkg);
         const released = change.application === 'applied';
         return {
@@ -350,10 +385,10 @@ export function createMarketService(options: {
         };
       }
       const before = await capabilityOf(unit, true);
-      const keptFor = await envDropper.drop(unit, needsOf(unit), before);
+      const keptFor = await envDropper.drop(unit, manifest === undefined ? [] : needsOfManifest(manifest), before);
       await plugins.sweep();
       await probeSharing({ action: 'uninstall', unit });
-      const entry = await entryOf(unit, false);
+      const entry = await entryLoose(unit);
       onUninstalled?.(unit);
       return {
         entry: { ...entry, capability: { ...entry.capability, released: true } },
