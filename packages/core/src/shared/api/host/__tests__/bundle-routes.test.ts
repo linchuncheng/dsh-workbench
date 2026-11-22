@@ -580,7 +580,7 @@ describe('已装模块的最新版（打开市场页问一次 registry）', () =
     cleanup();
   });
 
-  it('★ 非正式版本默认不参与；打开后 rc 参与、beta 仍不参与', async () => {
+  it('★ 默认只认正式版；选中哪个通道就只认哪个通道（beta 不再被一刀切）', async () => {
     const { dir, cleanup } = profileWith('0.1.2');
     const listed = {
       status: 'listed' as const,
@@ -601,21 +601,26 @@ describe('已装模块的最新版（打开市场页问一次 registry）', () =
       { '@a/mod': ['0.2.0', '0.3.0-rc.0', '0.4.0-beta.0'] },
     );
 
-    const stable = (await moduleVersionsHandler(fakeContext(manager, dir), shell.seam as never, undefined, undefined, () => false)(
+    const stable = (await moduleVersionsHandler(fakeContext(manager, dir), shell.seam as never, undefined, undefined, () => [])(
       new URLSearchParams('force=1'),
     )) as { modules: { latest?: string; versions?: unknown }[] };
     expect(stable.modules[0]?.latest).toBe('0.2.0');
     expect(shell.commands.some((line) => line.includes('versions --json'))).toBe(false);
 
-    const prerelease = (await moduleVersionsHandler(fakeContext(manager, dir), shell.seam as never, undefined, undefined, () => true)(
+    const prerelease = (await moduleVersionsHandler(fakeContext(manager, dir), shell.seam as never, undefined, undefined, () => ['rc'])(
       new URLSearchParams('force=1'),
     )) as { modules: { latest?: string; versions?: unknown }[] };
     expect(prerelease.modules[0]?.latest).toBe('0.3.0-rc.0');
     expect(shell.commands.some((line) => line.includes('versions --json'))).toBe(true);
+
+    const beta = (await moduleVersionsHandler(fakeContext(manager, dir), shell.seam as never, undefined, undefined, () => ['beta'])(
+      new URLSearchParams('force=1'),
+    )) as { modules: { latest?: string; versions?: unknown }[] };
+    expect(beta.modules[0]?.latest).toBe('0.4.0-beta.0');
     cleanup();
   });
 
-  it('★ 打开非正式版本后，源上只有更新的 beta → 不给 beta，停在已装的稳定版', async () => {
+  it('★ 没选 beta 时，源上更新的 beta 不提示，停在已装的稳定版', async () => {
     const { dir, cleanup } = profileWith('0.1.2');
     const listed = {
       status: 'listed' as const,
@@ -631,7 +636,7 @@ describe('已装模块的最新版（打开市场页问一次 registry）', () =
     const manager = { ...MANAGER, listVersions: async () => listed };
     const shell = fakeShell({ '@a/mod': '0.1.2' }, {}, { '@a/mod': ['0.1.2', '0.2.0-beta.0'] });
 
-    const prerelease = (await moduleVersionsHandler(fakeContext(manager, dir), shell.seam as never, undefined, undefined, () => true)(
+    const prerelease = (await moduleVersionsHandler(fakeContext(manager, dir), shell.seam as never, undefined, undefined, () => ['rc'])(
       new URLSearchParams('force=1'),
     )) as { modules: { latest?: string; versions?: unknown }[] };
     expect(prerelease.modules[0]?.latest).toBe('0.1.2');

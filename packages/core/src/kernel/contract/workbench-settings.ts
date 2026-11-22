@@ -1,10 +1,12 @@
 export {
+  PRERELEASE_CHANNELS,
   WORKBENCH_DIY_PRESETS_ROUTE,
   WORKBENCH_MODULE_MODELS_ROUTE,
   WORKBENCH_SETTINGS_RESOURCE,
   WORKBENCH_SETTINGS_ROUTE,
 } from '@dsh-workbench/shared/contract/protocol/workbench-settings';
 export type {
+  PrereleaseChannel,
   WorkbenchDiyPresetSource,
   WorkbenchDiyPresetsSnapshot,
   WorkbenchModelChoice,

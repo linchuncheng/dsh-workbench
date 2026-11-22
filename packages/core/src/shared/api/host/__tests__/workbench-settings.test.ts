@@ -17,12 +17,13 @@ const readFile = (): Record<string, unknown> =>
   JSON.parse(fs.readFileSync(settingsFile(), 'utf8')) as Record<string, unknown>;
 
 describe('工作台设置（本机文件）', () => {
-  it('★ 默认关：没有文件时 MCP 按需加载与非正式版本都是关的，模块也没选模型', () => {
+  it('★ 默认关：没有文件时 MCP 按需加载与预发布通道都是空的，模块也没选模型', () => {
     const store = createWorkbenchSettingsStore({ root });
 
     expect(store.read()).toEqual({
       mcpOnDemand: false,
       includePrerelease: false,
+      prereleaseChannels: [],
       moduleModel: null,
       diyPresetSource: 'standard',
     });
@@ -37,6 +38,7 @@ describe('工作台设置（本机文件）', () => {
       settings: {
         mcpOnDemand: true,
         includePrerelease: false,
+        prereleaseChannels: [],
         moduleModel: null,
         diyPresetSource: 'standard',
       },
@@ -44,6 +46,7 @@ describe('工作台设置（本机文件）', () => {
     expect(readFile()).toEqual({
       mcpOnDemand: true,
       includePrerelease: false,
+      prereleaseChannels: [],
       diyPresetSource: 'standard',
     });
 
@@ -51,6 +54,7 @@ describe('工作台设置（本机文件）', () => {
     expect(again.read()).toEqual({
       mcpOnDemand: true,
       includePrerelease: false,
+      prereleaseChannels: [],
       moduleModel: null,
       diyPresetSource: 'standard',
     });
@@ -89,6 +93,7 @@ describe('工作台设置（本机文件）', () => {
       settings: {
         mcpOnDemand: false,
         includePrerelease: false,
+        prereleaseChannels: [],
         moduleModel: null,
         diyPresetSource: 'standard',
       },
@@ -99,6 +104,7 @@ describe('工作台设置（本机文件）', () => {
       settings: {
         mcpOnDemand: true,
         includePrerelease: false,
+        prereleaseChannels: [],
         moduleModel: null,
         diyPresetSource: 'standard',
       },
@@ -113,19 +119,21 @@ describe('工作台设置（本机文件）', () => {
     expect(store.read()).toEqual({
       mcpOnDemand: false,
       includePrerelease: false,
+      prereleaseChannels: [],
       moduleModel: null,
       diyPresetSource: 'standard',
     });
   });
 
-  it('★ 打开非正式版本开关：只改它，MCP 那一档不动', () => {
+  it('★ 选通道：只改它，MCP 那一档不动；文件里 old 键与通道一起写', () => {
     const store = createWorkbenchSettingsStore({ root });
 
-    expect(store.apply({ includePrerelease: true })).toEqual({
+    expect(store.apply({ prereleaseChannels: ['rc'] })).toEqual({
       ok: true,
       settings: {
         mcpOnDemand: false,
         includePrerelease: true,
+        prereleaseChannels: ['rc'],
         moduleModel: null,
         diyPresetSource: 'standard',
       },
@@ -133,6 +141,37 @@ describe('工作台设置（本机文件）', () => {
     expect(readFile()).toEqual({
       mcpOnDemand: false,
       includePrerelease: true,
+      prereleaseChannels: ['rc'],
+      diyPresetSource: 'standard',
+    });
+  });
+
+  it('★ 多选按固定顺序落盘（rc → beta → alpha），重复的去掉', () => {
+    const store = createWorkbenchSettingsStore({ root });
+
+    expect(store.apply({ prereleaseChannels: ['beta', 'rc', 'beta'] }).settings.prereleaseChannels).toEqual([
+      'rc',
+      'beta',
+    ]);
+    expect(readFile()['prereleaseChannels']).toEqual(['rc', 'beta']);
+  });
+
+  it('★ 旧配置（只有 includePrerelease: true）读成 rc 通道', () => {
+    fs.writeFileSync(settingsFile(), JSON.stringify({ mcpOnDemand: false, includePrerelease: true }));
+    const store = createWorkbenchSettingsStore({ root });
+
+    expect(store.read().prereleaseChannels).toEqual(['rc']);
+    expect(store.read().includePrerelease).toBe(true);
+  });
+
+  it('★ 旧写法 apply({ includePrerelease: true }) 仍然认，等价于选 rc', () => {
+    const store = createWorkbenchSettingsStore({ root });
+
+    expect(store.apply({ includePrerelease: true }).settings).toEqual({
+      mcpOnDemand: false,
+      includePrerelease: true,
+      prereleaseChannels: ['rc'],
+      moduleModel: null,
       diyPresetSource: 'standard',
     });
   });
@@ -144,6 +183,14 @@ describe('工作台设置（本机文件）', () => {
     expect(fs.existsSync(settingsFile())).toBe(false);
   });
 
+  it('通道名不认识就当场拒，文件一个字节都不动', () => {
+    const store = createWorkbenchSettingsStore({ root });
+
+    expect(() => store.apply({ prereleaseChannels: ['next'] })).toThrow(/预发布通道/);
+    expect(() => store.apply({ prereleaseChannels: 'rc' })).toThrow(/预发布通道/);
+    expect(fs.existsSync(settingsFile())).toBe(false);
+  });
+
   it('★ 选好的模块模型写进 settings.json，换个 store 读回来还在', () => {
     const store = createWorkbenchSettingsStore({ root });
 
@@ -152,6 +199,7 @@ describe('工作台设置（本机文件）', () => {
       settings: {
         mcpOnDemand: false,
         includePrerelease: false,
+        prereleaseChannels: [],
         moduleModel: { provider: 'deepseek', model: 'deepseek-chat' },
         diyPresetSource: 'standard',
       },
@@ -159,6 +207,7 @@ describe('工作台设置（本机文件）', () => {
     expect(readFile()).toEqual({
       mcpOnDemand: false,
       includePrerelease: false,
+      prereleaseChannels: [],
       moduleModel: { provider: 'deepseek', model: 'deepseek-chat' },
       diyPresetSource: 'standard',
     });
@@ -175,6 +224,7 @@ describe('工作台设置（本机文件）', () => {
     expect(readFile()).toEqual({
       mcpOnDemand: false,
       includePrerelease: false,
+      prereleaseChannels: [],
       diyPresetSource: 'standard',
     });
   });
@@ -193,9 +243,10 @@ describe('工作台设置（本机文件）', () => {
     const store = createWorkbenchSettingsStore({ root });
     store.apply({ moduleModel: { provider: 'deepseek', model: 'deepseek-chat' } });
 
-    expect(store.apply({ includePrerelease: true }).settings).toEqual({
+    expect(store.apply({ prereleaseChannels: ['rc'] }).settings).toEqual({
       mcpOnDemand: false,
       includePrerelease: true,
+      prereleaseChannels: ['rc'],
       moduleModel: { provider: 'deepseek', model: 'deepseek-chat' },
       diyPresetSource: 'standard',
     });
@@ -211,12 +262,14 @@ describe('工作台设置（本机文件）', () => {
     expect(store.apply({ diyPresetSource: 'my-mode' }).settings).toEqual({
       mcpOnDemand: false,
       includePrerelease: false,
+      prereleaseChannels: [],
       moduleModel: null,
       diyPresetSource: 'my-mode',
     });
     expect(readFile()).toEqual({
       mcpOnDemand: false,
       includePrerelease: false,
+      prereleaseChannels: [],
       diyPresetSource: 'my-mode',
     });
 
@@ -230,9 +283,10 @@ describe('工作台设置（本机文件）', () => {
     expect(store.read().diyPresetSource).toBe('standard');
 
     store.apply({ diyPresetSource: 'my-mode' });
-    expect(store.apply({ includePrerelease: true }).settings).toEqual({
+    expect(store.apply({ prereleaseChannels: ['rc'] }).settings).toEqual({
       mcpOnDemand: false,
       includePrerelease: true,
+      prereleaseChannels: ['rc'],
       moduleModel: null,
       diyPresetSource: 'my-mode',
     });

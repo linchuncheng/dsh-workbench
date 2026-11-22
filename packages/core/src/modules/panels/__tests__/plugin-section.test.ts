@@ -94,7 +94,7 @@ describe('「已安装 opencli 插件」那一段的数据：台账说了算', (
     const rows = await installedPlugins({
       ledger,
       seam: fakeSeamOf(fake.shell),
-      includePrerelease: true,
+      prereleaseChannels: ['rc'],
     });
 
     expect(rows[0]?.latest).toBe('1.0.25-rc.1');

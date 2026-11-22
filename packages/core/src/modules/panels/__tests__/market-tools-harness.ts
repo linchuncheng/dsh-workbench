@@ -125,7 +125,7 @@ export function harness(options: {
   npmLatest?: string;
   npmVersions?: readonly string[];
   npmMissing?: readonly string[];
-  includePrerelease?: boolean;
+  prereleaseChannels?: readonly string[];
   profileName?: string | null;
   marketSources?: MarketSourceGateway;
 }) {
@@ -192,9 +192,9 @@ export function harness(options: {
     ...(references === undefined ? {} : { references: () => ({ ...references, unreadable: [] }) }),
     dshHome: () => '/tmp/dsh-home',
     profileName: () => (options.profileName === undefined ? 'workbench' : options.profileName),
-    ...(options.includePrerelease === undefined
+    ...(options.prereleaseChannels === undefined
       ? {}
-      : { includePrerelease: () => options.includePrerelease === true }),
+      : { prereleaseChannels: () => options.prereleaseChannels ?? [] }),
     selfUpdate: (request) => {
       selfUpdates.push(request);
       return { started: true, paths: selfUpdatePathsOf(request.dshHome), forward: '' };

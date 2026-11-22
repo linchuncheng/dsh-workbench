@@ -1,21 +1,11 @@
 import { createElement as h, useState } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
-import { MIN_BUSY_MS } from '@dsh-workbench/shared';
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives';
-import type {
-  WorkbenchSettingsApplied,
-  WorkbenchSettingsSnapshot,
-} from '@/kernel/contract/workbench-settings';
-import {
-  WORKBENCH_SETTINGS_RESOURCE,
-  WORKBENCH_SETTINGS_ROUTE,
-} from '@/kernel/contract/workbench-settings';
-import { useApiResource } from '@/shared/hooks/use-api-resource';
-import { useHostWrite } from '@/shared/hooks/use-host-write';
-import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
+import type { WorkbenchSettings } from '@/kernel/contract/workbench-settings';
 import { SettingsRow } from './SettingsRow';
+import { useWorkbenchSettings } from './use-workbench-settings';
 
-export type WorkbenchToggleField = 'mcpOnDemand' | 'includePrerelease';
+export type WorkbenchToggleField = 'mcpOnDemand';
 
 export interface WorkbenchToggleItemProps {
   readonly t: Translate;
@@ -32,25 +22,14 @@ export function WorkbenchToggleItem({
   description,
   failed,
 }: WorkbenchToggleItemProps): JSX.Element {
-  const [revision, setRevision] = useState(0);
-  const snapshot = useApiResource<WorkbenchSettingsSnapshot>(WORKBENCH_SETTINGS_ROUTE, {}, revision);
-  const write = useHostWrite<WorkbenchSettingsApplied>({
-    channel: 'actions',
-    resource: WORKBENCH_SETTINGS_RESOURCE,
-    networkText: failed,
-  });
-  const busy = useVisibleBusy(write.busy, MIN_BUSY_MS);
+  const settings = useWorkbenchSettings(t, failed);
   const [override, setOverride] = useState<boolean | null>(null);
-  const readFailed = snapshot.phase === 'error';
-  const stored =
-    snapshot.phase === 'ready' && snapshot.value !== undefined
-      ? snapshot.value.settings[field]
-      : undefined;
+  const stored: WorkbenchSettings[WorkbenchToggleField] | undefined = settings.snapshot?.settings[field];
   const checked = override ?? stored ?? false;
 
   const toggle = (next: boolean): void => {
     setOverride(next);
-    void write.send({ [field]: next }).then((outcome) => {
+    void settings.send({ [field]: next }).then((outcome) => {
       if (!outcome.ok) setOverride(null);
     });
   };
@@ -59,16 +38,16 @@ export function WorkbenchToggleItem({
     <SettingsRow
       title={title}
       description={description}
-      error={write.failed ?? (readFailed ? t('workbenchSettings.readFailed') : null)}
+      error={settings.error}
       control={
-        readFailed ? (
-          <Button variant="ghost" size="sm" onClick={() => setRevision((current) => current + 1)}>
+        settings.readFailed ? (
+          <Button variant="ghost" size="sm" onClick={settings.retry}>
             {t('blocker.retry')}
           </Button>
         ) : (
           <Switch
             checked={checked}
-            disabled={stored === undefined || busy.busy}
+            disabled={stored === undefined || settings.busy}
             label={title}
             onChange={toggle}
           />

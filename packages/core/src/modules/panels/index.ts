@@ -184,8 +184,8 @@ export const panelsHost: UnitOwnedFace = {
         return entry === undefined ? undefined : pluginDirOf(entry, ledger.pluginFiles);
       },
     });
-    const includePrerelease = (): boolean =>
-      (ctx.get(WORKBENCH_SETTINGS_SERVICE) as WorkbenchSettingsStore | undefined)?.read().includePrerelease === true;
+    const prereleaseChannels = (): readonly string[] =>
+      (ctx.get(WORKBENCH_SETTINGS_SERVICE) as WorkbenchSettingsStore | undefined)?.read().prereleaseChannels ?? [];
     const seam = seamOf(ctx);
     const moduleManifests = (): readonly UnitManifest[] => {
       const list = manifests();
@@ -205,7 +205,7 @@ export const panelsHost: UnitOwnedFace = {
       installed: (pkg) => supply.readInstalledModule(profileDir, pkg),
       modules: () => supply.profileModules(profileDir),
       workbench: (pkg) => supply.readProfilePackage(profileDir, pkg),
-      includePrerelease,
+      prereleaseChannels,
       registries: supply.createRegistryNotebook(profileDir),
       profileDir,
       ledger,
@@ -275,7 +275,7 @@ export const panelsHost: UnitOwnedFace = {
           ...(runtimeField === '' ? {} : { runtimeField }),
           supply,
           ...(seam === undefined ? {} : { seam }),
-          includePrerelease,
+          prereleaseChannels,
         }),
         ...diyDebugRoutes(debug),
         ...diyFlowRoutes(diyRuns),

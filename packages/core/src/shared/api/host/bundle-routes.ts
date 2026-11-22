@@ -5,7 +5,6 @@ import {
   declarationProblemsOf,
   declaresPackage,
   readDeclaration,
-  isBetaVersion,
   isValidVersion,
   param,
   PLUGIN_ID,
@@ -16,6 +15,7 @@ import {
   type RouteHandler,
   type UnitTitle,
   seamOf,
+  prereleaseChannelOf,
   type Seam,
 } from '@dsh-workbench/shared/host';
 import type { UnitRefusal } from '@/kernel/host/unit-registry';
@@ -68,11 +68,13 @@ export function resetHoldLog(): void {
 
 function visibleVersions<T extends { readonly version: string; readonly prerelease: boolean }>(
   versions: readonly T[],
-  includePrerelease: boolean,
+  channels: readonly string[],
 ): readonly T[] {
-  return versions.filter(
-    (entry) => !isBetaVersion(entry.version) && (includePrerelease || !entry.prerelease),
-  );
+  if (channels.length === 0) return versions.filter((entry) => !entry.prerelease);
+  return versions.filter((entry) => {
+    const channel = prereleaseChannelOf(entry.version);
+    return channel !== undefined && channels.includes(channel);
+  });
 }
 
 function updateBlockOf(raw: unknown, problems: readonly string[]): ModuleUpdateBlock | undefined {
@@ -151,7 +153,7 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
   readonly fallback: string | undefined;
   readonly force: boolean;
   readonly check: boolean;
-  readonly includePrerelease: boolean;
+  readonly prereleaseChannels: readonly string[];
   readonly manager?: BundleManager | undefined;
   readonly running?: string | undefined;
   readonly followUp?: WorkbenchMigrationFollowUp | undefined;
@@ -173,7 +175,7 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
           name: read.pkg,
           registry,
           force: input.force,
-          includePrerelease: input.includePrerelease,
+          prereleaseChannels: input.prereleaseChannels,
         });
   const listed =
     read.local === true ||
@@ -186,7 +188,7 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
       ? null
       : await input.manager.listVersions(read.pkg, registry).catch(() => null);
   const versions = listed?.status === 'listed' ? listed.versions : [];
-  const visible = visibleVersions(versions, input.includePrerelease);
+  const visible = visibleVersions(versions, input.prereleaseChannels);
   const newest = visible[0]?.version;
   const chosen =
     newest !== undefined && (queried === undefined || supply.isNewerVersion(newest, queried))
@@ -234,12 +236,12 @@ export function moduleVersionsHandler(
   seam: Seam | undefined,
   running?: string | undefined,
   selfUpdate?: (() => WorkbenchSelfUpdate | undefined) | undefined,
-  includePrerelease?: (() => boolean) | undefined,
+  prereleaseChannels?: (() => readonly string[]) | undefined,
   diag?: DiagRecorder | undefined,
 ): RouteHandler {
   return async (search) => {
     const supply = supplyPortOf(ctx);
-    const includePrereleaseNow = includePrerelease?.() === true;
+    const channelsNow = prereleaseChannels?.() ?? [];
     const manager = supply.readBundleManager(ctx);
     const dir = supply.profileDirOf(ctx);
     const unreadable = supply.unreadableModules?.(dir) ?? [];
@@ -275,7 +277,7 @@ export function moduleVersionsHandler(
                 name: module.pkg,
                 registry,
                 force,
-                includePrerelease: includePrereleaseNow,
+                prereleaseChannels: channelsNow,
               });
         const list =
           !local &&
@@ -289,7 +291,7 @@ export function moduleVersionsHandler(
             ? await manager.listVersions(module.pkg, registry).catch(() => null)
             : null;
         const listed = list?.status === 'listed' ? list.versions : [];
-        const visible = visibleVersions(listed, includePrereleaseNow);
+        const visible = visibleVersions(listed, channelsNow);
         const newest = visible[0]?.version;
         const candidate =
           newest === undefined
@@ -367,7 +369,7 @@ export function moduleVersionsHandler(
       fallback,
       force,
       check,
-      includePrerelease: includePrereleaseNow,
+      prereleaseChannels: channelsNow,
       manager,
       ...(running === undefined ? {} : { running }),
       ...(followUp === undefined ? {} : { followUp }),

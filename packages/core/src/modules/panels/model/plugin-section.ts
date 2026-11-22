@@ -25,10 +25,10 @@ export async function installedPlugins(options: {
   readonly seam?: Seam | undefined;
   readonly force?: boolean;
   readonly check?: boolean;
-  readonly includePrerelease?: boolean;
+  readonly prereleaseChannels?: readonly string[];
   readonly supply?: SupplyPort | undefined;
 }): Promise<readonly InstalledPlugin[]> {
-  const { ledger, seam, force = false, check = true, includePrerelease = false } = options;
+  const { ledger, seam, force = false, check = true, prereleaseChannels = [] } = options;
   const supply = options.supply ?? requireSupply();
   const runtime = runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV);
   const runtimeProblemOf = (entry: {
@@ -58,7 +58,7 @@ export async function installedPlugins(options: {
             registry: entry.registry,
             force,
             check,
-            includePrerelease,
+            prereleaseChannels,
           });
     return {
       pkg: entry.package,
@@ -84,7 +84,7 @@ export function pluginRoutes(options: {
   readonly runtimeLabel?: string | undefined;
   readonly runtimeField?: string | undefined;
   readonly seam?: Seam | undefined;
-  readonly includePrerelease?: (() => boolean) | undefined;
+  readonly prereleaseChannels?: (() => readonly string[]) | undefined;
   readonly supply?: SupplyPort | undefined;
 }): RouteTable {
   return {
@@ -97,7 +97,7 @@ export function pluginRoutes(options: {
         ...(options.supply === undefined ? {} : { supply: options.supply }),
         force: param(search, 'force') === '1',
         check: param(search, 'check') !== '0',
-        includePrerelease: options.includePrerelease?.() === true,
+        prereleaseChannels: options.prereleaseChannels?.() ?? [],
       });
       const payload: InstalledPluginsPayload = { plugins };
       return { ok: true, ...payload };

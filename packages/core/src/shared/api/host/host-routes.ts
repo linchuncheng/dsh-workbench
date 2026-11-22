@@ -27,8 +27,8 @@ export function createHostRoutes(input: {
   readonly diag?: Pick<Parameters<typeof diagRecordsHandler>[0], 'recorder' | 'readDisk' | 'clock'> | undefined;
 }): RouteTable {
   const { ctx, facts, runtimes, running, profile, diag } = input;
-  const includePrerelease = (): boolean =>
-    (ctx.get(WORKBENCH_SETTINGS_SERVICE) as WorkbenchSettingsStore | undefined)?.read().includePrerelease === true;
+  const prereleaseChannels = (): readonly string[] =>
+    (ctx.get(WORKBENCH_SETTINGS_SERVICE) as WorkbenchSettingsStore | undefined)?.read().prereleaseChannels ?? [];
   return {
     health: healthHandler(ctx, runtimes),
     changes: changesHandler(facts),
@@ -42,7 +42,7 @@ export function createHostRoutes(input: {
       seamOf(ctx),
       running,
       () => profile.selfUpdateView(basename(profile.dirOf(ctx) ?? '')),
-      includePrerelease,
+      prereleaseChannels,
       diag?.recorder,
     ),
   };

@@ -74,7 +74,7 @@ export function createMarketService(options: {
   dshHome?: (() => string) | undefined;
   profileName?: (() => string | null) | undefined;
   selfUpdate?: ((request: SelfUpdateRequest, onError: (message: string) => void) => SelfUpdateStart) | undefined;
-  includePrerelease?: (() => boolean) | undefined;
+  prereleaseChannels?: (() => readonly string[]) | undefined;
   runMigration?: WorkbenchFollowUpDeps['runMigration'];
   logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
   supply?: SupplyPort | undefined;
@@ -99,7 +99,7 @@ export function createMarketService(options: {
     references,
     dshHome,
     profileName,
-    includePrerelease,
+    prereleaseChannels,
   } = options;
   const supply = supplyOption ?? requireSupply();
   const command = options.command;
@@ -226,7 +226,7 @@ export function createMarketService(options: {
     runAll,
     claimedBy: (plugin) => pluginUsersOf(plugin),
     ...(references === undefined ? {} : { references }),
-    ...(includePrerelease === undefined ? {} : { includePrerelease }),
+    ...(prereleaseChannels === undefined ? {} : { prereleaseChannels }),
     ...(logger === undefined ? {} : { logger }),
     supply,
   });
@@ -420,7 +420,7 @@ export function createMarketService(options: {
         ...(profile === undefined ? {} : { profile, profileName: profile }),
         ...(profileDir === undefined || profileDir === null ? {} : { profileDir }),
         ...(home === undefined ? {} : { dshHome: home }),
-        ...(includePrerelease === undefined ? {} : { includePrerelease }),
+        ...(prereleaseChannels === undefined ? {} : { prereleaseChannels }),
         routeDeps: routeDeps(manager),
         sweep: async () => {
           await plugins.sweep((plugin) => envDropper.usersOf(plugin, undefined, catalog()));
@@ -449,7 +449,7 @@ export function createMarketService(options: {
           }
         },
         ...(options.selfUpdate === undefined ? {} : { selfUpdate: options.selfUpdate }),
-        ...(includePrerelease === undefined ? {} : { includePrerelease }),
+        ...(prereleaseChannels === undefined ? {} : { prereleaseChannels }),
         running: runningVersionOf(import.meta.url),
         dshVersion: () => (profileDir === undefined || profileDir === null ? undefined : dshVersionIn(profileDir)),
         ...(logger === undefined ? {} : { logger }),

@@ -1,0 +1,25 @@
+.channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wb-len-16);
+  margin-top: var(--wb-len-8);
+}
+
+.channel {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-len-6);
+}
+
+.channelLabel {
+  font-size: var(--dsw-font-xxs-12-font-size);
+  line-height: var(--wb-line-18);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.summary {
+  margin: var(--wb-len-6) 0 0;
+  font-size: var(--dsw-font-xxs-12-font-size);
+  line-height: var(--wb-line-18);
+  color: var(--dsw-alias-label-tertiary);
+}

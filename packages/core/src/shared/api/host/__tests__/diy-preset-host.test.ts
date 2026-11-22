@@ -34,6 +34,7 @@ function settingsOf(source: string): WorkbenchSettingsStore & { set(next: string
   let current: WorkbenchSettings = {
     mcpOnDemand: false,
     includePrerelease: false,
+    prereleaseChannels: [],
     moduleModel: null,
     diyPresetSource: source,
   };

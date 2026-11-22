@@ -13,8 +13,14 @@ export function isValidVersion(value: string): boolean {
 }
 
 export function isBetaVersion(value: string): boolean {
+  return prereleaseChannelOf(value) === 'beta';
+}
+
+export function prereleaseChannelOf(value: string): string | undefined {
   const parsed = semver.prerelease(value.trim());
-  return parsed !== null && String(parsed[0]).toLowerCase() === 'beta';
+  if (parsed === null || parsed.length === 0) return undefined;
+  const first = String(parsed[0]).trim().toLowerCase();
+  return first === '' ? undefined : first;
 }
 
 export function isNewerVersion(latest: string, installed: string): boolean {

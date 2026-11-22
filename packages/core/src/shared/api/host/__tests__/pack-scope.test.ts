@@ -10,6 +10,7 @@ function settingsOf(onDemand: boolean): WorkbenchSettingsStore & { set(next: boo
   let current: WorkbenchSettings = {
     mcpOnDemand: onDemand,
     includePrerelease: false,
+    prereleaseChannels: [],
     moduleModel: null,
     diyPresetSource: 'standard',
   };
@@ -25,6 +26,7 @@ function settingsOf(onDemand: boolean): WorkbenchSettingsStore & { set(next: boo
       current = {
         mcpOnDemand: next,
         includePrerelease: false,
+    prereleaseChannels: [],
         moduleModel: null,
         diyPresetSource: 'standard',
       };

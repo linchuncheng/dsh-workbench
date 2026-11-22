@@ -10,7 +10,7 @@ import {
   VERSION_CHECK_TIMEOUT_MS,
   VERSION_CHECK_TTL_MS,
 } from '../../config/constants.js';
-import { compareVersions, isBetaVersion, isValidVersion } from '../runtime/version.js';
+import { compareVersions, isValidVersion, prereleaseChannelOf } from '../runtime/version.js';
 import { parseJsonLoose } from '../../lib/text.js';
 import { quoteShellArg } from '../shell/shell-text.js';
 import { authHeaderOf } from './npm-auth.js';
@@ -39,8 +39,8 @@ function parseVersion(stdout: string): string | undefined {
   return isValidVersion(value) ? value : undefined;
 }
 
-export function candidatesOf(stdout: string, includePrerelease: boolean): readonly string[] {
-  if (!includePrerelease) {
+export function candidatesOf(stdout: string, channels: readonly string[]): readonly string[] {
+  if (channels.length === 0) {
     const one = parseVersion(stdout);
     return one === undefined ? [] : [one];
   }
@@ -49,7 +49,10 @@ export function candidatesOf(stdout: string, includePrerelease: boolean): readon
   return list
     .filter((value): value is string => typeof value === 'string' && isValidVersion(value))
     .map((value) => value.trim())
-    .filter((value) => !isBetaVersion(value))
+    .filter((value) => {
+      const channel = prereleaseChannelOf(value);
+      return channel === undefined || channels.includes(channel);
+    })
     .sort((left, right) => (compareVersions(right, left) ?? 0));
 }
 
@@ -113,7 +116,7 @@ interface LatestVersionOptions {
   readonly name: string;
   readonly registry: string;
   readonly force?: boolean;
-  readonly includePrerelease?: boolean;
+  readonly prereleaseChannels?: readonly string[];
   readonly cacheDir?: string | undefined;
 }
 
@@ -132,7 +135,7 @@ interface ProbeReleaseOptions {
   readonly registry?: string | undefined;
   readonly force?: boolean;
   readonly check?: boolean;
-  readonly includePrerelease?: boolean;
+  readonly prereleaseChannels?: readonly string[];
   readonly cacheDir?: string | undefined;
   readonly prefix?: string | undefined;
 }
@@ -140,10 +143,10 @@ interface ProbeReleaseOptions {
 function viewCommandOf(input: {
   readonly name: string;
   readonly registry: string;
-  readonly includePrerelease: boolean;
+  readonly channels: readonly string[];
   readonly cacheDir?: string | undefined;
 }): readonly string[] {
-  const target = input.includePrerelease
+  const target = input.channels.length > 0
     ? `${quoteShellArg(input.name)} versions --json`
     : `${quoteShellArg(input.name)} version`;
   const tail = `--registry ${quoteShellArg(input.registry)}${cacheFlag(input.cacheDir)}`;
@@ -165,18 +168,18 @@ async function latestVersionOf(latestCache: Map<string, CacheEntry>, ready: Read
   name: string;
   registry: string;
   force?: boolean;
-  includePrerelease?: boolean;
+  prereleaseChannels?: readonly string[];
   cacheDir?: string | undefined;
 }): Promise<string | undefined> {
-  const { seam, name, registry, force = false, includePrerelease = false, cacheDir } = options;
-  const key = `${registry}|${name}|${includePrerelease ? 'pre' : 'stable'}`;
+  const { seam, name, registry, force = false, prereleaseChannels = [], cacheDir } = options;
+  const key = `${registry}|${name}|${prereleaseChannels.join(',') || 'stable'}`;
   const hit = latestCache.get(key);
   if (!force && hit !== undefined && now() - hit.at < versionCacheTtl(hit.value)) return hit.value;
 
   let read: string | undefined;
-  for (const command of viewCommandOf({ name, registry, includePrerelease, cacheDir })) {
+  for (const command of viewCommandOf({ name, registry, channels: prereleaseChannels, cacheDir })) {
     const result = await viewOnce(seam, [command]);
-    const found = result.ok ? candidatesOf(result.stdout, includePrerelease) : [];
+    const found = result.ok ? candidatesOf(result.stdout, prereleaseChannels) : [];
     for (const version of found.slice(0, MAX_TARBALL_PROBES)) {
       const entry = await ready({ seam, name, version, registry, force, cacheDir });
       if (entry.ready) {
@@ -295,11 +298,11 @@ async function probeOf(
   registry?: string | undefined;
   force?: boolean;
   check?: boolean;
-  includePrerelease?: boolean;
+  prereleaseChannels?: readonly string[];
   cacheDir?: string | undefined;
   prefix?: string | undefined;
 }): Promise<PluginRelease | undefined> {
-  const { seam, package: pkg, registry, force = false, check = true, includePrerelease = false, cacheDir, prefix } = options;
+  const { seam, package: pkg, registry, force = false, check = true, prereleaseChannels = [], cacheDir, prefix } = options;
   if (pkg === "") return undefined;
 
   const ledger = await seam
@@ -327,7 +330,7 @@ async function probeOf(
           name: pkg,
           registry: source,
           force,
-          includePrerelease,
+          prereleaseChannels,
           cacheDir,
         });
 

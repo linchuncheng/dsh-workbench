@@ -34,9 +34,14 @@ export interface WorkbenchModelGroup {
   readonly models: readonly WorkbenchModelRef[];
 }
 
+export const PRERELEASE_CHANNELS = ['rc', 'beta', 'alpha'] as const;
+
+export type PrereleaseChannel = (typeof PRERELEASE_CHANNELS)[number];
+
 export interface WorkbenchSettings {
   readonly mcpOnDemand: boolean;
   readonly includePrerelease: boolean;
+  readonly prereleaseChannels: readonly PrereleaseChannel[];
   readonly moduleModel: WorkbenchModelChoice | null;
   readonly diyPresetSource: string;
 }
@@ -53,6 +58,7 @@ export interface WorkbenchSettingsApplied {
 export interface WorkbenchSettingsRequest {
   readonly mcpOnDemand?: boolean;
   readonly includePrerelease?: boolean;
+  readonly prereleaseChannels?: readonly PrereleaseChannel[];
   readonly moduleModel?: WorkbenchModelChoice | null;
   readonly diyPresetSource?: string;
 }

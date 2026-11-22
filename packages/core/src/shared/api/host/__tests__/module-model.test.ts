@@ -8,7 +8,8 @@ function ctxOf(services: Record<string, unknown>): DshHostContext {
 }
 
 function storeOf(moduleModel: { provider: string; model: string } | null): unknown {
-  return { read: () => ({ mcpOnDemand: false, includePrerelease: false, moduleModel }) };
+  return { read: () => ({ mcpOnDemand: false, includePrerelease: false,
+    prereleaseChannels: [], moduleModel }) };
 }
 
 const llmOf = (input: {

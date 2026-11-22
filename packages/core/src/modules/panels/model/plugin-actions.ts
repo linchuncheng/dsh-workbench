@@ -68,7 +68,7 @@ export function createPluginActions(options: {
   readonly references?: (() => PluginReferences) | undefined;
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
   readonly supply?: SupplyPort | undefined;
-  readonly includePrerelease?: (() => boolean) | undefined;
+  readonly prereleaseChannels?: (() => readonly string[]) | undefined;
 }): PluginActions {
   const { ledger, seam, command, runAll, logger } = options;
   const supply = options.supply ?? requireSupply();
@@ -134,7 +134,7 @@ export function createPluginActions(options: {
         name: entry.package,
         registry: entry.registry,
         force: true,
-        includePrerelease: options.includePrerelease?.() === true,
+        prereleaseChannels: options.prereleaseChannels?.() ?? [],
       });
       if (latest === undefined) throw new Error(`读不到「${entry.package}」的新版本。`);
       const plan = supply.pluginInstallPlan({

@@ -15,7 +15,7 @@ export interface WorkbenchUpdateDeps {
   readonly selfUpdate?:
     | ((request: SelfUpdateRequest, onError: (message: string) => void) => SelfUpdateStart)
     | undefined;
-  readonly includePrerelease?: (() => boolean) | undefined;
+  readonly prereleaseChannels?: (() => readonly string[]) | undefined;
   readonly running?: string | undefined;
   readonly dshVersion?: (() => string | undefined) | undefined;
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
@@ -47,7 +47,7 @@ export async function updateWorkbenchOnce(deps: WorkbenchUpdateDeps): Promise<Bu
           name: read.pkg,
           registry,
           force: true,
-          includePrerelease: deps.includePrerelease?.() === true,
+          prereleaseChannels: deps.prereleaseChannels?.() ?? [],
         });
   if (askedLatest !== undefined && registry !== undefined && deps.manager?.listVersions !== undefined) {
     const listed = await deps.manager.listVersions(read.pkg, registry).catch(() => null);

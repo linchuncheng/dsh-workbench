@@ -188,7 +188,7 @@ describe('检测结果以 tarball 为准，不只信 npm view', () => {
     });
 
     await expect(
-      withHoles.latestVersion({ seam, name: '@a/mod', registry: REGISTRY, includePrerelease: true }),
+      withHoles.latestVersion({ seam, name: '@a/mod', registry: REGISTRY, prereleaseChannels: ['rc'] }),
     ).resolves.toBe('1.2.0');
     expect(seen.some((url) => url !== '')).toBe(true);
   });
@@ -203,16 +203,22 @@ describe('检测结果以 tarball 为准，不只信 npm view', () => {
 });
 
 describe('candidatesOf', () => {
-  it('打开 includePrerelease 也跳过 beta：rc 照取，候选按版本从高到低排', () => {
+  it('★ 只取选中的通道；候选按版本从高到低排（正式版照进）', () => {
     expect(
-      candidatesOf(JSON.stringify(['1.0.0', '1.1.0-beta.0', '1.2.0-rc.0', '1.1.0']), true),
+      candidatesOf(JSON.stringify(['1.0.0', '1.1.0-beta.0', '1.2.0-rc.0', '1.1.0']), ['rc']),
     ).toEqual(['1.2.0-rc.0', '1.1.0', '1.0.0']);
+    expect(
+      candidatesOf(JSON.stringify(['1.0.0', '1.3.0-beta.1', '1.2.0-rc.0']), ['beta']),
+    ).toEqual(['1.3.0-beta.1', '1.0.0']);
+    expect(
+      candidatesOf(JSON.stringify(['1.0.0', '1.3.0-beta.1', '1.2.0-rc.0']), ['beta', 'rc']),
+    ).toEqual(['1.3.0-beta.1', '1.2.0-rc.0', '1.0.0']);
   });
 
-  it('只有 beta 时没有候选，稳定版那一档照旧读 latest', () => {
-    expect(candidatesOf(JSON.stringify(['1.1.0-beta.0']), true)).toEqual([]);
-    expect(candidatesOf('1.1.0-beta.0\n', false)).toEqual(['1.1.0-beta.0']);
-    expect(candidatesOf('1.1.0\n', false)).toEqual(['1.1.0']);
+  it('全不选时只有稳定版；没铺开时也没有候选', () => {
+    expect(candidatesOf(JSON.stringify(['1.1.0-beta.0']), [])).toEqual([]);
+    expect(candidatesOf('1.1.0-beta.0\n', [])).toEqual(['1.1.0-beta.0']);
+    expect(candidatesOf('1.1.0\n', [])).toEqual(['1.1.0']);
   });
 });
 

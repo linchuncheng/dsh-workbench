@@ -22,7 +22,7 @@ export interface BundleUpdateDeps {
   readonly profileDir?: string | null | undefined;
   readonly dshHome?: string | undefined;
   readonly profileName?: string | undefined;
-  readonly includePrerelease?: (() => boolean) | undefined;
+  readonly prereleaseChannels?: (() => readonly string[]) | undefined;
   readonly swapWaitMs?: number | undefined;
   readonly swapPollMs?: number | undefined;
 }
@@ -128,7 +128,7 @@ export async function updateModuleBundle(
           name: pkg,
           registry,
           force: true,
-          includePrerelease: deps.includePrerelease?.() === true,
+          prereleaseChannels: deps.prereleaseChannels?.() ?? [],
         });
   if (latest !== undefined && supply.isNewerVersion(before, latest)) return null;
   if (latest !== undefined && deps.seam !== undefined && registry !== undefined) {

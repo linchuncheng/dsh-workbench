@@ -97,6 +97,7 @@ describe('createFlowAgentGateway：把一步 agent 接到 dsh 的 subagents', ()
           read: () => ({
             mcpOnDemand: false,
             includePrerelease: false,
+    prereleaseChannels: [],
             moduleModel: { provider: 'workbench', model: 'workbench-default' },
           }),
         },
@@ -132,6 +133,7 @@ describe('createFlowAgentGateway：把一步 agent 接到 dsh 的 subagents', ()
           read: () => ({
             mcpOnDemand: false,
             includePrerelease: false,
+    prereleaseChannels: [],
             moduleModel: { provider: 'deepseek', model: 'deepseek-reasoner' },
           }),
         },
@@ -267,6 +269,7 @@ describe('createFlowAgentGateway：把一步 agent 接到 dsh 的 subagents', ()
           read: () => ({
             mcpOnDemand: false,
             includePrerelease: false,
+    prereleaseChannels: [],
             moduleModel: { provider: 'deepseek', model: 'deepseek-reasoner' },
           }),
         },

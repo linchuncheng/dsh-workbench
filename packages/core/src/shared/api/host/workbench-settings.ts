@@ -4,11 +4,13 @@ import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { PostResource, RouteTable } from '@dsh-workbench/shared/host';
 import { writeJsonFile } from '@dsh-workbench/shared/host';
 import type {
+  PrereleaseChannel,
   WorkbenchModelChoice,
   WorkbenchSettings,
   WorkbenchSettingsApplied,
   WorkbenchSettingsRequest,
 } from '@/kernel/contract/workbench-settings';
+import { PRERELEASE_CHANNELS } from '@/kernel/contract/workbench-settings';
 import { WORKBENCH_SETTINGS_RESOURCE, WORKBENCH_SETTINGS_ROUTE } from '@/kernel/contract/workbench-settings';
 import { DIY_PRESET_SOURCE_DEFAULT } from '@/kernel/contract/diy';
 
@@ -19,6 +21,7 @@ export const WORKBENCH_SETTINGS_SERVICE = 'workbenchSettingsStore';
 export const DEFAULT_WORKBENCH_SETTINGS: WorkbenchSettings = {
   mcpOnDemand: false,
   includePrerelease: false,
+  prereleaseChannels: [],
   moduleModel: null,
   diyPresetSource: DIY_PRESET_SOURCE_DEFAULT,
 };
@@ -39,6 +42,20 @@ function textOf(value: unknown): string | undefined {
   return trimmed === '' ? undefined : trimmed;
 }
 
+function isChannel(value: unknown): value is PrereleaseChannel {
+  return typeof value === 'string' && (PRERELEASE_CHANNELS as readonly string[]).includes(value);
+}
+
+function channelsOf(value: unknown): readonly PrereleaseChannel[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const picked = new Set<PrereleaseChannel>();
+  for (const one of value) {
+    if (!isChannel(one)) return undefined;
+    picked.add(one);
+  }
+  return PRERELEASE_CHANNELS.filter((channel) => picked.has(channel));
+}
+
 function modelChoiceOf(value: unknown): WorkbenchModelChoice | null | undefined {
   if (value === null) return null;
   const record = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined;
@@ -55,10 +72,13 @@ function sameChoice(left: WorkbenchModelChoice | null, right: WorkbenchModelChoi
 
 function settingsOf(raw: unknown): WorkbenchSettings {
   const record = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const legacy = booleanOf(record['includePrerelease']) === true;
+  const prereleaseChannels =
+    channelsOf(record['prereleaseChannels']) ?? (legacy ? (['rc'] as const) : []);
   return {
     mcpOnDemand: booleanOf(record['mcpOnDemand']) ?? DEFAULT_WORKBENCH_SETTINGS.mcpOnDemand,
-    includePrerelease:
-      booleanOf(record['includePrerelease']) ?? DEFAULT_WORKBENCH_SETTINGS.includePrerelease,
+    includePrerelease: prereleaseChannels.length > 0,
+    prereleaseChannels,
     moduleModel: modelChoiceOf(record['moduleModel']) ?? null,
     diyPresetSource: textOf(record['diyPresetSource']) ?? DEFAULT_WORKBENCH_SETTINGS.diyPresetSource,
   };
@@ -67,7 +87,8 @@ function settingsOf(raw: unknown): WorkbenchSettings {
 function storedOf(settings: WorkbenchSettings): Record<string, unknown> {
   return {
     mcpOnDemand: settings.mcpOnDemand,
-    includePrerelease: settings.includePrerelease,
+    includePrerelease: settings.prereleaseChannels.length > 0,
+    prereleaseChannels: settings.prereleaseChannels,
     ...(settings.moduleModel === null
       ? {}
       : { moduleModel: { provider: settings.moduleModel.provider, model: settings.moduleModel.model } }),
@@ -105,6 +126,17 @@ export function createWorkbenchSettingsStore(options: { readonly root: string })
       if (request.includePrerelease !== undefined && booleanOf(request.includePrerelease) === undefined) {
         throw new Error('includePrerelease 要是 true / false');
       }
+      if (request.prereleaseChannels !== undefined && channelsOf(request.prereleaseChannels) === undefined) {
+        throw new Error(`预发布通道只能是 ${PRERELEASE_CHANNELS.join(' / ')}`);
+      }
+      const requestedChannels =
+        request.prereleaseChannels === undefined
+          ? request.includePrerelease === undefined
+            ? current.prereleaseChannels
+            : booleanOf(request.includePrerelease) === true
+              ? (['rc'] as const)
+              : []
+          : (channelsOf(request.prereleaseChannels) ?? []);
       const requestedSource =
         request.diyPresetSource === undefined ? current.diyPresetSource : textOf(request.diyPresetSource);
       if (requestedSource === undefined) {
@@ -112,13 +144,14 @@ export function createWorkbenchSettingsStore(options: { readonly root: string })
       }
       const next: WorkbenchSettings = {
         mcpOnDemand: booleanOf(request.mcpOnDemand) ?? current.mcpOnDemand,
-        includePrerelease: booleanOf(request.includePrerelease) ?? current.includePrerelease,
+        includePrerelease: requestedChannels.length > 0,
+        prereleaseChannels: requestedChannels,
         moduleModel: requestedModel,
         diyPresetSource: requestedSource,
       };
       const changed =
         next.mcpOnDemand !== current.mcpOnDemand ||
-        next.includePrerelease !== current.includePrerelease ||
+        next.prereleaseChannels.join(',') !== current.prereleaseChannels.join(',') ||
         !sameChoice(next.moduleModel, current.moduleModel) ||
         next.diyPresetSource !== current.diyPresetSource;
       if (changed) writeJsonFile(file, storedOf(next));
