@@ -79,6 +79,14 @@ describe('写模块行', () => {
 `);
   });
 
+  it('★ dsh 生成的空文件（注释 + []）→ 替换 []，不是往后追加（追加会写出两个 YAML 根）', () => {
+    const canonical = '# Your patch layer for this dsh profile\n# 注释\n[]\n';
+    const next = withModuleRows(canonical, [HELLO]);
+    expect(next).toContain('# Your patch layer for this dsh profile');
+    expect(next.match(/- insert:/g)).toHaveLength(1);
+    expect(moduleRowsIn(next)).toEqual([HELLO]);
+  });
+
   it('★ 有别人的层时，另起一块并留空行，别的层原样不动', () => {
     const next = withModuleRows(OTHER, [HELLO]);
     expect(next.startsWith(OTHER)).toBe(true);

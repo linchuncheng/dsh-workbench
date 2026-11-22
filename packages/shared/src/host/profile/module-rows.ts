@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseDocument } from 'yaml';
+import { isSeq, parseDocument } from 'yaml';
 import { nestedIdsOf, spannedBlocks } from '../patch/patch-blocks.js';
 
 export interface ModuleRow {
@@ -61,6 +61,16 @@ function rowLines(rows: readonly ModuleRow[]): readonly string[] {
   ];
 }
 
+function emptyFlowSequenceRange(text: string): { readonly from: number; readonly to: number } | undefined {
+  const document = parseDocument(text, { logLevel: 'silent' });
+  if (document.errors.length > 0) return undefined;
+  const contents = document.contents;
+  if (contents === null || !isSeq(contents) || contents.items.length > 0) return undefined;
+  const range = contents.range;
+  if (range === null || range === undefined) return undefined;
+  return { from: range[0], to: range[1] };
+}
+
 export function withModuleRows(text: string, rows: readonly ModuleRow[]): string {
   const lines = text.split('\n');
   const blocks = spannedBlocks(text);
@@ -77,6 +87,10 @@ export function withModuleRows(text: string, rows: readonly ModuleRow[]): string
   const replacement = desired.length === 0 ? [] : [...rowLines(desired)];
   if (ours.length === 0) {
     if (desired.length === 0) return text;
+    const emptyRoot = emptyFlowSequenceRange(text);
+    if (emptyRoot !== undefined) {
+      return `${text.slice(0, emptyRoot.from)}${replacement.join('\n')}\n${text.slice(emptyRoot.to)}`;
+    }
     const base = text === '' || text.endsWith('\n') ? text : `${text}\n`;
     const gap = base === '' || base.endsWith('\n\n') ? '' : '\n';
     return `${base}${gap}${replacement.join('\n')}\n`;
