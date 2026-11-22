@@ -104,9 +104,21 @@ async function fetchAll(force: boolean): Promise<CapabilityMap | null> {
   return Object.fromEntries(response.units.map((unit) => [unit.unit, unit]));
 }
 
+function keepConclusion(previous: CapabilityMap | null, next: CapabilityMap): CapabilityMap {
+  if (previous === null) return next;
+  let merged: CapabilityMap | null = null;
+  for (const [unit, payload] of Object.entries(next)) {
+    const before = previous[unit];
+    if (payload.status !== 'unchecked' || before === undefined || before.status === 'unchecked') continue;
+    merged ??= { ...next };
+    merged[unit] = before;
+  }
+  return merged ?? next;
+}
+
 export function publishCapability(result: CapabilityMap | null, rechecked = false): boolean {
   if (result !== null) {
-    setCapabilities(result, rechecked);
+    setCapabilities(keepConclusion(capabilityValue(), result), rechecked);
     return true;
   }
   if (capabilityValue() !== null) return false;

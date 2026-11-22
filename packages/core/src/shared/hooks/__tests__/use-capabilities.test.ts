@@ -129,6 +129,16 @@ describe('能力结论只有一份（模块级 store）', () => {
     expect(capabilityValue()).toEqual({ inventory: expect.objectContaining({ unit: 'inventory' }) });
   });
 
+  it('★ 探针说"检测不了"盖不掉上一轮的结论（装的时候别让整行闪成「检测中」）', () => {
+    setCapabilities({ inventory: payload('inventory') });
+    publishCapability({ inventory: { ...payload('inventory'), status: 'unchecked' } });
+
+    expect(capabilityValue()?.inventory?.status).not.toBe('unchecked');
+
+    publishCapability({ inventory: { ...payload('inventory'), status: 'failed' } });
+    expect(capabilityValue()?.inventory?.status).toBe('failed');
+  });
+
   it('同值不通知（左栏不该被"同一条说法再发一遍"推着重画）', () => {
     let notified = 0;
     subscribeCapabilities(() => {

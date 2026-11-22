@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const reprobe = vi.hoisted(() => vi.fn());
+
+vi.mock('@/shared/hooks/use-capabilities', () => ({ runCapabilityRead: reprobe }));
 import {
   marketInstallState,
   publishMarketApplied,
@@ -38,6 +42,15 @@ describe('「市场正在装 / 刚装上、等热换落地」这条事实', () =
 
     vi.advanceTimersByTime(2);
     expect([...marketInstallState().applied]).toEqual([]);
+  });
+
+  it('★ 装完 3 秒再强探一次：等 dsh 把模块加载起来，状态自己落到「已安装」', () => {
+    vi.useFakeTimers();
+    publishMarketApplied(['hello']);
+
+    expect(reprobe).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(3000);
+    expect(reprobe).toHaveBeenCalledWith({ force: true, silent: true });
   });
 
   it('★ 同一单元再发一遍不顺延期限（到点必撤，别把「整个模块真的没起来」也一起哑掉）', () => {

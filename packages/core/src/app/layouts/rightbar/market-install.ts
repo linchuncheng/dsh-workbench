@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 
+import { runCapabilityRead } from '@/shared/hooks/use-capabilities';
 import { markMarketRestart } from './market-restart';
 import { MODULE_SETTLE_MS } from './market-settle';
 
@@ -9,6 +10,8 @@ export interface MarketInstallState {
 }
 
 const NO_UNITS: ReadonlySet<string> = new Set();
+
+const APPLIED_REPROBE_MS = 3000;
 const IDLE: MarketInstallState = { installing: false, applied: NO_UNITS };
 
 const tokens = new Set<string>();
@@ -16,6 +19,7 @@ const applied = new Map<string, number>();
 const listeners = new Set<() => void>();
 let snapshot: MarketInstallState = IDLE;
 let timer: ReturnType<typeof setTimeout> | undefined;
+let reprobe: ReturnType<typeof setTimeout> | undefined;
 
 function sameUnits(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
   if (left.size !== right.size) return false;
@@ -69,6 +73,11 @@ export function publishMarketApplied(units: readonly string[]): void {
   }
   markMarketRestart([...new Set(units)]);
   refresh(now);
+  if (reprobe !== undefined) clearTimeout(reprobe);
+  reprobe = setTimeout(() => {
+    reprobe = undefined;
+    void runCapabilityRead({ force: true, silent: true });
+  }, APPLIED_REPROBE_MS);
 }
 
 export function resetMarketInstall(): void {
@@ -76,6 +85,8 @@ export function resetMarketInstall(): void {
   applied.clear();
   if (timer !== undefined) clearTimeout(timer);
   timer = undefined;
+  if (reprobe !== undefined) clearTimeout(reprobe);
+  reprobe = undefined;
   snapshot = IDLE;
   for (const listener of [...listeners]) listener();
 }
