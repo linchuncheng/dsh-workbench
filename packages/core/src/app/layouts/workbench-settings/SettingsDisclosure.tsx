@@ -6,6 +6,7 @@ import styles from './SettingsDisclosure.module.css';
 export interface SettingsDisclosureProps {
   readonly title: string;
   readonly description?: string | undefined;
+  readonly scope?: string | undefined;
   readonly meta?: string | undefined;
   readonly open: boolean;
   readonly onToggle: () => void;
@@ -15,6 +16,7 @@ export interface SettingsDisclosureProps {
 export function SettingsDisclosure({
   title,
   description,
+  scope,
   meta,
   open,
   onToggle,
@@ -31,6 +33,7 @@ export function SettingsDisclosure({
         <span className={styles.text}>
           <span className={styles.title}>{title}</span>
           {description === undefined ? null : <span className={styles.description}>{description}</span>}
+          {scope === undefined ? null : <span className={styles.scope}>{scope}</span>}
         </span>
         <span className={styles.tail}>
           {meta === undefined || meta === '' ? null : <span className={styles.meta}>{meta}</span>}

@@ -20,6 +20,7 @@ export const zhSettings = {
   'profileCreate.reading': '正在读取工作台配置…',
   'profileCreate.noProfiles': '这台机器上还没有可用的来源工作台配置。',
   'profileCreate.failed': '创建失败，请查看下面的输出。',
+  'profileCreate.scope': '影响范围：当前工作台不受影响；新工作台要单独启动。',
 
   'configSync.nav': '配置同步',
   'configSync.lead': '只同步修改已有插件设置的行；挂载新插件的行不会同步。',
@@ -62,9 +63,10 @@ export const zhSettings = {
   'configSync.noSource': '这台机器上只有工作台这一份配置，没有可同步的来源',
   'configSync.emptyProviders': '工作台还没有配置模型供应商。可以从上方来源同步模型供应商相关行，或直接到「模型」中配置。',
   'configSync.failed': '同步失败，请重试。',
+  'configSync.scope': '影响范围：只写这份工作台的配置文件；会话、项目与已安装的模块不动。',
 
-  'diyPresetSource.nav': 'DIY 模式继承自',
-  'diyPresetSource.lead': '增加 DIY 工具与技能；默认标准模式，从新会话开始生效。',
+  'diyPresetSource.nav': '工作台 DIY 继承自',
+  'diyPresetSource.lead': '「工作台 DIY」用到的工具与技能从这个模式取；默认标准模式。',
   'diyPresetSource.standard': '标准模式',
   'diyPresetSource.ptc': 'PTC 模式',
   'diyPresetSource.minimal': '极简模式',
@@ -101,6 +103,7 @@ export const enSettings: Record<keyof typeof zhSettings, string> = {
   'profileCreate.reading': 'Reading workbench configurations…',
   'profileCreate.noProfiles': 'This machine has no source configuration yet.',
   'profileCreate.failed': 'The workbench was not created; see the output below.',
+  'profileCreate.scope': 'Impact: the current workbench is not affected; the new one starts separately.',
 
   'configSync.nav': 'Config sync',
   'configSync.lead': 'Only rows that change settings of plugins the workbench already has are synced; rows that mount a new plugin are not.',
@@ -143,9 +146,10 @@ export const enSettings: Record<keyof typeof zhSettings, string> = {
   'configSync.noSource': 'This machine has only this workbench configuration and no source to sync from',
   'configSync.emptyProviders': 'The workbench has no model providers configured yet. Sync the model-provider rows from a source above, or configure them directly under Models.',
   'configSync.failed': 'Sync failed. Try again.',
+  'configSync.scope': 'Impact: writes only this workbench configuration; sessions, projects and installed modules are untouched.',
 
-  'diyPresetSource.nav': 'DIY mode inherits from',
-  'diyPresetSource.lead': 'Adds DIY tools and skills; defaults to Standard mode and applies to new sessions.',
+  'diyPresetSource.nav': 'Workbench DIY inherits from',
+  'diyPresetSource.lead': 'Tools and skills for Workbench DIY come from this mode; Standard mode by default.',
   'diyPresetSource.standard': 'Standard mode',
   'diyPresetSource.ptc': 'PTC mode',
   'diyPresetSource.minimal': 'Minimal mode',

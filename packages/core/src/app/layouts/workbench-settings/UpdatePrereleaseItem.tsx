@@ -11,6 +11,7 @@ import styles from './UpdatePrereleaseItem.module.css';
 
 export interface UpdatePrereleaseItemProps {
   readonly t: Translate;
+  readonly hint?: string | undefined;
 }
 
 const LABEL_KEYS: Readonly<Record<PrereleaseChannel, string>> = {
@@ -23,7 +24,7 @@ function isChannel(value: string): value is PrereleaseChannel {
   return (PRERELEASE_CHANNELS as readonly string[]).includes(value);
 }
 
-export function UpdatePrereleaseItem({ t }: UpdatePrereleaseItemProps): JSX.Element {
+export function UpdatePrereleaseItem({ t, hint }: UpdatePrereleaseItemProps): JSX.Element {
   const settings = useWorkbenchSettings(t, t('updatePrerelease.failed'));
   const [open, setOpen] = useState(false);
   const [override, setOverride] = useState<readonly PrereleaseChannel[] | null>(null);
@@ -51,6 +52,7 @@ export function UpdatePrereleaseItem({ t }: UpdatePrereleaseItemProps): JSX.Elem
     <SettingsRow
       title={t('updatePrerelease.nav')}
       description={t('updatePrerelease.lead')}
+      hint={hint}
       error={settings.error}
       control={
         <SettingsControl t={t} readFailed={settings.readFailed} onRetry={settings.retry}>

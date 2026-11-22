@@ -29,6 +29,13 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+.hint {
+  margin: 0;
+  font-size: var(--dsw-font-xxs-12-font-size);
+  line-height: var(--wb-line-18);
+  color: var(--dsw-alias-label-secondary);
+}
+
 .error {
   margin: 0;
   font-size: var(--dsw-font-xxs-12-font-size);

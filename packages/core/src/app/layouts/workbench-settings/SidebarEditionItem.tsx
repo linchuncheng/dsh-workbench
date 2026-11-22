@@ -19,9 +19,10 @@ import { SettingsRow } from './SettingsRow';
 
 export interface SidebarEditionItemProps {
   readonly t: Translate;
+  readonly hint?: string | undefined;
 }
 
-export function SidebarEditionItem({ t }: SidebarEditionItemProps): JSX.Element {
+export function SidebarEditionItem({ t, hint }: SidebarEditionItemProps): JSX.Element {
   const [runtime, setRuntime] = useState<SidebarEdition>(runtimeSidebarEdition);
   const [applied, setApplied] = useState<SidebarEdition | null>(null);
   const [revision, setRevision] = useState(0);
@@ -62,6 +63,7 @@ export function SidebarEditionItem({ t }: SidebarEditionItemProps): JSX.Element 
     <SettingsRow
       title={t('sidebarEdition.nav')}
       description={description}
+      hint={hint}
       error={write.failed ?? (readFailed ? t('workbenchSettings.readFailed') : null)}
       control={
         readFailed ? (

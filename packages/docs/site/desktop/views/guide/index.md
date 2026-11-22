@@ -16,7 +16,7 @@
 
 ## 数据放在哪
 
-<PagodaDocLinkToView view="guide/data">数据与设置</PagodaDocLinkToView>：会话、项目、附件放在 `~/.dsh` 下，安装或卸载工作台都不会修改；设置与插件沿用 Desktop 的配置；备份与清理都在这一页。
+<PagodaDocLinkToView view="guide/data">数据与设置</PagodaDocLinkToView>：会话、项目、附件放在 `~/.dsh` 下，安装或卸载工作台都不会修改；模型、主题、插件沿用 Desktop 的配置，工作台自己的开关只影响这份工作台；备份与清理都在这一页。
 
 ## 修改工作台
 

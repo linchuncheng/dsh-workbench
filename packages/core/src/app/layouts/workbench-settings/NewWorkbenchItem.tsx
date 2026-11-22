@@ -86,6 +86,7 @@ export function NewWorkbenchItem({ t }: NewWorkbenchItemProps): JSX.Element {
     <SettingsDisclosure
       title={t('profileCreate.nav')}
       description={t('profileCreate.lead')}
+      scope={t('profileCreate.scope')}
       open={open}
       onToggle={() => setOpen((current) => !current)}
     >

@@ -321,6 +321,7 @@ export function ConfigSyncItem({ t }: ConfigSyncItemProps) {
     <SettingsDisclosure
       title={t('configSync.nav')}
       description={t('configSync.lead')}
+      scope={t('configSync.scope')}
       meta={summary}
       open={open}
       onToggle={() => setOpen((current) => !current)}

@@ -29,18 +29,3 @@
   flex-direction: column;
   margin-top: var(--wb-len-12);
 }
-
-.advanced {
-  display: flex;
-  flex-direction: column;
-}
-
-.advancedTitle {
-  margin: var(--wb-len-16) 0 0;
-  padding-top: var(--wb-len-16);
-  border-top: var(--wb-len-0-5) solid var(--dsw-alias-border-l2);
-  font-size: var(--dsw-font-s-14-font-size);
-  line-height: var(--wb-line-20);
-  font-weight: 500;
-  color: var(--dsw-alias-label-primary);
-}

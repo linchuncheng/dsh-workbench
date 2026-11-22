@@ -8,6 +8,13 @@ import { DEFAULT_ADAPTERS, createAdapterSet, createSupplyPort } from '../index.j
 
 const dirs: string[] = [];
 
+function tempHome(prefix: string): string {
+  const home = mkdtempSync(join(tmpdir(), prefix));
+  dirs.push(home);
+  vi.stubEnv('DSH_HOME', home);
+  return home;
+}
+
 afterEach(() => {
   vi.unstubAllEnvs();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
@@ -40,6 +47,7 @@ describe('supply port', () => {
 
 describe('默认适配器集合', () => {
   it('createAdapterSet 就是 AdapterSet 的一份完整实现', () => {
+    tempHome('wb-default-set-');
     const set = createAdapterSet({ get: () => undefined } as never);
     expect(set.apiVersion).toBe(2);
     expect(set.supply).toBe(set.modules);
@@ -87,6 +95,7 @@ describe('默认适配器 · 附件', () => {
       },
     };
     const ctx = { get: (key: string) => (key === 'attachments' ? attachments : undefined) } as never;
+    tempHome('wb-default-att-');
     const set = createAdapterSet(ctx, {
       seam: createSeam({ shell: fake.shell, runtimeRoot: '/tmp/wb-default-att2' }),
     });
@@ -122,6 +131,7 @@ describe('默认适配器 · 附件', () => {
     const ctx = {
       get: (key: string) => (key === 'attachments' ? attachments : undefined),
     } as never;
+    tempHome('wb-default-att-');
     const set = createAdapterSet(ctx, {
       seam: createSeam({ shell: fake.shell, runtimeRoot: '/tmp/wb-default-att' }),
     });

@@ -67,8 +67,10 @@ function diyPresetSourceView({ t, catalog, stored }: PickInput): SettingsPickVie
   return diyPresetChoicesOf({ t, sources, stored });
 }
 
-const SPECS: readonly SettingsPickSpec[] = [
-  {
+export type SettingsPickId = 'moduleModel' | 'diyPresetSource';
+
+const SPECS: Readonly<Record<SettingsPickId, SettingsPickSpec>> = {
+  moduleModel: {
     id: 'moduleModel',
     route: WORKBENCH_MODULE_MODELS_ROUTE,
     settingsFailedKey: 'workbenchSettings.readFailed',
@@ -79,7 +81,7 @@ const SPECS: readonly SettingsPickSpec[] = [
     requestOf: (value) => ({ moduleModel: moduleModelChoiceOf(value) ?? null }),
     viewOf: moduleModelView,
   },
-  {
+  diyPresetSource: {
     id: 'diyPresetSource',
     route: WORKBENCH_DIY_PRESETS_ROUTE,
     settingsFailedKey: 'workbenchSettings.readFailed',
@@ -90,7 +92,7 @@ const SPECS: readonly SettingsPickSpec[] = [
     requestOf: (value) => ({ diyPresetSource: value }),
     viewOf: diyPresetSourceView,
   },
-];
+};
 
 function propsOf(spec: SettingsPickSpec, t: Translate): SettingsPickItemProps<PickCatalog> {
   const key = (suffix: string): string => `${spec.id}.${suffix}`;
@@ -114,6 +116,6 @@ function propsOf(spec: SettingsPickSpec, t: Translate): SettingsPickItemProps<Pi
   };
 }
 
-export function settingsPickRows(t: Translate): readonly JSX.Element[] {
-  return SPECS.map((spec) => <SettingsPickItem<PickCatalog> key={spec.id} {...propsOf(spec, t)} />);
+export function settingsPickRow(t: Translate, id: SettingsPickId, hint: string): JSX.Element {
+  return <SettingsPickItem<PickCatalog> key={id} {...propsOf(SPECS[id], t)} hint={hint} />;
 }

@@ -1,7 +1,15 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { adapterContractGaps } from '../packages/shared/dist/host.js';
 import { createAdapterSet as defaultSet } from '../packages/adapters-default/dist/index.js';
 import { createAdapterSet as chromeMcpSet } from '../packages/adapters-chrome-mcp/dist/index.js';
 import { ADAPTER_CONTRACT_SETS } from './arch/adapter-packages.mjs';
+
+const home = mkdtempSync(join(tmpdir(), 'wb-adapter-contract-'));
+process.env.DSH_HOME = home;
+process.env.DSH_WORKBENCH_HOME = join(home, 'workbench');
+process.on('exit', () => rmSync(home, { recursive: true, force: true }));
 
 const ctx = { get: () => undefined };
 

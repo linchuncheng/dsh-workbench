@@ -1,0 +1,31 @@
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.group + .group {
+  margin-top: var(--wb-len-16);
+  padding-top: var(--wb-len-16);
+  border-top: var(--wb-len-0-5) solid var(--dsw-alias-border-l2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--dsw-font-s-14-font-size);
+  line-height: var(--wb-line-20);
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.note {
+  margin: var(--wb-len-4) 0 0;
+  font-size: var(--dsw-font-xxs-12-font-size);
+  line-height: var(--wb-line-18);
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--wb-len-8);
+}
