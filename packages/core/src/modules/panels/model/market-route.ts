@@ -3,7 +3,7 @@ import type { BundleChange, BundleInstalledPlugin } from '@/kernel/contract/bund
 import {
   approveBuilds, declaresDshBundle, hostCommandStep, marketSpecPackage, PlanCancelledError, PlanStepError, planStepText,
   profileBundlesOf,
-  profilePnpmCommand, quoteShellArg, recordPendingBuilds, refusalReason, splitNpmSpec, WorkbenchDataError,
+  profilePnpmCommand, quoteShellArg, recordPendingBuilds, refusalReason, splitNpmSpec, storeMismatchIn, WorkbenchDataError,
 } from '@dsh-workbench/shared/host';
 import { requireSupply, localDirOf, type SupplyPort } from '@dsh-workbench/shared/host';
 import { sourceProblemText } from './market-dependency';
@@ -311,18 +311,21 @@ async function wireModule(deps: Omit<BundleInstallDeps, 'spec' | 'options'>, pkg
   }
 }
 
+function profileInstallLine(profileDir: string): string {
+  const pnpm = profilePnpmCommand(profileDir);
+  const prefix = [pnpm.command, ...pnpm.args].map(quoteShellArg).join(' ');
+  const store = pnpm.storeDir === undefined ? '' : ` --store-dir ${quoteShellArg(pnpm.storeDir)}`;
+  return `${prefix} install --frozen-lockfile --dir ${quoteShellArg(profileDir)}${store}`;
+}
+
 async function realignProfile(
   deps: Omit<BundleInstallDeps, 'spec' | 'options'>,
   pkg: string,
 ): Promise<void> {
   const dir = deps.profileDir;
   if (dir === undefined || dir === null) return;
-  const pnpm = profilePnpmCommand(dir);
-  const prefix = [pnpm.command, ...pnpm.args].map(quoteShellArg).join(' ');
-  const store = pnpm.storeDir === undefined ? '' : ` --store-dir ${quoteShellArg(pnpm.storeDir)}`;
-  const line = `${prefix} install --frozen-lockfile --dir ${quoteShellArg(dir)}${store}`;
   try {
-    await deps.runAll([hostCommandStep({ kind: 'run', line })]);
+    await deps.runAll([hostCommandStep({ kind: 'run', line: profileInstallLine(dir) })]);
     deps.logger?.warn?.(`[dsh-workbench] ${pkg} 安装失败，已按 lockfile 重装工作台配置`);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -367,16 +370,29 @@ async function installModuleRow(
       return routedFailure(deps, pkg, error instanceof Error ? error.message : String(error));
     }
   }
-  let output: string;
+  const options = signal === undefined ? undefined : { signal };
+  const run = (): Promise<void> => deps.runAll([hostCommandStep({ kind: 'run', line })], options);
   try {
-    await deps.runAll([hostCommandStep({ kind: 'run', line })], signal === undefined ? undefined : { signal });
-    output = deps.outputOf?.() ?? '';
+    await run();
   } catch (error) {
     if (error instanceof PlanCancelledError) return routedCancelled(deps, pkg);
-    const pending = pendingFrom(deps, outputOfError(error));
-    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 安装命令没跑成：${failureDetailOf(error)}`);
-    return routedFailureOf(deps, pkg, error, pending);
+    if (!storeMismatchIn(outputOfError(error))) {
+      const pending = pendingFrom(deps, outputOfError(error));
+      deps.logger?.warn?.(`[dsh-workbench] ${pkg} 安装命令没跑成：${failureDetailOf(error)}`);
+      return routedFailureOf(deps, pkg, error, pending);
+    }
+    deps.logger?.warn?.(`[dsh-workbench] ${pkg} 的 pnpm store 对不上，先按 lockfile 重装工作台配置再试一次`);
+    try {
+      await deps.runAll([hostCommandStep({ kind: 'run', line: profileInstallLine(profileDir) })], options);
+      await run();
+    } catch (retry) {
+      if (retry instanceof PlanCancelledError) return routedCancelled(deps, pkg);
+      const pending = pendingFrom(deps, outputOfError(retry));
+      deps.logger?.warn?.(`[dsh-workbench] ${pkg} 重装工作台配置后仍然装不上：${failureDetailOf(retry)}`);
+      return routedFailureOf(deps, pkg, retry, pending);
+    }
   }
+  const output = deps.outputOf?.() ?? '';
   try {
     await wireModule(deps, pkg);
   } catch (error) {

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { profilePnpmCommand } from '../pnpm-command.js';
+import { bundledPnpmOf, profilePnpmCommand } from '../pnpm-command.js';
 
 const roots: string[] = [];
 
@@ -77,6 +77,21 @@ describe('模块安装用哪个 pnpm：跟 profile 当初装它的是同一个�
       args: [],
       storeDir: '/Users/x/Library/pnpm/store/v11',
     });
+  });
+
+  it('★ 随 node 带的那份 pnpm 只在同一个大版本时才用（Desktop 升级后不乱点）', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-bundled-pnpm-'));
+    roots.push(root);
+    const bin = path.join(root, 'dependencies');
+    const pnpmBin = path.join(bin, 'pnpm', 'bin');
+    fs.mkdirSync(pnpmBin, { recursive: true });
+    fs.writeFileSync(path.join(pnpmBin, 'pnpm.cjs'), '', 'utf8');
+    fs.writeFileSync(path.join(bin, 'pnpm', 'package.json'), JSON.stringify({ version: '11.28.5' }), 'utf8');
+    const execPath = path.join(bin, 'node', 'bin', 'node');
+
+    expect(bundledPnpmOf(execPath, '11.21.0')).toBe(path.join(pnpmBin, 'pnpm.cjs'));
+    expect(bundledPnpmOf(execPath, '12.0.0')).toBeUndefined();
+    expect(bundledPnpmOf(execPath, '')).toBeUndefined();
   });
 
   it('没有 .modules.yaml → 退回 PATH 上的 pnpm', () => {

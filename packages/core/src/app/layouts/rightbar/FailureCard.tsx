@@ -51,11 +51,13 @@ export function FailureCard({
 
   return (
     <div className={styles.block}>
-      <div className={styles.head}>
-        <StateDot state="error" size={8} />
-        <span className={styles.title}>{model.title}</span>
-      </div>
-      <p className={styles.fact}>{model.fact}</p>
+      {model.title === undefined ? null : (
+        <div className={styles.head}>
+          <StateDot state="error" size={8} />
+          <span className={styles.title}>{model.title}</span>
+        </div>
+      )}
+      <p className={model.tone === 'alert' ? styles.factAlert : styles.fact}>{model.fact}</p>
       <div className={styles.actions}>
         <Button type="button" size="sm" variant="ghost" onClick={onCopy}>
           {copied ? t('panels.market.failure.copied') : model.fixLabel}

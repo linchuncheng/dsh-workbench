@@ -6,7 +6,8 @@ export interface FailureCardModel {
   readonly command: string;
   readonly output: string;
   readonly exitCode: number | null;
-  readonly title: string;
+  readonly title?: string | undefined;
+  readonly tone?: 'alert' | undefined;
   readonly fact: string;
   readonly fixLabel: string;
   readonly fix: string;
@@ -97,10 +98,9 @@ export function installCardOf(
   const fact = change !== undefined && RETRY_CODES.has(failureCode(change))
     ? `${reason} ${t('panels.market.failure.retryAdvice')}`
     : reason;
-  const pkg = (change?.target ?? '').trim();
   return {
-    title: pkg === '' ? t('panels.market.failure.installTitle') : t('panels.market.failure.installTitleOf', { pkg }),
     fact,
+    tone: 'alert',
     fixLabel: t('panels.market.failure.copyOutput'),
     fix: output,
     copiedHint: t('panels.market.failure.copyOutputHint'),

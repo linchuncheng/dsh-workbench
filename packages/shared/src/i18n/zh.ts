@@ -217,8 +217,6 @@ export const zh = {
   'panels.market.failure.diskFull': '安装失败：磁盘已满',
   'panels.market.failure.auth': '安装失败：没有这个源的凭据',
   'panels.market.failure.sandbox': '安装失败：被系统拦截',
-  'panels.market.failure.installTitle': '安装失败',
-  'panels.market.failure.installTitleOf': '安装失败：{pkg}',
   'panels.market.failure.retryAdvice': '请点「更新」重试；仍然失败时展开下面的输出，把它发给模块作者。',
   'panels.market.failure.copyOutput': '复制输出',
   'panels.market.failure.copyOutputHint': '原始输出已复制。',

@@ -68,7 +68,7 @@ describe('installCardOf（安装失败那一行：一句话原因 + 下一步 + 
     );
 
     expect(card).toMatchObject({
-      title: 'panels.market.failure.installTitleOf',
+      tone: 'alert',
       fact: '安装过程中出错。 panels.market.failure.retryAdvice',
       fixLabel: 'panels.market.failure.copyOutput',
       fix: 'ERR_PNPM_FETCH_401\nForbidden',
@@ -114,7 +114,8 @@ describe('installCardOf（安装失败那一行：一句话原因 + 下一步 + 
 
     expect(card?.exitCode).toBe(127);
     expect(card?.command).toBe("'pnpm' add --dir '/x' '@a/mod' --save-exact");
-    expect(card?.title).toBe('panels.market.failure.installTitleOf');
+    expect(card?.title).toBeUndefined();
+    expect(card?.tone).toBe('alert');
   });
 
   it('没有原始输出就不出卡片（退回到一行红字，不编原因）', () => {

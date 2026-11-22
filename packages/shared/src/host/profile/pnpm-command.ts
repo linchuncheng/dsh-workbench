@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { parse } from 'yaml';
 import { splitShellLine } from '../platform/ops/shell-text.js';
+import { readJsonObject } from '../runtime/read-json.js';
 
 export interface PnpmCommand {
   readonly command: string;
@@ -20,9 +21,17 @@ function modulesOf(profileDir: string): Readonly<Record<string, unknown>> {
   }
 }
 
-function bundledPnpmOf(execPath: string): string | undefined {
+function majorOf(version: string): string {
+  return version.split('.')[0] ?? '';
+}
+
+export function bundledPnpmOf(execPath: string, wanted: string): string | undefined {
+  if (wanted === '') return undefined;
   const candidate = join(dirname(execPath), '..', '..', 'pnpm', 'bin', 'pnpm.cjs');
-  return existsSync(candidate) ? candidate : undefined;
+  if (!existsSync(candidate)) return undefined;
+  const manifest = readJsonObject(join(dirname(candidate), '..', 'package.json'));
+  const bundled = typeof manifest?.['version'] === 'string' ? manifest['version'] : '';
+  return majorOf(bundled) === majorOf(wanted) ? candidate : undefined;
 }
 
 function configuredCommand(env: NodeJS.ProcessEnv): PnpmCommand | undefined {
@@ -44,7 +53,7 @@ export function profilePnpmCommand(profileDir: string, env: NodeJS.ProcessEnv = 
   const version = manager.startsWith('pnpm@') ? manager.slice('pnpm@'.length) : '';
   const corepackHome = env.COREPACK_HOME?.trim() || join(homedir(), '.cache', 'node', 'corepack');
   const cached = version === '' ? undefined : join(corepackHome, 'v1', 'pnpm', version, 'bin', 'pnpm.cjs');
-  const pnpmCjs = (cached !== undefined && existsSync(cached) ? cached : undefined) ?? bundledPnpmOf(process.execPath);
+  const pnpmCjs = (cached !== undefined && existsSync(cached) ? cached : undefined) ?? bundledPnpmOf(process.execPath, version);
   if (pnpmCjs !== undefined) return withStore({ command: process.execPath, args: [pnpmCjs] });
   if (configured !== undefined) return withStore(fallback);
   return withStore({ command: 'corepack', args: [manager] });

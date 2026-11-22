@@ -685,6 +685,29 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
     expect(outcome.change.application).toBe('applied');
   });
 
+  it('★ pnpm store 对不上 → 先按 lockfile 重装工作台配置，再装一次（自己会好）', async () => {
+    const dir = dirOf('profile');
+    const { deps, commands } = rig({ spec: '@t/module-a@1.1.9', supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });
+    let calls = 0;
+
+    const outcome = await installRouted({
+      ...deps,
+      profileDir: dir,
+      options: { route: 'module' },
+      runAll: async (steps) => {
+        calls += 1;
+        for (const step of steps) commands.push(planStepText(step));
+        if (calls === 1) throw new Error('ERR_PNPM_UNEXPECTED_STORE: store 对不上');
+      },
+    });
+
+    expect(calls).toBe(3);
+    expect(commands[0]).toContain(' add ');
+    expect(commands[1]).toContain(' install --frozen-lockfile ');
+    expect(commands[2]).toContain(' add ');
+    expect(outcome.change.application).toBe('applied');
+  });
+
   it('★ 按模块重装也失败 → 按 lockfile 把 profile 拉回一致（不留半装状态）', async () => {
     const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: false });
     const { deps } = rig({ spec: '@t/module-a@1.1.9', supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });

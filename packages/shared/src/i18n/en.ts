@@ -220,8 +220,6 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.failure.diskFull': 'Install failed: the disk is full',
   'panels.market.failure.auth': 'Install failed: no credentials for this source',
   'panels.market.failure.sandbox': 'Install failed: the system blocked it',
-  'panels.market.failure.installTitle': 'Installation failed',
-  'panels.market.failure.installTitleOf': 'Installation failed: {pkg}',
   'panels.market.failure.retryAdvice':
     'Click Update to retry; if it still fails, expand the output below and send it to the module author.',
   'panels.market.failure.copyOutput': 'Copy output',

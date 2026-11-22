@@ -27,6 +27,14 @@
   overflow-wrap: anywhere;
 }
 
+.factAlert {
+  margin: 0;
+  font: var(--dsw-font-xxs-12);
+  line-height: var(--wb-line-18);
+  color: var(--dsw-alias-state-error-primary);
+  overflow-wrap: anywhere;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
