@@ -1,7 +1,6 @@
 import { Fragment, createElement as h, useId } from 'react';
 import type { Translate } from '@dsh-workbench/shared';
 import { clientSurface } from '@/shared/api/platform/client';
-import { AdapterSetItem } from './AdapterSetItem';
 import { ConfigSyncItem } from './ConfigSyncItem';
 import { McpOnDemandItem } from './McpOnDemandItem';
 import { NewWorkbenchItem } from './NewWorkbenchItem';
@@ -9,7 +8,6 @@ import { SettingsGroup } from './SettingsGroup';
 import { SidebarEditionItem } from './SidebarEditionItem';
 import { settingsPickRow } from './settings-picks';
 import { UpdatePrereleaseItem } from './UpdatePrereleaseItem';
-import { WorkbenchFacts } from './WorkbenchFacts';
 import type { SettingsItemId } from './settings-registry';
 import {
   SETTINGS_GROUPS,
@@ -55,13 +53,6 @@ export function WorkbenchSettingsSection({ t }: { readonly t: Translate }): JSX.
         >
           <ConfigSyncItem t={t} />
           {desktop ? null : <NewWorkbenchItem t={t} />}
-        </SettingsGroup>
-        <SettingsGroup
-          title={t('workbenchSettings.environment')}
-          note={t('workbenchSettings.environment.lead')}
-        >
-          <AdapterSetItem t={t} />
-          <WorkbenchFacts t={t} />
         </SettingsGroup>
       </div>
     </section>

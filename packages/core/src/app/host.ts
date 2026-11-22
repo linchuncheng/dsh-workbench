@@ -84,12 +84,11 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     adapters.libs === undefined
       ? undefined
       : withLibRunners(adapters.libs, adapters.runtime.runners(ctx, adapters.data), ctx.logger);
-  const running = runningVersionOf(import.meta.url);
   const routes = createHostRoutes({
     ctx,
     facts,
     runtimes: runtimeHealth,
-    running,
+    running: runningVersionOf(import.meta.url),
     profile: adapters.profile,
     diag: diagRoutesOf(workbenchRoot()),
   });
@@ -103,13 +102,19 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   const surface = hostSurface({ profile: profileDir ?? undefined });
   routes.health = async (search) => ({
     ...((await baseHealth?.(search)) as Record<string, unknown>),
-    capabilities, moduleRows: diagnoseModuleRows(profileDir), runtimeProfile, surface,
-    workbench: { profile: profileDir === null ? null : basename(profileDir), version: running },
+    capabilities,
+    moduleRows: diagnoseModuleRows(profileDir),
+    runtimeProfile, surface,
     adapterSet: {
-      configured: adapterSpec, id: adapters.id, version: adapters.version,
-      usesDefaults: resolved.usedDefaults, failure: adapterFailure,
+      configured: adapterSpec,
+      active: adapters.id,
+      id: adapters.id,
+      version: adapters.version,
+      usesDefaults: resolved.usedDefaults,
+      failure: adapterFailure,
       detail: adapterFailure === null ? null : !loaded.ok ? loaded.detail : null,
       messageKey: adapterFailure === null ? null : `adapterSet.${adapterFailure}`,
+      messageParams: { spec: adapterSpec ?? '' },
     },
   });
   const renderers = new Map<string, ContextRenderer>();
