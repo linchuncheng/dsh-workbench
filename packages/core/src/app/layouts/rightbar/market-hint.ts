@@ -33,6 +33,7 @@ export interface MarketHintInput {
 }
 
 const PROBLEM_KEY = 'panels.market.hasProblem';
+
 const RESTART_KEY = 'panels.market.pendingRestart';
 const FOLLOWUP_KEY = 'panels.market.pendingFollowUp';
 const UNKNOWN_KEY = 'panels.market.unchecked';

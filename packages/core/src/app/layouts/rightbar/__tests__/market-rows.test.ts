@@ -14,13 +14,14 @@ import type { CapabilityMap } from '@/shared/hooks/use-capabilities';
 import {
   MARKET_STATE_KEY,
   checkingRows,
+  installedRows,
   marketActions,
   marketHasUpdates,
   marketRowTitle,
   marketRows,
-  marketSections,
   sharedRows,
 } from '../market-rows';
+import { marketSections } from '../market-sections';
 
 const DEMO = extensionNeedOf('demo', { commands: ['x'], sources: [fakeNpmSource] });
 
@@ -79,18 +80,15 @@ describe('marketRows', () => {
     expect(row?.hint).toEqual({ key: 'panels.market.uncheckedHint' });
   });
 
-  it('★ 刚装完、还没被这一进程加载（等重启）→ 未生效 + 重启后生效，不是状态未知', () => {
+  it('★ 确认要等重启（宽限期已过）→ 未生效 + 重启后生效，不是状态未知', () => {
     const updates = { issues: { installed: '1.9.0', pkg: '@a/issues' } };
-    const pending = new Set(['issues']);
-    const rows = marketRows([unit('issues')], {}, updates, new Set(), {}, new Set(), pending);
-    const row = rows[0];
+    const stale = marketRows([unit('issues')], {}, updates, new Set(), {}, new Set(), new Set(['issues']));
 
-    expect(row?.state).toBe('inactive');
-    expect(row?.hint).toEqual({ key: 'panels.market.moduleRestartHint' });
-    expect(row?.version).toEqual({ installed: '1.9.0' });
-    expect(row?.canUninstall).toBe(true);
-    expect(row?.canUpdate).toBe(false);
-    expect(marketSections(rows)[0]?.id).toBe('installed');
+    expect(stale[0]?.state).toBe('inactive');
+    expect(stale[0]?.hint).toEqual({ key: 'panels.market.moduleRestartHint' });
+    expect(stale[0]?.version).toEqual({ installed: '1.9.0' });
+    expect(stale[0]?.canUninstall).toBe(true);
+    expect(marketSections(stale)[0]?.id).toBe('installed');
   });
 
   it('未装 + 来源解析得出 → 只能装（不能更新/卸载一个没装的东西）', () => {
@@ -324,6 +322,17 @@ describe('marketActions', () => {
   it('还没探完 / 探不动 → 没有按钮', () => {
     expect(marketActions(marketRows([unit('issues')], null)[0] as never)).toEqual([]);
     expect(marketActions(marketRows([unit('issues')], capsOf('issues', 'unchecked'))[0] as never)).toEqual([]);
+  });
+});
+
+describe('marketSections：装的那一刻行别跳栏', () => {
+  it('★ 正在检测 / 暂未生效，但本机有这一版 → 仍在「已安装」，不跳到未就绪', () => {
+    const checking = marketRows([unit('issues')], {}, { issues: { installed: '1.1.9', pkg: '@a/issues' } });
+    const checkingRowsShown = checkingRows(checking, { all: true, units: new Set() });
+    const installedOnly = installedRows([{ unit: 'local-a', pkg: '@a/local', installed: '1.1.9' }], [], new Set());
+
+    expect(marketSections(checkingRowsShown)[0]?.id).toBe('installed');
+    expect(marketSections(installedOnly)[0]?.id).toBe('installed');
   });
 });
 

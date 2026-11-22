@@ -60,7 +60,7 @@ function makeMarketEntryIcon(units: ClientUnitRegistry) {
     const installed = modules === null ? undefined : withClientRefusals(modules, units.refusals());
     const busy = useMarketBusy();
     const install = useMarketInstallState();
-    const restartPending = useMarketRestart();
+    const restart = useMarketRestart();
     const hint = marketHintOf({
       manifests,
       installable,
@@ -72,7 +72,7 @@ function makeMarketEntryIcon(units: ClientUnitRegistry) {
       selfUpdate,
       toldAt,
       busy,
-      restartPending,
+      restartPending: restart.confirmed,
       ...install,
     });
 

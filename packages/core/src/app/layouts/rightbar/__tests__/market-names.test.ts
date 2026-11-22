@@ -4,11 +4,11 @@ import { unitTitleKey } from '@dsh-workbench/shared';
 import { namesOf, type NameSource } from '../market-names';
 import {
   installedRows,
-  marketOrder,
   marketRowTitle,
   marketRows,
   type MarketRow,
 } from '../market-rows';
+import { marketOrder } from '../market-sections';
 
 const title = (zh: string, en: string): UnitTitle => ({ zh, en });
 

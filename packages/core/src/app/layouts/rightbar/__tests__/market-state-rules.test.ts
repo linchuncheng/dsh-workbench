@@ -8,10 +8,10 @@ import {
   installedRows,
   marketActions,
   marketRows,
-  marketSections,
   marketSwitchLocked,
   marketUpdatesOf,
 } from '../market-rows';
+import { marketSections } from '../market-sections';
 
 function unit(id: string, plugin?: string): UnitManifest {
   return manifestOf({

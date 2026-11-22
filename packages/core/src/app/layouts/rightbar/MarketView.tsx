@@ -10,6 +10,7 @@ import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
 
 import { marketSettled } from './market-freshness';
 import { useMarketChecks } from './use-market-checks';
+import { installedToShow } from './market-installed-list';
 
 import { useSelfUpdateBusyRefresh, useSelfUpdateTold, useSettleHold } from './market-settle-hold';
 import { useMarketTransient } from './market-transient-state';
@@ -120,7 +121,7 @@ function useMarketScene(input: {
   readonly busyId: string | null;
 } {
   const { t, titleOf, manifests, installable, capabilities, updates, installed, settling, installing, mock, defaults, changed, pending, failed, heldPlugins } = input;
-  const restartPending = useMarketRestart();
+  const restart = useMarketRestart();
   useEffect(() => {
     if (capabilities === null) return;
     loadedMarketUnits(Object.keys(capabilities));
@@ -133,23 +134,26 @@ function useMarketScene(input: {
   const source = liveManifests(marketable, effective, installedIds);
   const byDefault = new Set(defaults);
   const updateMap = mock?.updates ?? updates ?? {};
-  const rows = checkingRows(marketRows(source, effective, updateMap, byDefault, changed, heldPlugins, restartPending), {
+  const rows = checkingRows(marketRows(source, effective, updateMap, byDefault, changed, heldPlugins, restart.confirmed), {
     all: installing,
-    units: settling ?? NO_UNITS,
+    units: new Set([...(settling ?? NO_UNITS), ...restart.grace]),
   });
   const shared = sharedRows(source, effective);
   const removing = removingIdOf(pending, failed);
   const steady = useHeldRow(pending, (id) => catalog.some((manifest) => manifest.id === id));
   const pinned = pinnedRowOf(pending, steady.held);
   const busyId = heldIdOf(pending, steady.held);
+  const listedIds = new Set(rows.map((row) => row.id));
   const installedList = installedRows(
-    (mock?.installed ?? installed ?? []).filter(
-      (module) =>
-        module.unit !== pinned?.id &&
-        ((!(settling?.has(module.unit) ?? false) || module.unit === busyId) && module.unit !== removing),
-    ),
+    installedToShow(mock?.installed ?? installed ?? [], {
+      listed: listedIds,
+      settling: settling ?? NO_UNITS,
+      ...(busyId === null ? {} : { busyId }),
+      ...(pinned === undefined ? {} : { pinnedId: pinned.id }),
+      ...(removing === null ? {} : { removing }),
+    }),
     catalog,
-    new Set(rows.map((row) => row.id)),
+    listedIds,
     mock === undefined ? names : undefined,
     byDefault,
     changed,

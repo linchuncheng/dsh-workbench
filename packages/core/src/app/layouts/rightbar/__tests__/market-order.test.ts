@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MarketRow } from '../market-row-types';
-import { marketOrder } from '../market-rows';
+import { marketOrder } from '../market-sections';
 
 describe('marketOrder', () => {
   const line = (id: string, titleKey: string): MarketRow => ({

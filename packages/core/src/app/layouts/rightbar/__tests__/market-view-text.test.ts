@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { extensionNeedOf, fakeNpmSource, manifestOf } from '@dsh-workbench/shared/testing';
+import { installedToShow } from '../market-installed-list';
 import { marketRows } from '../market-rows';
 import { actionLabelKey, progressKeyOf } from '../market-view-text';
 
@@ -28,5 +29,35 @@ describe('安装按钮怎么说：装模块还是装依赖', () => {
     const row = marketRows([unit], {}, { argocd: { installed: '1.1.9', pkg: '@a/argocd' } })[0];
 
     expect(actionLabelKey(row, 'update')).toBe('panels.market.update');
+  });
+});
+
+describe('安装过程中哪些行还留在已安装那一栏', () => {
+  const modules = [{ unit: 'local-a' }, { unit: 'market-b' }];
+
+  it('★ 本机模块在缓冲期不消失（它没有目录行可回落），目录里有行的那条才让位', () => {
+    const shown = installedToShow(modules, {
+      listed: new Set(['market-b']),
+      settling: new Set(['local-a', 'market-b']),
+    });
+
+    expect(shown.map((module) => module.unit)).toEqual(['local-a']);
+  });
+
+  it('正在装的那一条留着（有进度可看），确认要删的那条让位', () => {
+    expect(
+      installedToShow(modules, {
+        listed: new Set(['market-b']),
+        settling: new Set(['local-a', 'market-b']),
+        busyId: 'local-a',
+      }),
+    ).toEqual([{ unit: 'local-a' }]);
+    expect(
+      installedToShow(modules, {
+        listed: new Set(['market-b']),
+        settling: new Set(['local-a']),
+        removing: 'local-a',
+      }),
+    ).toEqual([{ unit: 'market-b' }]);
   });
 });

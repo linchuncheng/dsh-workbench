@@ -2,6 +2,7 @@ import type { BundleVersionList, LatestUnavailable, ModuleUpdateBlock, ModuleVer
 import type { MarketInstalledModule } from '@/kernel/contract/market-index';
 import type { NeedState, SupplySource, Translate, UnitManifest, UnitTitle } from '@dsh-workbench/shared';
 import { depOnlyOutdated, supplyNeedsOf } from '@dsh-workbench/shared';
+import { isOnMachine } from './market-state';
 import type { InstalledPlugin } from '@/shared/api/installed-plugins';
 import type { MarketNameMap } from './market-names';
 import type {
@@ -330,18 +331,6 @@ function noteOf(
   return undefined;
 }
 
-function isOnMachine(state: MarketState): boolean {
-  return (
-    state === 'installed' ||
-    state === 'outdated' ||
-    state === 'older-on-disk' ||
-    state === 'pending-restart' ||
-    state === 'inactive' ||
-    state === 'unusable' ||
-    state === 'broken'
-  );
-}
-
 export function marketCatalog(
   manifests: readonly UnitManifest[],
   installable: ReadonlySet<string> | null | undefined,
@@ -404,35 +393,6 @@ export function marketUpdatesOf(
     };
   }
   return next;
-}
-
-export interface MarketSection {
-  readonly id: 'installed' | 'not-installed';
-  readonly titleKey: string;
-  readonly rows: readonly MarketRow[];
-}
-
-export function marketOrder(
-  rows: readonly MarketRow[],
-  titleOf: (row: MarketRow) => string,
-): MarketRow[] {
-  return [...rows].sort((left, right) => {
-    const byTitle = titleOf(left).localeCompare(titleOf(right), 'zh-Hans-CN');
-    return byTitle === 0 ? left.id.localeCompare(right.id) : byTitle;
-  });
-}
-
-export function marketSections(rows: readonly MarketRow[]): MarketSection[] {
-  const installed = rows.filter((row) => isOnMachine(row.state));
-  const rest = rows.filter((row) => !isOnMachine(row.state));
-  return [
-    ...(installed.length === 0
-      ? []
-      : [{ id: 'installed' as const, titleKey: 'panels.market.sectionInstalled', rows: installed }]),
-    ...(rest.length === 0
-      ? []
-      : [{ id: 'not-installed' as const, titleKey: 'panels.market.sectionPending', rows: rest }]),
-  ];
 }
 
 export function checkingRows(
