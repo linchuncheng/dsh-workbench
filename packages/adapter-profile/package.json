@@ -1,6 +1,6 @@
 {
   "name": "@dsh-workbench/adapter-profile",
-  "version": "1.4.4-rc.2",
+  "version": "1.4.4-rc.3",
   "description": "Workbench profile adapter package.",
   "type": "module",
   "exports": {
