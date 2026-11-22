@@ -13,6 +13,12 @@ export const CHECKS = {
     layer: 'manifest',
     load: () => import('./checks/protocol.mjs'),
   },
+  combo: {
+    title: '工作台模块不声明 dsh.bundle',
+    summary: '声明了 dsh.workbench 的模块不要声明 dsh.bundle（装载只走 profile 依赖 + wb 行）；私有包跳过',
+    layer: 'manifest',
+    load: () => import('./checks/combo.mjs'),
+  },
   bundles: {
     title: '模块产物边界',
     summary: '宿主产物不含浏览器侧、浏览器产物不内联工作台 CSS 与夹具',

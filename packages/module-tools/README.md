@@ -8,7 +8,7 @@
 ```bash
 pnpm exec dsh-wb-module init my-unit                    # 创建骨架（唯一模板，已默认）
 pnpm build        # 生成 dist/host.js 与带加载器包装的 client.js
-pnpm check        # 十四条检查项（判据）
+pnpm check        # 十五条检查项（判据）
 pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 / 配置 / 状态 / 审批，以及两份文档是否过期
 ```
 
@@ -52,7 +52,7 @@ pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 /
 | `dsh-wb-module init <unit> [--dir <目录>] [--template diy] [--description "一句话"]` | 创建模块骨架（只有 `diy` 一个模板，也是默认） |
 | `dsh-wb-module market-init <git 地址\|目录> [--ref <分支>] [--path <索引路径>]` | 初始化市场索引仓库：写 `market/` + README，推首个 commit |
 | `dsh-wb-module build` | 生成 `dist/host.js`（单文件 ESM）与 `client.js`（带加载器包装） |
-| `dsh-wb-module check [--only <判据>] [--package <包名或 unit>]` | 十四条检查项（判据）；`--only` 单独运行，也作为查询入口；`--package` 只报告这个模块的问题（见下）；`--list [--json\|--markdown]` 只列判据元数据 |
+| `dsh-wb-module check [--only <判据>] [--package <包名或 unit>]` | 十五条检查项（判据）；`--only` 单独运行，也作为查询入口；`--package` 只报告这个模块的问题（见下）；`--list [--json\|--markdown]` 只列判据元数据 |
 | `dsh-wb-module lint [--fix]` | 使用模块自己的 `eslint.config.mjs`；`--fix` 直接修改文件 |
 | `dsh-wb-module sync` | 按清单生成 `src/declared-tools.ts` 与 `src/sites.ts`（清单有站点表时），按 `design.json` 的 `key + recipe` 生成 `src/datasource.ts` |
 | `dsh-wb-module design <init\|migrate\|check\|render\|accept>` | 设计底稿：填写、拆分旧 README、检查空白、生成 README 与 DEVELOPING、验收勾选 |
@@ -70,9 +70,9 @@ pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 /
 「本模块通过」不等于「工作区通过」。门禁、发布与 release 不要带它。要让判据只检查一个包，
 用环境变量 `DSH_WB_ROOT=<包目录>`（工具链自己的自检就是这么隔离的）。
 
-## 十四条判据
+## 十五条判据
 
-`dsh-wb-module check` 一次运行完成十四条检查项（判据），三态输出：`✔ 通过` / `○ 不适用` / `✖ 未通过`；存在未通过项时退出码为 1。
+`dsh-wb-module check` 一次运行完成十五条检查项（判据），三态输出：`✔ 通过` / `○ 不适用` / `✖ 未通过`；存在未通过项时退出码为 1。
 
 表由 `dsh-wb-module check --list --markdown` 生成；`层` 是 manifest / source / build / render / meta。
 
@@ -81,6 +81,7 @@ pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 /
 |---|---|---|
 | `contracts` | manifest | 单元 id、两个面、四个脚本、peer 依赖存在，以及清单与代码注册对账；站点表引用 / 未用 / origins / 信封 |
 | `protocol` | manifest | dsh.workbench 的 apiVersion、静态半形状与未知键 |
+| `combo` | manifest | 声明了 dsh.workbench 的模块不要声明 dsh.bundle（装载只走 profile 依赖 + wb 行）；私有包跳过 |
 | `bundles` | build | 宿主产物不含浏览器侧、浏览器产物不内联工作台 CSS 与夹具 |
 | `source` | source | 零注释、包与运行时入口分开、不手写进程/锁/原子写 |
 | `seam` | source | 子进程只通过 deps.seam 门面；不直接取原始 shell / 不直接使用 child_process；清单 writes 与请求一致 |
@@ -273,7 +274,7 @@ dsh-wb-module design accept   # 在真实卡片上逐条验证后勾选
 
 | 段 | 是什么 | 谁读 |
 |---|---|---|
-| `dsh.bundle.patch` | 只有**组合包**才需要：把自己插进 profile 组合图的 cordis 补丁。工作台模块**不要声明它**（由市场装成 profile 依赖 + 一行）；老包还带着它只作兼容，装载按「在不在 `dsh.profile.bundles` 里」判 | dsh 的组合器（装载） |
+| `dsh.bundle.patch` | 只有**组合包**才需要：把自己插进 profile 组合图的 cordis 补丁。工作台模块**不要声明它**（由市场装成 profile 依赖 + 一行）；老包仍然声明时只作兼容，装载按「在不在 `dsh.profile.bundles` 里」判 | dsh 的组合器（装载） |
 | `dsh.client{platform,inject,external}` | 浏览器侧接线 | dsh 的客户端组合器（dsh 不校验，错误的声明要等到浏览器 `require` 时才报错，因此由 `contracts` 检查） |
 | `dsh.workbench` | **模块声明协议** | 门禁 · 市场 · 工作台 |
 | `dsh.workbenchFaces{host,client}` | **工具链元数据**（不在协议里）：两个面的源码入口 | 门禁：`source` 拿它算可达性、`contracts` 查它在位；运行期不读 |

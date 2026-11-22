@@ -20,6 +20,7 @@ import * as negativeProbe from './checks/negative-probe.mjs';
 import * as archGate from './checks/arch-gate.mjs';
 import * as lintGate from './checks/lint-gate.mjs';
 import * as protocol from './checks/protocol.mjs';
+import * as combo from './checks/combo.mjs';
 import * as discover from './checks/discover.mjs';
 import * as packageFilter from './checks/package-filter.mjs';
 import * as approval from './checks/approval.mjs';
@@ -51,6 +52,7 @@ const MODULES = [
   archGate,
   lintGate,
   protocol,
+  combo,
   discover,
   packageFilter,
   approval,

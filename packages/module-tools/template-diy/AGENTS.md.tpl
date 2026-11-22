@@ -7,7 +7,7 @@
 修改 `src/**` 后，依次执行：
 
 1. `pnpm build`：生成 `dist/host.js` 与带加载器包装的 `client.js`。
-2. `pnpm check`：运行十四条检查项（判据），读取上一步生成的产物。单独运行某个判据时使用 `pnpm check --only <判据名>`；全部通过才算完成。如何解读失败、常见失败原因见 `@dsh-workbench/core/skills/workbench-module-diy/REVIEW.md`。
+2. `pnpm check`：运行十五条检查项（判据），读取上一步生成的产物。单独运行某个判据时使用 `pnpm check --only <判据名>`；全部通过才算完成。如何解读失败、常见失败原因见 `@dsh-workbench/core/skills/workbench-module-diy/REVIEW.md`。
 3. `pnpm test`：运行 `src/**/__tests__/` 下与被测代码同目录的 `*.test.ts`；新增逻辑需要补充测试用例，全部通过才算完成。
 4. `pnpm run check:duplication`：使用 jscpd 扫描 `src` 与 `scripts`；存在重复代码就消除。完整报告使用 `pnpm run duplication:report`，输出到 `coverage/duplication/`。该命令不在 `pnpm check` 流程中，不要遗漏。
 

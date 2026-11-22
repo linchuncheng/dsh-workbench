@@ -75,7 +75,7 @@ export function bootChores(input: BootChoresInput): string | undefined {
         }
         if (sync.legacy.length > 0) {
           input.log?.(
-            `[dsh-workbench] ${sync.legacy.join('、')} 还声明着 dsh.bundle（旧包兼容，按组合包装载）：请重发一版去掉这个字段，下次启动就会自动改走模块行`,
+            `[dsh-workbench] ${sync.legacy.join('、')} 还声明着 dsh.bundle（旧包兼容，按组合包装载）：请重新发布一版去掉这个字段，下次启动就会自动改走模块行`,
           );
         }
         if (sync.stuck.length > 0) {

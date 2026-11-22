@@ -1589,12 +1589,12 @@ async function verifyDiyDefault(cdp, snapshot) {
   );
   log(`DIY 默认：chips=${JSON.stringify(chips)}`);
   if (!chips.some((text) => text.includes(WORKSHOP_TITLE))) {
-    await fail(cdp, `点完工坊的新会话按钮，当前工作区还不是「${WORKSHOP_TITLE}」`, body, snapshot);
+    await fail(cdp, `点击工坊的新会话按钮后，当前工作区仍不是「${WORKSHOP_TITLE}」`, body, snapshot);
   }
   if (!chips.some((text) => text.includes(DIY_MODE_NAME))) {
     await fail(
       cdp,
-      `工坊里新建的空白会话没补上「${DIY_MODE_NAME}」（模式位读到 ${JSON.stringify(chips)}）`,
+      `工坊里新建的空白会话没有补上「${DIY_MODE_NAME}」（模式位读到 ${JSON.stringify(chips)}）`,
       body,
       snapshot,
     );

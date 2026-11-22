@@ -20,10 +20,11 @@ export function read(path) {
 
 export const FACES = { host: 'src/host.ts', client: 'src/client.tsx' };
 
-export function runCheck(probe, only) {
+export function runCheck(probe, only, workspace) {
   try {
     const out = execFileSync(process.execPath, [BIN, 'check', '--only', only], {
       cwd: probe,
+      env: workspace === undefined ? process.env : { ...process.env, DSH_WB_ROOT: workspace },
       encoding: 'utf8',
       stdio: 'pipe',
     });

@@ -844,7 +844,7 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
     expect(outcome.module).toEqual({ kind: 'module', pkg: '@t/module-a', unit: 'a', version: '1.2.0' });
   });
 
-  it('★ dsh 装完没把它写进名单（依赖在、包在、名单缺）→ 我们补上，不然重启也不加载', async () => {
+  it('★ dsh 装完没把它写进名单（依赖在、包在、名单缺）→ 宿主补上，不然重启也不加载', async () => {
     const dir = profileAt({ pkg: '@t/module-a', version: '1.0.0', bundles: [], shipsBundle: true });
     const { deps } = rig({ spec: '@t/module-a@1.0.0', supply: pluginSupply(() => ({ kind: 'dsh-bundle' })) });
     const { manager, setEnabled } = togglingManager(dir, (request) => ({
@@ -871,7 +871,7 @@ describe('接线跟着装出来的那一版走：带 bundle 的放回名单，�
     expect(outcome.change.application).toBe('applied');
   });
 
-  it('★ git 路径末段不是包名（/packages/module-hello）→ 用源给的包名补名单，别拿末段瞎猜', async () => {
+  it('★ git 路径末段不是包名（/packages/module-hello）→ 用源给的包名补名单，别拿末段当包名', async () => {
     const dir = profileAt({
       pkg: '@dsh-workbench/module-hello',
       version: '1.1.14-beta.2',

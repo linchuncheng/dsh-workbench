@@ -674,7 +674,7 @@ EOF
 - 造一个新模块：`dsh-wb-module init <名字> --dir packages/module-<名字>`
   （`dsh-wb-module` 挂在 PATH 上、与 cwd 无关；写成 `pnpm exec dsh-wb-module …` 也对）
 - 每个模块自己的四件事：`pnpm build` / `pnpm typecheck` / `pnpm test` / `pnpm selfcheck`，
-  外加 `dsh-wb-module check` 的十四条判据。
+  外加 `dsh-wb-module check` 的十五条判据。
 
 不要手改这个目录下的 `package.json` / `pnpm-workspace.yaml` / `.npmrc`：
 它们是 `dsh-workbench setup` 生成的，模块要加依赖就加在**模块自己**的 `package.json` 里。
@@ -697,7 +697,7 @@ EOF
 ## 每个模块
 
 `pnpm build` / `pnpm typecheck` / `pnpm test` / `pnpm selfcheck`，外加 `dsh-wb-module check`
-（十四条判据）；单跑一条：`dsh-wb-module check --only <判据>`。
+（十五条判据）；单跑一条：`dsh-wb-module check --only <判据>`。
 
 这个目录的 `package.json` / `pnpm-workspace.yaml` / `.npmrc` 由 setup 生成，手改会被覆盖。
 EOF

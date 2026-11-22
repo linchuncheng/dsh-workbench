@@ -390,7 +390,7 @@ async function main() {
 
   section('profile node_modules');
   const installedModule = join(profileDir, 'node_modules', FIXTURE.module);
-  push(`模块包落下去了：${existsSync(join(installedModule, 'package.json')) ? '是' : '否'}（${installedModule}）`);
+  push(`模块包：${existsSync(join(installedModule, 'package.json')) ? '在' : '不在'}（${installedModule}）`);
   push(`模块 dist：${existsSync(join(installedModule, 'dist')) ? '在' : '不在'}`);
   push(`profile 锁文件：${existsSync(join(profileDir, 'pnpm-lock.yaml')) ? '在' : '不在'}`);
   push(treeOf(join(profileDir, 'node_modules'), 1, 80));
