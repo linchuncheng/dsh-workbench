@@ -1507,6 +1507,25 @@ async function readJsonFile(file) {
   }
 }
 
+async function pageJson(cdp, path) {
+  const result = await cdp.send('Runtime.evaluate', {
+    expression: `fetch(${JSON.stringify(path)}).then((response) => response.text()).catch((error) => 'ERR:' + String(error))`,
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  const raw = result.result?.value ?? '';
+  if (raw.startsWith('ERR:')) {
+    log(`读 ${path} 失败：${raw.slice(4, 200)}`);
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    log(`读 ${path} 不是 JSON：${String(error?.message ?? error)}`);
+    return raw.slice(0, 400);
+  }
+}
+
 async function writeInstallState(label) {
   const manifest = await readJsonFile(join(profilePath, 'package.json'));
   const installed = await readJsonFile(join(profilePath, 'node_modules', moduleName, 'package.json'));
@@ -1514,16 +1533,23 @@ async function writeInstallState(label) {
   const patch = fs.existsSync(patchFile) ? fs.readFileSync(patchFile, 'utf8') : '';
   const bundles = Array.isArray(manifest?.dsh?.profile?.bundles) ? manifest.dsh.profile.bundles : null;
   const declared = installed?.dsh ?? null;
+  const diag = await pageJson(activeCdp, '/workbench/api/diag/records');
+  const versions = await pageJson(activeCdp, '/workbench/api/module-versions');
+  const modules = Array.isArray(versions?.modules) ? versions.modules : null;
   const state = {
     profile: profilePath,
+    hostProfileDir: diag?.host?.profileDir ?? null,
     installed: installed === null ? null : { name: installed.name, version: installed.version, declared },
     dependencies: manifest?.dependencies ?? null,
     bundles,
+    modules,
+    unreadable: versions?.unreadable ?? null,
+    refusals: versions?.refusals ?? null,
     patch,
   };
   writeText(`${prefix}-${label}-state.json`, `${JSON.stringify(state, null, 2)}\n`);
   log(
-    `安装现场（${label}）：bundles=${JSON.stringify(bundles)} · 包=${installed === null ? '读不到' : `${installed.version} ${declared?.bundle === undefined ? '无 dsh.bundle' : '有 dsh.bundle'}`}`,
+    `安装现场（${label}）：host profileDir=${JSON.stringify(state.hostProfileDir)} · modules=${JSON.stringify(modules)} · bundles=${JSON.stringify(bundles)} · 包=${installed === null ? '读不到' : `${installed.version} ${declared?.bundle === undefined ? '无 dsh.bundle' : '有 dsh.bundle'}`}`,
   );
 }
 
@@ -1616,6 +1642,7 @@ async function main() {
   if (installViaUi) await installFromPluginPage(cdp);
   const snapshot = await waitForGateAndReady(cdp);
   if (expectDiyDefault) await verifyDiyDefault(cdp, snapshot);
+  if (verifyOnly) await writeInstallState('after-restart');
   if (addPluginFlagged && addPluginSpec === '') {
     await fail(
       cdp,
