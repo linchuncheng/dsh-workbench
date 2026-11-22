@@ -72,21 +72,6 @@ async function main() {
     out(`daemon stop：exit=${String(stopped.exitCode)}（铺旧版本之前先把新版本的守护停掉，否则下一程会判 stale）`);
   }
 
-  const rows = await distModule(ROOT, 'shared', 'dist', 'host', 'profile', 'module-rows.js');
-  const manifestPath = join(profileDir, 'package.json');
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  if (manifest.dependencies?.[FIXTURE.module] !== undefined) {
-    delete manifest.dependencies[FIXTURE.module];
-    files.writeJsonFile(manifestPath, manifest);
-  }
-  const patchPath = join(profileDir, 'cordis.patch.yml');
-  if (existsSync(patchPath)) {
-    const text = readFileSync(patchPath, 'utf8');
-    const kept = rows.moduleRowsIn(text).filter((row) => row.name !== FIXTURE.module);
-    files.writeTextFile(patchPath, rows.withModuleRows(text, kept));
-    out(`去掉测试模块：${FIXTURE.module}（自更新这一程只演工作台自己）`);
-  }
-
   const links = versions.versionLinksOf({ profileDir, versionDir, packages });
   versions.flipProfileLinks(links);
   versions.writeProfileLinks({ profileDir, links });
