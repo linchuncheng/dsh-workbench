@@ -62,6 +62,24 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual([]);
   });
 
+  it('★ 版本表里没有这一条（dsh 拒绝列版本，如 link 安装）→ 更新照给，只说兼容性尚未验证', () => {
+    const row = workbenchRow({
+      pkg: CORE,
+      installed: '1.5.1',
+      latest: '1.5.2-alpha.0',
+      latestBlocked: { kind: 'unverified' },
+    });
+
+    expect(row).toMatchObject({
+      state: 'outdated',
+      canUpdate: true,
+      hint: { key: 'panels.market.updateUnverified' },
+      moduleUpdate: { installed: '1.5.1', latest: '1.5.2-alpha.0', blocked: { kind: 'unverified' } },
+      version: { installed: '1.5.1', latest: '1.5.2-alpha.0' },
+    });
+    expect(marketActions(row as MarketRow)).toEqual(['update-workbench']);
+  });
+
   it('② 已经最新 → 只显示版本，不给按钮（也不许说"有新版本"）', () => {
     const row = workbenchRow({ pkg: CORE, installed: '0.1.19', latest: '0.1.19' });
 

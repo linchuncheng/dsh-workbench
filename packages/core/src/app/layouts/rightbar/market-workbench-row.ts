@@ -50,18 +50,18 @@ export function workbenchRow(
   const running = version.running;
   const older = !local && version.diskOlder === true && running !== undefined;
   const latest = local ? undefined : version.latest;
-  const target = older
-    ? latest !== undefined && version.latestBlocked === undefined
-      ? latest
-      : running
-    : latest;
+  const latestBlocking =
+    version.latestBlocked === undefined || version.latestBlocked.kind === 'unverified'
+      ? undefined
+      : version.latestBlocked;
+  const target = older ? (latest !== undefined && latestBlocking === undefined ? latest : running) : latest;
   const update =
     target !== undefined && target !== version.installed
       ? { installed: version.installed, latest: target }
       : undefined;
   const staleNote = mark !== undefined && mark.kind === 'pending-restart' && update !== undefined;
   const reinstallNote = reinstallNoteOf(selfUpdate);
-  const updateNote = mark === undefined || staleNote ? undefined : selfUpdateNote(mark);
+  const updateNote = mark === undefined || staleNote ? undefined : selfUpdateNote(mark, selfUpdate);
   const busyNote: MarketNote | undefined =
     busy && !swapping ? { key: 'panels.market.selfUpdateBusy', params: {}, tone: 'plain' } : undefined;
   const olderNote: MarketNote | undefined = older
@@ -77,6 +77,7 @@ export function workbenchRow(
       ? reinstallNote
       : (updateNote ?? busyNote));
   const blocked = older || update === undefined ? undefined : version.latestBlocked;
+  const blocking = older || update === undefined ? undefined : latestBlocking;
   const blockedHint: MarketHint | undefined =
     blocked === undefined ? undefined : updateBlockHintOf(blocked);
   const stale =
@@ -101,7 +102,7 @@ export function workbenchRow(
             ? 'installed'
             : 'outdated',
     canInstall: false,
-    canUpdate: !swapping && !busy && blocked === undefined && (update !== undefined || retry),
+    canUpdate: !swapping && !busy && blocking === undefined && (update !== undefined || retry),
     canUninstall: false,
     ...(local ? { local: true } : {}),
     ...(stale || followUpState || blockedHint === undefined ? {} : { hint: blockedHint }),

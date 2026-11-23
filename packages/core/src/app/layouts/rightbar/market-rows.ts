@@ -194,7 +194,7 @@ export function installedRows(
       ...(module.registry === undefined ? {} : { registry: module.registry }),
       removeViaBundle: true,
       canInstall: false,
-      canUpdate: (outdated || drifted) && blocked === undefined,
+      canUpdate: (outdated || drifted) && (blocked === undefined || blocked.kind === 'unverified'),
       canUninstall: true,
       version: { installed: module.installed, ...(latest === undefined ? {} : { latest }) },
       ...(drifted && declared !== undefined ? { reinstall: `${module.pkg}@${declared}` } : {}),

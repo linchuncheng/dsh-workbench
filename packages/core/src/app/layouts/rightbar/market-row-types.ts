@@ -76,6 +76,7 @@ export type MarketHintKey =
   | 'panels.market.updateNeedsWorkbench'
   | 'panels.market.updateNeedsDsh'
   | 'panels.market.updateIncompatible'
+  | 'panels.market.updateUnverified'
   | 'panels.market.selfUpdateMigration';
 
 export interface MarketHint {

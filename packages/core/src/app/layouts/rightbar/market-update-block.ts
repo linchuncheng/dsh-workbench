@@ -4,6 +4,7 @@ import type { MarketHint } from './market-row-types';
 
 export function updateBlockHintOf(block: ModuleUpdateBlock): MarketHint {
   if (block.kind === 'needs-workbench') return { key: 'panels.market.updateNeedsWorkbench' };
+  if (block.kind === 'unverified') return { key: 'panels.market.updateUnverified' };
   const dsh = requirementsText(block.requirements);
   if (dsh === undefined || block.runtimeVersion === undefined) {
     return { key: 'panels.market.updateIncompatible' };

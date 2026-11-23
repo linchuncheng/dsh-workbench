@@ -327,6 +327,7 @@ export const zh = {
   'panels.market.updateNeedsWorkbench': '这个版本需要先升级工作台。',
   'panels.market.updateNeedsDsh': '这个版本需要 {dsh}，当前 dsh 为 {runtime}。',
   'panels.market.updateIncompatible': '新版本与当前工作台不匹配，暂时无法更新。',
+  'panels.market.updateUnverified': '兼容性尚未验证，更新可能失败。',
   'panels.market.moduleRefused': '模块版本与工作台不匹配，暂时无法使用',
   'panels.market.moduleRestartHint': '重启 dsh 后生效',
   'panels.market.pendingRestart': '重启后生效',

@@ -273,7 +273,7 @@ export interface BundleCancellationPayload {
 }
 
 export interface ModuleUpdateBlock {
-  readonly kind: 'needs-workbench' | 'incompatible';
+  readonly kind: 'needs-workbench' | 'incompatible' | 'unverified';
   readonly requirements?: Readonly<Record<string, string>>;
   readonly runtimeVersion?: string;
 }

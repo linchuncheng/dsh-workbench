@@ -117,6 +117,7 @@ describe('工作台自己那份的新版（与模块同一条探针里一起回�
       pkg: CORE,
       installed: '0.1.18',
       latest: '0.1.19',
+      latestBlocked: { kind: 'unverified' },
       spec: '^0.1.18',
       registry: 'https://self.example/',
     });
@@ -235,6 +236,7 @@ describe('工作台自己那份的新版（与模块同一条探针里一起回�
       pkg: CORE,
       installed: '0.1.18',
       latest: '0.1.19',
+      latestBlocked: { kind: 'unverified' },
       spec: '^0.1.18',
       registry: 'https://self.example/',
     });

@@ -208,10 +208,13 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
           force: input.force,
           logger: input.logger,
         });
+  const listedEntry = latest === undefined ? undefined : visible.find((entry) => entry.version === latest);
   const blocked =
     latest === undefined
       ? undefined
-      : dshBlockOf(visible.find((entry) => entry.version === latest)?.incompatible);
+      : listedEntry === undefined
+        ? ({ kind: 'unverified' } as const)
+        : dshBlockOf(listedEntry.incompatible);
   const diskOlder =
     read.local !== true &&
     input.running !== undefined &&

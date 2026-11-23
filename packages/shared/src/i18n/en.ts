@@ -331,6 +331,7 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.updateNeedsWorkbench': 'This version needs a newer workbench first.',
   'panels.market.updateNeedsDsh': 'This version needs {dsh}; the running dsh is {runtime}.',
   'panels.market.updateIncompatible': 'The new version does not match this workbench, so it cannot be updated now.',
+  'panels.market.updateUnverified': 'Compatibility is unverified; the update may fail.',
   'panels.market.moduleRefused': 'This module does not match this workbench, so it cannot be used for now.',
   'panels.market.moduleRestartHint': 'restart dsh to apply',
   'panels.market.pendingRestart': 'restart required',
