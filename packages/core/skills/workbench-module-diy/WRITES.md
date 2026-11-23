@@ -43,7 +43,7 @@
    - 参数与返回细则见 [FAMILY.md](FAMILY.md) §4。
    - 仅测试环境 / 可撤销目标可由 agent 自行操作。
 
-   取证结果落成模块的写能力：`writes: true` + `needsApproval` + `approvalDetail`（[TOOLS.md](TOOLS.md) §6）。
+   取证结果落成模块的写能力：`writes: true` + `needsApproval` 的 `headline` + 客户端 `approval.plan`（[TOOLS.md](TOOLS.md) §6）。
 
 4. **文档 / 问用户** —— 接口文档、curl 样例都可用于确认需求；问法按 [STEPS.md](STEPS.md)，不问技术细节。
 

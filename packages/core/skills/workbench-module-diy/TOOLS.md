@@ -47,17 +47,17 @@
 
 ## 5 写操作：两步
 
-1. 预览：说清对象、值、去向，等用户确认。
+1. 预览：说清四行事实，等用户确认。
 2. 执行：确认后动平台，回报结果。
 
-第一步在对话里这样展示（第二步由审批屏回答「允许吗」，见 [DESIGN.md](DESIGN.md) §3）：
+第一步在对话里这样展示（第二步由审批屏的标题与四行回答，按钮承担「拒绝 / 允许一次」，见 [DESIGN.md](DESIGN.md) §3）：
 
 ```
 ┌─ 将要提交 ─────────────────────────────────┐
-│ 对象   订单 #2024-0815                     │
-│ 现值   待审核 → 已通过                     │
-│ 去向   订单平台 · 预发环境                 │
-│ 影响   1 单；可撤销（撤回审核）            │
+│ 修改项   #2024-0815                        │
+│ 修改后   已通过                            │
+│ 目标位置 订单平台 · 预发环境                │
+│ 影响范围 1 单；可撤销（撤回审核）           │
 └────────────────────────────────────────────┘
 ```
 
@@ -76,30 +76,29 @@
 
 ### 6.1 声明写法（缺一个 `contracts` 判据红）
 
-清单 `tools[]` 一条（`writes: true` + `key`），加 `needsApproval(call)` 与 `approvalDetail(call)`。
+清单 `tools[]` 一条（`writes: true` + `key`），加 `needsApproval(call)` 与客户端 `approval.plan`。
 
 - `key` 用 lowerCamelCase；执行 `dsh-wb-module sync` 生成 `src/declared-tools.ts`，代码里使用
   `DECLARED_TOOLS.rebuild.name`。工具名字面量只保留在清单里一处；键名错误会导致编译错误，生成物过期、只写一半或又出现字面量都会失败。
-- `needsApproval` 返回：
-  `{ kind: 'read' }` 不问；`{ kind: 'ask', reason, question, fallback }` 要问；
-  `{ kind: 'deny', reason }` 拒绝（reason 交给 agent；只放策略同步可判的事实）。`writes: true` 未认领 = deny。
-  `question` / `fallback` 需 zh / en。
-- `approvalDetail` 拿不到材料时返回 `{ blocked: '…' }` = 不弹。标题与详情形状见 [DESIGN.md](DESIGN.md) §3 末节：
-  标题只写一句；`approvalDetail` 仅用于没有详情表的族，每行不超过 20 字；长内容交给客户端 `approval.render` 的 `ApprovalPlan`。
-  宿主数据到不了浏览器，事实由工具参数重建。
+- `needsApproval`：`read` 不问；`ask` 给 `headline`（动作 + 对象，≤15 字，无「允许吗」）与
+  `question` / `fallback`（zh / en；`writeApprovalOf` 会补齐）；`deny` 给理由。`writes: true` 未认领 = deny。
+- `approval.plan` 必填：`{ object, change, target, impact }`，可带 `objectLabel` / `extra` / `warn`；
+  四行非空、单行；说不清就 `null` + `deny`。
+- `approval.render` 可选：接管详情区；空/抛错退回四行表。
+- `approvalDetail` 只给无 `headline` 的旧模块；没有材料返回 `{ blocked }`。
 
 ## 7 审批全场景
 
 | 情况 | 用户看到 | agent 得到 |
 |---|---|---|
 | 预览 | 不弹 | 预览内容 |
-| 执行且材料齐 | 这次会发生什么 + 允许吗 | 等待回答 |
+| 执行且材料齐 | 标题 + 四行 + 两个按钮 | 等待回答 |
 | 材料不齐 / 项目不符 / 能力关闭 | 不弹 | 停止原因 / 项目说明 |
 | 拒绝 / 批准后中途变化 | 关闭 / 当时那份材料 | 拒绝或失败原因，可照做 |
 | 本轮中断 / 后台 | 消失 / 不弹 | 本轮结束 / 自动禁止 |
 | 连发多件 | 逐条询问 | 逐条等待 |
 
-按钮与弹窗由工作台提供；模块只定明细：一行一事实。
+按钮与弹窗由工作台提供；模块定标题与四行，或交 `approval.render` 自定义详情。
 
 ## 8 外部供给
 

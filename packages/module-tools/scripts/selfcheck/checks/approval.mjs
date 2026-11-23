@@ -8,13 +8,13 @@ export const checks = [
   {
     title:
       '写工具的审批口径：writes:true 没给 needsApproval 就红（点名叫 needsApproval）；' +
-      '回了 ask 却没给 approvalDetail 也红（点名叫 approvalDetail）；' +
-      '按声明必填项造的合成调用、依赖参数的合法口径、拿不到 shell 的降级写法都不红；' +
+      '回了 ask 却没给 headline 或 approvalDetail 也红（点名叫 headline / approvalDetail）；' +
+      'plan 四行、headline 陈述句、按声明必填项造的合成调用、依赖参数的合法口径、拿不到 shell 的降级写法都不红；' +
       '没注册 parameters 时判红并点名叫 parameters',
     run(_ctx, report) {
       const title =
         '写工具的审批口径：writes:true 没给 needsApproval 就红（点名叫 needsApproval）；' +
-        '回了 ask 却没给 approvalDetail 也红（点名叫 approvalDetail）；' +
+        '回了 ask 却没给 headline 或 approvalDetail 也红（点名叫 headline / approvalDetail）；' +
         '按声明必填项造的合成调用、依赖参数的合法口径、拿不到 shell 的降级写法都不红；' +
         '没注册 parameters 时判红并点名叫 parameters';
       const probe = mkdtempSync(join(PACKAGES_DIR, '.approval-'));
@@ -34,10 +34,42 @@ export const checks = [
       const ASK = `{
       kind: 'ask',
       reason: '会覆盖产物',
+      headline: { zh: '重建 3 个模块', en: 'Rebuild 3 modules' },
       question: { zh: '要重建这 3 个模块吗？', en: 'Rebuild these 3 modules?' },
       fallback: { zh: '会覆盖它们的 dist 与 client.js', en: 'Overwrites their dist and client.js' },
     }`;
       const DETAIL = `{ zh: '会覆盖 3 个模块的产物，不碰源码', en: 'Overwrites 3 modules, sources untouched' }`;
+      const ASK_NO_HEADLINE = `{
+      kind: 'ask',
+      reason: '会覆盖产物',
+      question: { zh: '要重建这 3 个模块吗？', en: 'Rebuild these 3 modules?' },
+      fallback: { zh: '会覆盖它们的 dist 与 client.js', en: 'Overwrites their dist and client.js' },
+    }`;
+      const goodPlan = `(input, t) => ({
+        object: '演示对象',
+        change: '改一下',
+        target: '本机',
+        impact: '只改这一条',
+      })`;
+      const clientSource = (planSource) => `window.__ModuleLoader__.load({
+  id: "@dsh-workbench/module-demo-approval",
+  factory() {
+    const face = {
+      unit: "demo-approval",
+      approval: {
+        tools: ["demo_write"],
+        plan: ${planSource},
+      },
+    };
+    return {
+      apply(ctx) {
+        const units = ctx.get("workbenchUnits");
+        if (units !== undefined) units.registerUnit(face);
+      },
+    };
+  },
+});
+`;
       const faceSource = (parameters, hooks) => `const face = {
   unit: 'demo-approval',
   mount: ({ ctx }) => ({
@@ -105,18 +137,54 @@ export function apply(ctx) {
         writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
         writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
         writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
+        writeFileSync(join(probe, 'client.js'), clientSource(goodPlan));
 
         writeFileSync(join(probe, 'dist/host.js'), faceSource('', ''));
         expectRed('会写却没认领审批', 'needsApproval');
 
-        writeFileSync(
-          join(probe, 'dist/host.js'),
-          faceSource('', `needsApproval: () => (${ASK}),\n    approvalDetail: () => (${DETAIL}),`),
-        );
+        const writeAskHost = () =>
+          writeFileSync(
+            join(probe, 'dist/host.js'),
+            faceSource('', `needsApproval: () => (${ASK}),\n    approvalDetail: () => (${DETAIL}),`),
+          );
+        writeAskHost();
         expectGreen('补上审批口径之后');
 
         writeFileSync(join(probe, 'dist/host.js'), faceSource('', `needsApproval: () => (${ASK}),`));
-        expectRed('回了 ask 却没给 approvalDetail', 'approvalDetail');
+        expectGreen('有 headline 时 approvalDetail 可以省');
+
+        writeFileSync(join(probe, 'dist/host.js'), faceSource('', `needsApproval: () => (${ASK_NO_HEADLINE}),`));
+        expectRed('回了 ask 却没给 headline 或 approvalDetail', 'headline');
+
+        writeFileSync(
+          join(probe, 'dist/host.js'),
+          faceSource(
+            '',
+            `needsApproval: () => ({ ...${ASK}, headline: { zh: '${'动'.repeat(16)}', en: 'Long headline' } }),\n` +
+              `    approvalDetail: () => (${DETAIL}),`,
+          ),
+        );
+        expectRed('headline 超过 15 字', 'headline');
+        writeAskHost();
+
+        writeFileSync(join(probe, 'client.js'), clientSource('undefined'));
+        writeAskHost();
+        expectRed('有写工具、有标题，但客户端没有 plan', 'approval.plan');
+        writeFileSync(join(probe, 'client.js'), clientSource(goodPlan));
+
+        writeFileSync(
+          join(probe, 'client.js'),
+          clientSource(`(input, t) => ({ object: '', change: '改一下', target: '本机', impact: '只改这一条' })`),
+        );
+        writeAskHost();
+        expectRed('plan 的「修改项」为空', '修改项');
+        writeFileSync(join(probe, 'client.js'), clientSource(goodPlan));
+
+        writeFileSync(
+          join(probe, 'dist/host.js'),
+          faceSource('', `needsApproval: () => (${ASK_NO_HEADLINE}),\n    approvalDetail: () => (${DETAIL}),`),
+        );
+        expectRed('回了 ask、有明细却没 headline', 'headline');
 
         writeFileSync(
           join(probe, 'dist/host.js'),

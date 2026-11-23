@@ -7,6 +7,7 @@ import {
   APPROVAL_QUESTION_LIMIT,
   approvalFor,
   withApprovalNote,
+  writeApprovalOf,
   type ApprovalCall,
   type ApprovalPolicy,
 } from '@dsh-workbench/shared/host';
@@ -447,5 +448,104 @@ describe('withApprovalNote：给写工具的参数表加一格附注', () => {
 
     expect(withApprovalNote(odd)).toBe(odd);
     expect(withApprovalNote({ type: 'object', properties: null })).toEqual({ type: 'object', properties: null });
+  });
+});
+
+const withHeadline = (): {
+  kind: 'ask';
+  reason: string;
+  headline: { en: string; zh: string };
+  question: { en: string; zh: string };
+  fallback: { en: string; zh: string };
+} => ({
+  kind: 'ask',
+  reason: 'writes for real',
+  headline: { en: 'Release version 1.5.0', zh: '发布版本 1.5.0' },
+  question: { en: 'it really does it. Allow?', zh: '会真的做这件事。允许吗？' },
+  fallback: { en: 'The agent wants to do it. Allow?', zh: 'agent 想真的做这件事。允许吗？' },
+});
+
+describe('headline：有它就用它，不再拼明细与问句', () => {
+  it('★ headline 覆盖明细、问句与附注', async () => {
+    const decision = await approvalFor(noted(writer), {
+      writes: true,
+      policy: withHeadline,
+      declaredNote: true,
+      detailOf: () => ({ en: 'Release V1 → test', zh: '要发布 V1 → test' }),
+    });
+
+    expect(decision?.kind === 'ask' ? decision.displayReason : undefined).toEqual({
+      en: 'Release version 1.5.0',
+      zh: '发布版本 1.5.0',
+    });
+    expect(decision?.kind === 'ask' ? decision.reason : '').toBe('writes for real');
+  });
+
+  it('★ headline 里的折行压平；空 headline 退回旧拼装', async () => {
+    const folded = await approvalFor(writer, {
+      writes: true,
+      policy: () => ({ ...withHeadline(), headline: { en: 'Release\nversion 1.5.0', zh: '发布版本\n1.5.0' } }),
+    });
+    const blank = await approvalFor(writer, {
+      writes: true,
+      policy: () => ({ ...withHeadline(), headline: { en: '', zh: '' } }),
+      detailOf: () => ({ en: 'Release V1 → test', zh: '要发布 V1 → test' }),
+    });
+
+    expect(folded?.kind === 'ask' ? folded.displayReason.zh : '').toBe('发布版本 1.5.0');
+    expect(blank?.kind === 'ask' ? blank.displayReason.zh : '').toContain('要发布 V1 → test');
+    expect(blank?.kind === 'ask' ? blank.displayReason.zh : '').toContain('允许吗');
+  });
+});
+
+describe('writeApprovalOf：headline 可以按调用算，明细可以省', () => {
+  const publish = () =>
+    writeApprovalOf({
+      tools: ['workbench_publish'],
+      reason: 'writes for real',
+      headline: (call) => {
+        const version = String((call.arguments as Record<string, unknown>)['version'] ?? '');
+        return { zh: `发布版本 ${version}`, en: `Release version ${version}` };
+      },
+    });
+
+  it('★ 只有 headline：question / fallback 用它补，approvalDetail 为空', () => {
+    const approval = publish();
+    const call = { name: 'workbench_publish', arguments: { version: '1.5.0' } };
+    const verdict = approval.needsApproval(call);
+
+    expect(verdict).toEqual({
+      kind: 'ask',
+      reason: 'writes for real',
+      headline: { en: 'Release version 1.5.0', zh: '发布版本 1.5.0' },
+      question: { en: 'Release version 1.5.0', zh: '发布版本 1.5.0' },
+      fallback: { en: 'Release version 1.5.0', zh: '发布版本 1.5.0' },
+    });
+    expect(approval.approvalDetail(call)).toBeUndefined();
+  });
+
+  it('★ 什么文案都没给：拒，不发起说不出话的审批', () => {
+    const approval = writeApprovalOf({ tools: ['workbench_demo'], reason: 'writes for real' });
+
+    expect(approval.needsApproval({ name: 'workbench_demo' })).toMatchObject({ kind: 'deny' });
+  });
+
+  it('★ 旧的静态 question / fallback / detail 原样保留', () => {
+    const approval = writeApprovalOf({
+      tools: ['workbench_demo'],
+      reason: 'writes for real',
+      question: { en: 'Do it?', zh: '要做吗？' },
+      fallback: { en: 'The agent wants to do it. Allow?', zh: 'agent 想真的做这件事。允许吗？' },
+      detail: { en: 'One item', zh: '一条' },
+    });
+    const call = { name: 'workbench_demo', arguments: {} };
+
+    expect(approval.needsApproval(call)).toEqual({
+      kind: 'ask',
+      reason: 'writes for real',
+      question: { en: 'Do it?', zh: '要做吗？' },
+      fallback: { en: 'The agent wants to do it. Allow?', zh: 'agent 想真的做这件事。允许吗？' },
+    });
+    expect(approval.approvalDetail(call)).toEqual({ en: 'One item', zh: '一条' });
   });
 });

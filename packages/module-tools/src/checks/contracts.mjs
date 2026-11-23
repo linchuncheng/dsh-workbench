@@ -20,6 +20,16 @@ import {
   declaredToolsApplies,
 } from '../contract/declared-tools.mjs';
 import { discoverPackages, workspaceRootOf } from '../support/discover.mjs';
+import {
+  HEAD_BUDGETS,
+  LONG_SCALE,
+  budgetProbeOf,
+  headlineFloorProblemsOf,
+  headlineProblemsOf,
+  planProblemsOf,
+  probeCallOf,
+} from '../support/approval-plan.mjs';
+import { loadRegisteredClientFace } from '../support/client-face.mjs';
 import { readDesign } from '../contract/design.mjs';
 import { DEFAULT_FACES } from '../contract/faces.mjs';
 import { datasourceProblemOf } from '../contract/datasource-file.mjs';
@@ -35,6 +45,8 @@ const PLATFORMS = new Set(['web']);
 const UNIT_ID = /^[a-z][a-z0-9-]*$/;
 
 const SHELL = '@dsh-workbench/core';
+
+export { HEAD_BUDGETS } from '../support/approval-plan.mjs';
 
 export const title = '模块契约';
 
@@ -488,96 +500,6 @@ function mountOf(face, created, manifest, tools) {
 const LONG_TASK_METHODS = ['start', 'snapshot', 'active', 'current', 'live', 'stop', 'onChange', 'recheck', 'answer'];
 
 const LONG_TASK_RENDERERS = ['useLongTask', 'LongTaskRow', 'longTaskDot'];
-
-function placeholderOf(schema) {
-  if (typeof schema !== 'object' || schema === null) return null;
-  if (Array.isArray(schema.enum) && schema.enum.length > 0) return schema.enum[0];
-  if (schema.type === 'string') return 'probe';
-  if (schema.type === 'number' || schema.type === 'integer') return 1;
-  if (schema.type === 'boolean') return true;
-  if (schema.type === 'array') return [];
-  if (schema.type === 'object') return {};
-  return null;
-}
-
-function probeCallOf(tool) {
-  const schema = tool?.parameters;
-  if (typeof schema !== 'object' || schema === null) {
-    return { arguments: {}, shaped: false };
-  }
-  const properties = typeof schema.properties === 'object' && schema.properties !== null ? schema.properties : {};
-  const required = Array.isArray(schema.required) ? schema.required : [];
-  const args = {};
-  for (const key of required) args[key] = placeholderOf(properties[key]);
-  if (Object.prototype.hasOwnProperty.call(properties, 'confirm')) args.confirm = true;
-  return { arguments: args, shaped: true };
-}
-
-export const HEAD_BUDGETS = { detail: 20, question: 40, fallback: 40 };
-
-const EN_RATIO = 3;
-
-const LONG_SCALE = 3;
-
-const FREE_TEXT = /message|note|reason|body|text|content|comment|title|description|summary/i;
-const LONG_TEXT = '这里是一段真实长度的正文用来量头行预算不要把这种内容放进标题里'.repeat(2);
-const LONG_ID = '真实长度的名字十二个字';
-
-function budgetProbeOf(tool) {
-  const schema = tool?.parameters;
-  if (typeof schema !== 'object' || schema === null) return undefined;
-  const properties = typeof schema.properties === 'object' && schema.properties !== null ? schema.properties : {};
-  const args = {};
-  for (const [key, prop] of Object.entries(properties)) {
-    if (key === 'confirm') {
-      args.confirm = true;
-      continue;
-    }
-    if (Array.isArray(prop?.enum) && prop.enum.length > 0) args[key] = prop.enum[0];
-    else if (prop?.type === 'string') args[key] = FREE_TEXT.test(key) ? LONG_TEXT : LONG_ID;
-    else if (prop?.type === 'number' || prop?.type === 'integer') args[key] = 1;
-    else if (prop?.type === 'boolean') args[key] = true;
-    else if (prop?.type === 'array') args[key] = [];
-    else if (prop?.type === 'object') args[key] = {};
-  }
-  return args;
-}
-
-function headlineProblemsOf(name, toolName, verdict, facts, when = '', scale = 1) {
-  const problems = [];
-  const blocked = facts !== undefined && 'blocked' in facts;
-  const hasDetail = facts !== undefined && !blocked;
-  const segments = [
-    ['明细（approvalDetail）', 'detail', hasDetail ? text(facts.zh) : '', hasDetail ? text(facts.en) : ''],
-    ['问句（question）', 'question', text(verdict?.question?.zh), text(verdict?.question?.en)],
-    ['回退句（fallback）', 'fallback', text(verdict?.fallback?.zh), text(verdict?.fallback?.en)],
-  ];
-  for (const [label, key, zh, en] of segments) {
-    if (zh === '' && en === '') continue;
-    if (/\n|\r/.test(zh) || /\n|\r/.test(en)) {
-      problems.push(
-        `${name}: 写工具 ${toolName} 的${label}${when}里有换行 —— 审批头行是纯文本、没有 white-space，` +
-          `换行会被合并为空格，屏幕上会挤成一行。请压缩成一句，长内容放入 approval.render（卡片上的该格详情）`,
-      );
-    }
-    const cap = HEAD_BUDGETS[key] * scale;
-    const enCap = Math.round(cap * EN_RATIO);
-    if (zh.length > cap) {
-      problems.push(
-        `${name}: 写工具 ${toolName} 的${label}${when}太长（${zh.length} 字 > 预算 ${cap} 字）：「${zh}」—— ` +
-          `头行三段各有预算（明细 ≤${HEAD_BUDGETS.detail} / 问句 ≤${HEAD_BUDGETS.question} / ` +
-          `回退句 ≤${HEAD_BUDGETS.fallback} 字），其余（列表 / 正文 / 多字段 / 可变长内容）放入 approval.render 该格`,
-      );
-    }
-    if (en.length > enCap) {
-      problems.push(
-        `${name}: 写工具 ${toolName} 的${label}${when}（英文）太长（${en.length} 字符 > 预算 ${enCap}）：「${en}」—— ` +
-          `英文侧按中文的 ${EN_RATIO} 倍计算，超出时同样移入 approval.render`,
-      );
-    }
-  }
-  return problems;
-}
 
 function installed(specifier, from) {
   try {
@@ -1113,6 +1035,32 @@ export async function run() {
         }
         continue;
       }
+      let clientFace;
+      if (!existsSync(join(pkg.dir, 'client.js'))) {
+        problems.push(
+          `${name}: 没有客户端产物 client.js —— 写工具的审批详情在浏览器侧，无法检查 approval.tools / approval.plan`,
+        );
+      } else {
+        try {
+          clientFace = loadRegisteredClientFace(join(pkg.dir, 'client.js'));
+        } catch (error) {
+          problems.push(
+            `${name}: 客户端产物无法加载：${error instanceof Error ? error.message : String(error)} —— ` +
+              '写工具的审批详情在浏览器侧，无法检查 approval.tools / approval.plan',
+          );
+        }
+      }
+      const approval = clientFace?.approval;
+      if (clientFace !== undefined && (typeof approval !== 'object' || approval === null)) {
+        problems.push(
+          `${name}: 客户端产物没有 approval 面 —— 写工具的审批详情没有认领者，审批屏只会画空白；` +
+            '在 UnitClientFace 上补 approval: { tools, plan }',
+        );
+      }
+      if (approval?.render !== undefined && typeof approval.render !== 'function') {
+        problems.push(`${name}: approval.render 必须是函数 —— 它不是函数时四行表仍然可用，但自定义详情永远不会生效`);
+      }
+      const planT = (key) => text(clientFace?.messages?.zh?.[key]) || key;
       const registered = new Map(tools.map((tool) => [text(tool?.name), tool]));
       const readOnProbe = [];
       for (const tool of writeTools) {
@@ -1122,6 +1070,20 @@ export async function run() {
           ? ''
           : `（registerTools() 没注册出 ${tool.name} 的 parameters，判据只能用空参数探 —— ` +
             `你的判断依赖参数的话，注册时把 parameters 那个 JSON Schema 一起交出来）`;
+        const claimed = Array.isArray(approval?.tools) && approval.tools.includes(tool.name);
+        if (!claimed) {
+          problems.push(
+            `${name}: 写工具 ${tool.name} 没有在客户端 approval.tools 里认领 —— ` +
+              '审批详情按工具名找认领者；没有认领时只剩工作台的兜底，模块说不出这次改什么',
+          );
+        }
+        const plan = approval?.plan;
+        if (typeof plan !== 'function') {
+          problems.push(
+            `${name}: 写工具 ${tool.name} 缺少 approval.plan —— ` +
+              '审批详情至少要有 object / change / target / impact 四行；plan 是必填的数据来源，render 不能替代它',
+          );
+        }
         if (typeof mounted.needsApproval !== 'function') {
           problems.push(
             `${name}: 工具 ${tool.name} 的清单里写着 writes:true，但 mount() 的返回值里没有 needsApproval —— ` +
@@ -1166,6 +1128,30 @@ export async function run() {
           readOnProbe.push(tool.name);
           continue;
         }
+        const headlineFloor = headlineFloorProblemsOf(name, tool.name, verdict);
+        const headlineOk = headlineFloor.length === 0;
+        problems.push(...headlineFloor);
+        if (typeof plan === 'function') {
+          let planFacts;
+          let planThrew = false;
+          try {
+            planFacts = plan({ tool: tool.name, args: call.arguments }, planT);
+          } catch (error) {
+            planThrew = true;
+            problems.push(
+              `${name}: 写工具 ${tool.name} 的 approval.plan 在合成调用 ${JSON.stringify(call.arguments)} 上抛出异常 —— ${String(error)}`,
+            );
+          }
+          if (!planThrew) {
+            if (planFacts !== null && typeof planFacts?.then === 'function') {
+              problems.push(
+                `${name}: 写工具 ${tool.name} 的 approval.plan 返回了 Promise —— plan 必须是同步纯函数：审批详情座不等待网络`,
+              );
+            } else {
+              problems.push(...planProblemsOf(name, tool.name, planFacts));
+            }
+          }
+        }
         let facts;
         try {
           facts = await mounted.approvalDetail?.(call);
@@ -1207,17 +1193,17 @@ export async function run() {
             );
           }
         }
-        if (facts === undefined || 'blocked' in facts) {
+        if ((facts === undefined || 'blocked' in facts) && !headlineOk) {
           headlineNotes.push(
             `${name}: 写工具 ${tool.name} 的 approvalDetail 在合成调用上没有明细（需要实际生成计划或预览后才有）—— ` +
               `头行预算仅验证到问句与回退句部分；明细那一句请作者按「一句话、≤${HEAD_BUDGETS.detail} 字」自行检查：` +
               `超出时就把长内容放入 approval.render 该格`,
           );
         }
-        if (!described) {
+        if (!described && !headlineOk) {
           problems.push(
             `${name}: 写工具 ${tool.name} 的 needsApproval 对合成调用回了 ask（需要批准），` +
-              `但 approvalDetail 没有说明"本次会发生什么"（zh/en 或 {blocked}）—— ` +
+              `但既没有 headline，approvalDetail 也没有说明"本次会发生什么"（zh/en 或 {blocked}）—— ` +
               `审批屏上用户只能看到一句通用问句，看不到会影响什么${cannotShape}`,
           );
         }
@@ -1227,7 +1213,7 @@ export async function run() {
           `写工具 ${readOnProbe.join(' / ')} 按合成调用返回了"这次不用询问"（kind: 'read' 或 'deny'）—— ` +
             `判据只能验证到这一步：它是否属于"参数中带 confirm 才实际写入" / "本次操作确实无法执行"这类**合法**口径，` +
             `合成调用无法体现（必填项给的是占位值，不是真实写入参数）。请作者自行确认一次：` +
-            `实际调用是否会 ask、ask 时 approvalDetail 是否说明清楚`,
+            `实际调用是否会 ask、ask 时 headline 是否具体、plan 的四行是否说清`,
         );
       }
     }

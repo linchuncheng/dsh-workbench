@@ -102,8 +102,9 @@ pnpm prepack                 # 打包前构建（npm pack / publish 自动触发
   `dsh.workbench.tools` 完全一致。`__UNIT___run` 启动一次流程，传入 `runId` 则只查看同一次运行。
 - **长任务**：`deps.longTasks.create()` 返回一张注册表，在 `run` 中调用 `deps.flow.run()`，并把
   `onStep` 交给 `longTaskStepOf`（shared/host 的默认映射）；卡片用 `useLongTask` 读取，用 `LongTaskRow` 渲染。
-- **写通道 + 审批**：`__UNIT___add_note` 在清单中写 `writes: true`，`mount()` 返回 `needsApproval`（本次需要批准）
-  与 `approvalDetail`（审批屏上说明"会写什么"）；agent 调用前，工作台会拦截一次。卡片上的按钮走动作通道
+- **写通道 + 审批**：`__UNIT___add_note` 在清单中写 `writes: true`，`mount()` 返回 `needsApproval`
+  （本次需要批准）与 `headline`（具体标题）；客户端提交 `approval.plan`（对象 / 修改后 / 目标位置 / 影响范围
+  四行，可加 extra），`approvalDetail` 可省。agent 调用前，工作台会拦截一次。卡片上的按钮走动作通道
   `<unit>-add-note`（点击即确认，不审批），与写工具共用同一份 `deps.store` 数据；网络或校验失败
   显示在按钮下方，不会静默失败。
 - **配置（prefs）**：`mount()` 返回 `prefs: { resource, handle }`，按工作区把"显示几个文件"保存到

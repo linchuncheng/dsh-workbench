@@ -1,5 +1,6 @@
 import type { ClientContext, UnitClientApi, UnitClientFace } from '@dsh-workbench/core/contract';
 import { OverviewCard } from './components/OverviewCard';
+import { DECLARED_TOOLS } from './declared-tools';
 import { messages } from './messages';
 
 const UNIT_ID = '__UNIT__';
@@ -14,6 +15,21 @@ const face: UnitClientFace = {
       onRefresh: props.onRefresh,
       t: props.t,
     }),
+  approval: {
+    tools: [DECLARED_TOOLS.addNote.name],
+    plan: (input, t) => {
+      const raw = typeof input.args['text'] === 'string' ? input.args['text'] : '';
+      const text = raw.replace(/\s+/g, ' ').trim();
+      return {
+        object: t('__UNIT__.approval.object'),
+        objectLabel: t('__UNIT__.approval.objectLabel'),
+        change: t('__UNIT__.approval.change'),
+        target: t('__UNIT__.approval.target'),
+        impact: t('__UNIT__.approval.impact'),
+        ...(text === '' ? {} : { extra: [{ label: t('__UNIT__.approval.extraLabel'), value: text }] }),
+      };
+    },
+  },
 };
 
 export const inject = ['workbenchUnits'];

@@ -98,11 +98,11 @@ export const apply = plugin.apply;
 再 `ctx.effect(() => units.register(face), '<unit>: 注册')`。
 
 `mount({ data })` 的 `data` 是统一数据端口（`DataReader`）；读数据用 `data.read(...)`，不要自己 import adapter。
-`mount()` 返回 `UnitMountResult`：`routes`、`registerTools()`，以及可选的 `factsOf` / `gate` / `context` / `warmReads` / `prefs` / `actions` / `provision` / `longTasks` / `approvalDetail` / `needsApproval`。`routes` 挂 `/workbench/api/<路由>`，只许 GET，
+`mount()` 返回 `UnitMountResult`：`routes`、`registerTools()`，以及可选的 `factsOf` / `gate` / `context` / `warmReads` / `prefs` / `actions` / `provision` / `longTasks` / `approvalDetail` / `needsApproval` / `headline`。`routes` 挂 `/workbench/api/<路由>`，只许 GET，
 键必须在 `<unit>` 或 `<unit>/…` 之下（否则装配抛错）。错误返回
 `{ ok: false, error: { code, message, hint? } }`（HTTP 200，工作台转发）。`registerTools` 提供模块工具。
 
-浏览器面：`units.registerUnit({ unit, messages, card })`；清单由工作台从已安装清单读取，不在面里重复。`card` 收到
+浏览器面：`units.registerUnit({ unit, messages, card })`，写工具再加 `approval: { tools, plan, render? }`；清单由工作台从已安装清单读取，不在面里重复。`card` 收到
 `{ t, world, refreshToken, onRefresh, onSummary }`（`world.current.workspace` 为当前项目），返回元素。
 三态用 kit：加载 `kit.components.SkeletonRows`；空 `kit.components.EmptyState`（无按钮）；
 错误 `kit.components.BlockerState` + `kit.lib.blockerOfError(error, t)`。

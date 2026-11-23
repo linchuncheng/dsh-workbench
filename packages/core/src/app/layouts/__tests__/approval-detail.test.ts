@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { Translate, UnitManifest } from '@dsh-workbench/shared';
-import { ApprovalDetail, ApprovalPlan, zh } from '@dsh-workbench/shared';
+import type { ApprovalPlanData, Translate, UnitClientFace, UnitManifest } from '@dsh-workbench/shared';
+import { ApprovalDetail, ApprovalPlan, CardBoundary, zh } from '@dsh-workbench/shared';
 import {
   marketSourceRows,
   moduleSupplyRows,
@@ -256,7 +256,13 @@ describe('审批详情座：外壳自己的族也画同一件 ApprovalPlan', () 
 
 interface SeatNode {
   readonly type?: unknown;
-  readonly props?: { readonly code?: unknown; readonly rows?: readonly unknown[]; readonly children?: unknown } | null;
+  readonly props?: {
+    readonly code?: unknown;
+    readonly rows?: readonly unknown[];
+    readonly warn?: unknown;
+    readonly fallback?: unknown;
+    readonly children?: unknown;
+  } | null;
 }
 
 function seatOf(
@@ -509,5 +515,140 @@ describe('模块外部供给审批：要装的插件与库摆进详情座', () =
 
     expect(seat?.props?.rows).toHaveLength(3);
     expect(seat?.props?.code).toBeUndefined();
+  });
+});
+
+function moduleSeatOf(
+  face: UnitClientFace | undefined,
+  args: Record<string, unknown> = { id: '136' },
+  renderShell?: ((input: Parameters<typeof shellApprovalDetail>[0], t: Translate) => unknown) | undefined,
+): SeatNode | null {
+  const root = { callId: 'c1', name: 'demo_write', phase: 'start', argsRaw: JSON.stringify(args) };
+  const snapshot = { nodes: { values: () => [{ kind: 'tool-call', data: { root } }] } };
+  const useChat = ((selector: (value: unknown) => unknown) => selector(snapshot)) as never;
+  return ApprovalDetail({
+    callId: 'c1',
+    useChat,
+    units: face === undefined ? [] : [face],
+    renderShell: renderShell as never,
+    t,
+  }) as SeatNode | null;
+}
+
+function rowsOf(node: SeatNode | null): readonly { readonly label: string; readonly value: string }[] {
+  return (node?.props?.rows ?? []) as readonly { readonly label: string; readonly value: string }[];
+}
+
+const planData = (objectLabel?: string): ApprovalPlanData => ({
+  object: '#136',
+  change: '激活 → 已解决',
+  target: '演示平台 · 预发',
+  impact: '只改这一条；不改其他',
+  ...(objectLabel === undefined ? {} : { objectLabel }),
+  extra: [{ label: '当前状态', value: '激活' }],
+  warn: '提交后不可撤回',
+});
+
+const planFace = (overrides: Partial<NonNullable<UnitClientFace['approval']>> = {}): UnitClientFace => ({
+  unit: 'demo',
+  approval: {
+    tools: ['demo_write'],
+    plan: () => planData('缺陷'),
+    ...overrides,
+  } as NonNullable<UnitClientFace['approval']>,
+});
+
+describe('模块审批详情：四行是下限，render 是上限', () => {
+  it('★ 默认画四行 + extra + warn，第一格用领域标签', () => {
+    const node = moduleSeatOf(planFace());
+    const rows = rowsOf(node);
+
+    expect(node?.type).toBe(ApprovalPlan);
+    expect(rows.map((row) => [row.label, row.value])).toEqual([
+      ['缺陷', '#136'],
+      ['修改后', '激活 → 已解决'],
+      ['目标位置', '演示平台 · 预发'],
+      ['影响范围', '只改这一条；不改其他'],
+      ['当前状态', '激活'],
+    ]);
+    expect(node?.props?.warn).toBe('提交后不可撤回');
+  });
+
+  it('★ 没给 objectLabel 就用默认「修改项」', () => {
+    const node = moduleSeatOf(planFace({ plan: () => planData() }));
+
+    expect(rowsOf(node)[0]).toEqual({ label: '修改项', value: '#136' });
+  });
+
+  it('★ render 接管详情区，拿到 plan；返回 null 退回四行表', () => {
+    const face = planFace({ render: ({ plan }: { plan: ApprovalPlanData }) => `custom ${plan.object}` });
+    const custom = moduleSeatOf(face);
+
+    expect(custom?.type).toBe(CardBoundary);
+    expect(custom?.props?.children).toBe('custom #136');
+    expect(custom?.props?.fallback).toBeDefined();
+
+    const blank = moduleSeatOf(planFace({ render: () => null }));
+    expect(blank?.type).toBe(ApprovalPlan);
+    expect(rowsOf(blank)).toHaveLength(5);
+  });
+
+  it('★ render 抛错退回四行表；plan 抛错/返回空显示详情缺失', () => {
+    const thrown = moduleSeatOf(
+      planFace({
+        render: () => {
+          throw new Error('boom');
+        },
+      }),
+    );
+    expect(thrown?.type).toBe(ApprovalPlan);
+    expect(rowsOf(thrown)).toHaveLength(5);
+
+    const planThrows = moduleSeatOf(
+      planFace({
+        plan: () => {
+          throw new Error('boom');
+        },
+      }),
+    );
+    expect(planThrows?.type).toBe(ApprovalPlan);
+    expect(rowsOf(planThrows)).toHaveLength(0);
+    expect(String(planThrows?.props?.warn)).toContain('没有说明本次会改动什么');
+
+    const planNull = moduleSeatOf(planFace({ plan: () => null }));
+    expect(planNull?.type).toBe(ApprovalPlan);
+    expect(rowsOf(planNull)).toHaveLength(0);
+  });
+
+  it('★ 旧模块只有 render：照旧画 render；没有 plan 也不退到 command', () => {
+    const render = () => 'legacy detail';
+    const legacy: UnitClientFace = {
+      unit: 'demo',
+      approval: { tools: ['demo_write'], render },
+    };
+    const node = moduleSeatOf(legacy, { id: '136', command: 'rm -rf /tmp/x' });
+    const child = node?.props?.children as { readonly type?: unknown } | undefined;
+
+    expect(node?.type).toBe(CardBoundary);
+    expect(child?.type).toBe(render);
+    expect(node?.props?.code).toBeUndefined();
+  });
+
+  it('★ 模块写工具没有 plan / render：画详情缺失警告，不退到 args.command', () => {
+    const manifest: UnitManifest = {
+      id: 'demo',
+      title: { zh: '演示', en: 'Demo' },
+      titleKey: 'dsh-workbench.unit.demo.title',
+      card: null,
+      tools: [{ name: 'demo_write', writes: true }],
+      host: { inject: [] },
+    };
+    const node = moduleSeatOf(undefined, { id: '136', command: 'rm -rf /tmp/x' }, shellApprovalRenderer(() => [manifest]));
+    const shell = node?.props?.children as SeatNode | undefined;
+
+    expect(shell?.type).toBe(ApprovalPlan);
+    expect(rowsOf(shell ?? null)).toHaveLength(0);
+    expect(String(shell?.props?.warn)).toContain('没有说明本次会改动什么');
+    expect(node?.props?.code).toBeUndefined();
   });
 });

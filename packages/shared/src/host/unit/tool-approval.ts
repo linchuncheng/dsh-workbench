@@ -79,8 +79,9 @@ export interface ApprovalCall {
 
 /**
  * 模块对一次写调用给出的判定：`read` 只是看看、`allow` 会写但本模块不问、`deny` 这一次根本跑不成
- * （连问都不该问，`reason` 原样交给 agent）、`ask` 要用户点头（`question` 接在明细后，`fallback` 是没明细时的整句；
- * `noteInDetail` 为真表示模块把 agent 的附注画在自己的详情座里，标题只留动作、不再追加）。
+ * （连问都不该问，`reason` 原样交给 agent）、`ask` 要用户点头（`headline` 是具体标题；没有它时
+ * `question` 接在明细后，`fallback` 是没明细时的整句；`noteInDetail` 为真表示模块把 agent 的附注
+ * 画在自己的详情座里，标题只留动作、不再追加）。
  */
 export type ApprovalVerdict =
   | { readonly kind: 'read' }
@@ -92,6 +93,7 @@ export type ApprovalVerdict =
   | {
       readonly kind: 'ask';
       readonly reason: string;
+      readonly headline?: ApprovalDetail | undefined;
       readonly question: ApprovalDetail;
       readonly fallback: ApprovalDetail;
       readonly noteInDetail?: boolean;
@@ -175,40 +177,76 @@ export async function approvalFor(
   const note =
     context.declaredNote === true && verdict.noteInDetail !== true ? approvalNoteOf(call) : undefined;
 
+  const headline = verdict.headline;
+  const displayReason =
+    headline !== undefined && headline.zh.trim() !== '' && headline.en.trim() !== ''
+      ? { en: oneLine(headline.en), zh: oneLine(headline.zh) }
+      : compose(facts, verdict, note);
+
   return {
     kind: 'ask',
     reason: verdict.reason,
-    displayReason: compose(facts, verdict, note),
+    displayReason,
   };
 }
 
 /**
- * 「写工具要点头」那一对的默认口径：点名的工具一律 `ask` + 同一份明细，其余一律 `read`。
+ * 审批屏上的一段中英文文本：给值，或按每次调用算。
+ */
+export type ApprovalText = ApprovalDetail | ((call: ApprovalCall) => ApprovalDetail);
+
+/**
+ * 「写工具要点头」那一对的默认口径：点名的工具一律 `ask`，其余一律 `read`。
  * 把它直接摊在 `mount()` 的返回值里：`...writeApprovalOf({ … })`。
  * @param options.tools 需要点头的工具名。
  * @param options.reason 为什么问（给 agent 看的理由）。
- * @param options.question 问句（zh / en，≤40 字）。
- * @param options.fallback 没有明细时的整句（zh / en，≤40 字）。
- * @param options.detail 审批屏头行那句明细（zh / en，≤20 字）。
+ * @param options.headline 审批屏的标题；有它时 `approvalDetail` 可以省，默认也用标题补 question / fallback。
+ * @param options.question 问句（zh / en，≤40 字）；不给就取 `headline`。
+ * @param options.fallback 没有明细时的整句（zh / en，≤40 字）；不给就取 `headline`。
+ * @param options.detail 审批屏头行那句明细（zh / en，≤20 字）；有 `headline` 时可以省。
  * @returns `{ needsApproval, approvalDetail }`。
  */
-export function writeApprovalOf(options: {
+export interface WriteApprovalOptions {
   readonly tools: readonly string[];
   readonly reason: string;
-  readonly question: ApprovalDetail;
-  readonly fallback: ApprovalDetail;
-  readonly detail: ApprovalDetail;
-}): {
+  readonly headline?: ApprovalText | undefined;
+  readonly question?: ApprovalText | undefined;
+  readonly fallback?: ApprovalText | undefined;
+  readonly detail?: ApprovalText | undefined;
+}
+
+function resolveText(value: ApprovalText | undefined, call: ApprovalCall): ApprovalDetail | undefined {
+  if (value === undefined) return undefined;
+  return typeof value === 'function' ? value(call) : value;
+}
+
+export function writeApprovalOf(options: WriteApprovalOptions): {
   needsApproval(call: ApprovalCall): ApprovalVerdict;
   approvalDetail(call: ApprovalCall): ApprovalFacts | undefined;
 } {
   const tools = new Set(options.tools);
   const named = (call: ApprovalCall): boolean => call.name !== undefined && tools.has(call.name);
   return {
-    needsApproval: (call) =>
-      named(call)
-        ? { kind: 'ask', reason: options.reason, question: options.question, fallback: options.fallback }
-        : { kind: 'read' },
-    approvalDetail: (call) => (named(call) ? options.detail : undefined),
+    needsApproval: (call) => {
+      if (!named(call)) return { kind: 'read' };
+      const headline = resolveText(options.headline, call);
+      const question = resolveText(options.question, call) ?? headline;
+      const fallback = resolveText(options.fallback, call) ?? headline;
+      if (question === undefined || fallback === undefined) {
+        return {
+          kind: 'deny',
+          reason:
+            'writeApprovalOf 没有给 headline、question 或 fallback —— 这次无法问清，先不要发起审批',
+        };
+      }
+      return {
+        kind: 'ask',
+        reason: options.reason,
+        ...(headline === undefined ? {} : { headline }),
+        question,
+        fallback,
+      };
+    },
+    approvalDetail: (call) => (named(call) ? resolveText(options.detail, call) : undefined),
   };
 }

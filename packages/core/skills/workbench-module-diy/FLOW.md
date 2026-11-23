@@ -108,7 +108,7 @@ export const face: UnitModuleFace = {
 - **优先用 `createFlowTask({ key, flow, actions, flowHost: deps.flow, longTasks: deps.longTasks, tool })`**（`@dsh-workbench/shared/host`）：它做 `flow.check`、建长任务注册表，返回 `{ runs, start, tool }`；`tool` 的 `execute` 与 `start` 共用同一实现，`runId` 参数自动支持「只看那条」。
 - 要自定义 `view` / `step` / `outcome` 时才手写 `const runs = deps.longTasks.create({ key, run, view, outcome, stopped })`；`run` 调 `deps.flow.run`，把 `onStep` 映射到长任务的 `onStep`；返回 `status === 'failed'` 时 throw，让注册表标 failed。默认映射用 `longTaskStepOf(event)`（`@dsh-workbench/shared/host` 导出，`running`/`ok`/`skipped`/`failed`/`needs-login`/`needs-human` 各对应一种 `kind`，`needs-human` 带 `intervention`、空 `loginUrl` 不再带键）；要改文案或过滤步骤就自己写映射。自己写 `view` 时要把 `intervention` 带上（默认 `view` 已透传），否则面板行只知道停在 `needs-human`、不知道要人做什么。
 - `registerTools()`：**调用时才注册**，返回一组清理函数；里面 `tools.register(tool)`（`execute` 里 `start` 或 `runs.start`，返回 `{ ok, runId, status, text }`；再按 `runId` 查）。
-- 写平台的工具：清单 `writes: true` + `needsApproval` / `approvalDetail`；动作里不要自己再问一遍。
+- 写平台的工具：清单 `writes: true` + `needsApproval`（含 `headline`）+ 客户端 `approval.plan`；动作里不要自己再问一遍。
 - 校验：`deps.flow.check(flow, actions)`；有问题先修复，不安装。
 - **数据步骤**：`{ id, title?, data: RequestPlan, when?, retry? }`，内联 plan；结果摊平成
   `{ key, rows }` 挂到 `steps.<id>`，失败时 `failedStep` 指到这一步。不支持 `poll` / `forEach`；

@@ -1,6 +1,13 @@
 export const messages = {
   zh: {
     '__UNIT__.cardTitle': '目录概览',
+    '__UNIT__.approval.headline': '新增一条模块笔记',
+    '__UNIT__.approval.objectLabel': '笔记',
+    '__UNIT__.approval.object': '当前项目的模块笔记',
+    '__UNIT__.approval.change': '新增 1 条',
+    '__UNIT__.approval.target': '本机 · 当前项目',
+    '__UNIT__.approval.impact': '只写本模块的笔记；最多 20 条',
+    '__UNIT__.approval.extraLabel': '内容',
     '__UNIT__.needProject': '请先打开一个项目',
     '__UNIT__.loading': '正在读取目录…',
     '__UNIT__.loadingHint': '正在统计文件数、目录数与最大的几个文件',
@@ -37,6 +44,13 @@ export const messages = {
   },
   en: {
     '__UNIT__.cardTitle': 'Directory overview',
+    '__UNIT__.approval.headline': 'Add a module note',
+    '__UNIT__.approval.objectLabel': 'Note',
+    '__UNIT__.approval.object': "This project's module notes",
+    '__UNIT__.approval.change': 'Add 1 note',
+    '__UNIT__.approval.target': 'This machine · current project',
+    '__UNIT__.approval.impact': "Writes only this module's notes; up to 20",
+    '__UNIT__.approval.extraLabel': 'Note',
     '__UNIT__.needProject': 'Open a project first',
     '__UNIT__.loading': 'Reading directory…',
     '__UNIT__.loadingHint': 'Counting files, folders, and the largest files',

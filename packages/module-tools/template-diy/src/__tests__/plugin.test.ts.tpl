@@ -356,18 +356,18 @@ describe('写通道：笔记 + 审批', () => {
     expect(notes.notes.map((one) => one.text)).toContain('agent 记的');
   });
 
-  it('写工具需要批准：needsApproval 回 ask，approvalDetail 说清写什么', () => {
+  it('写工具需要批准：needsApproval 回 ask，headline 说清动作与对象', () => {
     const h = harness();
     const verdict = h.mounted.needsApproval?.({
       name: DECLARED_TOOLS.addNote.name,
       arguments: { text: 'x' },
-    }) as { kind: string; question?: { zh?: string; en?: string } };
+    }) as { kind: string; headline?: { zh?: string; en?: string } };
     expect(verdict?.kind).toBe('ask');
-    expect(verdict?.question?.zh).toBeTruthy();
-    expect(verdict?.question?.en).toBeTruthy();
+    expect(verdict?.headline?.zh).toBe('新增一条模块笔记');
+    expect(verdict?.headline?.en).toBe('Add a module note');
     expect(
       h.mounted.approvalDetail?.({ name: DECLARED_TOOLS.addNote.name, arguments: { text: 'x' } }),
-    ).toMatchObject({ zh: expect.any(String), en: expect.any(String) });
+    ).toBeUndefined();
   });
 
   it('只读工具不被问（kind: read）', () => {

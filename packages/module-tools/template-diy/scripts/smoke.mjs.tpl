@@ -307,10 +307,12 @@ const NOTE_RESOURCE = `${UNIT_ID}-add-note`;
 const noteTool = registeredTools.find((tool) => tool?.name === `${UNIT_ID}_add_note`);
 const noteDecl = (manifest.dsh?.workbench?.tools ?? []).find((tool) => tool?.name === `${UNIT_ID}_add_note`);
 check('写工具注册上了，清单里也声明成 writes: true（壳才会走审批）', noteTool !== undefined && noteDecl?.writes === true);
+const noteVerdict = mounted.needsApproval?.({ name: `${UNIT_ID}_add_note`, arguments: { text: 'x' } });
 check(
-  '写工具需要批准，审批屏说得出会写什么',
-  mounted.needsApproval?.({ name: `${UNIT_ID}_add_note`, arguments: { text: 'x' } })?.kind === 'ask' &&
-    typeof mounted.approvalDetail?.({ name: `${UNIT_ID}_add_note`, arguments: { text: 'x' } })?.zh === 'string',
+  '写工具需要批准，审批屏标题说清动作与对象',
+  noteVerdict?.kind === 'ask' &&
+    typeof noteVerdict?.headline?.zh === 'string' &&
+    typeof noteVerdict?.headline?.en === 'string',
 );
 const noteAction = mounted.actions?.find((one) => one.resource === NOTE_RESOURCE);
 const noteAdded = noteAction?.handle({ path: moduleDir, text: 'smoke 记的一条' });

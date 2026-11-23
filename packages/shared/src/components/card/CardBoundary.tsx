@@ -13,6 +13,7 @@ export interface CardBoundaryProps {
   readonly resetKey: string;
   readonly t: Translate;
   readonly onFailure?: ((reason: string) => void) | undefined;
+  readonly fallback?: ReactNode | undefined;
   readonly children?: ReactNode | undefined;
 }
 
@@ -39,6 +40,7 @@ export function errorReasonOf(error: unknown): string {
  * @param props.resetKey - 重来键：它一变（如切了工作区）就自动清掉报错，把卡片重新渲染一遍。
  * @param props.t - 报错那句与重试钮文案的翻译函数。
  * @param props.onFailure - 失败时把原因报给宿主（面板状态要用）；不给就只打一条 console。
+ * @param props.fallback - 出错时改画这一份；不给就画卡片失败提示与重试。
  * @param props.children - 正常时要渲染的卡片内容。
  * @returns 正常时是 `children`，炸过且还没重来之前是一条报错。
  */
@@ -68,6 +70,7 @@ export class CardBoundary extends Component<CardBoundaryProps, CardBoundaryState
   override render(): ReactNode {
     const { reason } = this.state;
     if (reason === null) return this.props.children;
+    if (this.props.fallback !== undefined) return this.props.fallback;
     return (
       <Note tone="problem">
         <div className={styles.failure}>

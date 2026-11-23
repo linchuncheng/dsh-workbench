@@ -17,7 +17,7 @@ export default stackArch({
   exceptions: [
     {
       rule: 'H08',
-      glob: 'src/checks/cards.mjs',
+      glob: 'src/support/client-face.mjs',
       reason: '这条判据的夹具就是一个本地工作台地址，用来验证卡片取数；它不是可发布的默认值。',
     },
   ],

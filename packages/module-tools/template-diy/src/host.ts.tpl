@@ -89,15 +89,10 @@ const face: UnitModuleFace = {
       ...writeApprovalOf({
         tools: [DECLARED_TOOLS.addNote.name],
         reason: '会往当前项目的模块笔记里加一条',
-        question: {
-          zh: `记到当前项目的「${messages.zh['__UNIT__.cardTitle']}」里，允许吗？`,
-          en: `Add it to "${messages.en['__UNIT__.cardTitle']}" for this project?`,
+        headline: {
+          zh: messages.zh['__UNIT__.approval.headline'],
+          en: messages.en['__UNIT__.approval.headline'],
         },
-        fallback: {
-          zh: `只写当前项目的「${messages.zh['__UNIT__.cardTitle']}」笔记，不修改平台。`,
-          en: `Writes only this project’s "${messages.en['__UNIT__.cardTitle']}" notes.`,
-        },
-        detail: { zh: '新增 1 条笔记', en: 'Add 1 note' },
       }),
       ...(sample.runs === undefined ? {} : { longTasks: sample.runs }),
     };

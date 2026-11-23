@@ -476,7 +476,10 @@ export function shellApprovalPlan(
       warn: t('approval.longTask.signal'),
     };
   }
-  return shellClaimsApprovalDetail(input.tool) ? { rows: [] } : undefined;
+  if (shellClaimsApprovalDetail(input.tool)) return { rows: [] };
+  const declared = manifests?.flatMap((one) => one.tools).find((one) => one.name === input.tool);
+  if (declared?.writes === true) return { rows: [], warn: t('approval.missingDetail') };
+  return undefined;
 }
 
 export function shellApprovalDetail(
@@ -495,6 +498,6 @@ export function shellApprovalDetail(
   }
   const plan = shellApprovalPlan(input, t, pluginTools, manifests);
   if (plan === undefined) return undefined;
-  if (plan.rows.length === 0) return h(Fragment, null);
+  if (plan.rows.length === 0 && plan.warn === undefined) return h(Fragment, null);
   return <ApprovalPlan rows={plan.rows} warn={plan.warn} />;
 }

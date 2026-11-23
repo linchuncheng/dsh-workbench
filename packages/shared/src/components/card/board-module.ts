@@ -320,12 +320,7 @@ export interface UnitClientFace {
   readonly view?: CardView;
   readonly steps?: Readonly<Record<string, UnitStep>>;
   readonly messages?: Dictionaries;
-  readonly approval?:
-    | {
-        readonly tools: readonly string[];
-        readonly render: (props: { readonly input: ApprovalInput; readonly t: Translate }) => ReactNode;
-      }
-    | undefined;
+  readonly approval?: UnitApprovalFace | undefined;
 }
 
 /**
@@ -342,6 +337,56 @@ export interface ApprovalInput {
   readonly tool: string;
   readonly args: Readonly<Record<string, unknown>>;
 }
+
+/**
+ * 审批详情里的一行附加事实：标签与值都由模块给。
+ */
+export interface ApprovalPlanExtra {
+  readonly label: string;
+  readonly value: string;
+}
+
+/**
+ * 模块审批详情的四行数据：对象、修改后、目标位置、影响范围，外加可选的领域标签、附加行与警告。
+ */
+export interface ApprovalPlanData {
+  readonly object: string;
+  readonly change: string;
+  readonly target: string;
+  readonly impact: string;
+  readonly objectLabel?: string | undefined;
+  readonly extra?: readonly ApprovalPlanExtra[] | undefined;
+  readonly warn?: string | undefined;
+}
+
+/**
+ * 带四行数据的模块审批面：`plan` 是下限，`render` 可选地接管详情区（同步纯函数，不直接调 hook）。
+ */
+export interface ApprovalPlanFace {
+  readonly tools: readonly string[];
+  readonly plan: (input: ApprovalInput, t: Translate) => ApprovalPlanData | null;
+  readonly render?:
+    | ((props: {
+        readonly input: ApprovalInput;
+        readonly plan: ApprovalPlanData;
+        readonly t: Translate;
+      }) => ReactNode)
+    | undefined;
+}
+
+/**
+ * 已安装旧模块的审批面：只有自定义渲染，没有四行数据。
+ */
+export interface ApprovalLegacyFace {
+  readonly tools: readonly string[];
+  readonly plan?: undefined;
+  readonly render: (props: { readonly input: ApprovalInput; readonly t: Translate }) => ReactNode;
+}
+
+/**
+ * 一个模块交出来的审批面：新契约是四行数据 + 可选自定义，旧契约只有自定义。
+ */
+export type UnitApprovalFace = ApprovalPlanFace | ApprovalLegacyFace;
 
 /**
  * 模块注册进外壳的那个口：注册一份面（拿回注销函数）、列出已装 unit。

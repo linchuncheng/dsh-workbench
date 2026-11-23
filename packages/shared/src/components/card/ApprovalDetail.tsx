@@ -1,7 +1,8 @@
 import type { Translate } from '../../lib/dsh-client.js';
-import type { ApprovalInput, UnitClientFace } from './board-module.js';
+import type { ApprovalInput, ApprovalPlanData, UnitClientFace } from './board-module.js';
 import { Fragment, h, type ReactNode } from '../../lib/react.js';
 import { CodeBlock } from '@deepseek-ai/dsh-client-ui-primitives';
+import { ApprovalPlan, type ApprovalPlanRow } from './ApprovalPlan.js';
 import { CardBoundary } from './CardBoundary.js';
 import './ApprovalDetail.css';
 
@@ -48,14 +49,52 @@ function parseArgs(raw: string): Readonly<Record<string, unknown>> {
   }
 }
 
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function planRowsOf(plan: ApprovalPlanData, t: Translate): readonly ApprovalPlanRow[] {
+  const rows: ApprovalPlanRow[] = [
+    { label: plan.objectLabel ?? t('approval.fact.object'), value: plan.object },
+    { label: t('approval.fact.change'), value: plan.change },
+    { label: t('approval.fact.target'), value: plan.target },
+    { label: t('approval.fact.impact'), value: plan.impact },
+  ];
+  return plan.extra === undefined ? rows : [...rows, ...plan.extra];
+}
+
+function planNodeOf(plan: ApprovalPlanData, t: Translate): ReactNode {
+  return h(ApprovalPlan, {
+    rows: planRowsOf(plan, t),
+    ...(plan.warn === undefined ? {} : { warn: plan.warn }),
+  });
+}
+
+function missingNodeOf(t: Translate): ReactNode {
+  return h(ApprovalPlan, { rows: [], warn: t('approval.missingDetail') });
+}
+
+function planOf(
+  plan: (input: ApprovalInput, t: Translate) => ApprovalPlanData | null,
+  input: ApprovalInput,
+  t: Translate,
+): ApprovalPlanData | null {
+  try {
+    return plan(input, t);
+  } catch (error) {
+    console.error(`[dsh-workbench] 模块审批详情读取失败：${reasonOf(error)}`);
+    return null;
+  }
+}
+
 /**
- * 审批屏的详情格：按工具名找到认领它的模块交给它渲染，没有模块认领就退回外壳那张表或一段原始命令。
+ * 审批屏的详情格：先画模块交的四行事实或它自己的渲染器，再退回外壳那张表或一段原始命令。
  * @param props.callId - 这次工具调用的 id；不给就直接走兜底（连调用都找不到）。
  * @param props.useChat - 读会话快照的钩子（dsh 注入）；不给就当作读不到调用。
  * @param props.units - 已装模块的面，按各自的 `approval.tools` 认领这次调用。
  * @param props.t - 翻译函数；不给就用返回 key 的直通实现。
  * @param props.renderShell - 没有模块认领时外壳自己的渲染（那张表）；不给且这次调用没带 `command` 时整格返回 `null`。
- * @returns 认领方的渲染、外壳那张表，或一段可复制的命令。
+ * @returns 认领方的四行表 / 自定义渲染、外壳那张表，或一段可复制的命令。
  */
 export function ApprovalDetail(props: ApprovalDetailProps) {
   const useChat = props.useChat ?? ((): undefined => undefined);
@@ -68,9 +107,30 @@ export function ApprovalDetail(props: ApprovalDetailProps) {
 
   const owner = (props.units ?? []).find((face) => face.approval?.tools.includes(input.tool) === true);
   if (owner?.approval !== undefined) {
-    const Render = owner.approval.render;
+    const approval = owner.approval;
+    if (approval.plan !== undefined) {
+      const plan = planOf(approval.plan, input, t);
+      if (plan === null) return missingNodeOf(t);
+      const fallback = planNodeOf(plan, t);
+      const render = approval.render;
+      if (render === undefined) return fallback;
+      let custom: ReactNode;
+      try {
+        custom = render({ input, plan, t });
+      } catch (error) {
+        console.error(`[dsh-workbench] 模块审批自定义渲染失败：${reasonOf(error)}`);
+        return fallback;
+      }
+      if (custom === null || custom === undefined || custom === false) return fallback;
+      return (
+        <CardBoundary unit={owner.unit} resetKey={props.callId ?? ''} t={t} fallback={fallback}>
+          {custom}
+        </CardBoundary>
+      );
+    }
+    const Render = approval.render;
     return (
-      <CardBoundary unit={owner.unit} resetKey={props.callId ?? ''} t={t}>
+      <CardBoundary unit={owner.unit} resetKey={props.callId ?? ''} t={t} fallback={missingNodeOf(t)}>
         <Render input={input} t={t} />
       </CardBoundary>
     );

@@ -15,7 +15,7 @@
 
 | 字段 | 读者 |
 |---|---|
-| `needsApproval.question` / `fallback`、`approvalDetail` / `approval.render`、`approval_note` | 终端用户 |
+| `needsApproval.headline` / `question` / `fallback`、`approval.plan` / `approval.render`、`approvalDetail` / `approval_note` | 终端用户 |
 | `needsApproval.reason`（deny）、`{blocked}` | agent |
 
 ## 2 语域：成熟产品，不是聊天
@@ -78,7 +78,7 @@
 - 空态：「还没有<对象>。」+「如何产生」。
 - 阻断：「无法<动作>：<原因>。」+「下一步」。
 - 错误：「<对象><动作>失败：<原因>。」+「下一步」。
-- 审批：对象 + 动作 + 影响 +「允许吗」。
+- 审批：模块标题写动作 + 对象，详情四行（修改项 / 修改后 / 目标位置 / 影响范围）；外壳 / 插件问句才用「对象 + 动作 + 影响 + 允许吗」。
 - 状态：「<对象><状态>」。
 - 按钮：动词 + 对象。
 - 配置：标签 + 一句说明 + 默认 / 影响。

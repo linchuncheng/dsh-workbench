@@ -694,11 +694,20 @@ ctx.get('workbenchUnits').registerUnit({
   },
   card: (props) => <Card {...props} />,
   steps: { detail: { titleKey: 'myThing.detail', View: Detail } },
-  approval: { tools: ['my_thing_write'], render },
+  approval: {
+    tools: ['my_thing_write'],
+    plan: (input, t) => ({
+      object: t('myThing.approval.object'),
+      change: t('myThing.approval.change'),
+      target: t('myThing.approval.target'),
+      impact: t('myThing.approval.impact'),
+    }),
+    render,
+  },
 });
 ```
 
-卡片从 kit 取组件；不手搓 dsh 原语。
+卡片从 kit 取组件；不手搓 dsh 原语。写工具的宿主 `needsApproval` 另交 `headline`（动作 + 对象的陈述句）；`plan` 是四行下限，`render` 可选。
 
 ### 5.5 清单单一真相
 
