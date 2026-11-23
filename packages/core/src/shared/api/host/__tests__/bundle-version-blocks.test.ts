@@ -39,6 +39,27 @@ describe('版本块：谁算新、谁被拦', () => {
     });
   });
 
+  it('★ 只按 engines.dsh 判：peer 钉的 dsh 包版本不算「需要那版 dsh」', async () => {
+    const supply = {
+      versionManifestOf: async () => ({
+        name: '@dsh-workbench/core',
+        engines: { dsh: '>=0.2.2-rc.2' },
+        peerDependencies: { '@deepseek-ai/dsh-client-ui-primitives': '0.2.2-rc.2' },
+      }),
+    } as never;
+
+    await expect(
+      judgedBlockOf(supply, {
+        seam: {} as never,
+        name: '@dsh-workbench/core',
+        version: '1.5.2-alpha.4',
+        registry: 'https://registry.npmjs.org/',
+        force: false,
+        dshVersion: '0.2.3-alpha.2',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it('★ 自己判：缺 seam / registry / 运行版本 → 只说未验证，不假装兼容', async () => {
     const supply = {
       versionManifestOf: async () => {
