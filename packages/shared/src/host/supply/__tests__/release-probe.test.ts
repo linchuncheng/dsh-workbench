@@ -60,6 +60,29 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('某一版的 engines / peers 自己问：市场据此判兼容', () => {
+  it('★ 解析成清单字段；同一版第二次直接走缓存', async () => {
+    const { probe, seam, fake } = harness((call) =>
+      String(call.command).includes('engines')
+        ? { stdout: JSON.stringify({ name: 'p', version: '1.2.3', engines: { dsh: '>=0.2.3' } }) }
+        : {},
+    );
+
+    const manifest = await probe.versionManifestOf({ seam, name: 'p', version: '1.2.3', registry: REGISTRY });
+    expect(manifest).toEqual({ name: 'p', version: '1.2.3', engines: { dsh: '>=0.2.3' } });
+
+    const again = await probe.versionManifestOf({ seam, name: 'p', version: '1.2.3', registry: REGISTRY });
+    expect(again).toEqual(manifest);
+    expect(fake.calls.filter((call) => String(call.command).includes('engines'))).toHaveLength(1);
+  });
+
+  it('★ 问不到就是 undefined（调用方据此给「未验证」，不假装兼容）', async () => {
+    const { probe, seam } = harness(() => ({}));
+
+    expect(await probe.versionManifestOf({ seam, name: 'q', version: '9.9.9', registry: REGISTRY })).toBeUndefined();
+  });
+});
+
 describe('查新版那一次网络请求', () => {
   it('★ 按 registry 问一次、拿网络那档超时，不是本地账本那档', async () => {
     const { fake, probe, seam } = harness([{ stdout: '1.1.5\n' }]);

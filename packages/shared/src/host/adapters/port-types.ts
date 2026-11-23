@@ -75,6 +75,14 @@ export interface SupplyMissingPartsOptions {
   readonly force?: boolean;
 }
 
+export interface SupplyVersionManifestOptions {
+  readonly seam: Seam;
+  readonly name: string;
+  readonly version: string;
+  readonly registry: string;
+  readonly force?: boolean;
+}
+
 export interface SupplyProbeReleaseOptions {
   readonly seam: Seam;
   readonly package: string;
@@ -101,6 +109,7 @@ export interface EnvSupplyPort {
   latestVersion(options: SupplyLatestOptions): Promise<string | undefined>;
   missingReleaseParts(options: SupplyMissingPartsOptions): Promise<readonly string[]>;
   probeRelease(options: SupplyProbeReleaseOptions): Promise<SupplyRelease | undefined>;
+  versionManifestOf(options: SupplyVersionManifestOptions): Promise<Readonly<Record<string, unknown>> | undefined>;
   splitNpmSpec(spec: string): SupplyNpmRef | undefined;
 }
 

@@ -4,6 +4,8 @@ import {
   declarationApiVersionOf,
   declarationProblemsOf,
   declaresPackage,
+  dshCompatibilityOf,
+  dshRequirementsOf,
   dshVersionIn,
   readDeclaration,
   isValidVersion,
@@ -83,6 +85,42 @@ function updateBlockOf(raw: unknown, problems: readonly string[]): ModuleUpdateB
   const declared = declarationApiVersionOf(raw);
   const newest = Math.max(...SUPPORTED_API_VERSIONS);
   return { kind: declared !== undefined && declared > newest ? 'needs-workbench' : 'incompatible' };
+}
+
+async function judgedBlockOf(
+  supply: ReturnType<typeof supplyPortOf>,
+  input: {
+    readonly seam: Seam | undefined;
+    readonly name: string;
+    readonly version: string;
+    readonly registry: string | undefined;
+    readonly force: boolean;
+    readonly dshVersion: string | undefined;
+  },
+): Promise<ModuleUpdateBlock | undefined> {
+  if (input.seam === undefined || input.registry === undefined || input.dshVersion === undefined) {
+    return { kind: 'unverified' };
+  }
+  const manifest = await supply.versionManifestOf({
+    seam: input.seam,
+    name: input.name,
+    version: input.version,
+    registry: input.registry,
+    force: input.force,
+  });
+  if (manifest === undefined) return { kind: 'unverified' };
+  const verdict = dshCompatibilityOf({
+    requirements: dshRequirementsOf(manifest),
+    dshVersion: input.dshVersion,
+  });
+  if (verdict.verdict === 'incompatible') {
+    const requirements: Record<string, string> = {};
+    for (const item of verdict.requirements) {
+      requirements[item.source === 'engines' ? 'engines.dsh' : item.pkg] = item.range;
+    }
+    return { kind: 'incompatible', requirements, runtimeVersion: input.dshVersion };
+  }
+  return verdict.verdict === 'unknown' ? { kind: 'unverified' } : undefined;
 }
 
 function dshBlockOf(incompatible: BundleIncompatible | undefined): ModuleUpdateBlock | undefined {
@@ -209,14 +247,21 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
           force: input.force,
           logger: input.logger,
         });
+  const dshVersion = input.dir === null ? undefined : dshVersionIn(input.dir);
   const listedEntry = latest === undefined ? undefined : visible.find((entry) => entry.version === latest);
   const blocked =
     latest === undefined
       ? undefined
-      : listedEntry === undefined
-        ? ({ kind: 'unverified' } as const)
-        : dshBlockOf(listedEntry.incompatible);
-  const dshVersion = input.dir === null ? undefined : dshVersionIn(input.dir);
+      : listedEntry !== undefined
+        ? dshBlockOf(listedEntry.incompatible)
+        : await judgedBlockOf(supply, {
+            seam,
+            name: read.pkg,
+            version: latest,
+            registry,
+            force: input.force,
+            dshVersion,
+          });
   const diskOlder =
     read.local !== true &&
     input.running !== undefined &&

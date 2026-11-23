@@ -56,6 +56,7 @@ export const CORE_METHODS = [
   ['supply', 'latestVersion'],
   ['supply', 'missingReleaseParts'],
   ['supply', 'probeRelease'],
+  ['supply', 'versionManifestOf'],
   ['supply', 'splitNpmSpec'],
   ['profile', 'dirOf'],
   ['profile', 'dshPlugins'],

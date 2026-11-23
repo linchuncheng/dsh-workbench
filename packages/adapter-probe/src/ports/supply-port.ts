@@ -3,7 +3,7 @@ import { cliCatalogPath, detachLibsOpencliPeer, ensureLibsBinOnPath, ensureLibsO
 import { isolatedRoot } from '@dsh-workbench/adapter-runtime';
 
 import { createRegistryNotebook, isNewerVersion } from '@dsh-workbench/adapter-profile';
-import { latestVersion, missingReleaseParts, probeRelease } from '../probe/release-port.js';
+import { latestVersion, missingReleaseParts, probeRelease, versionManifestOf } from '../probe/release-port.js';
 import { opencliInstallCommand } from '../install/install.js';
 import { startSelfUpdate } from '../self-update/self-update.js';
 import { selfUpdateCliFor } from '../self-update/self-update-cli.js';
@@ -69,6 +69,7 @@ export function createSupplyPort(options: ProbeSupplyOptions = {}): SupplyPort {
     pluginInstallPlan,
     packageRouteOf,
     probeRelease,
+    versionManifestOf,
     resolvePluginSource,
     splitNpmSpec,
     libInstallCommand,

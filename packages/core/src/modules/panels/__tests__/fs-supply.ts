@@ -85,6 +85,7 @@ export function fsSupply(options: {
     latestVersion: release.latestVersion,
     missingReleaseParts: release.missingReleaseParts,
     probeRelease: release.probeRelease,
+    versionManifestOf: release.versionManifestOf,
     pluginInstallPlan: (plan: { spec: string; command: string }): unknown => ({
       ok: true,
       steps: [

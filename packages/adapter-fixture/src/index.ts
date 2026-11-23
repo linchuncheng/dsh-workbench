@@ -40,6 +40,7 @@ const supply: EnvSupplyPort = {
   latestVersion: async () => undefined,
   missingReleaseParts: async () => [],
   probeRelease: async () => undefined,
+  versionManifestOf: async () => undefined,
   splitNpmSpec: () => undefined,
 };
 

@@ -66,6 +66,7 @@ const supply: EnvSupplyPort = {
   latestVersion: async () => undefined,
   missingReleaseParts: async () => [],
   probeRelease: async () => undefined,
+  versionManifestOf: async () => undefined,
   splitNpmSpec: () => undefined,
 };
 
@@ -161,6 +162,7 @@ export function fakeAdapterSet(overrides: Partial<AdapterSet> = {}): AdapterSet 
     latestVersion: release.latestVersion,
     missingReleaseParts: release.missingReleaseParts,
     probeRelease: release.probeRelease,
+    versionManifestOf: release.versionManifestOf,
   };
   return {
     apiVersion: ADAPTER_SET_API_VERSION,
