@@ -13,6 +13,8 @@ const CHECK_HELPERS = new Set(['shell-artifact.mjs']);
 
 const STATES_LINE = "const STATES = ['pass', 'fail', 'skip'];";
 
+const NPM_DROPS = new Set(['.gitignore', '.npmignore', '.npmrc']);
+
 export const checks = [
   {
     title: '判据的形状：都导出 run() + 三态结果（没有 process.exit、没有 console.）',
@@ -61,7 +63,7 @@ export const checks = [
     },
   },
   {
-    title: '打包清单：包根下每个 template* 目录都在 files 里',
+    title: '打包清单：包根下每个 template* 目录都在 files 里；模板里没有 npm 打包会排除的点文件',
     run(_ctx, report) {
 
       const pkgManifest = JSON.parse(read(join(PKG_ROOT, 'package.json')));
@@ -71,10 +73,25 @@ export const checks = [
         .map((entry) => entry.name)
         .sort();
       const notShipped = templateDirs.filter((name) => !shipped.has(name));
+      const dropped = [];
+      const walk = (dir, prefix) => {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          if (entry.isDirectory()) {
+            walk(join(dir, entry.name), `${prefix}${entry.name}/`);
+            continue;
+          }
+          if (NPM_DROPS.has(entry.name)) dropped.push(`${prefix}${entry.name}`);
+        }
+      };
+      for (const name of templateDirs) walk(join(PKG_ROOT, name), `${name}/`);
+      const problems = [
+        ...notShipped.map((name) => `没写进 files：${name}`),
+        ...dropped.map((name) => `${name} 会被 npm 从安装包中排除；改名为 ${name}.tpl（init 会去掉后缀）`),
+      ];
       report(
-        `打包清单：${templateDirs.length} 个 template* 目录都在 files 里（${templateDirs.join('、')}）`,
-        notShipped.length === 0,
-        notShipped.length ? `没写进 files：${notShipped.join('、')}` : '',
+        `打包清单：${templateDirs.length} 个 template* 目录都在 files 里（${templateDirs.join('、')}）；模板里没有 npm 打包会排除的点文件`,
+        problems.length === 0,
+        problems.join('；'),
       );
     },
   },

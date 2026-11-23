@@ -26,6 +26,10 @@ export const checks = [
           if (readdirSync(scaffold).some((name) => name.endsWith('.tpl'))) {
             throw new Error('init 留下了 .tpl 原件');
           }
+          const ignore = read(join(scaffold, '.gitignore')).split('\n');
+          for (const line of ['node_modules/', 'dist/', 'client.js', 'coverage/']) {
+            if (!ignore.includes(line)) throw new Error(`init 生成的 .gitignore 缺 ${line}（对照模板 .gitignore.tpl）`);
+          }
           linkToolchain(ctx.toolchain, scaffoldModules);
 
           symlinkSync(join(PACKAGES_DIR, 'shared'), join(scaffoldModules, '@dsh-workbench', 'shared'), 'junction');

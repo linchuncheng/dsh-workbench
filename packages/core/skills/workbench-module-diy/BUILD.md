@@ -45,7 +45,7 @@ pnpm exec dsh-wb-module init <unit> --dir <目录> --template diy --description 
 骨架分层：`src/model/**`（纯逻辑）、`src/components/**`（视图 + 同目录 `*.module.css`）、
 `src/messages.ts`、`src/host.ts`（宿主面）+ `src/host/**`（宿主侧内部实现，
 `moduleArch()` 默认认这一层）、`src/client.tsx`、`scripts/smoke.mjs` +
-`scripts/smoke.assert.mjs`、`design.json`、`.jscpd.json`。模板原文可直接阅读。几个不明显的点：
+`scripts/smoke.assert.mjs`、`design.json`、`.jscpd.json`、`.gitignore`。模板原文可直接阅读。几个不明显的点：
 
 宿主面注册部分（`name` / `inject` / `apply`）使用 `@dsh-workbench/shared/host` 的
 `defineUnitHostPlugin`；写工具的审批口径用 `writeApprovalOf`；`recordOf` / `textOf` 也从那里获取，

@@ -324,11 +324,13 @@ dsh-wb-module design accept   # 在真实卡片上逐条验证后勾选
 
 它是**分层多文件**骨架：纯逻辑位于 `src/model/**`、视图件与同目录样式位于 `src/components/**`、
 文案位于 `src/messages.ts`，测试位于被测代码同目录的 `__tests__/`，两个面只保留注册与传递 props；宿主侧内部实现位于 `src/host/**`
-（`moduleArch()` 默认识别这一层）。带一份 `arch.config.mjs` 与两行的
-`eslint.config.mjs`。
+（`moduleArch()` 默认识别这一层）。带一份 `arch.config.mjs`、两行的
+`eslint.config.mjs` 与一份 `.gitignore`（依赖、构建产物、报告与安装包）。
 
 `init` 将模板中的 `*.tpl` 一并复制，按已知 token 名逐个替换（`__UNIT__` / `__NAME__` / `__DESC__` /
 `__SHELL_RANGE__` / `__DSH_UI_VERSION__`）、移除后缀，再用 `readme.json` 生成 README、用 `design.json` 生成 DEVELOPING 那一段。
+模板里的 `.gitignore` 存成 `.gitignore.tpl`：npm 打包时会排除字面 `.gitignore`（以及 `.npmignore` / `.npmrc`），
+从 npm 安装到的模板就缺这份文件；`.tpl` 后缀让 `init` 去掉后缀生成它，内容里没有 token。
 `__SHELL_RANGE__` 取 init 所在工程实际安装的工作台版本；无法读取时回退到 module-tools 自己的版本；
 两者都读不到才保持 `^0.1.0` 并在 stderr 输出一条提示。
 
@@ -338,8 +340,8 @@ dsh-wb-module design accept   # 在真实卡片上逐条验证后勾选
 node scripts/selfcheck/index.mjs
 ```
 
-工具箱的回归测试：模板 `init` 一遍、运行全套；判据的正例与负例都要通过；打包清单不含
-`.tpl` 残留；`design` 的空格、README / DEVELOPING 同步、`accept`；`publish` 的清单；`release` 的验收门禁、
+工具箱的回归测试：模板 `init` 一遍、运行全套（含生成的 `.gitignore`）；判据的正例与负例都要通过；打包清单不含
+`.tpl` 残留、模板里没有 npm 打包会排除的点文件；`design` 的空格、README / DEVELOPING 同步、`accept`；`publish` 的清单；`release` 的验收门禁、
 dry-run、实际发布后的元数据与发布失败回滚。
 
 ## 相关文档

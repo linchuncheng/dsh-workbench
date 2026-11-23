@@ -58,6 +58,7 @@ pnpm prepack                 # 打包前构建（npm pack / publish 自动触发
 | `arch.config.mjs` | 本模块的架构方言：`moduleArch()`（`src/host/**` 默认在层序中）—— 层序表、两个运行时与阈值只由 `@dsh-workbench/module-tools/arch` 提供，随工具链同代 | — |
 | `eslint.config.mjs` | 本模块的**语法卫生方言**，同样两行：`moduleLint()` —— 规则表只由 `@dsh-workbench/module-tools/lint` 提供（`console` / `as any` / hooks 相关规则 / 手写颜色值与 `!important`）；需要例外时使用 `moduleLint({ rules })` | — |
 | `.jscpd.json` | 重复代码：扫描 `src` / `scripts` 的 TS / JS（不含测试与产物），阈值为 0 —— 存在克隆即判定失败；`pnpm run duplication:report` 输出完整报告 | — |
+| `.gitignore` | 依赖（`node_modules/`）、构建产物（`dist/`、`client.js`）、`coverage/` 与本地生成的安装包；发布时 `release` 用 `git add -f` 单独添加要发布的产物 | — |
 | `design.json` | 三张表、状态矩阵、数据源记录与验收清单（**唯一来源**，上面那段由它生成；`dsh-wb-module design check/render/accept` 读写它） | — |
 | `src/model/overview.ts` | 纯逻辑：类型 + 五态状态机 + `formatBytes`。两个运行时都可读取，不引用 react / kit / dsh / `node:*` | 1 |
 | `src/model/__tests__/overview.test.ts` | 模型层的配套测试（存在 `src/model/**` 就必须有 —— 见 `arch` 的 M08） | 99 |
