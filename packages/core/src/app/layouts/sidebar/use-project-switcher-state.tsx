@@ -1,4 +1,4 @@
-import { createElement as h, useMemo, useState } from 'react';
+import { createElement as h, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, Translate, WorkspaceView } from '@dsh-workbench/shared';
 import { attentionListRank, type Attention, type WorkspaceAttention } from '@/modules/sessions';
 import type { WorkspaceMenuTarget } from './WorkspaceRowMenu';
@@ -37,6 +37,13 @@ export function useProjectSwitcherState({
   const [menu, setMenu] = useState<WorkspaceMenuTarget | null>(null);
   const [naming, setNaming] = useState<WorkspaceView | null>(null);
   const [deleting, setDeleting] = useState<WorkspaceView | null>(null);
+  const triggerAreaRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (open) return;
+    setTriggerHover(triggerAreaRef.current?.matches(':hover') ?? false);
+    setHoverId(null);
+  }, [open]);
 
   const currentId = current?.workspaceId ?? '';
   const ordering = useMemo(
@@ -107,6 +114,7 @@ export function useProjectSwitcherState({
     open,
     setOpen,
     setHoverId,
+    triggerAreaRef,
     triggerHover,
     setTriggerHover,
     setFrozenOrder,

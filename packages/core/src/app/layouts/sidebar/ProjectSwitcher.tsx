@@ -36,6 +36,7 @@ export function ProjectSwitcher(props: ProjectSwitcherProps) {
     setOpen,
     setTriggerHover,
     setFrozenOrder,
+    triggerAreaRef,
     menu,
     setMenu,
     naming,
@@ -55,6 +56,7 @@ export function ProjectSwitcher(props: ProjectSwitcherProps) {
   return (
     <div className={cx(styles.root, compact && styles.rail)}>
       <div
+        ref={triggerAreaRef}
         className={cx(styles.triggerArea, triggerActionActive && styles.triggerAreaActive)}
         onPointerEnter={compact ? undefined : () => setTriggerHover(true)}
         onPointerLeave={compact ? undefined : () => setTriggerHover(false)}

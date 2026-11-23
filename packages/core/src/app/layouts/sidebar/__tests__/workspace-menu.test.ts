@@ -110,6 +110,16 @@ describe('选择工作区那颗开关：hover 换成三点、点它开菜单、�
     expect(SWITCHER).toContain('{triggerWorkspace === null ? null : (');
   });
 
+  it('★ 列表关掉那一刻按指针重对一次 hover：触发器开着时被搜索框顶掉，pointerleave 收不到（切完工作区，三点会一直挂着，箭头回不来）', () => {
+    const sync = SWITCHER.slice(SWITCHER.indexOf('const triggerAreaRef'), SWITCHER.indexOf('const currentId'));
+
+    expect(sync).toContain('if (open) return');
+    expect(sync).toContain("setTriggerHover(triggerAreaRef.current?.matches(':hover') ?? false)");
+    expect(sync).toContain('setHoverId(null)');
+    expect(sync).toContain('}, [open]);');
+    expect(SWITCHER).toContain('ref={triggerAreaRef}');
+  });
+
   it('★ 右键开关本身：开在指针处，走 open 不走 toggle，也不弹浏览器菜单', () => {
     expect(SWITCHER).toContain('onContextMenu={');
     expect(SWITCHER).toContain('x: event.clientX, y: event.clientY');
