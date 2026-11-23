@@ -56,7 +56,7 @@ export async function judgedBlockOf(
   });
   if (manifest === undefined) return { kind: 'unverified' };
   const verdict = dshCompatibilityOf({
-    requirements: dshRequirementsOf(manifest).filter((item) => item.source === 'engines'),
+    requirements: dshRequirementsOf(manifest),
     dshVersion: input.dshVersion,
   });
   if (verdict.verdict === 'incompatible') {

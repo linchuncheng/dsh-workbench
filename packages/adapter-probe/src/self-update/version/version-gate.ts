@@ -40,7 +40,7 @@ export function versionGateOf(input: VersionGateInput): VersionGateResult {
     const pkgDir = join(input.versionDir, 'node_modules', pkg);
     const manifest = readJsonObject(join(pkgDir, 'package.json'));
     if (manifest === undefined) continue;
-    requirements.push(...dshRequirementsOf(manifest).filter((item) => item.source === 'engines'));
+    requirements.push(...dshRequirementsOf(manifest));
     if (isLinkDir(pkgDir)) continue;
     const declared = declaredEntriesOf(manifest);
     if (declared.length === 0) {

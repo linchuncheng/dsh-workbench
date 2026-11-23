@@ -56,7 +56,7 @@ describe('dsh 兼容判定：engines 优先，再看 dsh peers', () => {
       },
     };
     expect(dshRequirementsOf(manifest).map((item) => item.range)).toEqual(['>=0.2.0', '>=0.2.0']);
-    expect(verdictOf(manifest, '0.2.2').verdict).toBe('compatible');
+    expect(verdictOf(manifest, '0.2.2')).toMatchObject({ verdict: 'unknown', reason: 'peer-only' });
   });
 
   it('拿不到 dsh 版本 / 区间非法 / 没写要求 → 都是未知，不假装兼容', () => {
