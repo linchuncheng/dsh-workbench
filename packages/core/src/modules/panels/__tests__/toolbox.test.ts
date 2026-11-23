@@ -266,8 +266,18 @@ describe('工具箱：默认只留控制面，按会话开包', () => {
     expect(text).toContain('manage');
     expect(text).toContain('diy');
     expect(text).toContain('unit:board-x');
-    expect(text).toContain('面板 · 模块 · 市场 · 长任务');
+    expect(text).toContain('面板 · 安装 / 卸载 / 更新模块 · 市场 · 长任务');
+    expect(text).toContain('工坊 · 创建 / 安装 / 发布模块 · 调试 · 录制 · 日志 · 页面动作');
     expect(text).toContain('board_x_list · board_x_do');
+  });
+
+  it('★ 发布模块写在 diy 的简介里：agent 只看得到这一行，不能让它猜（2026-11-23 补上）', async () => {
+    const { registered } = mount();
+
+    const text = String((await call(registered, TOOLBOX_LIST_TOOL, {}, 's-1'))['text']);
+
+    expect(text).toMatch(/^- diy — .*发布模块/m);
+    expect(text).toMatch(/^- manage — .*安装 \/ 卸载 \/ 更新模块/m);
   });
 
   it('★ 单元包的简介取模块自己的 description；没写才退回工具名', () => {

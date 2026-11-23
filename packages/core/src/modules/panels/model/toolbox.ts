@@ -43,14 +43,14 @@ const SHELL_PACKS: readonly PackEntry[] = [
   {
     id: 'manage',
     label: { zh: '工作台管理', en: 'workbench admin' },
-    hint: '面板 · 模块 · 市场 · 长任务',
+    hint: '面板 · 安装 / 卸载 / 更新模块 · 市场 · 长任务',
     tools: MANAGE_TOOLS,
     kind: 'shell',
   },
   {
     id: 'diy',
     label: { zh: 'DIY 工具', en: 'DIY tools' },
-    hint: '工坊 · 调试 · 录制 · 日志 · 页面动作',
+    hint: '工坊 · 创建 / 安装 / 发布模块 · 调试 · 录制 · 日志 · 页面动作',
     tools: DIY_PACK_TOOLS,
     kind: 'shell',
   },

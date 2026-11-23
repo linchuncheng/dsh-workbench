@@ -87,6 +87,25 @@ describe('能力索引：写的是一句话索引进 skill 目录', () => {
     const brief = capabilityBriefOf([pack('manage', 'shell'), pack('diy', 'shell')]);
 
     expect(brief.content).toContain('workbench-diy');
-    expect(brief.content).toContain('默认已开');
+    expect(brief.content).toContain('diy 默认已开');
+    expect(brief.content).toContain('manage 不提供');
+  });
+
+  it('★ 四类包那一行直接取目录里的简介：改简介只维护一份，能力索引跟着变', () => {
+    const brief = capabilityBriefOf([
+      { ...pack('manage', 'shell'), hint: '面板 · 安装 / 卸载 / 更新模块' },
+      { ...pack('diy', 'shell'), hint: '工坊 · 创建 / 安装 / 发布模块' },
+    ]);
+
+    expect(brief.content).toContain('manage（面板 · 安装 / 卸载 / 更新模块）');
+    expect(brief.content).toContain('diy（工坊 · 创建 / 安装 / 发布模块）');
+    expect(brief.description).toContain('发布');
+  });
+
+  it('简介为空时只留包 id，不写空括号', () => {
+    const brief = capabilityBriefOf([pack('manage', 'shell')]);
+
+    expect(brief.content).toContain('四类包：manage ·');
+    expect(brief.content).not.toContain('（）');
   });
 });

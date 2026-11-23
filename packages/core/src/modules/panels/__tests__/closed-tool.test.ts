@@ -11,7 +11,7 @@ import type { PackEntry } from '../model/toolbox';
 const shellPack: PackEntry = {
   id: 'manage',
   label: { zh: '工作台管理', en: 'workbench admin' },
-  hint: '面板 · 模块 · 市场 · 长任务',
+  hint: '面板 · 安装 / 卸载 / 更新模块 · 市场 · 长任务',
   tools: ['workbench_panels_show'],
   kind: 'shell',
 };
@@ -30,7 +30,7 @@ describe('收起的工具：理由要能让模型说出下一次调什么', () =
 
     expect(reason).toContain('workbench_panels_show');
     expect(reason).toContain('manage');
-    expect(reason).toContain('面板 · 模块 · 市场 · 长任务');
+    expect(reason).toContain('面板 · 安装 / 卸载 / 更新模块 · 市场 · 长任务');
     expect(reason).toContain(`${TOOLBOX_OPEN_TOOL}（targets: ["manage"]）`);
     expect(reason).toContain(TOOLBOX_LIST_TOOL);
   });
