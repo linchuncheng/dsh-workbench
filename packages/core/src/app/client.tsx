@@ -130,7 +130,7 @@ type RightbarObservable = {
   subscribe(listener: () => void): () => void;
 };
 
-export const inject = ['slots', 'locale', 'layout', 'uiWorkspace', 'workspaces', 'shortcuts', 'remote', 'remote.session', 'remote.agentPresets', 'inputTriggers', 'conversation', 'contextMenus', 'sidebarRight', 'sessions'];
+export const inject = ['slots', 'locale', 'layout', 'uiWorkspace', 'workspaces', 'shortcuts', 'remote', 'remote.session', 'remote.agentPresets', 'inputTriggers', 'conversation', 'contextMenus', 'sidebarRight', 'sessions', 'uiSession.sessionStatus'];
 
 export function apply(ctx: DshClientContext): void {
   try {

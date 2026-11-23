@@ -81,17 +81,18 @@
         "@deepseek-ai/dsh-client-ui-slots",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-api-gateway",
-        "@deepseek-ai/dsh-api-session-controller"
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-session-status"
       ]
     }
   },
   "engines": {
-    "dsh": ">=0.2.2-rc.2"
+    "dsh": ">=0.2.3-alpha.2"
   },
   "peerDependencies": {
     "react": "*",
     "react-dom": "*",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.2.2-rc.2"
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.3-alpha.2"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -100,7 +101,7 @@
   },
   "devDependencies": {
     "@arch-guard/core": "^0.12.0",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.3-alpha.2",
     "@types/node": "^24.19.0",
     "@types/proper-lockfile": "^4.1.4",
     "@types/react": "^19.3.0",
