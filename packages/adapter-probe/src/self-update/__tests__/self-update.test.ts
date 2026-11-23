@@ -273,6 +273,44 @@ describe('自更新现场：界面要知道外面那个进程跑成什么样', (
     expect(view?.tail).toBe('二行 / 三行 / 四行 / 五行');
   });
 
+  it('★ 失败原因是「要更高的 dsh」：连要求一起读出来；不认识的原因码丢掉', () => {
+    const dshHome = home();
+    pathsOf(dshHome);
+    const dir = join(dshHome, 'workbench');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, 'self-update.json'),
+      JSON.stringify({
+        state: 'failed',
+        profile: 'workbench',
+        from: '1.5.1',
+        to: '1.5.2-alpha.0',
+        reason: 'incomplete',
+        failure: 'incompatible',
+        requirements: { 'engines.dsh': '>=0.2.3-alpha.2' },
+        at: '2026-11-10T12:00:00.000Z',
+      }),
+    );
+
+    const view = readSelfUpdateView('workbench');
+    expect(view?.failure).toBe('incompatible');
+    expect(view?.requirements).toEqual({ 'engines.dsh': '>=0.2.3-alpha.2' });
+
+    writeFileSync(
+      join(dir, 'self-update.json'),
+      JSON.stringify({
+        state: 'failed',
+        profile: 'workbench',
+        from: '1.5.1',
+        to: '1.5.2-alpha.0',
+        reason: 'incomplete',
+        failure: 'made-up',
+        at: '2026-11-10T12:00:00.000Z',
+      }),
+    );
+    expect(readSelfUpdateView('workbench')?.failure).toBeUndefined();
+  });
+
   it('★ 换版已提交、等重启：残留的更新租约不算「忙」（否则界面一直说「上一次更新还在收尾」）', () => {
     const dshHome = home();
     pathsOf(dshHome);

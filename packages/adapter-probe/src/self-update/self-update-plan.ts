@@ -2,7 +2,11 @@ import { bootFileIn, RELEASE_PACKAGES, upFileIn, workbenchRoot, workbenchSelfUpd
 import type { SelfUpdatePaths, SelfUpdateRequest, SelfUpdateStart, UpdateJournalState } from '@dsh-workbench/shared/host';
 import { join } from 'node:path';
 import { type SelfUpdateCli, cliCommand, isPathDsh } from './self-update-cli.js';
-import type { SelfUpdateReason, SelfUpdateState } from '@dsh-workbench/shared/contract/protocol/bundle-install';
+import type {
+  SelfUpdateFailure,
+  SelfUpdateReason,
+  SelfUpdateState,
+} from '@dsh-workbench/shared/contract/protocol/bundle-install';
 
 const PATH_DSH: SelfUpdateCli = { file: 'dsh', args: [], env: {} };
 
@@ -20,6 +24,8 @@ export interface SelfUpdateMarker extends SelfUpdateRequest {
   readonly migration?: boolean | undefined;
   readonly version: string;
   readonly reason?: SelfUpdateReason | undefined;
+  readonly failure?: SelfUpdateFailure | undefined;
+  readonly requirements?: Readonly<Record<string, string>> | undefined;
   readonly phase?: UpdateJournalState | undefined;
   readonly committed?: boolean | undefined;
   readonly at: string;

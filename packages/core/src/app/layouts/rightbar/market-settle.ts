@@ -3,6 +3,7 @@ import {
   SELF_UPDATE_QUEUED_TTL_MS,
   SELF_UPDATE_RUNNING_TTL_MS,
 } from '@dsh-workbench/shared/contract/protocol/bundle-install';
+import { requirementsText } from '@dsh-workbench/shared';
 import type { WorkbenchSelfUpdate } from '@/kernel/contract/bundle-install';
 import type { MarketNote, MarketRowAction, ModuleUpdate } from './market-row-types';
 import type { SharedState } from './market-shared-rows';
@@ -202,7 +203,10 @@ export function selfUpdateMark(input: {
   return markOf(kind, update);
 }
 
-export function selfUpdateNote(mark: SelfUpdateMark): MarketNote | undefined {
+export function selfUpdateNote(
+  mark: SelfUpdateMark,
+  update?: WorkbenchSelfUpdate | null | undefined,
+): MarketNote | undefined {
   if (mark.kind === 'ok') return undefined;
   if (mark.kind === 'pending-restart') {
     return { key: 'panels.market.selfUpdatePendingRestart', params: {}, tone: 'plain' };
@@ -210,6 +214,9 @@ export function selfUpdateNote(mark: SelfUpdateMark): MarketNote | undefined {
   if (mark.kind === 'queued') {
     return { key: 'panels.market.selfUpdateQueued', params: {}, tone: 'plain' };
   }
+  const dsh =
+    mark.kind === 'failed' && update?.failure === 'incompatible' ? requirementsText(update.requirements) : undefined;
+  if (dsh !== undefined) return { key: 'panels.market.selfUpdateNeedsDsh', params: { dsh }, tone: 'alert' };
   return { key: 'panels.market.selfUpdateRetry', params: {}, tone: 'alert' };
 }
 

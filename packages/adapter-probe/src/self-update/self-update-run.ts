@@ -18,6 +18,7 @@ import {
   type ProcessHost,
   type UpdateJournalRecord,
 } from '@dsh-workbench/shared/host';
+import type { SelfUpdateFailure } from '@dsh-workbench/shared/contract/protocol/bundle-install';
 import type {
   SelfUpdateExpectBootStep,
   SelfUpdateStep,
@@ -65,6 +66,8 @@ export interface SelfUpdateRunResult {
   readonly state: 'ok' | 'pending' | 'failed';
   readonly detail: string;
   readonly ran: readonly string[];
+  readonly failure?: SelfUpdateFailure | undefined;
+  readonly requirements?: Readonly<Record<string, string>> | undefined;
 }
 
 interface StepOutcome {
@@ -73,6 +76,8 @@ interface StepOutcome {
   readonly marks?: 'flip' | undefined;
   readonly committed?: true | undefined;
   readonly state?: SelfUpdateRunResult['state'] | undefined;
+  readonly failure?: SelfUpdateFailure | undefined;
+  readonly requirements?: Readonly<Record<string, string>> | undefined;
 }
 
 export function selfUpdateJournalPath(plan: SelfUpdateSteps): string {
@@ -108,11 +113,13 @@ export async function runSelfUpdateSteps(
         version: plan.marker.from,
         reason: 'incomplete',
         at: now(),
+        ...(outcome.failure === undefined ? {} : { failure: outcome.failure }),
+        ...(outcome.requirements === undefined ? {} : { requirements: outcome.requirements }),
       });
       log(detail);
       log(`救法：${plan.rescue}`);
       noteSelfUpdateFailed(diag, plan.version, detail);
-      return { ok: false, state: 'failed', detail, ran };
+      return { ok: false, state: 'failed', detail, ran, ...(outcome.failure === undefined ? {} : { failure: outcome.failure }), ...(outcome.requirements === undefined ? {} : { requirements: outcome.requirements }) };
     }
     ran.push(step.kind);
     log(outcome.detail);
@@ -240,7 +247,15 @@ async function applyStep(
     }
     if (gate.compatibility.verdict === 'incompatible') {
       const need = gate.compatibility.requirements.map((item) => `${item.pkg} 要 ${item.range}`).join('、');
-      return { ok: false, detail: `新版本跟这一台 dsh ${plan.dshVersion ?? ''} 不兼容（${need}），不切过去` };
+      const requirements = Object.fromEntries(
+        gate.compatibility.requirements.map((item) => [item.source === 'engines' ? 'engines.dsh' : item.pkg, item.range]),
+      );
+      return {
+        ok: false,
+        detail: `新版本跟这一台 dsh ${plan.dshVersion ?? ''} 不兼容（${need}），不切过去`,
+        failure: 'incompatible',
+        requirements,
+      };
     }
     if (gate.compatibility.verdict === 'unknown') {
       log(`兼容性未知（${gate.compatibility.reason}），已经做过隔离入口检查`);

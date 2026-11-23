@@ -710,6 +710,13 @@ describe('切换前闸：不兼容 / 还占着 profile 都不换链', () => {
 
     expect(result.state).toBe('failed');
     expect(result.detail).toContain('不兼容');
+    expect(result.failure).toBe('incompatible');
+    expect(result.requirements).toEqual({ 'engines.dsh': '>=0.2.2-rc.2' });
+    expect(JSON.parse(readFileSync(plan.markerPath, 'utf8'))).toMatchObject({
+      state: 'failed',
+      failure: 'incompatible',
+      requirements: { 'engines.dsh': '>=0.2.2-rc.2' },
+    });
     expect(result.ran).toEqual(['version', 'install', 'verify']);
     expect(existsSync(join(plan.profileDir, 'node_modules', CORE))).toBe(false);
   });

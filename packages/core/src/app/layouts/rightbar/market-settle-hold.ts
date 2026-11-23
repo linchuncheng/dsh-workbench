@@ -71,15 +71,18 @@ export function useSettleHold(input: {
     if (stopRef.current === key) return;
     stopRef.current = key;
     setPending(null);
-    const note = selfUpdateNote({
-      kind: stopKind,
-      ...(stopCause === undefined ? {} : { cause: stopCause }),
-      ...(stopFix === undefined ? {} : { fix: stopFix }),
-      ...(stopVersion === undefined ? {} : { version: stopVersion }),
-    });
+    const note = selfUpdateNote(
+      {
+        kind: stopKind,
+        ...(stopCause === undefined ? {} : { cause: stopCause }),
+        ...(stopFix === undefined ? {} : { fix: stopFix }),
+        ...(stopVersion === undefined ? {} : { version: stopVersion }),
+      },
+      selfUpdate,
+    );
     if (note === undefined) return;
     setFailed({ id, message: t(note.key, note.params) });
-  }, [stopKind, stopCause, stopFix, stopVersion, id, setPending, setFailed, t]);
+  }, [stopKind, stopCause, stopFix, stopVersion, id, setPending, setFailed, t, selfUpdate]);
 
   useEffect(() => {
     if (!watching) {

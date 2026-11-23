@@ -8,8 +8,10 @@ import {
 import { selfUpdatePaths, selfUpdateUpFile } from './self-update-plan.js';
 import { pidAlive } from './self-update-alive.js';
 import {
+  SELF_UPDATE_FAILURES,
   SELF_UPDATE_REASONS,
   SELF_UPDATE_STATES,
+  type SelfUpdateFailure,
   type SelfUpdateReason,
   type SelfUpdateReinstall,
   type SelfUpdateState,
@@ -69,6 +71,8 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
   const version = asText(record.version);
   const at = asText(record.at);
   const reason = asText(record.reason);
+  const failure = asText(record.failure);
+  const requirements = requirementsOf(record.requirements);
   const tail = readTail(paths.log);
   const confirmed =
     state === 'pending-restart' &&
@@ -91,8 +95,18 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
       : reason === undefined || !(SELF_UPDATE_REASONS as readonly string[]).includes(reason)
         ? {}
         : { reason: reason as SelfUpdateReason }),
+    ...(failure === undefined || !(SELF_UPDATE_FAILURES as readonly string[]).includes(failure)
+      ? {}
+      : { failure: failure as SelfUpdateFailure }),
+    ...(requirements === undefined ? {} : { requirements }),
     ...(tail === undefined ? {} : { tail }),
   };
+}
+
+function requirementsOf(raw: unknown): Readonly<Record<string, string>> | undefined {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
+  const found = Object.entries(raw).filter((entry): entry is [string, string] => typeof entry[1] === 'string');
+  return found.length === 0 ? undefined : Object.fromEntries(found);
 }
 
 function reinstallOf(root: string, owner: string | undefined): SelfUpdateReinstall | undefined {

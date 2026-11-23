@@ -306,6 +306,27 @@ describe('工作台自更新：四档结果落在那一行，下次打开只说�
     }
   });
 
+  it('★ 切换前闸判的是 dsh 不兼容 → 那一行说要升级 dsh，不再叫人重试', () => {
+    const requirements = { 'engines.dsh': '>=0.2.3-alpha.2' };
+    const mark = selfUpdateMark({
+      update: { state: 'failed', at, version: '0.3.9', failure: 'incompatible', requirements },
+      toldAt: undefined,
+    });
+
+    expect(mark).toEqual({ kind: 'failed', at, version: '0.3.9' });
+    expect(
+      selfUpdateNote(mark as Parameters<typeof selfUpdateNote>[0], {
+        state: 'failed',
+        failure: 'incompatible',
+        requirements,
+      }),
+    ).toEqual({
+      key: 'panels.market.selfUpdateNeedsDsh',
+      params: { dsh: 'dsh >=0.2.3-alpha.2' },
+      tone: 'alert',
+    });
+  });
+
   it('★ 排队 / 正在换（还没到超时）→ 不给第二次点击；超时或脚本早没了 → 放行', () => {
     const fresh = new Date().toISOString();
 

@@ -199,6 +199,7 @@ export const zh = {
   'panels.market.selfUpdateMigration': '本次更新需要先退出 Desktop（仅这一次）：退出后会自动完成，无需再次操作。',
   'panels.market.selfUpdatePendingRestart': '新版本已就绪，重启后生效。',
   'panels.market.selfUpdateRetry': '更新失败，请再次点击「更新」。',
+  'panels.market.selfUpdateNeedsDsh': '更新失败：这个版本需要 {dsh}，请先升级 dsh。',
   'panels.market.selfUpdateBusy': '上一次更新尚未结束，请等待结束后再更新。',
   'panels.market.selfUpdateReinstallFailed': '依赖重新安装失败，请重启工作台后重试；如果仍然失败，请按终端中的提示手动安装。',
   'panels.market.selfUpdateReinstallStopped': '依赖自动安装连续失败，请按终端中的提示手动安装。',

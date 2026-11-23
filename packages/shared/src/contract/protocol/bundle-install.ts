@@ -90,6 +90,10 @@ export const SELF_UPDATE_REASONS = ['occupied', 'incomplete'] as const;
 
 export type SelfUpdateReason = (typeof SELF_UPDATE_REASONS)[number];
 
+export const SELF_UPDATE_FAILURES = ['incompatible'] as const;
+
+export type SelfUpdateFailure = (typeof SELF_UPDATE_FAILURES)[number];
+
 export type SelfUpdateReinstallState = 'pending' | 'failed';
 
 export interface SelfUpdateReinstall {
@@ -109,6 +113,8 @@ export interface WorkbenchSelfUpdate {
   readonly version?: string;
   readonly at?: string;
   readonly reason?: SelfUpdateReason;
+  readonly failure?: SelfUpdateFailure;
+  readonly requirements?: Readonly<Record<string, string>>;
   readonly tail?: string;
   readonly reinstall?: SelfUpdateReinstall;
 }
