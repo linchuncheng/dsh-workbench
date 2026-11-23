@@ -137,12 +137,12 @@ export const checks = [
     },
   },
   {
-    title: 'apply() 注入了一份 <style>：自有前缀 .wb- + board 那份 + 面板列（构建把 CSS 打进来了）',
+    title: '交出去的那份样式里有 .wb- 前缀 + board 那份 + 面板列（构建把 CSS 打进来了）',
     run(ctx, report) {
       const { injectedStyles } = ctx;
 
       report(
-        'apply() 注入了一份 <style>：自有前缀 .wb- + board 那份 + 面板列（构建把 CSS 打进来了）',
+        '交出去的那份样式里有 .wb- 前缀 + board 那份 + 面板列（构建把 CSS 打进来了）',
         injectedStyles.length === 1 &&
           typeof injectedStyles[0]?.textContent === 'string' &&
           injectedStyles[0].textContent.includes('.wb-root') &&
