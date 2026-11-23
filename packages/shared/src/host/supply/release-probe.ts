@@ -90,12 +90,14 @@ export interface ReleaseProbe {
   latestVersion(options: LatestVersionOptions): Promise<string | undefined>;
   missingReleaseParts(options: MissingPartsOptions): Promise<readonly string[]>;
   probeRelease(options: ProbeReleaseOptions): Promise<PluginRelease | undefined>;
+  versionManifestOf(options: VersionManifestOptions): Promise<Readonly<Record<string, unknown>> | undefined>;
   reset(): void;
 }
 
 export function createReleaseProbe(input: { readonly head?: TarballHead | undefined } = {}): ReleaseProbe {
   const latestCache = new Map<string, CacheEntry>();
   const existsCache = new Map<string, ExistsEntry>();
+  const manifestCache = new Map<string, ManifestEntry>();
   const head = input.head ?? defaultHead;
   const ready = (call: { seam: Seam; name: string; version: string; registry: string; force: boolean; cacheDir?: string | undefined }) =>
     versionExists(existsCache, { ...call, head });
@@ -104,9 +106,11 @@ export function createReleaseProbe(input: { readonly head?: TarballHead | undefi
     latestVersion: async (options) => latestVersionOf(latestCache, ready, options),
     missingReleaseParts: async (options) => missingPartsOf(ready, options),
     probeRelease: async (options) => probeOf(latestCache, ready, options),
+    versionManifestOf: async (options) => manifestOfVersion(manifestCache, options),
     reset: () => {
       latestCache.clear();
       existsCache.clear();
+      manifestCache.clear();
     },
   };
 }
@@ -118,6 +122,20 @@ interface LatestVersionOptions {
   readonly force?: boolean;
   readonly prereleaseChannels?: readonly string[];
   readonly cacheDir?: string | undefined;
+}
+
+interface VersionManifestOptions {
+  readonly seam: Seam;
+  readonly name: string;
+  readonly version: string;
+  readonly registry: string;
+  readonly force?: boolean;
+  readonly cacheDir?: string | undefined;
+}
+
+interface ManifestEntry {
+  readonly at: number;
+  readonly value: Readonly<Record<string, unknown>> | undefined;
 }
 
 interface MissingPartsOptions {
@@ -265,6 +283,27 @@ async function versionExists(
   const entry = await entryOf(options);
   existsCache.set(key, entry);
   return entry;
+}
+
+async function manifestOfVersion(
+  cache: Map<string, ManifestEntry>,
+  options: VersionManifestOptions,
+): Promise<Readonly<Record<string, unknown>> | undefined> {
+  const { seam, name, version, registry, force = false, cacheDir } = options;
+  const key = `${registry}|${name}@${version}`;
+  const hit = cache.get(key);
+  const ttl = hit?.value === undefined ? VERSION_CHECK_FAILURE_TTL_MS : VERSION_CHECK_TTL_MS;
+  if (!force && hit !== undefined && now() - hit.at < ttl) return hit.value;
+  const pnpm = process.env.DSH_WB_PNPM?.trim() ?? '';
+  const spec = `${quoteShellArg(`${name}@${version}`)} engines peerDependencies name --json --registry ${quoteShellArg(registry)}${cacheFlag(cacheDir)}`;
+  const found = await viewOnce(seam, [`npm view ${spec}`, `${pnpm === '' ? 'pnpm' : pnpm} view ${spec}`]);
+  const parsed = found.ok ? parseJsonLoose(found.stdout) : undefined;
+  const value =
+    typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Readonly<Record<string, unknown>>)
+      : undefined;
+  cache.set(key, { at: now(), value });
+  return value;
 }
 
 async function missingPartsOf(

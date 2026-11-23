@@ -56,6 +56,7 @@ export function createSupplyPort(): SupplyPort {
     latestVersion: release.latestVersion,
     missingReleaseParts: release.missingReleaseParts,
     probeRelease: release.probeRelease,
+    versionManifestOf: release.versionManifestOf,
     isNewerVersion,
     recoveryCommand: (options: { readonly profile: string; readonly version: string }) =>
       `dsh plugin --profile ${options.profile} add ${PLUGIN_ID}@${options.version}`,

@@ -162,6 +162,7 @@ export function harness(options: {
     latestVersion: release.latestVersion,
     missingReleaseParts: release.missingReleaseParts,
     probeRelease: release.probeRelease,
+    versionManifestOf: release.versionManifestOf,
     isolatedRoot: () => '/tmp/wb-harness-runtime',
     isolatedHome: () => '/tmp/wb-harness-home',
     modules: { isolatedRoot: () => '/tmp/wb-harness-runtime', isolatedHome: () => '/tmp/wb-harness-home' },

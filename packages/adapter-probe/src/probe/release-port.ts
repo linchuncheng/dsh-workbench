@@ -6,4 +6,5 @@ const port = createReleasePort({ prefix: vendorPrefix() });
 export const latestVersion = port.latestVersion;
 export const missingReleaseParts = port.missingReleaseParts;
 export const probeRelease = port.probeRelease;
+export const versionManifestOf = port.versionManifestOf;
 export const resetReleaseCache = port.reset;

@@ -27,6 +27,13 @@ export interface ReleasePort {
     readonly force?: boolean;
     readonly prereleaseChannels?: readonly string[];
   }): Promise<PluginRelease | undefined>;
+  versionManifestOf(options: {
+    readonly seam: Seam;
+    readonly name: string;
+    readonly version: string;
+    readonly registry: string;
+    readonly force?: boolean;
+  }): Promise<Readonly<Record<string, unknown>> | undefined>;
   reset(): void;
 }
 
@@ -39,6 +46,7 @@ export function createReleasePort(options: {
     latestVersion: (call) => probe.latestVersion(call),
     missingReleaseParts: (call) => probe.missingReleaseParts(call),
     probeRelease: (call) => probe.probeRelease({ ...call, prefix: options.prefix }),
+    versionManifestOf: (call) => probe.versionManifestOf(call),
     reset: () => {
       probe.reset();
     },

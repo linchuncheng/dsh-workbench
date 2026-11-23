@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { Seam } from '@dsh-workbench/shared/host';
 import { PLUGIN_ID, RELEASE_PACKAGES } from '@dsh-workbench/shared/host';
@@ -12,6 +12,10 @@ import { fakeSeamOf } from './seam-fake';
 
 beforeEach(() => {
   resetHoldLog();
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 function fakeContext(
@@ -32,12 +36,19 @@ type Source = Readonly<Record<string, readonly string[]>>;
 const versionViews = (lines: readonly string[]) =>
   lines.filter((line) => line.includes('npm view') && !line.includes('dist.tarball'));
 
-function shellWith(source: Source): { seam: Seam; commands: () => string[] } {
+function shellWith(
+  source: Source,
+  manifests: Readonly<Record<string, unknown>> = {},
+): { seam: Seam; commands: () => string[] } {
   const fake = createFakeShell((call) => {
     const spec = (/npm view (\S+)/.exec(call.command)?.[1] ?? '').replace(/^'|'$/g, '');
     const cut = spec.lastIndexOf('@');
     const name = cut <= 0 ? spec : spec.slice(0, cut);
     const asked = cut <= 0 ? '' : spec.slice(cut + 1);
+    if (call.command.includes('engines')) {
+      const manifest = manifests[`${name}@${asked}`];
+      return manifest === undefined ? { exitCode: 1, stdout: '' } : { stdout: `${JSON.stringify(manifest)}\n` };
+    }
     const known = source[name] ?? [];
     const hit = asked === '' ? known.at(-1) : known.includes(asked) ? asked : undefined;
     return hit === undefined ? { exitCode: 1, stdout: '' } : { stdout: `${hit}\n` };
@@ -121,6 +132,46 @@ describe('工作台自己那份的新版（与模块同一条探针里一起回�
       spec: '^0.1.18',
       registry: 'https://self.example/',
     });
+    cleanup();
+  });
+
+  it('★ 版本表拒答（link 装法）时自己问这一版的 engines：不兼容就拦住，不用等更新失败', async () => {
+    vi.stubEnv('DSH_CLIENT_VERSION', '0.2.2-rc.5');
+    const { dir, cleanup } = coreProfile({});
+    const { seam } = shellWith(released('0.1.19'), {
+      [`${CORE}@0.1.19`]: { name: CORE, version: '0.1.19', engines: { dsh: '>=0.2.3-alpha.2' } },
+    });
+
+    const result = (await moduleVersionsHandler(fakeContext({ ...MANAGER }, dir), seam)(
+      new URLSearchParams(),
+    )) as { workbench?: Record<string, unknown> };
+
+    expect(result.workbench).toMatchObject({
+      pkg: CORE,
+      installed: '0.1.18',
+      latest: '0.1.19',
+      latestBlocked: {
+        kind: 'incompatible',
+        requirements: { 'engines.dsh': '>=0.2.3-alpha.2' },
+        runtimeVersion: '0.2.2-rc.5',
+      },
+    });
+    cleanup();
+  });
+
+  it('★ 自己问出来兼容 → 不带 latestBlocked（不再一律「未验证」）', async () => {
+    vi.stubEnv('DSH_CLIENT_VERSION', '0.2.2-rc.5');
+    const { dir, cleanup } = coreProfile({});
+    const { seam } = shellWith(released('0.1.19'), {
+      [`${CORE}@0.1.19`]: { name: CORE, version: '0.1.19', engines: { dsh: '>=0.2.0' } },
+    });
+
+    const result = (await moduleVersionsHandler(fakeContext({ ...MANAGER }, dir), seam)(
+      new URLSearchParams(),
+    )) as { workbench?: Record<string, unknown> };
+
+    expect(result.workbench).toMatchObject({ installed: '0.1.18', latest: '0.1.19' });
+    expect(result.workbench).not.toHaveProperty('latestBlocked');
     cleanup();
   });
 
