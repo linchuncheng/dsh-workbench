@@ -24,10 +24,12 @@ import {
   DIY_RECORD_PREPARE_TOOL,
   DIY_PUBLISH_TOOL,
 } from '../unit';
-import type { MarketSourceConfig, PublishPreview } from '@dsh-workbench/shared/contract/protocol/market-index';
+import type { MarketSourceConfig } from '@dsh-workbench/shared/contract/protocol/market-index';
 import type { LongTaskRunsLookup } from './long-task-tools';
-import { publishClaimDenyOf } from './publish-claim';
-import { copiesOf } from './approval-questions';
+import { publishVerdict } from './publish-approval';
+
+export { publishVerdictFor } from './publish-approval';
+export type { PublishApprovalPreview, PublishPreviewAsk, PublishPreviewLookup } from './publish-approval';
 
 const SPEC_LIMIT = 80;
 
@@ -91,15 +93,46 @@ export function argsOf(call: ApprovalCall): Record<string, unknown> {
   return typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
 }
 
-export function askOf(reason: string, question: ApprovalDetail, fallback: ApprovalDetail): ApprovalVerdict {
-  return { kind: 'ask', reason, question, fallback };
+const HEADLINE_MAX = 15;
+
+export function askOf(
+  reason: string,
+  question: ApprovalDetail,
+  fallback: ApprovalDetail,
+  headline?: ApprovalDetail,
+): ApprovalVerdict {
+  return { kind: 'ask', reason, question, fallback, ...(headline === undefined ? {} : { headline }) };
 }
 
-function updateAsk(tool: string, id: string | undefined, noun: string, target: Pair): ApprovalVerdict {
+function headlineOf(zh: string, en: string): ApprovalDetail {
+  return { zh, en };
+}
+
+function shortHeadline(zh: string, en: string, id: string | undefined): ApprovalDetail {
+  const suffix = id === undefined || id === '' ? '' : ` ${id}`;
+  const headline = { zh: `${zh}${suffix}`, en: `${en}${suffix}` };
+  return [...headline.zh].length <= HEADLINE_MAX ? headline : headlineOf(zh, en);
+}
+
+function panelHeadline(actionZh: string, actionEn: string, id: string | undefined): ApprovalDetail {
+  const base = headlineOf(`${actionZh}面板`, `${actionEn} panel`);
+  if (id === undefined || id === '') return base;
+  const headline = headlineOf(`${actionZh} ${id} 面板`, `${actionEn} ${id} panel`);
+  return [...headline.zh].length <= HEADLINE_MAX ? headline : base;
+}
+
+function updateAsk(
+  tool: string,
+  id: string | undefined,
+  noun: string,
+  target: Pair,
+  headline: ApprovalDetail,
+): ApprovalVerdict {
   return askOf(
     `${tool} ${id ?? ''} updates ${noun} on this machine`,
     pair(`会更新${target.zh}，允许吗？`, `it updates ${target.en}. Allow?`),
     pair(`agent 想更新${target.zh}，允许吗？`, `The agent wants to update ${target.en}. Allow?`),
+    headline,
   );
 }
 
@@ -111,19 +144,6 @@ function textOf(raw: Record<string, unknown>, key: string): string {
 function clipped(text: string): string {
   const chars = [...text];
   return chars.length > TARGET_LIMIT ? `${chars.slice(0, TARGET_LIMIT).join('')}…` : text;
-}
-
-function categoryOfArgs(raw: Record<string, unknown>): string {
-  const value = raw['category'];
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function labelsOfArgs(raw: Record<string, unknown>): readonly string[] {
-  const value = raw['labels'];
-  if (!Array.isArray(value)) return [];
-  return [
-    ...new Set(value.flatMap((one) => (typeof one === 'string' && one.trim() !== '' ? [one.trim()] : []))),
-  ];
 }
 
 function stopVerdict(call: ApprovalCall, runs: LongTaskRunsLookup | undefined): ApprovalVerdict {
@@ -153,112 +173,14 @@ function stopVerdict(call: ApprovalCall, runs: LongTaskRunsLookup | undefined): 
       `agent 想停止${where}，${origin}，允许吗？`,
       `The agent wants to stop ${whereEn} ${originEn}. Allow?`,
     ),
+    headlineOf('停止长任务', 'Stop long task'),
   );
-}
-
-export type PublishApprovalPreview = PublishPreview;
-
-export interface PublishPreviewAsk {
-  readonly workspace?: string | undefined;
-  readonly unit: string;
-  readonly author?: string | undefined;
-}
-
-export type PublishPreviewLookup =
-  | { readonly ok: true; readonly preview: PublishApprovalPreview }
-  | { readonly ok: false; readonly reason: string };
-
-function publishVerdict(
-  call: ApprovalCall,
-  preview?: (ask: PublishPreviewAsk) => PublishPreviewLookup,
-): ApprovalVerdict {
-  const raw = argsOf(call);
-  if (raw['verify'] === true || raw['target'] === 'local') return { kind: 'allow' };
-  const refresh = raw['refresh'] === true;
-  const unit = textOf(raw, 'unit');
-  const askedAuthor = textOf(raw, 'author');
-  const lookup =
-    unit === ''
-      ? undefined
-      : preview?.({
-          ...(call.workspace === undefined ? {} : { workspace: call.workspace }),
-          unit,
-          ...(askedAuthor === '' ? {} : { author: askedAuthor }),
-        });
-  if (lookup !== undefined && !lookup.ok) return { kind: 'deny', reason: lookup.reason };
-  const found = lookup?.ok === true ? lookup.preview : null;
-  const asked = textOf(raw, 'target');
-  const target = refresh
-    ? 'market'
-    : asked === ''
-      ? found?.market === undefined
-        ? found?.registry === undefined
-          ? 'tarball'
-          : 'team'
-        : 'market'
-      : asked;
-  const source = textOf(raw, 'source');
-  const claimReason = publishClaimDenyOf(found?.claim, found?.name ?? unit);
-  if (source === '' && target !== 'tarball' && target !== 'local' && claimReason !== undefined) {
-    return { kind: 'deny', reason: claimReason };
-  }
-  const label = unit === '' ? '工作台模块' : `工作台模块 [${unit}]`;
-  const labelEn = unit === '' ? 'the workbench module' : `the workbench module [${unit}]`;
-  if (!refresh && found?.changelog?.missing === true && textOf(raw, 'changelogNote') === '') {
-    return {
-      kind: 'deny',
-      reason:
-        `当前版本尚未提供更新日志（${found.changelog.version}）。请提供 changelogNote（一行一条）后再调用；` +
-        '发布时会一并写入 CHANGELOG.md 并随包发布',
-    };
-  }
-  const category = categoryOfArgs(raw);
-  if (/[\r\n]/u.test(category)) {
-    return { kind: 'deny', reason: '分类只接受一个短词，不能包含换行。' };
-  }
-  const labels = labelsOfArgs(raw);
-  if (labels.length > 2) {
-    return {
-      kind: 'deny',
-      reason: `标签最多两个（收到 ${String(labels.length)} 个）。请挑选最能说明该模块用途的 1–2 个。`,
-    };
-  }
-  if (target === 'market' && category === '' && (found?.category ?? '') === '') {
-    return {
-      kind: 'deny',
-      reason:
-        '该模块尚未设置市集分类。发布到市场时请用 category 指定一个短词（说明它属于哪类，例如「任务与协作」）；' +
-        '已有分类则无需传入。',
-    };
-  }
-  const copies = copiesOf(label, labelEn);
-  const copy = copies[target] ?? copies['team'];
-  const targetLabel =
-    found === null
-      ? target
-      : target === 'market' && found.market !== undefined
-        ? `${found.name}@${found.version} → market (${found.market.url})`
-        : `${found.name}@${found.version} → ${target}${found.registry === undefined ? '' : ` (${found.registry})`}`;
-  const question = refresh
-    ? pair(
-        `只刷新${label}在市集里的元数据（标题 / 作者 / 说明 / 标签 / 分类），不更新版本、不重新发布产物，允许吗？`,
-        `Only refresh ${labelEn}'s market metadata (title, author, description, labels, category); no version bump, no artifacts. Allow?`,
-      )
-    : pair(copy.zh, copy.en);
-  return askOf(`${DIY_PUBLISH_TOOL} ${targetLabel}${refresh ? '（元数据）' : ''}`, question, question);
 }
 
 export type MarketSourceLookup = (id: string | undefined) => MarketSourceConfig | undefined;
 
 export function stopVerdictFor(call: ApprovalCall, longTaskRuns: LongTaskRunsLookup | undefined): ApprovalVerdict | undefined {
   return stopVerdict(call, longTaskRuns);
-}
-
-export function publishVerdictFor(
-  call: ApprovalCall,
-  preview: ((ask: PublishPreviewAsk) => PublishPreviewLookup) | undefined,
-): ApprovalVerdict | undefined {
-  return publishVerdict(call, preview);
 }
 
 export function approvalVerdict(
@@ -289,6 +211,9 @@ export function approvalVerdict(
           ? 'The agent wants to take over your screen to start debugging a workbench module. Allow?'
           : 'The agent wants your screen again to keep debugging a workbench module. Allow?',
       ),
+      starting
+        ? shortHeadline('开始调试', 'Start debugging', typeof unit === 'string' ? unit : undefined)
+        : shortHeadline('继续调试', 'Resume debugging', typeof unit === 'string' ? unit : undefined),
     );
   }
   if (call.name === DIY_DEBUG_PAUSE_TOOL || call.name === DIY_DEBUG_STOP_TOOL) {
@@ -307,6 +232,7 @@ export function approvalVerdict(
         (act === '' ? '' : ` (${act})`),
       question,
       question,
+      headlineOf('录制一次写入', 'Record one write'),
     );
   }
   if (
@@ -333,6 +259,7 @@ export function approvalVerdict(
         `${PANELS_SHOW_TOOL} ${id ?? ''} puts a workbench module row on this project's board`,
         pair(`会把${row.zh}加回${board.zh}，允许吗？`, `it puts ${row.en} back on ${board.en}. Allow?`),
         pair(`agent 想把${row.zh}加到${board.zh}，允许吗？`, `The agent wants to put ${row.en} on ${board.en}. Allow?`),
+        panelHeadline('添加', 'Add', id),
       );
     }
     case PANELS_HIDE_TOOL: {
@@ -347,6 +274,7 @@ export function approvalVerdict(
           `agent 想移除${row.zh}，允许吗？`,
           `The agent wants to take ${row.en} off the board. Allow?`,
         ),
+        panelHeadline('移除', 'Remove', id),
       );
     }
     case PANELS_MOVE_TOOL: {
@@ -362,6 +290,7 @@ export function approvalVerdict(
           `it moves ${row.en} to ${place.en} of ${board.en}. Allow?`,
         ),
         pair(`agent 想把${row.zh}移到${place.zh}，允许吗？`, `The agent wants to move ${row.en} to ${place.en}. Allow?`),
+        panelHeadline('移动', 'Move', id),
       );
     }
     case PANELS_RESET_TOOL:
@@ -377,6 +306,10 @@ export function approvalVerdict(
             : 'agent 想清空工作台在当前项目中的面板配置，允许吗？',
           `The agent wants to clear this project's rows on the workbench ${board.en}. Allow?`,
         ),
+        headlineOf(
+          scope === 'machine' ? '重置机器级面板' : '重置项目面板',
+          scope === 'machine' ? 'Reset machine panel' : 'Reset project panel',
+        ),
       );
     case PANELS_FOLLOW_TOOL: {
       const row = workbenchPanelRow(id);
@@ -384,6 +317,7 @@ export function approvalVerdict(
         `${PANELS_FOLLOW_TOOL} ${id ?? ''} puts a workbench panel row back to following the machine-level board`,
         pair(`会把${row.zh}恢复为跟随机器级默认值，允许吗？`, `it puts ${row.en} back to following the machine-level board. Allow?`),
         pair(`agent 想将${row.zh}恢复为跟随机器级默认值，允许吗？`, `The agent wants to put ${row.en} back to following the machine-level board. Allow?`),
+        panelHeadline('恢复', 'Restore', id),
       );
     }
     case MODULES_INSTALL_TOOL:
@@ -401,6 +335,11 @@ export function approvalVerdict(
           `agent 想${verb}${workbenchModule(id).zh}需要的插件与库，允许吗？`,
           `The agent wants to ${install ? 'install' : 'update'} the plugins ${workbenchModule(id).en} declares. Allow?`,
         ),
+        shortHeadline(
+          install ? '安装模块依赖' : '更新模块依赖',
+          install ? 'Install module deps' : 'Update module deps',
+          id,
+        ),
       );
     }
     case MODULES_UNINSTALL_TOOL: {
@@ -409,6 +348,7 @@ export function approvalVerdict(
         `${MODULES_UNINSTALL_TOOL} ${id ?? ''} removes a workbench module from this machine`,
         pair(`会把${target.zh}连同它的包一起卸载，允许吗？`, `it uninstalls ${target.en}, package included. Allow?`),
         pair(`agent 想卸载${target.zh}，允许吗？`, `The agent wants to uninstall ${target.en}. Allow?`),
+        shortHeadline('卸载模块', 'Uninstall module', id),
       );
     }
     case MODULES_INSTALL_BUNDLE_TOOL:
@@ -416,17 +356,31 @@ export function approvalVerdict(
         `${MODULES_INSTALL_BUNDLE_TOOL} ${spec} installs a module package into this profile`,
         pair(`会把 [${spec}] 安装为工作台的模块包，允许吗？`, `it installs [${spec}] as a workbench module package. Allow?`),
         pair(`agent 想安装工作台的模块包 [${spec}]，允许吗？`, `The agent wants to install the workbench module package [${spec}]. Allow?`),
+        headlineOf('安装模块包', 'Install module package'),
       );
     case MODULES_UPDATE_DEPENDENCY_TOOL:
-      return updateAsk(MODULES_UPDATE_DEPENDENCY_TOOL, id, 'a shared dependency', workbenchDependency(id));
+      return updateAsk(
+        MODULES_UPDATE_DEPENDENCY_TOOL,
+        id,
+        'a shared dependency',
+        workbenchDependency(id),
+        shortHeadline('更新共用依赖', 'Update shared dependency', id),
+      );
     case MODULES_UPDATE_PLUGIN_TOOL:
-      return updateAsk(MODULES_UPDATE_PLUGIN_TOOL, plugin, 'a plugin', workbenchPlugin(plugin));
+      return updateAsk(
+        MODULES_UPDATE_PLUGIN_TOOL,
+        plugin,
+        'a plugin',
+        workbenchPlugin(plugin),
+        shortHeadline('更新插件', 'Update plugin', plugin),
+      );
     case MODULES_UNINSTALL_PLUGIN_TOOL: {
       const target = workbenchPlugin(plugin);
       return askOf(
         `${MODULES_UNINSTALL_PLUGIN_TOOL} ${plugin ?? ''} uninstalls a plugin on this machine`,
         pair(`会卸载${target.zh}，允许吗？`, `it uninstalls ${target.en}. Allow?`),
         pair(`agent 想卸载${target.zh}，允许吗？`, `The agent wants to uninstall ${target.en}. Allow?`),
+        shortHeadline('卸载插件', 'Uninstall plugin', plugin),
       );
     }
     case MODULES_UPDATE_WORKBENCH_TOOL:
@@ -434,6 +388,7 @@ export function approvalVerdict(
         `${MODULES_UPDATE_WORKBENCH_TOOL} replaces the workbench itself with the new version from the registry`,
         pair('会把工作台本身更新到来源上的最新版本，允许吗？', 'it updates the workbench itself to the new version from the registry. Allow?'),
         pair('agent 想把工作台本身更新到来源上的最新版本，允许吗？', 'The agent wants to update the workbench itself from the registry. Allow?'),
+        headlineOf('更新工作台', 'Update workbench'),
       );
     case MARKET_ENABLE_TOOL: {
       const id = text('id');
@@ -468,6 +423,7 @@ export function approvalVerdict(
           `会把${where.zh}设为可发布；只修改本机配置，不触碰仓库，允许吗？`,
           `It makes ${where.en} a publish destination on this machine, without touching the repository. Allow?`,
         ),
+        headlineOf('模块来源可发布', 'Make source publishable'),
       );
     }
     case MARKET_DISABLE_TOOL: {
@@ -490,6 +446,7 @@ export function approvalVerdict(
             '会把工作台当前选中的模块来源改回只读；只修改本机配置，不触碰仓库，允许吗？',
             'It makes the selected workbench index source read-only again on this machine, without touching the repository. Allow?',
           ),
+          headlineOf('模块来源只读', 'Make source read-only'),
         );
       }
       if (source.kind !== 'git' || source.policy !== 'artifacts-in-repo') return { kind: 'allow' };
@@ -500,6 +457,7 @@ export function approvalVerdict(
           `会把工作台的模块来源「${source.label}」改回只读；只修改本机配置，不触碰仓库，允许吗？`,
           `It makes the workbench index source "${source.label}" read-only again on this machine, without touching the repository. Allow?`,
         ),
+        headlineOf('改回只读', 'Make read-only'),
       );
     }
     default:

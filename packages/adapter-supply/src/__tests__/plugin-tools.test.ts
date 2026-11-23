@@ -234,6 +234,7 @@ describe('审批：写 / 认不出 access 都要问，文案是那句通用的',
         zh: 'agent 想执行工作台 [inventory] opencli 插件的 [build] 命令，允许吗？',
         en: 'The agent wants to run the [build] command of the workbench opencli plugin [inventory]. Allow?',
       },
+      headline: { zh: '执行插件命令', en: 'Run plugin command' },
       noteInDetail: true,
     });
   });

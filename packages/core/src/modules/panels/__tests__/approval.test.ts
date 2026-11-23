@@ -69,27 +69,30 @@ describe('改面板：show / move / reset / follow 要问，hide 不问（可逆
       zhOf({ name: PANELS_FOLLOW_TOOL, arguments: { id: 'issues' } }),
     ]);
 
-    expect(four[0]).toContain('加到当前项目的面板');
-    expect(four[1]).toContain('最前面');
-    expect(four[2]).toContain('清空');
-    expect(four[3]).toContain('恢复为跟随机器级默认值');
+    expect(four[0]).toContain('添加');
+    expect(four[0]).toContain('issues');
+    expect(four[1]).toContain('移动');
+    expect(four[1]).toContain('issues');
+    expect(four[2]).toContain('重置');
+    expect(four[3]).toContain('恢复');
+    expect(four[3]).toContain('issues');
     expect(new Set(four).size).toBe(4);
     expect(panelsApproval({ name: PANELS_HIDE_TOOL, arguments: { id: 'issues' } })?.kind).toBe('allow');
     for (const zh of four) {
-      expect(zh).toContain('允许吗');
+      expect(zh).not.toContain('允许吗');
       expect(zh).not.toContain('（');
     }
   });
 
   it('★ 机器级默认板那一份说成"机器级默认板"，不说"当前项目的面板"（同一把工具、两个落点）', async () => {
-    const machine = await zhOf({ name: PANELS_SHOW_TOOL, arguments: { id: 'issues', scope: 'machine' } });
-    const clear = await zhOf({ name: PANELS_RESET_TOOL, arguments: { scope: 'machine' } });
-    const local = await zhOf({ name: PANELS_SHOW_TOOL, arguments: { id: 'issues' } });
+    const machine = panelsApproval({ name: PANELS_SHOW_TOOL, arguments: { id: 'issues', scope: 'machine' } });
+    const clear = panelsApproval({ name: PANELS_RESET_TOOL, arguments: { scope: 'machine' } });
+    const local = panelsApproval({ name: PANELS_SHOW_TOOL, arguments: { id: 'issues' } });
 
-    expect(machine).toContain('机器级默认值');
-    expect(machine).not.toContain('当前项目的面板');
-    expect(clear).toContain('机器级默认值');
-    expect(local).toContain('当前项目的面板');
+    expect(machine?.kind === 'ask' ? machine.question.zh : '').toContain('机器级默认值');
+    expect(machine?.kind === 'ask' ? machine.question.zh : '').not.toContain('当前项目的面板');
+    expect(clear?.kind === 'ask' ? clear.headline?.zh : '').toContain('机器级');
+    expect(local?.kind === 'ask' ? local.headline?.zh : '').not.toContain('机器级');
   });
 
   it('★ follow 不是"加到面板上"：它把那一行改回跟随机器级默认板', async () => {
@@ -97,9 +100,9 @@ describe('改面板：show / move / reset / follow 要问，hide 不问（可逆
     const all = await zhOf({ name: PANELS_FOLLOW_TOOL, arguments: {} });
 
     expect(one).toContain('issues');
-    expect(one).toContain('恢复为跟随机器级默认值');
+    expect(one).toContain('恢复');
     expect(one).not.toContain('加到');
-    expect(all).toContain('恢复为跟随机器级默认值');
+    expect(all).toContain('恢复');
     expect(all).not.toContain('issues');
   });
 
@@ -113,7 +116,7 @@ describe('改面板：show / move / reset / follow 要问，hide 不问（可逆
 
   it('目标模块：能拿到就说名字，拿不到就说"面板"', async () => {
     expect(await zhOf({ name: PANELS_SHOW_TOOL, arguments: { id: 'issues' } })).toContain('issues');
-    expect(await zhOf({ name: PANELS_SHOW_TOOL, arguments: {} })).toContain('当前项目的面板');
+    expect(await zhOf({ name: PANELS_SHOW_TOOL, arguments: {} })).toBe('添加面板');
   });
 });
 
@@ -145,9 +148,7 @@ describe('装 / 更新 / 卸模块与插件：八把写工具，各自说清目�
   it('★ 更新工作台自己是另一句话：说清动的是它自己（别退到"一个模块"）', async () => {
     const update = await zhOf({ name: MODULES_UPDATE_WORKBENCH_TOOL, arguments: {} });
 
-    expect(update).toContain('工作台');
-    expect(update).toContain('新版');
-    expect(update).not.toContain('重启');
+    expect(update).toBe('更新工作台');
     expect(update).not.toContain('一个模块');
     expect(panelsApproval({ name: MODULES_UPDATE_WORKBENCH_TOOL, arguments: {} })?.kind).toBe('ask');
   });
@@ -158,8 +159,13 @@ describe('装 / 更新 / 卸模块与插件：八把写工具，各自说清目�
       arguments: { spec: '@scope/mod@1.2.3' },
     });
 
-    expect(zh).toContain('@scope/mod@1.2.3');
-    expect(zh).toContain('装');
+    expect(zh).toBe('安装模块包');
+    const verdict = panelsApproval({
+      name: MODULES_INSTALL_BUNDLE_TOOL,
+      arguments: { spec: '@scope/mod@1.2.3' },
+    });
+    expect(verdict).toMatchObject({ kind: 'ask' });
+    expect(verdict?.kind === 'ask' ? verdict.question.zh : '').toContain('@scope/mod@1.2.3');
     expect(zh).not.toContain('一个模块');
   });
 
@@ -173,11 +179,15 @@ describe('装 / 更新 / 卸模块与插件：八把写工具，各自说清目�
       arguments: { plugin: 'inventory' },
     });
 
-    expect(update).toContain('更新');
-    expect(update).toContain('插件');
-    expect(update).toContain('opencli-plugin-inventory');
+    expect(update).toBe('更新插件');
     expect(uninstall).toContain('卸载');
     expect(uninstall).toContain('inventory');
+    const verdict = panelsApproval({
+      name: MODULES_UPDATE_PLUGIN_TOOL,
+      arguments: { plugin: 'opencli-plugin-inventory' },
+    });
+    const question = verdict?.kind === 'ask' ? verdict.question.zh : '';
+    expect(question).toContain('opencli-plugin-inventory');
     expect(update).not.toContain('一个模块');
     expect(uninstall).not.toContain('一个模块');
   });
@@ -316,10 +326,10 @@ describe('清单里的写工具都在自己的策略后面（漏了不报错，�
 
 describe('文案口径：说清是工作台的动作、目标是哪个模块 / 插件，一句到底', () => {
   const NOUNS: Readonly<Record<string, string>> = {
-    [PANELS_SHOW_TOOL]: '模块',
-    [PANELS_MOVE_TOOL]: '模块',
+    [PANELS_SHOW_TOOL]: '面板',
+    [PANELS_MOVE_TOOL]: '面板',
     [PANELS_RESET_TOOL]: '面板',
-    [PANELS_FOLLOW_TOOL]: '模块条目',
+    [PANELS_FOLLOW_TOOL]: '面板',
     [MODULES_INSTALL_TOOL]: '模块',
     [MODULES_UPDATE_TOOL]: '模块',
     [MODULES_UNINSTALL_TOOL]: '模块',
@@ -327,7 +337,7 @@ describe('文案口径：说清是工作台的动作、目标是哪个模块 / �
     [MODULES_UPDATE_DEPENDENCY_TOOL]: '共用依赖',
     [MODULES_UPDATE_PLUGIN_TOOL]: '插件',
     [MODULES_UNINSTALL_PLUGIN_TOOL]: '插件',
-    [MODULES_UPDATE_WORKBENCH_TOOL]: '工作台本身',
+    [MODULES_UPDATE_WORKBENCH_TOOL]: '工作台',
     [DIY_RECORD_PREPARE_TOOL]: '录制',
     [DIY_PUBLISH_TOOL]: '模块',
     [DIY_DEBUG_START_TOOL]: '调试',
@@ -343,8 +353,8 @@ describe('文案口径：说清是工作台的动作、目标是哪个模块 / �
       noun: NOUNS[name] ?? '（名词表里缺这一族）',
     })),
     { call: { name: PANELS_FOLLOW_TOOL, arguments: {} }, noun: '面板' },
-    { call: { name: PANELS_SHOW_TOOL, arguments: { id: 'inventory', scope: 'machine' } }, noun: '模块' },
-    { call: { name: PANELS_RESET_TOOL, arguments: { scope: 'machine' } }, noun: '机器级默认值' },
+    { call: { name: PANELS_SHOW_TOOL, arguments: { id: 'inventory', scope: 'machine' } }, noun: '面板' },
+    { call: { name: PANELS_RESET_TOOL, arguments: { scope: 'machine' } }, noun: '机器级' },
   ];
 
   it('★ 每把要问的写工具都在名词表里 —— 场景不再手写，是从清单本身长出来的', () => {
@@ -357,25 +367,16 @@ describe('文案口径：说清是工作台的动作、目标是哪个模块 / �
       expect(decision?.kind, JSON.stringify(call.arguments)).toBe('ask');
       if (decision?.kind !== 'ask') continue;
       const { en, zh } = decision.displayReason;
-      const asks = zh.endsWith('，允许吗？');
 
       expect(zh.includes('\n'), zh).toBe(false);
-      expect(zh.length, `${zh.length} 字：${zh}`).toBeLessThanOrEqual(APPROVAL_HEADLINE_LIMIT);
-      expect(en.length, `${en.length} 字符：${en}`).toBeLessThanOrEqual(APPROVAL_HEADLINE_LIMIT * 3);
+      expect(zh.length, `${zh.length} 字：${zh}`).toBeLessThanOrEqual(15);
+      expect(en.length, `${en.length} 字符：${en}`).toBeLessThanOrEqual(45);
       expect(zh.includes(noun), `${noun} · ${zh}`).toBe(true);
       expect(zh.includes('（'), zh).toBe(false);
       expect(zh.includes('('), zh).toBe(false);
       expect(en.includes('('), en).toBe(false);
       expect(zh.includes('**'), zh).toBe(false);
-
-      if (asks) {
-        expect(zh.includes('工作台'), zh).toBe(true);
-        expect(en.toLowerCase().includes('workbench'), en).toBe(true);
-        expect(en.endsWith(' Allow?'), en).toBe(true);
-      } else {
-        expect(zh.startsWith('申请'), zh).toBe(true);
-        expect(en.startsWith('Request'), en).toBe(true);
-      }
+      expect(zh.includes('允许吗'), zh).toBe(false);
     }
   });
 
@@ -434,9 +435,7 @@ describe('文案口径：说清是工作台的动作、目标是哪个模块 / �
       { writes: true, policy: panelsApproval },
     );
 
-    expect(decision?.kind === 'ask' ? decision.displayReason.zh : '').toBe(
-      '工作台要在下列站点录制一次真实写入并保存请求原文，允许吗？',
-    );
+    expect(decision?.kind === 'ask' ? decision.displayReason.zh : '').toBe('录制一次写入');
   });
 
   it('★ 数据再长也不许把标题顶爆：把 id / 插件名 / 单元换成 20 字长名，仍是一行、仍在装配上限内', async () => {
@@ -449,7 +448,7 @@ describe('文案口径：说清是工作台的动作、目标是哪个模块 / �
       const { zh } = decision.displayReason;
 
       expect(zh.includes('\n'), zh).toBe(false);
-      expect(zh.length, `${zh.length} 字：${zh}`).toBeLessThanOrEqual(APPROVAL_HEADLINE_LIMIT);
+      expect(zh.length, `${zh.length} 字：${zh}`).toBeLessThanOrEqual(15);
     }
   });
 

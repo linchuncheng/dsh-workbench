@@ -121,6 +121,7 @@ export function pluginApprovalFor(command: PluginCommand): ApprovalPolicy {
           : `${command.plugin} ${command.name} 没有拿到 access（fail-safe：按写处理）`,
       question,
       fallback: question,
+      headline: { zh: '执行插件命令', en: 'Run plugin command' },
       noteInDetail: true,
     } satisfies ApprovalVerdict;
   };

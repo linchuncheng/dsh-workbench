@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PANELS_SHOW_TOOL } from '../../unit';
-import { approvalVerdict, publishVerdictFor, stopVerdictFor } from '../approval';
+import { approvalVerdict, stopVerdictFor } from '../approval';
+import { publishVerdictFor } from '../publish-approval';
 
 describe('每一族的判定（approval.ts）', () => {
   it('外壳写工具：问到点子上的那一句交给调用方，工具本身说了算', () => {

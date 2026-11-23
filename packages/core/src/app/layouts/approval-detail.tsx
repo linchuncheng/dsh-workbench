@@ -1,32 +1,56 @@
 import { Fragment, createElement as h, useEffect, useState } from 'react';
-import type { ApprovalInput, Need, ReactNode, Translate, UnitManifest, UnitToolRuntime } from '@dsh-workbench/shared';
-import { APPROVAL_NOTE_ARG, ApprovalPlan } from '@dsh-workbench/shared';
+import type { ApprovalInput, ReactNode, Translate, UnitManifest, UnitToolRuntime } from '@dsh-workbench/shared';
+import { ApprovalPlan } from '@dsh-workbench/shared';
+import {
+  debugApprovalRows,
+  moduleOperationRows,
+  moduleSupplyRows,
+  panelApprovalRows,
+  pluginApprovalRows,
+  recordApprovalRows,
+  stopApprovalRows,
+  textOf,
+  type ApprovalRow,
+} from './approval-rows';
+
+export type { ApprovalRow } from './approval-rows';
+export {
+  debugApprovalRows,
+  moduleOperationRows,
+  moduleSupplyRows,
+  panelApprovalRows,
+  pluginApprovalRows,
+  recordApprovalRows,
+  stopApprovalRows,
+} from './approval-rows';
 import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives';
 import { PlanCard } from './approval-plan';
 import type { MarketSourcesPayload, PublishChangelog, PublishPreview } from '@/kernel/contract/market-index';
 import {
   ALL_TOOLS,
+  DIY_DEBUG_RESUME_TOOL,
+  DIY_DEBUG_START_TOOL,
   DIY_PUBLISH_TOOL,
   DIY_PLAN_TOOL,
   DIY_RECORD_PREPARE_TOOL,
   LONG_TASKS_STOP_TOOL,
   MARKET_DISABLE_TOOL,
   MARKET_ENABLE_TOOL,
+  MODULES_INSTALL_BUNDLE_TOOL,
   MODULES_INSTALL_TOOL,
+  MODULES_UNINSTALL_PLUGIN_TOOL,
+  MODULES_UNINSTALL_TOOL,
+  MODULES_UPDATE_DEPENDENCY_TOOL,
+  MODULES_UPDATE_PLUGIN_TOOL,
   MODULES_UPDATE_TOOL,
+  MODULES_UPDATE_WORKBENCH_TOOL,
+  PANELS_FOLLOW_TOOL,
+  PANELS_MOVE_TOOL,
+  PANELS_RESET_TOOL,
+  PANELS_SHOW_TOOL,
 } from '@/modules/panels/client';
 import { readMarketSources, readPublishPreview } from '@/shared/hooks/market-queries';
 import styles from './approval-detail.module.css';
-
-export interface ApprovalRow {
-  readonly label: string;
-  readonly value: string;
-}
-
-function textOf(args: Readonly<Record<string, unknown>>, key: string): string {
-  const value = args[key];
-  return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
-}
 
 function labelsOf(args: Readonly<Record<string, unknown>>): readonly string[] {
   const value = args['labels'];
@@ -36,25 +60,21 @@ function labelsOf(args: Readonly<Record<string, unknown>>): readonly string[] {
   ];
 }
 
-export function recordApprovalRows(
-  args: Readonly<Record<string, unknown>>,
-  t: Translate,
-): readonly ApprovalRow[] {
-  const unit = textOf(args, 'unit');
-  const doing = textOf(args, 'doing');
-  const url = textOf(args, 'url');
-  return [
-    { label: t('approval.record.site'), value: url === '' ? t('approval.record.noUrl') : url },
-    {
-      label: t('approval.record.what'),
-      value: doing === '' ? t('approval.record.oneAction') : `「${doing}」`,
-    },
-    {
-      label: t('approval.record.lands'),
-      value: unit === '' ? t('approval.record.landsUnknown') : `shots/rec-${unit}.jsonl`,
-    },
-  ];
-}
+const PANEL_APPROVAL_TOOLS: ReadonlySet<string> = new Set([
+  PANELS_SHOW_TOOL,
+  PANELS_MOVE_TOOL,
+  PANELS_RESET_TOOL,
+  PANELS_FOLLOW_TOOL,
+]);
+
+const MODULE_APPROVAL_TOOLS: ReadonlySet<string> = new Set([
+  MODULES_UNINSTALL_TOOL,
+  MODULES_INSTALL_BUNDLE_TOOL,
+  MODULES_UPDATE_DEPENDENCY_TOOL,
+  MODULES_UPDATE_PLUGIN_TOOL,
+  MODULES_UNINSTALL_PLUGIN_TOOL,
+  MODULES_UPDATE_WORKBENCH_TOOL,
+]);
 
 const TARGET_KEYS: Readonly<Record<string, string>> = {
   team: 'approval.publish.targetTeam',
@@ -365,66 +385,8 @@ export function pluginToolIndexOf(
   return index;
 }
 
-function argText(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  const text = JSON.stringify(value);
-  return text === undefined ? String(value) : text;
-}
-
-export function pluginApprovalRows(
-  origin: UnitToolRuntime,
-  args: Readonly<Record<string, unknown>>,
-  t: Translate,
-): readonly ApprovalRow[] {
-  const rows: ApprovalRow[] = [
-    { label: t('approval.plugin.name'), value: origin.plugin },
-    { label: t('approval.plugin.command'), value: origin.command },
-  ];
-  const note = args[APPROVAL_NOTE_ARG];
-  if (typeof note === 'string' && note.trim() !== '') {
-    rows.push({ label: t('approval.plugin.note'), value: note.replace(/\s+/g, ' ').trim() });
-  }
-  for (const name of origin.args) {
-    if (!(name in args)) continue;
-    rows.push({ label: name, value: argText(args[name]) });
-  }
-  return rows;
-}
-
-const SUPPLY_LABEL: Readonly<Record<string, string>> = {
-  extension: 'approval.supply.plugin',
-  lib: 'approval.supply.lib',
-};
-
-function supplyNeedRows(needs: readonly Need[], t: Translate): readonly ApprovalRow[] {
-  return needs.flatMap((need) => {
-    if (need.kind !== 'extension' && need.kind !== 'lib') return [];
-    const version = typeof need.version === 'string' && need.version !== '' ? ` ${need.version}` : '';
-    const purpose = need.purpose.trim();
-    return [
-      {
-        label: t(SUPPLY_LABEL[need.kind] ?? 'approval.supply.kind'),
-        value: `${need.name}${version}${purpose === '' ? '' : ` —— ${purpose}`}`,
-      },
-    ];
-  });
-}
-
-export function moduleSupplyRows(
-  manifest: UnitManifest | undefined,
-  id: string,
-  t: Translate,
-): readonly ApprovalRow[] {
-  const rows: ApprovalRow[] = [{ label: t('approval.supply.module'), value: id === '' ? '—' : id }];
-  if (manifest === undefined) {
-    return [...rows, { label: t('approval.supply.kind'), value: t('approval.supply.missing') }];
-  }
-  const needs = (manifest.needs ?? []).filter((need) => need.kind === 'extension' || need.kind === 'lib');
-  if (needs.length === 0) {
-    return [...rows, { label: t('approval.supply.kind'), value: t('approval.supply.none') }];
-  }
-  return [...rows, ...supplyNeedRows(needs, t)];
+export function shellClaimsApprovalDetail(tool: string): boolean {
+  return (ALL_TOOLS as readonly string[]).includes(tool);
 }
 
 export function shellApprovalRenderer(
@@ -435,24 +397,6 @@ export function shellApprovalRenderer(
     const list = manifests();
     return shellApprovalDetail(input, t, pluginToolIndexOf(list), list, workspaceOf?.() ?? undefined);
   };
-}
-
-export function shellClaimsApprovalDetail(tool: string): boolean {
-  return (ALL_TOOLS as readonly string[]).includes(tool);
-}
-
-function stopApprovalRows(
-  args: Readonly<Record<string, unknown>>,
-  t: Translate,
-): readonly ApprovalRow[] {
-  const unit = textOf(args, 'unit');
-  const id = textOf(args, 'id');
-  return [
-    {
-      label: t('approval.longTask.what'),
-      value: `${unit === '' ? '<unit>' : unit} · ${id === '' ? '<id>' : id}`,
-    },
-  ];
 }
 
 export function shellApprovalPlan(
@@ -475,6 +419,15 @@ export function shellApprovalPlan(
       rows: stopApprovalRows(input.args, t),
       warn: t('approval.longTask.signal'),
     };
+  }
+  if (PANEL_APPROVAL_TOOLS.has(input.tool)) {
+    return { rows: panelApprovalRows(input.tool, input.args, t) };
+  }
+  if (MODULE_APPROVAL_TOOLS.has(input.tool)) {
+    return { rows: moduleOperationRows(input.tool, input.args, t) };
+  }
+  if (input.tool === DIY_DEBUG_START_TOOL || input.tool === DIY_DEBUG_RESUME_TOOL) {
+    return { rows: debugApprovalRows(input.tool, input.args, t) };
   }
   if (shellClaimsApprovalDetail(input.tool)) return { rows: [] };
   const declared = manifests?.flatMap((one) => one.tools).find((one) => one.name === input.tool);

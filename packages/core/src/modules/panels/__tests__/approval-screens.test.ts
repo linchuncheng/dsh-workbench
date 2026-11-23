@@ -3,9 +3,16 @@ import { describe, expect, it } from 'vitest';
 import type { Translate, UnitManifest } from '@dsh-workbench/shared';
 import { zh } from '@dsh-workbench/shared';
 import { approvalFor, type ApprovalCall } from '@dsh-workbench/shared/host';
-import { pluginToolIndexOf, shellApprovalPlan, type ApprovalPlanView } from '@/app/layouts/approval-detail';
+import {
+  marketSourceRows,
+  pluginToolIndexOf,
+  publishRows,
+  shellApprovalPlan,
+  type ApprovalPlanView,
+} from '@/app/layouts/approval-detail';
 import { panelsApprovalFor } from '../model/approval-policy';
 import { ASK_TOOLS, WRITE_CALLS, stopRuns } from './approval-samples';
+import { DIY_PUBLISH_TOOL, MARKET_DISABLE_TOOL, MARKET_ENABLE_TOOL } from '../unit';
 
 const GOLDEN = new URL('../../../../test/golden/approval-screens.md', import.meta.url);
 
@@ -64,6 +71,14 @@ function planLines(plan: ApprovalPlanView | undefined): readonly string[] {
   ];
 }
 
+function screenPlan(tool: string, args: Readonly<Record<string, unknown>>): ApprovalPlanView | undefined {
+  if (tool === MARKET_ENABLE_TOOL || tool === MARKET_DISABLE_TOOL) {
+    return { rows: marketSourceRows(tool, args, undefined, t) };
+  }
+  if (tool === DIY_PUBLISH_TOOL) return { rows: publishRows(args, undefined, t) };
+  return shellApprovalPlan({ tool, args }, t, undefined, [MODULE_UNIT]);
+}
+
 async function screenOf(tool: string): Promise<readonly string[]> {
   const args = (WRITE_CALLS[tool] ?? {}) as Record<string, unknown>;
   const call: ApprovalCall = { name: tool, arguments: args };
@@ -73,7 +88,7 @@ async function screenOf(tool: string): Promise<readonly string[]> {
   return [
     `## ${tool}`,
     '',
-    ...box(title, ['', title, '', ...planLines(shellApprovalPlan({ tool, args }, t, undefined, [MODULE_UNIT]))]),
+    ...box(title, ['', title, '', ...planLines(screenPlan(tool, args))]),
     '',
   ];
 }
@@ -161,6 +176,7 @@ async function pluginScreen(): Promise<readonly string[]> {
         reason: `${PLUGIN_COMMAND.plugin} ${PLUGIN_COMMAND.name} 在 opencli 里标着 write`,
         question,
         fallback: question,
+        headline: { zh: '执行插件命令', en: 'Run plugin command' },
         noteInDetail: true,
       };
     }),
@@ -184,32 +200,30 @@ async function document(): Promise<string> {
     '# 审批屏清单（黄金文件）',
     '',
     '每一族上屏长什么样：dsh 那条「等待审批」· 我们的标题（`displayReason`）· 详情座',
-    '（外壳那张表或模块自己的 renderer 画的 `ApprovalPlan`）· 按钮。',
+    '（外壳那张表或模块自己的 renderer 画的 `ApprovalPlan`）· 按钮。标题 ≤15 字，',
+    '写动作 + 对象类别；具体模块 / 插件 / 依赖名放详情第一行。',
     '',
     '**这一份只许手改**：门禁只比对、不写它。改文案或排版 ⇒ 这一条判据红 ⇒ 说明为什么，',
     '再照新的真实输出手改这一份。生成器与判据 =',
     '`packages/core/src/modules/panels/__tests__/approval-screens.test.ts`。',
     '',
-    '**详情座有两种「空」**：`（无 —— 谁都没认领，参数里的 command 兜底还能画）` 是**谁都不认领**，',
-    '座位会落到 `args.command` 那一档；`外壳认领了，不画` 是**外壳把这个工具占了**（外壳自己的工具必须占，',
-    '否则 agent 塞一个没声明过的 `command` 就会被当命令原文画上屏 —— 见 ADR-0065 §3）。',
+    '**会问的工具不再有空详情座**：每个 ask 工具要么有四行 plan，要么有自己的自定义详情；',
+    '空 Fragment 由测试判红。未知工具仍可能落到 `args.command` 兜底，但不在本清单里。',
     '',
-    '**2026-10-21 加 `workbench_long_tasks_stop` 那一屏**（ADR-0070）：面板那族的第四族工具，标题那一句取',
-    '`fallback`（面板族没有宿主明细，`compose()` 没有 detail 就用它），点名"哪一趟 + 谁起的"；详情座画',
-    '"要停的那次任务"那一行 + 一行 warn。这一份仍是只许手改 —— 门禁只比对、不写它。',
+    '**2026-10-21 加 `workbench_long_tasks_stop` 那一屏**（ADR-0070）：标题是 `停止长任务`；',
+    '详情座画"要停的那次任务"那一行 + 一行 warn。这一份仍是只许手改 —— 门禁只比对、不写它。',
     '',
-    '**2026-10-27 加 `workbench_market_enable` 那一屏**：把模块来源设为可发布，标题同样取 `fallback`，',
-    '点名是哪个模块来源，并说清只改本机配置、不碰仓库；详情座由外壳认领（agent 塞的 `command` 进不来）。',
+    '**2026-10-27 加 `workbench_market_enable` / `disable` 两屏**：标题是 `模块来源可发布` /',
+    '`模块来源只读`；详情座是自定义行（来源 / 地址 / 这次操作 / 当前状态），只改本机配置、不碰仓库。',
     '',
-    '**2026-10-27 加 `workbench_market_disable` 那一屏**：把模块来源改回只读；和 enable 一样只改本机配置、',
-    '不碰仓库，只有可发布的源才问。',
     '',
-    '**2026-10-28 加 opencli 插件命令那一屏**：标题只留动作（插件 + 命令）；参数与 agent 那句话全进详情座 ——',
+    '**2026-10-28 加 opencli 插件命令那一屏**：标题是 `执行插件命令`；参数与 agent 那句话全进详情座 ——',
     '外壳按清单里那条工具的 `opencli` 那一格认领，画 插件 / 命令 / `agent 说` / 参数各一行。',
     '',
-    '**2026-11-08 加 `modules_install` / `modules_update` 那一屏的详情座**：标题只说"安装/升级 …模块要的插件与库"，',
-    '具体清单进详情座 —— 外壳按浏览器侧已有的清单画 模块 / 插件 / 库 各一行（来源是 `needs` 里的 extension 与 lib）；',
-    '没有声明就写"没有声明"，清单没读回来就写"读不到"。',
+    '**2026-11-08 加 `modules_install` / `modules_update` 那一屏的详情座**：标题是',
+    '`安装模块依赖` / `更新模块依赖`，具体清单进详情座 —— 外壳按浏览器侧已有的清单画',
+    '模块 / 插件 / 库 各一行（来源是 `needs` 里的 extension 与 lib）；没有声明就写"没有声明"，',
+    '清单没读回来就写"读不到"。',
     '',
     '**2026-11-08 加 `workbench_toolbox_open` 那三屏**：开工具包按 `elevates` 问（与 `writes` 无关）；',
     '标题点名第一个包 + 数量，详情座一行一个包（名字 · 共 N 把：读/写），再画范围与"写工具仍逐条确认"。',
@@ -223,11 +237,17 @@ async function document(): Promise<string> {
     '**2026-11-18 去掉 `workbench_diy_record_prepare` 那一屏的 warn**：录完不切回来这件事由左栏底部那条',
     '状态自己说，审批屏不再重复；这一屏只剩 站点 / 录制内容 / 保存到 三行。',
     '',
-    '**2026-11-19 录制那一屏改口径**：标题点明工作台、真实写入与保存请求原文；第三行标签从 `录制功能`',
-    '改为 `录制内容`（与「一次操作」那个值对得上）。',
+    '**2026-11-19 录制那一屏改口径**：标题是 `录制一次写入`；详情座画 站点 / 录制内容 / 保存到 三行。',
     '',
     '**2026-11-19 去掉 `workbench_toolbox_open` 那几屏**：开包只是把工具解锁到本次会话，包里的写工具仍逐条问，',
     '开包本身不再问；mcp 包那一屏随它一起下屏。',
+    '',
+    '**2026-11-23 所有 ask 工具统一短标题**：面板 / 模块管理 / 调试 / 市场 / 发布 / 录制 / 长任务 /',
+    '插件都改成 ≤15 字；详情第一行点名具体对象。',
+    '',
+    '**2026-11-23 补四行**：面板 show / move / reset / follow，模块 uninstall / install-bundle /',
+    'update-dependency / update-plugin / uninstall-plugin / update-workbench，调试 start / resume',
+    '都从空详情改成四行；市场 / 发布保留自定义详情。',
     '',
   ];
   for (const tool of ASK_TOOLS) parts.push(...(await screenOf(tool)));
@@ -253,5 +273,24 @@ describe('审批屏黄金文件：每一族上屏长什么样，一眼可见', (
       actualLines[line] ?? '',
       `第 ${line + 1} 行不一样（黄金 → 现在）；改了就说明为什么，再手改 test/golden/approval-screens.md`,
     ).toBe(goldenLines[line] ?? '');
+  });
+});
+
+describe('审批详情下限：每把会问的工具都有 plan 或自定义详情', () => {
+  const CUSTOM_SEATS = new Set<string>([DIY_PUBLISH_TOOL, MARKET_ENABLE_TOOL, MARKET_DISABLE_TOOL]);
+
+  it('★ 不留空详情：ASK_TOOLS 要么 plan.rows > 0，要么在自定义座位清单里', () => {
+    for (const tool of ASK_TOOLS) {
+      if (CUSTOM_SEATS.has(tool)) continue;
+      const args = (WRITE_CALLS[tool] ?? {}) as Record<string, unknown>;
+      const plan = shellApprovalPlan({ tool, args }, t, undefined, [MODULE_UNIT]);
+      expect(plan?.rows.length ?? 0, tool).toBeGreaterThan(0);
+    }
+  });
+
+  it('★ 自定义座位自己也有非空行', () => {
+    expect(marketSourceRows(MARKET_ENABLE_TOOL, {}, undefined, t).length).toBeGreaterThan(0);
+    expect(marketSourceRows(MARKET_DISABLE_TOOL, {}, undefined, t).length).toBeGreaterThan(0);
+    expect(publishRows({ unit: 'demo', target: 'team' }, undefined, t).length).toBeGreaterThan(0);
   });
 });
