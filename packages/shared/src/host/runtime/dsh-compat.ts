@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import semver from 'semver';
 import { readJsonObject } from './read-json.js';
 
@@ -68,12 +68,25 @@ export function dshCompatibilityOf(input: {
 }
 
 export function dshVersionIn(profileDir: string): string | undefined {
-  const own = readManifest(join(profileDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'))?.['version'];
-  if (typeof own === 'string' && semver.valid(own) !== null) return own;
+  const fromClient = process.env['DSH_CLIENT_VERSION'];
+  if (typeof fromClient === 'string' && semver.valid(fromClient.trim()) !== null) return fromClient.trim();
+  for (const dir of searchDirsOf(profileDir)) {
+    const own = readManifest(join(dir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'))?.['version'];
+    if (typeof own === 'string' && semver.valid(own) !== null) return own;
+  }
   const fromEnv = process.env['DSH_VERSION'];
   if (typeof fromEnv === 'string' && semver.valid(fromEnv.trim()) !== null) return fromEnv.trim();
-  const anchor = readManifest(join(profileDir, 'node_modules', '@deepseek-ai', 'dsh-app-boot', 'package.json'));
-  return dependencyVersionOf(anchor, '@deepseek-ai/dsh');
+  for (const dir of searchDirsOf(profileDir)) {
+    const anchor = readManifest(join(dir, 'node_modules', '@deepseek-ai', 'dsh-app-boot', 'package.json'));
+    const version = dependencyVersionOf(anchor, '@deepseek-ai/dsh');
+    if (version !== undefined) return version;
+  }
+  return undefined;
+}
+
+function searchDirsOf(profileDir: string): readonly string[] {
+  const parent = dirname(profileDir);
+  return parent === profileDir ? [profileDir] : [profileDir, parent];
 }
 
 function dependencyVersionOf(

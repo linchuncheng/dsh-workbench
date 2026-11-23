@@ -8,6 +8,7 @@ const ROOT = mkdtempSync(join(tmpdir(), 'dsh-wb-dsh-compat-'));
 
 beforeEach(() => {
   vi.stubEnv('DSH_VERSION', '');
+  vi.stubEnv('DSH_CLIENT_VERSION', '');
 });
 
 afterEach(() => {
@@ -108,6 +109,28 @@ describe('dsh 版本从 profile 的安装锚点读', () => {
     });
     expect(dshVersionIn(dir)).toBe('0.2.2-rc.1');
     expect(dshVersionIn(join(ROOT, 'nothing-here'))).toBeUndefined();
+  });
+
+  it('★ 桌面端启动器塞进来的 DSH_CLIENT_VERSION 优先：它才是正在跑的那份 dsh', () => {
+    const dir = profileWith({
+      'node_modules/@deepseek-ai/dsh/package.json': { name: '@deepseek-ai/dsh', version: '0.2.3-alpha.2' },
+    });
+    vi.stubEnv('DSH_CLIENT_VERSION', '0.2.2-rc.5');
+
+    expect(dshVersionIn(dir)).toBe('0.2.2-rc.5');
+
+    vi.stubEnv('DSH_CLIENT_VERSION', 'garbage');
+    expect(dshVersionIn(dir)).toBe('0.2.3-alpha.2');
+  });
+
+  it('★ dsh 装在 profile 的上一层（~/.dsh/profiles/node_modules）也认', () => {
+    const parent = profileWith({
+      'node_modules/@deepseek-ai/dsh/package.json': { name: '@deepseek-ai/dsh', version: '0.2.3-alpha.2' },
+    });
+    const child = join(parent, 'workbench');
+    mkdirSync(child, { recursive: true });
+
+    expect(dshVersionIn(child)).toBe('0.2.3-alpha.2');
   });
 
   it('profile 里都没有时用启动器导出的 DSH_VERSION；非法值忽略', () => {
