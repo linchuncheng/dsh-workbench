@@ -11,6 +11,7 @@ export interface SectionChecksInput {
   readonly latestModules: LatestCheckSummary;
   readonly latestPlugins: LatestCheckSummary;
   readonly disabled: boolean;
+  readonly moduleSourceFailed: boolean;
   readonly onCheck?: ((part: VersionsPart) => void) | undefined;
 }
 
@@ -27,6 +28,7 @@ export function sectionChecksOf(
         seat={seats.modules ?? NO_CHECK}
         latest={input.latestModules}
         disabled={input.disabled}
+        sourceFailed={input.moduleSourceFailed}
         onCheck={input.onCheck}
       />
     ),
@@ -37,6 +39,7 @@ export function sectionChecksOf(
         seat={seats.plugins ?? NO_CHECK}
         latest={input.latestPlugins}
         disabled={input.disabled}
+        sourceFailed={false}
         onCheck={input.onCheck}
       />
     ),

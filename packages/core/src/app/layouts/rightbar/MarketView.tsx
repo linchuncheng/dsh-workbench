@@ -71,6 +71,7 @@ export interface MarketViewProps {
   readonly updates?: ModuleUpdateMap | undefined;
   readonly modulesCheck?: VersionsCheck | undefined;
   readonly pluginsCheck?: VersionsCheck | undefined;
+  readonly marketProblem?: boolean | undefined;
   readonly onCheck?: ((part: VersionsPart) => void) | undefined;
   readonly installed?: readonly InstalledWorkbenchModule[] | undefined;
   readonly unreadable?: readonly { readonly pkg: string; readonly reason: string }[] | undefined;
@@ -175,6 +176,7 @@ export function MarketView({
   updates,
   modulesCheck,
   pluginsCheck,
+  marketProblem = false,
   onCheck,
   installed,
   unreadable = [],
@@ -269,7 +271,7 @@ export function MarketView({
   const unreadableRows = mock?.unreadable ?? unreadable;
   const listUnread = unreadableRows.length === 0 && readFailure !== null;
   const { checks, recheck, rechecking: checkingShown } = useMarketChecks(
-    { t, mock, installed, plugins, modulesCheck, pluginsCheck, pending, onCheck, onChanged, setFailed, checking: freshness.checking },
+    { t, mock, installed, plugins, modulesCheck, pluginsCheck, pending, onCheck, onChanged, setFailed, checking: freshness.checking, marketProblem },
   );
 
   return (

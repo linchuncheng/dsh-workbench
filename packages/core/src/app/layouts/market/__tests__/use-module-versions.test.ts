@@ -437,3 +437,37 @@ describe('读失败时的陈旧标记', () => {
     expect(moduleVersionsValue().stale).toBe(false);
   });
 });
+
+describe('市场源拉不下来', () => {
+  it('★ 检查时把市场源的问题带进状态，下一次干净的检查再清掉', async () => {
+    vi.mocked(readModuleVersions).mockResolvedValueOnce(versions('1.0.0'));
+    vi.mocked(readMarketInstalled).mockResolvedValueOnce({
+      ok: true,
+      modules: [],
+      problem: { kind: 'git-network', detail: 'ssh: connect to host timed out' },
+    });
+    await runModuleVersionsRead(true, true);
+
+    expect(moduleVersionsValue().marketProblem?.kind).toBe('git-network');
+
+    vi.mocked(readModuleVersions).mockResolvedValueOnce(versions('1.0.0'));
+    await runModuleVersionsRead(true, true);
+
+    expect(moduleVersionsValue().marketProblem).toBeNull();
+  });
+
+  it('只读本机（check=false）不动上一次的市场源结论', async () => {
+    vi.mocked(readModuleVersions).mockResolvedValueOnce(versions('1.0.0'));
+    vi.mocked(readMarketInstalled).mockResolvedValueOnce({
+      ok: true,
+      modules: [],
+      problem: { kind: 'git-missing', detail: '没有 git' },
+    });
+    await runModuleVersionsRead(true, true);
+
+    vi.mocked(readModuleVersions).mockResolvedValueOnce(versions('1.0.0'));
+    await runInstalledRead();
+
+    expect(moduleVersionsValue().marketProblem?.kind).toBe('git-missing');
+  });
+});

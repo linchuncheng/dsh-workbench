@@ -30,8 +30,13 @@ export function readGitProbe(url: string): Promise<ApiResponse<GitProbePayload>>
   return apiGet<GitProbePayload>(MARKET_GIT_PROBE_ROUTE, { url });
 }
 
-export function readMarketInstalled(): Promise<ApiResponse<MarketInstalledPayload>> {
-  return apiGet<MarketInstalledPayload>(MARKET_INSTALLED_ROUTE);
+export function readMarketInstalled(
+  options: { readonly check?: boolean; readonly force?: boolean } = {},
+): Promise<ApiResponse<MarketInstalledPayload>> {
+  return apiGet<MarketInstalledPayload>(MARKET_INSTALLED_ROUTE, {
+    ...(options.check === false ? { check: '0' } : {}),
+    ...(options.force === true ? { force: '1' } : {}),
+  });
 }
 
 export function readInstalledInfo(pkg: string): Promise<ApiResponse<{ readonly info: InstalledPackageInfo | null }>> {

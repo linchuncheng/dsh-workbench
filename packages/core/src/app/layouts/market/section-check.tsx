@@ -12,6 +12,7 @@ export interface SectionCheckProps {
   readonly seat: VersionsCheck;
   readonly latest: LatestCheckSummary;
   readonly disabled: boolean;
+  readonly sourceFailed: boolean;
   readonly onCheck?: ((part: VersionsPart) => void) | undefined;
 }
 
@@ -21,6 +22,7 @@ export function SectionCheck({
   seat,
   latest,
   disabled,
+  sourceFailed,
   onCheck,
 }: SectionCheckProps) {
   const { busy } = useVisibleBusy(seat.checking, MIN_BUSY_MS);
@@ -31,6 +33,7 @@ export function SectionCheck({
       latestCheck={latest}
       checking={busy}
       failed={seat.failed}
+      sourceFailed={sourceFailed}
       disabled={disabled}
       onCheck={() => onCheck?.(part)}
     />

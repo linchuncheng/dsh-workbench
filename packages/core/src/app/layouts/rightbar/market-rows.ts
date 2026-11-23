@@ -3,7 +3,6 @@ import type { MarketInstalledModule } from '@/kernel/contract/market-index';
 import type { NeedState, SupplySource, Translate, UnitManifest, UnitTitle } from '@dsh-workbench/shared';
 import { depOnlyOutdated, supplyNeedsOf } from '@dsh-workbench/shared';
 import { isOnMachine } from './market-state';
-import type { InstalledPlugin } from '@/shared/api/installed-plugins';
 import type { MarketNameMap } from './market-names';
 import type {
   MarketHint,
@@ -128,26 +127,20 @@ function latestUnavailableNote(
 }
 
 export interface LatestCheckSummary {
-  readonly checked: number;
   readonly unknown: number;
 }
 
 export function latestCheckSummary(
   modules: readonly InstalledWorkbenchModule[] | undefined,
 ): LatestCheckSummary {
-  let checked = 0;
   let unknown = 0;
   for (const module of modules ?? []) {
-    if (module.latest !== undefined) checked += 1;
-    else if (module.latestUnavailable === 'no-registry' || module.latestUnavailable === 'probe-failed') {
+    if (module.latest !== undefined) continue;
+    if (module.latestUnavailable === 'no-registry' || module.latestUnavailable === 'probe-failed') {
       unknown += 1;
     }
   }
-  return { checked, unknown };
-}
-
-export function checkedPluginCount(plugins: readonly InstalledPlugin[] | null | undefined): number {
-  return (plugins ?? []).filter((plugin) => plugin.latest !== undefined).length;
+  return { unknown };
 }
 
 export function installedRows(

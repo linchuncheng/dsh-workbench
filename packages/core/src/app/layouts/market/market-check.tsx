@@ -40,6 +40,7 @@ export interface MarketCheckProps {
   readonly latestCheck?: LatestCheckSummary | undefined;
   readonly checking: boolean;
   readonly failed: boolean;
+  readonly sourceFailed?: boolean | undefined;
   readonly disabled: boolean;
   readonly onCheck: () => void;
 }
@@ -47,32 +48,35 @@ export interface MarketCheckProps {
 export function MarketCheck({
   t,
   checkedAt,
-  latestCheck = { checked: 0, unknown: 0 },
+  latestCheck = { unknown: 0 },
   checking,
   failed,
+  sourceFailed = false,
   disabled,
   onCheck,
 }: MarketCheckProps) {
   const parts: string[] = [];
   if (checking) {
     parts.push(t('panels.market.checkingNow'));
-  } else {
-    if (latestCheck.checked > 0 && checkedAt !== null) {
+  } else if (failed) {
+    if (checkedAt !== null) {
       parts.push(t('panels.market.checkedAt', { time: checkedAgo(checkedAt, t) }));
     }
-    if (failed) parts.push(t('panels.market.checkFailed'));
-    else if (latestCheck.unknown > 0) {
+    parts.push(t('panels.market.checkFailed'));
+  } else if (checkedAt === null) {
+    parts.push(t('panels.market.notCheckedYet'));
+  } else {
+    parts.push(t('panels.market.checkedAt', { time: checkedAgo(checkedAt, t) }));
+    if (sourceFailed) parts.push(t('panels.market.sourceUnreachable'));
+    if (latestCheck.unknown > 0) {
       parts.push(t('panels.market.latestPartial', { n: String(latestCheck.unknown) }));
     }
   }
-  const status = parts.length === 0 ? null : parts.join(' · ');
   return (
     <span className={styles.check}>
-      {status === null ? null : (
-        <span className={styles.status} aria-live="polite">
-          {status}
-        </span>
-      )}
+      <span className={styles.status} aria-live="polite">
+        {parts.join(' · ')}
+      </span>
       <MarketRefreshButton
         label={t('panels.market.checkUpdates')}
         checking={checking}

@@ -284,19 +284,31 @@ export const panelsHost: UnitOwnedFace = {
         ...diyRecordRoutes(record),
         ...marketDiscoverRoutes(discover),
         ...marketSourcesRoutes(marketSources),
-        ...marketInstalledRoutes(async () => {
-          const read = marketSources.read();
-          return {
-            modules: await installedFromIndexes({
-              sources: read.sources,
-              cached: (source) => marketIndex.cached(source)?.index,
-              modules: supply.profileModules(profileDir),
-              dependencyOf: dependencyReader(profileDir),
-              isNewer: supply.isNewerVersion,
-              preferred: (host) => read.transports?.[host],
-              probe: (url: string) => probeGitAddressCached(url, { timeoutMs: 4000 }).then((one) => one.status),
-            }),
-          };
+        ...marketInstalledRoutes({
+          refresh: async ({ force }) => {
+            const read = marketSources.read();
+            const reads = await Promise.all(
+              read.sources.map((source) => marketIndex.read(source, force ? { force: true } : {})),
+            );
+            for (const one of reads) {
+              if (!one.ok) return one.problem;
+            }
+            return undefined;
+          },
+          read: async () => {
+            const read = marketSources.read();
+            return {
+              modules: await installedFromIndexes({
+                sources: read.sources,
+                cached: (source) => marketIndex.cached(source)?.index,
+                modules: supply.profileModules(profileDir),
+                dependencyOf: dependencyReader(profileDir),
+                isNewer: supply.isNewerVersion,
+                preferred: (host) => read.transports?.[host],
+                probe: (url: string) => probeGitAddressCached(url, { timeoutMs: 4000 }).then((one) => one.status),
+              }),
+            };
+          },
         }),
         ...installedPackageRoutes((pkg) => installedPackages.info(pkg)),
         ...publishPreviewRoutes(

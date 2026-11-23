@@ -23,7 +23,7 @@ import { DiscoverPanel } from './DiscoverPanel';
 import { MarketHeader } from './market-header';
 import { useMarketTab } from './market-tab';
 import { useEnabledUnits } from '../rightbar/use-panels';
-import { useModuleVersions } from './use-module-versions';
+import { moduleVersionsCheckedAt, useModuleVersions } from './use-module-versions';
 import { useMarketReload } from './use-market-reload';
 import { useMarketPanelScroll } from './use-market-panel-scroll';
 import { AddModuleDialog } from './AddModuleDialog';
@@ -99,6 +99,7 @@ function MarketPanel({
   const manifests = useLiveManifests(units);
   const installable = useInstallableUnits(units);
   const { capabilities, checkedAt, checking, forceProbe, reload: reloadCapability } = useCapabilityMap(0);
+  const versions = useModuleVersions();
   const {
     modules,
     unreadable,
@@ -111,9 +112,10 @@ function MarketPanel({
     allChecking: versionsAllChecking,
     modulesCheck,
     pluginsCheck,
+    marketProblem,
     read: installedRead,
     reload: reloadVersions,
-  } = useModuleVersions();
+  } = versions;
   const machineBoard = useEnabledUnits(0, null);
   const install = useMarketInstallState();
   const runtimeCapabilities = useRuntimeCapabilities();
@@ -128,7 +130,7 @@ function MarketPanel({
   const installed = modules === null ? undefined : withClientRefusals(modules, units.refusals());
 
   const { reload, recheck, checkPart } = useMarketReload({
-    checkedAt,
+    checkedAt: moduleVersionsCheckedAt(versions),
     forceProbe,
     reloadCapability,
     reloadVersions,
@@ -189,6 +191,7 @@ function MarketPanel({
           updates={updates}
           modulesCheck={modulesCheck}
           pluginsCheck={pluginsCheck}
+          marketProblem={marketProblem !== null}
           onCheck={checkPart}
           installed={installed}
           unreadable={unreadable}

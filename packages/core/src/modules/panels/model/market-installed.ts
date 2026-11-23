@@ -1,9 +1,12 @@
 import {
+  flag,
   gitAddressOf,
   gitTransportCandidates,
   mapWithLimit,
+  param,
 } from '@dsh-workbench/shared/host';
 import type {
+  DiscoverProblem,
   GitTransportKind,
   MarketIndex,
   MarketIndexSource,
@@ -94,11 +97,30 @@ export async function installedFromIndexes(
   }));
 }
 
-export function marketInstalledRoutes(
-  read: () => MarketInstalledPayload | Promise<MarketInstalledPayload>,
-): RouteTable {
+export interface MarketInstalledOptions {
+  readonly check: boolean;
+  readonly force: boolean;
+}
+
+export interface MarketInstalledPorts {
+  read(): MarketInstalledPayload | Promise<MarketInstalledPayload>;
+  refresh(options: MarketInstalledOptions): Promise<DiscoverProblem | undefined>;
+}
+
+export function marketInstalledRoutes(ports: MarketInstalledPorts): RouteTable {
   return {
-    [MARKET_INSTALLED_ROUTE]: async () => ({ ok: true, ...(await read()) }),
+    [MARKET_INSTALLED_ROUTE]: async (search) => {
+      const options: MarketInstalledOptions = {
+        check: param(search, 'check') !== '0',
+        force: flag(search, 'force'),
+      };
+      const problem = options.check ? await ports.refresh(options) : undefined;
+      return {
+        ok: true,
+        ...(await ports.read()),
+        ...(problem === undefined ? {} : { problem }),
+      };
+    },
   };
 }
 

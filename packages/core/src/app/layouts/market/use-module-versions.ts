@@ -32,6 +32,7 @@ export interface ModuleVersionsState {
   readonly selfUpdate: WorkbenchSelfUpdate | null;
   readonly read: boolean;
   readonly allChecking: boolean;
+  readonly marketProblem: MarketInstalledPayload['problem'] | null;
   readonly modulesCheck: VersionsCheck;
   readonly pluginsCheck: VersionsCheck;
 }
@@ -64,6 +65,7 @@ const NOT_READ: ModuleVersionsState = {
   selfUpdate: null,
   read: false,
   allChecking: false,
+  marketProblem: null,
   modulesCheck: IDLE,
   pluginsCheck: IDLE,
 };
@@ -77,7 +79,7 @@ const newestForceSeq: Record<VersionsPart, number> = { modules: -1, plugins: -1 
 const newestDataSeq: Record<VersionsPart, number> = { modules: -1, plugins: -1 };
 let epoch = 0;
 let checkAllSeq = 0;
-let marketInstalledInFlight: Promise<ApiResponse<MarketInstalledPayload>> | null = null;
+const marketInstalledInFlight = new Map<string, Promise<ApiResponse<MarketInstalledPayload>>>();
 
 export function bumpModuleVersionsEpoch(): void {
   epoch += 1;
@@ -101,7 +103,7 @@ export function resetModuleVersions(): void {
   newestDataSeq.modules = -1;
   newestDataSeq.plugins = -1;
   epoch = 0;
-  marketInstalledInFlight = null;
+  marketInstalledInFlight.clear();
 }
 
 export function subscribeModuleVersions(listener: () => void): () => void {
@@ -225,13 +227,14 @@ function released(seat: VersionsCheck, ticket: number, latest: number): Versions
 
 type ModulesResponse = readonly [ApiResponse<ModuleVersionsPayload>, ApiResponse<MarketInstalledPayload>];
 
-function readMarketInstalledShared(): Promise<ApiResponse<MarketInstalledPayload>> {
-  const running = marketInstalledInFlight;
-  if (running !== null) return running;
-  const promise = readMarketInstalled().finally(() => {
-    if (marketInstalledInFlight === promise) marketInstalledInFlight = null;
+function readMarketInstalledShared(force: boolean, check: boolean): Promise<ApiResponse<MarketInstalledPayload>> {
+  const key = `${check ? 'check' : 'data'}:${force ? 'force' : 'ttl'}`;
+  const running = marketInstalledInFlight.get(key);
+  if (running !== undefined) return running;
+  const promise = readMarketInstalled({ check, force }).finally(() => {
+    if (marketInstalledInFlight.get(key) === promise) marketInstalledInFlight.delete(key);
   });
-  marketInstalledInFlight = promise;
+  marketInstalledInFlight.set(key, promise);
   return promise;
 }
 
@@ -242,7 +245,7 @@ function failureTextOf(reason: unknown): string {
 }
 
 function readModulesOnce(force: boolean, check: boolean): Promise<ModulesResponse | null> {
-  return Promise.all([readModuleVersions(force, check), readMarketInstalledShared()]).catch((reason) => {
+  return Promise.all([readModuleVersions(force, check), readMarketInstalledShared(force, check)]).catch((reason) => {
     lastModulesFailure = failureTextOf(reason);
     return null;
   });
@@ -337,6 +340,7 @@ function runRead(run: ReadRun): Promise<void> {
             ...state,
             readFailure: null,
             stale: payload === null && moduleVersionsValue().modules !== null,
+            ...(check && market.ok === true ? { marketProblem: market.problem ?? null } : {}),
             unreadable: check ? (payload?.unreadable ?? []) : state.unreadable,
             modules: shown ?? state.modules,
             workbench:

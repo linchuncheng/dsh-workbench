@@ -8,7 +8,7 @@ import type { VersionsPart } from '../market/use-module-versions';
 import { sectionChecksOf } from './market-section-checks';
 import type { InstalledPlugin } from '@/shared/api/installed-plugins';
 import type { ModuleVersion } from '@/kernel/contract/bundle-install';
-import { checkedPluginCount, latestCheckSummary } from './market-rows';
+import { latestCheckSummary } from './market-rows';
 
 interface MarketMockSeats {
   readonly installed?: readonly ModuleVersion[] | undefined;
@@ -27,6 +27,7 @@ export interface MarketChecksInput {
   readonly onChanged: (options: { readonly force?: boolean }) => void;
   readonly setFailed: (next: null) => void;
   readonly checking: boolean;
+  readonly marketProblem: boolean;
 }
 
 export interface MarketChecks {
@@ -50,8 +51,9 @@ export function useMarketChecks(input: MarketChecksInput): MarketChecks {
     { modules: input.modulesCheck ?? IDLE_CHECK, plugins: input.pluginsCheck ?? IDLE_CHECK },
     {
       latestModules: latestCheckSummary(mock?.installed ?? input.installed ?? undefined),
-      latestPlugins: { checked: checkedPluginCount(mock?.plugins ?? input.plugins), unknown: 0 },
+      latestPlugins: { unknown: 0 },
       disabled: input.pending !== null,
+      moduleSourceFailed: input.marketProblem,
       onCheck: mock === undefined ? input.onCheck : undefined,
     },
   );

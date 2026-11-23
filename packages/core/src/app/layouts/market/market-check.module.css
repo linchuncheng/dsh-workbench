@@ -25,6 +25,9 @@
 
 @media (max-width: 720px) {
   .status {
-    display: none;
+    min-width: 0;
+    max-width: var(--wb-len-120);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
