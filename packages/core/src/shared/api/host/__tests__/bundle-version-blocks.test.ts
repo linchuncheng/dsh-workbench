@@ -39,7 +39,7 @@ describe('版本块：谁算新、谁被拦', () => {
     });
   });
 
-  it('★ 只按 engines.dsh 判：peer 钉的 dsh 包版本不算「需要那版 dsh」', async () => {
+  it('★ 只按 engines.dsh 判：peer 钉的 dsh 包版本（rc.2）不算「需要 dsh rc.2」', async () => {
     const supply = {
       versionManifestOf: async () => ({
         name: '@dsh-workbench/core',
@@ -52,10 +52,10 @@ describe('版本块：谁算新、谁被拦', () => {
       judgedBlockOf(supply, {
         seam: {} as never,
         name: '@dsh-workbench/core',
-        version: '1.5.2-alpha.4',
+        version: '1.5.2-alpha.3',
         registry: 'https://registry.npmjs.org/',
         force: false,
-        dshVersion: '0.2.3-alpha.2',
+        dshVersion: '0.2.2-rc.5',
       }),
     ).resolves.toBeUndefined();
   });

@@ -46,7 +46,7 @@ describe('dsh 兼容判定：engines 优先，再看 dsh peers', () => {
     expect(verdictOf(manifest, '0.2.2').verdict).toBe('compatible');
   });
 
-  it('没有 engines：收 @deepseek-ai/dsh 与 dsh-* 的 peer，别的不算', () => {
+  it('没有 engines：peer 只收 dsh 那几个、别的不算；但 peer 不能判兼容', () => {
     const manifest = {
       name: 'x',
       peerDependencies: {
@@ -57,6 +57,14 @@ describe('dsh 兼容判定：engines 优先，再看 dsh peers', () => {
     };
     expect(dshRequirementsOf(manifest).map((item) => item.range)).toEqual(['>=0.2.0', '>=0.2.0']);
     expect(verdictOf(manifest, '0.2.2')).toMatchObject({ verdict: 'unknown', reason: 'peer-only' });
+  });
+
+  it('★ peer 钉的是那个包的版本，不是 dsh 的版本：精确钉旧 rc 也不判不兼容', () => {
+    const manifest = {
+      name: '@dsh-workbench/shared',
+      peerDependencies: { '@deepseek-ai/dsh-client-ui-primitives': '0.2.2-rc.2' },
+    };
+    expect(verdictOf(manifest, '0.2.2-rc.5')).toMatchObject({ verdict: 'unknown', reason: 'peer-only' });
   });
 
   it('拿不到 dsh 版本 / 区间非法 / 没写要求 → 都是未知，不假装兼容', () => {
