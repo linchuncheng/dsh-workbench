@@ -4,6 +4,7 @@ import {
   declarationApiVersionOf,
   declarationProblemsOf,
   declaresPackage,
+  dshVersionIn,
   readDeclaration,
   isValidVersion,
   param,
@@ -215,6 +216,7 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
       : listedEntry === undefined
         ? ({ kind: 'unverified' } as const)
         : dshBlockOf(listedEntry.incompatible);
+  const dshVersion = input.dir === null ? undefined : dshVersionIn(input.dir);
   const diskOlder =
     read.local !== true &&
     input.running !== undefined &&
@@ -231,6 +233,7 @@ async function workbenchVersion(supply: ReturnType<typeof supplyPortOf>, input: 
     ...(input.followUp === undefined ? {} : { followUp: input.followUp }),
     ...(spec === undefined ? {} : { spec }),
     ...(registry === undefined || read.local === true ? {} : { registry }),
+    ...(dshVersion === undefined ? {} : { dshVersion }),
   };
 }
 

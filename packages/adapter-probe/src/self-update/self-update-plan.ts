@@ -26,6 +26,7 @@ export interface SelfUpdateMarker extends SelfUpdateRequest {
   readonly reason?: SelfUpdateReason | undefined;
   readonly failure?: SelfUpdateFailure | undefined;
   readonly requirements?: Readonly<Record<string, string>> | undefined;
+  readonly runtimeVersion?: string | undefined;
   readonly phase?: UpdateJournalState | undefined;
   readonly committed?: boolean | undefined;
   readonly at: string;

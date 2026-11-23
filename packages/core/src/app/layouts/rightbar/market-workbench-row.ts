@@ -50,10 +50,23 @@ export function workbenchRow(
   const running = version.running;
   const older = !local && version.diskOlder === true && running !== undefined;
   const latest = local ? undefined : version.latest;
+  const learned =
+    latest !== undefined &&
+    selfUpdate?.state === 'failed' &&
+    selfUpdate.failure === 'incompatible' &&
+    selfUpdate.to === latest &&
+    selfUpdate.requirements !== undefined &&
+    selfUpdate.runtimeVersion !== undefined &&
+    selfUpdate.runtimeVersion === version.dshVersion
+      ? {
+          kind: 'incompatible' as const,
+          requirements: selfUpdate.requirements,
+          ...(selfUpdate.runtimeVersion === undefined ? {} : { runtimeVersion: selfUpdate.runtimeVersion }),
+        }
+      : undefined;
+  const latestBlocked = learned ?? version.latestBlocked;
   const latestBlocking =
-    version.latestBlocked === undefined || version.latestBlocked.kind === 'unverified'
-      ? undefined
-      : version.latestBlocked;
+    latestBlocked === undefined || latestBlocked.kind === 'unverified' ? undefined : latestBlocked;
   const target = older ? (latest !== undefined && latestBlocking === undefined ? latest : running) : latest;
   const update =
     target !== undefined && target !== version.installed
@@ -76,7 +89,7 @@ export function workbenchRow(
     (reinstallNote !== undefined && (updateNote === undefined || updateNote.tone !== 'alert')
       ? reinstallNote
       : (updateNote ?? busyNote));
-  const blocked = older || update === undefined ? undefined : version.latestBlocked;
+  const blocked = older || update === undefined ? undefined : latestBlocked;
   const blocking = older || update === undefined ? undefined : latestBlocking;
   const blockedHint: MarketHint | undefined =
     blocked === undefined ? undefined : updateBlockHintOf(blocked);

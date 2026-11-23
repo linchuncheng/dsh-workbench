@@ -288,6 +288,7 @@ describe('自更新现场：界面要知道外面那个进程跑成什么样', (
         reason: 'incomplete',
         failure: 'incompatible',
         requirements: { 'engines.dsh': '>=0.2.3-alpha.2' },
+        runtimeVersion: '0.2.2-rc.5',
         at: '2026-11-10T12:00:00.000Z',
       }),
     );
@@ -295,6 +296,7 @@ describe('自更新现场：界面要知道外面那个进程跑成什么样', (
     const view = readSelfUpdateView('workbench');
     expect(view?.failure).toBe('incompatible');
     expect(view?.requirements).toEqual({ 'engines.dsh': '>=0.2.3-alpha.2' });
+    expect(view?.runtimeVersion).toBe('0.2.2-rc.5');
 
     writeFileSync(
       join(dir, 'self-update.json'),

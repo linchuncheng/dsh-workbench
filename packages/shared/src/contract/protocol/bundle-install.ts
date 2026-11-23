@@ -115,6 +115,7 @@ export interface WorkbenchSelfUpdate {
   readonly reason?: SelfUpdateReason;
   readonly failure?: SelfUpdateFailure;
   readonly requirements?: Readonly<Record<string, string>>;
+  readonly runtimeVersion?: string;
   readonly tail?: string;
   readonly reinstall?: SelfUpdateReinstall;
 }
@@ -313,6 +314,7 @@ export interface WorkbenchVersion {
   readonly local?: boolean;
   readonly spec?: string;
   readonly registry?: string;
+  readonly dshVersion?: string;
   readonly broken?: boolean;
   readonly rescue?: string;
   readonly followUp?: {

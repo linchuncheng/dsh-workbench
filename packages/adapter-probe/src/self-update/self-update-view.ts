@@ -73,6 +73,7 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
   const reason = asText(record.reason);
   const failure = asText(record.failure);
   const requirements = requirementsOf(record.requirements);
+  const runtimeVersion = asText(record.runtimeVersion);
   const tail = readTail(paths.log);
   const confirmed =
     state === 'pending-restart' &&
@@ -99,6 +100,7 @@ export function readSelfUpdateView(profile?: string): WorkbenchSelfUpdate | unde
       ? {}
       : { failure: failure as SelfUpdateFailure }),
     ...(requirements === undefined ? {} : { requirements }),
+    ...(runtimeVersion === undefined ? {} : { runtimeVersion }),
     ...(tail === undefined ? {} : { tail }),
   };
 }

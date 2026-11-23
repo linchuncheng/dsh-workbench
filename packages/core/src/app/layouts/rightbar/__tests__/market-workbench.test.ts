@@ -80,6 +80,58 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
     expect(marketActions(row as MarketRow)).toEqual(['update-workbench']);
   });
 
+  it('★ 上一次更新已判出这一版跟当前 dsh 不兼容 → 按钮变灰，直接列出要求', () => {
+    const requirements = { 'engines.dsh': '>=0.2.3-alpha.2' };
+    const row = workbenchRow(
+      {
+        pkg: CORE,
+        installed: '1.5.1',
+        latest: '1.5.2-alpha.0',
+        latestBlocked: { kind: 'unverified' },
+        dshVersion: '0.2.2-rc.5',
+      },
+      { state: 'failed', to: '1.5.2-alpha.0', failure: 'incompatible', requirements, runtimeVersion: '0.2.2-rc.5' },
+    );
+
+    expect(row).toMatchObject({
+      state: 'outdated',
+      canUpdate: false,
+      hint: {
+        key: 'panels.market.updateNeedsDsh',
+        params: { dsh: 'dsh >=0.2.3-alpha.2', runtime: '0.2.2-rc.5' },
+      },
+      moduleUpdate: {
+        installed: '1.5.1',
+        latest: '1.5.2-alpha.0',
+        blocked: { kind: 'incompatible', requirements, runtimeVersion: '0.2.2-rc.5' },
+      },
+    });
+    expect(marketActions(row as MarketRow)).toEqual([]);
+  });
+
+  it('★ 判出不兼容的是另一个版本（已经换了目标）→ 不拿旧结论挡这一版', () => {
+    const row = workbenchRow(
+      {
+        pkg: CORE,
+        installed: '1.5.1',
+        latest: '1.5.2-alpha.0',
+        latestBlocked: { kind: 'unverified' },
+        dshVersion: '0.2.2-rc.5',
+      },
+      {
+        state: 'failed',
+        to: '1.5.1-beta.9',
+        failure: 'incompatible',
+        requirements: { 'engines.dsh': '>=9.0.0' },
+        runtimeVersion: '0.2.2-rc.5',
+      },
+    );
+
+    expect(row).toMatchObject({ state: 'outdated', canUpdate: true });
+    expect(row?.hint).toEqual({ key: 'panels.market.updateUnverified' });
+    expect(marketActions(row as MarketRow)).toEqual(['update-workbench']);
+  });
+
   it('② 已经最新 → 只显示版本，不给按钮（也不许说"有新版本"）', () => {
     const row = workbenchRow({ pkg: CORE, installed: '0.1.19', latest: '0.1.19' });
 

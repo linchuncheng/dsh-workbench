@@ -68,6 +68,7 @@ export interface SelfUpdateRunResult {
   readonly ran: readonly string[];
   readonly failure?: SelfUpdateFailure | undefined;
   readonly requirements?: Readonly<Record<string, string>> | undefined;
+  readonly runtimeVersion?: string | undefined;
 }
 
 interface StepOutcome {
@@ -78,6 +79,7 @@ interface StepOutcome {
   readonly state?: SelfUpdateRunResult['state'] | undefined;
   readonly failure?: SelfUpdateFailure | undefined;
   readonly requirements?: Readonly<Record<string, string>> | undefined;
+  readonly runtimeVersion?: string | undefined;
 }
 
 export function selfUpdateJournalPath(plan: SelfUpdateSteps): string {
@@ -107,19 +109,23 @@ export async function runSelfUpdateSteps(
         writeCommittedMarker(plan, now, log);
         return { ok: true, state: 'pending', detail, ran };
       }
+      const failureInfo = {
+        failure: outcome.failure,
+        requirements: outcome.requirements,
+        runtimeVersion: outcome.runtimeVersion,
+      };
       writeJsonFile(plan.markerPath, {
         ...plan.marker,
         state: 'failed',
         version: plan.marker.from,
         reason: 'incomplete',
         at: now(),
-        ...(outcome.failure === undefined ? {} : { failure: outcome.failure }),
-        ...(outcome.requirements === undefined ? {} : { requirements: outcome.requirements }),
+        ...failureInfo,
       });
       log(detail);
       log(`救法：${plan.rescue}`);
       noteSelfUpdateFailed(diag, plan.version, detail);
-      return { ok: false, state: 'failed', detail, ran, ...(outcome.failure === undefined ? {} : { failure: outcome.failure }), ...(outcome.requirements === undefined ? {} : { requirements: outcome.requirements }) };
+      return { ok: false, state: 'failed', detail, ran, ...failureInfo };
     }
     ran.push(step.kind);
     log(outcome.detail);
@@ -255,6 +261,7 @@ async function applyStep(
         detail: `新版本跟这一台 dsh ${plan.dshVersion ?? ''} 不兼容（${need}），不切过去`,
         failure: 'incompatible',
         requirements,
+        ...(plan.dshVersion === undefined ? {} : { runtimeVersion: plan.dshVersion }),
       };
     }
     if (gate.compatibility.verdict === 'unknown') {
