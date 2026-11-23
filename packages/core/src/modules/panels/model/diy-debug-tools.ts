@@ -35,6 +35,23 @@ export function debugRefusalText(code: DebugRefusal, held?: DebugState): string 
   }
 }
 
+export function debugPrecheckOf(
+  call: { readonly name?: string | undefined; readonly session?: string | undefined },
+  debugOf: (() => DebugState | null) | undefined,
+): string | undefined {
+  if (debugOf === undefined) return undefined;
+  const held = debugOf();
+  const session = call.session ?? '';
+  if (call.name === DIY_DEBUG_START_TOOL) {
+    if (held === null) return undefined;
+    return debugRefusalText(held.sessionId === session ? 'already-held' : 'held-by-other', held);
+  }
+  if (held === null) return debugRefusalText('none');
+  if (held.sessionId !== session) return debugRefusalText('not-owner', held);
+  if (held.phase === 'debugging') return debugRefusalText('already-debugging', held);
+  return undefined;
+}
+
 export function renderDebugStart(state: DebugState): string {
   return [
     `开始调试 ${state.unit}（目标：${state.board === '' ? '用户当前页面' : state.board}）。`,

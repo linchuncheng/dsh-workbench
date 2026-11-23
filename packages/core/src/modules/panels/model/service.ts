@@ -41,6 +41,8 @@ export interface PanelsService {
   subscribe(listener: () => void): () => void;
   isEnabled(id: string, workspace: string | null): boolean;
 
+  switchDenyOf(id: string): string | undefined;
+
   show(id: string, workspace: string | null, target?: BoardTarget): PanelEntry[];
   hide(id: string, workspace: string | null, target?: BoardTarget): PanelEntry[];
   move(id: string, index: number, workspace: string | null, target?: BoardTarget): PanelEntry[];
@@ -145,11 +147,22 @@ export function createPanelsService(options: {
     writeReleased(withoutReleased(current, id));
   }
 
-  function requireKnown(id: string): void {
+  function switchDenyOf(id: string): string | undefined {
+    if (pluginIds().has(id)) return undefined;
     const all = manifests();
-    if (!all.some((manifest) => manifest.id === id)) {
-      throw new Error(`没有这个模块：${id}（可用：${all.map((manifest) => manifest.id).join(', ')}）`);
+    const manifest = all.find((item) => item.id === id);
+    if (manifest === undefined) {
+      return `没有这个模块：${id}（可用：${all.map((item) => item.id).join(', ')}）`;
     }
+    if (manifest.card === null && ownedSet().has(id)) {
+      return `${id} 没有卡片，不能收起（它是把别的模块放回来的入口）`;
+    }
+    return undefined;
+  }
+
+  function requireSwitchable(id: string): void {
+    const deny = switchDenyOf(id);
+    if (deny !== undefined) throw new Error(deny);
   }
 
   function pluginRefs(): readonly PanelPluginRef[] {
@@ -158,15 +171,6 @@ export function createPanelsService(options: {
 
   function pluginIds(): ReadonlySet<string> {
     return new Set(pluginRefs().map((plugin) => pluginPanelId(plugin.pkg)));
-  }
-
-  function requireSwitchable(id: string): void {
-    if (pluginIds().has(id)) return;
-    requireKnown(id);
-    const manifest = manifests().find((item) => item.id === id);
-    if (manifest?.card === null && ownedSet().has(id)) {
-      throw new Error(`${id} 没有卡片，不能收起（它是把别的模块放回来的入口）`);
-    }
   }
 
   function requireWorkspace(workspace: string | null): string {
@@ -212,6 +216,7 @@ export function createPanelsService(options: {
     isReleased(id) {
       return readReleased().includes(id);
     },
+    switchDenyOf,
     release(id) {
       writeReleased(withReleased(readReleased(), id));
       const seen = new Set<string>();

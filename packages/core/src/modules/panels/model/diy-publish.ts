@@ -10,9 +10,8 @@ import {
   type ShellResult,
   type WriteIntent,
 } from '@dsh-workbench/shared/host';
-import type { PublishPreview } from '@dsh-workbench/shared/contract/protocol/market-index';
 import type { DiyModule } from '@/shared/api/host/diy-modules';
-import { toolchainArgvOf, toolchainBinOf } from '@/shared/api/host/diy-surface';
+import { toolchainBinOf } from '@/shared/api/host/diy-surface';
 import { jsonOf } from './diy-browser';
 import {
   adoptTarballFile,
@@ -21,6 +20,7 @@ import {
   prepareStaging,
 } from '@/shared/api/host/diy-release-staging';
 import { asRecord, asText, OUTPUT, plainJson, workspaceOf } from './diy-context';
+import { publishAuthorOf, publishRequestOf, releaseArgvOf, type PublishAuthorHint, type PublishPreviewOf } from './publish-request';
 import { RELEASE_TARGETS } from '@dsh-workbench/shared/contract/protocol/release';
 import { DIY_PUBLISH_TOOL } from '../unit';
 
@@ -28,8 +28,8 @@ export const PUBLISH_TIMEOUT_MS = 30 * 60 * 1000;
 
 export interface PublishToolDeps {
   readonly resolve: (root: string, raw: unknown) => DiyModule;
-  readonly previewOf: (root: string, unit: string) => PublishPreview | null;
-  readonly inferredAuthorOf: (root: string, unit: string) => Promise<string | undefined>;
+  readonly previewOf: PublishPreviewOf;
+  readonly inferredAuthorOf: PublishAuthorHint;
 }
 
 interface ReleaseRun {
@@ -274,57 +274,25 @@ export function registerPublishTool(
           `当前工作区没有 dsh-wb-module（${join(root, 'node_modules')} 下不存在）。先执行 pnpm install。`,
         );
       }
-      const args = asRecord(raw);
-      const target = asText(args['target']);
-      const source = asText(args['source']);
-      const version = asText(args['version']);
-      const license = asText(args['license']);
-      const changelogNote = asText(args['changelogNote']);
-      const changelogType = asText(args['changelogType']);
-      const labels = labelsOf(args['labels']);
-      const category = asText(args['category']);
-      let author = asText(args['author']);
-      const verify = args['verify'] === true;
-      const resume = args['resume'] === true;
-      const refresh = args['refresh'] === true;
-      if (
-        !verify &&
-        target !== 'local' &&
-        author === '' &&
-        (deps.previewOf(root, found.unit)?.author ?? '') === ''
-      ) {
-        author = (await deps.inferredAuthorOf(root, found.unit)) ?? '';
-      }
-      const argv = [...toolchainArgvOf(bin), 'release', '--cwd', found.dir, '--json'];
-      if (verify) argv.push('--verify');
-      else argv.push('--yes');
-      if (resume) argv.push('--resume');
-      if (target !== '') argv.push('--target', target);
-      if (source !== '') argv.push('--index-source', source);
-      if (version !== '') argv.push('--version', version);
-      if (license !== '') argv.push('--license', license);
-      if (author !== '') argv.push('--author', author);
-      if (changelogNote !== '') argv.push('--changelog-note', changelogNote);
-      if (changelogType !== '') argv.push('--changelog-type', changelogType);
-      for (const label of labels) argv.push('--label', label);
-      if (category !== '') argv.push('--category', category);
-      if (refresh) argv.push('--refresh');
-      const run = async (extra: readonly string[], request: ReleaseRun): Promise<ShellResult> =>
+      const request = publishRequestOf(raw);
+      const author = await publishAuthorOf(request, deps.previewOf, deps.inferredAuthorOf, root, found.unit);
+      const argv = releaseArgvOf(bin, found.dir, request, author, 'publish');
+      const run = async (extra: readonly string[], release: ReleaseRun): Promise<ShellResult> =>
         seam.run({
           command: [...argv, ...extra].map((one) => quoteShellArg(one)).join(' '),
-          intent: request.intent,
-          ...(request.session === undefined ? {} : { session: request.session }),
-          ...(request.env === undefined ? {} : { env: request.env }),
+          intent: release.intent,
+          ...(release.session === undefined ? {} : { session: release.session }),
+          ...(release.env === undefined ? {} : { env: release.env }),
           workdir: root,
           timeoutMs: PUBLISH_TIMEOUT_MS,
         });
-      if (verify || refresh) {
+      if (request.verify || request.refresh) {
         const outcome = outcomeOf(await run([], { intent: productWrite() }), found.unit);
         if (outcome.kind === 'failed') throw outcome.error;
         if (outcome.kind !== 'done') return plainJson(outcome.payload);
-        return plainJson(successPayloadOf(outcome.payload, found, { verify }));
+        return plainJson(successPayloadOf(outcome.payload, found, { verify: request.verify }));
       }
-      const staging = prepareStaging(found.unit, resume);
+      const staging = prepareStaging(found.unit, request.resume);
       const env = { DSH_WB_RELEASE_HOME: staging };
       const session = exec.agent?.session;
       const workspace = await run(['--workspace-only'], {
@@ -356,15 +324,4 @@ export function registerPublishTool(
   return tools.register(publishTool);
 }
 
-function labelsOf(value: unknown): readonly string[] {
-  if (!Array.isArray(value) || value.length === 0) return [];
-  const labels = value.flatMap((one) => (typeof one === 'string' ? [one.trim()] : []));
-  if (labels.length !== value.length || labels.some((one) => one === '' || /[\r\n]/u.test(one))) {
-    throw new Error('标签是 1–2 个短词：每项一行非空文字');
-  }
-  const unique = [...new Set(labels)];
-  if (unique.length > 2) {
-    throw new Error(`标签最多两个（收到 ${String(unique.length)} 个）；挑选最能说明模块用途的`);
-  }
-  return unique;
-}
+

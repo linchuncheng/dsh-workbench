@@ -15,7 +15,8 @@ pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 /
 发布前再运行一步 `pnpm exec dsh-wb-module publish`：运行门禁、核对 `files` 与 `npm pack` 清单，默认**只执行 dry run，不会实际发布**。
 维护者确认要实际发布时运行 `pnpm exec dsh-wb-module release`：全部门禁（build / check / design / typecheck / test / selfcheck）、
 验收项必须全部勾选、预检（登录 / license / git 远端）、按 `--target` 发布到团队源、公网 npm、安装包或 git，
-最后从发布出口核对包（`--dry-run` 只预览，`--verify` 只核对已发布的包）。配了可写 git 模块来源时，
+最后从发布出口核对包（`--dry-run` 只预览，`--verify` 只核对已发布的包，`--preflight` 只做发布前检查：
+不运行门禁、不写盘、不发布；工作台在显示发布审批之前先用它报出还缺什么）。配了可写 git 模块来源时，
 发布完成后还会写入索引条目（`--index auto|none|<目录|git 地址>`，`artifacts-in-repo` 连同产物一起入库，
 `catalog-only` 只更新索引）；索引未更新不影响包已发布，结果中会如实说明。
 发布可选 `--index-source <id>` 指定发到哪个模块来源；不指定时使用唯一可发布的来源，有多个可发布来源时会要求指定。
@@ -59,7 +60,7 @@ pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 /
 | `dsh-wb-module migrate [--dry-run]` | 将模块清单迁移到当前版本：`apiVersion` → 3、缺失或为空的 `workbenchFaces` 补充默认值；源码类问题只提供提示（check 会指出） |
 | `dsh-wb-module changelog check [版本]` | 检查该版本是否已有记录；发布时通过 `release --changelog-note` 写入 |
 | `dsh-wb-module publish` | 发布前清单：门禁 + `files` + `npm pack`（只执行 dry run） |
-| `dsh-wb-module release` | 实际发布：team / public / tarball / git / market / local；全部门禁 + 验收门禁 + 预检接管 + 发布后核对 + 更新市场索引（`--dry-run` / `--verify`） |
+| `dsh-wb-module release` | 实际发布：team / public / tarball / git / market / local；发布前检查 + 全部门禁 + 验收门禁 + 发布后核对 + 更新市场索引（`--dry-run` 只预览、`--verify` 只核对、`--preflight` 只做发布前检查） |
 
 `--cwd <目录>` 指定**工作目录**，默认当前目录。注意判据仍按**工作区**发现模块：往上找
 `pnpm-workspace.yaml`（或 `package.json` 的 `workspaces`），按它声明的 glob 展开包目录

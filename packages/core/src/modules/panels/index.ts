@@ -8,9 +8,13 @@ import { hostSurface } from '@dsh-workbench/shared/host';
 import { BROWSER_RECORD_SESSION } from '@dsh-workbench/shared/host';
 import { cliCommandOf } from '@dsh-workbench/shared/host';
 import { panelsApprovalFor } from './model/approval-policy';
+import type { PanelApprovalProbes } from './model/approval-prechecks';
 import { resolveScope } from './model/config';
 import { registerLongTaskTools } from './model/long-task-tools';
 import { registerDiyTools } from './model/diy-tools';
+import { unitsOf } from './model/diy-context';
+import { foreignDomainText } from './model/diy-record';
+import { readDesignOfModule } from '@/shared/api/host/diy-modules';
 import { inferredAuthorOf, publishPreviewOf } from '@/shared/api/host/diy-publish-preview';
 import { stopObservers, withObserverCleanup } from './model/diy-observers';
 import { diyDebugRoutes } from './model/diy-debug-routes';
@@ -26,6 +30,7 @@ import { dependencyReader } from '@/shared/api/host/profile-dependencies';
 import { probeGitAddressCached } from '@/shared/api/host/git-probe';
 import { markSourceReadOnly, marketSourcesAction, marketSourcesRoutes } from './model/market-sources-act';
 import { publishPreviewRoutes } from './model/publish-preview-routes';
+import { createPublishPreflight } from './model/publish-preflight';
 import { createMarketIndexReader } from '@/shared/api/host/market-index-fetch';
 import { createMarketDocReader } from '@/shared/api/host/market-doc';
 import { createInstalledPackageReader } from '@/shared/api/host/installed-package';
@@ -252,6 +257,44 @@ export const panelsHost: UnitOwnedFace = {
       ...(logger === undefined ? {} : { logger }),
     });
 
+    const publishPreflight = createPublishPreflight(ctx, {
+      root: (workspace) => (workspace === undefined ? null : registeredWorkspacePathOf(ctx, workspace)),
+      previewOf: publishPreviewOf,
+      inferredAuthorOf,
+    });
+    const approvalProbes: PanelApprovalProbes = {
+      switchDenyOf: (id) => panels.switchDenyOf(id),
+      moduleDenyOf: (unit) => {
+        if (moduleManifests().some((manifest) => manifest.id === unit)) return undefined;
+        if ((supply.profileModules(profileDir) ?? []).some((module) => module.unit === unit)) return undefined;
+        return `没有这个模块：${unit}（可用：${moduleManifests().map((manifest) => manifest.id).join(', ') || '（空）'}）`;
+      },
+      debugOf: () => debug.live(Date.now()),
+      pluginDenyOf: (name, updating) => {
+        const entry = ledger.read(name) ?? ledger.heldAsPlugin(name);
+        if (entry === undefined) {
+          const known = ledger.list().map((one) => one.name ?? one.package);
+          return `插件记录中没有「${name}」（包名与插件名均可）；已安装插件：${known.join('、') || '（空）'}`;
+        }
+        if (updating && (entry.local === true || entry.registry === undefined)) {
+          return `「${entry.package}」从本地安装，没有可查询的新版本。`;
+        }
+        return undefined;
+      },
+      debugUnitsOf: (workspace) => {
+        const root = workspace === undefined ? null : registeredWorkspacePathOf(ctx, workspace);
+        return root === null ? [] : unitsOf(ctx, root).units.map((one) => one.unit);
+      },
+      recordUrlDenyOf: ({ unit, url, workspace }) => {
+        const root = workspace === undefined ? null : registeredWorkspacePathOf(ctx, workspace);
+        if (root === null) return undefined;
+        const found = unitsOf(ctx, root).units.find((one) => one.unit === unit);
+        if (found === undefined || found.dir === '') return undefined;
+        const foreign = foreignDomainText(readDesignOfModule(found.dir), url);
+        return foreign === '' ? undefined : foreign;
+      },
+    };
+
     const denySets = (context: ToolScopeContext) => {
       const boards = panels.boards(context.workspace);
       const owned = new Set(ownedUnits());
@@ -371,6 +414,8 @@ export const panelsHost: UnitOwnedFace = {
         },
         marketSources,
         (session) => diyRuns.stepOf(session),
+        publishPreflight,
+        approvalProbes,
       ),
       gate: {
         deniedTools: (context) => {

@@ -143,7 +143,8 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 
 只在用户说「帮我发布」之后调用 `workbench_diy_publish`（`unit=…`）。缺更新日志就带 `changelogNote`；
 缺少模块市场标签时，选择 1–2 个短词放进 `labels`。不要手动修改 `package.json`，不要补标题或署名，也不要询问用户发布出口。
-发布工具返回 `needsUser` 时按 `text` 转述。细节见 [WIRING.md](WIRING.md) §5。
+发布工具返回 `needsUser` 时按 `text` 转述。审批之前会先做一次发布前检查：缺什么就直接拒绝、不显示审批，
+按理由补齐后再调用一次。细节见 [WIRING.md](WIRING.md) §5。
 
 ## 索引
 

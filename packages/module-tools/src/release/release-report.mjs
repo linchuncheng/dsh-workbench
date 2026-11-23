@@ -51,6 +51,10 @@ export function emit(out, json, value) {
 }
 
 export function human(out, summary) {
+  if (summary.preflight === true) {
+    out(`✔ 发布前检查通过：${summary.name}@${summary.version} → ${summary.target}（未写入任何内容）`);
+    return;
+  }
   if (summary.target === 'local') {
     out('未发布，保留在本机。');
     return;

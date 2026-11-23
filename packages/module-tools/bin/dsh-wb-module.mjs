@@ -84,6 +84,7 @@ const RELEASE_HELP = `
   --resume                                              上次中断后继续发布（使用记录中的出口与版本）
   --workspace-only                                      只执行工作区步骤（构建 / 检查 / 提交），索引与产物流给 --index-only
   --index-only                                          承接 --workspace-only 的记录，只执行产品侧步骤（索引 / 发布 / 产物）
+  --preflight                                           只做发布前检查（出口 / 验收 / 更新日志 / 登录 / 署名）：不运行自动检查（门禁）、不写盘、不发布
   --dry-run --verify --yes --json`;
 
 const MARKET_INIT_HELP = `
@@ -108,7 +109,7 @@ const COMMANDS = {
   design: '设计记录：init 填写 / migrate 拆分旧 README / check 检查空白 / render 生成 README 与 DEVELOPING / accept 勾选',
   migrate: '将模块清单迁移到当前版本（apiVersion / workbenchFaces）；源码类问题只提供提示',
   publish: '发布前清单：门禁 + files + npm pack（只执行 dry run）',
-  release: '实际发布：全部门禁 + 验收门禁 + 预检接管 + 发布到出口 + 发布后核对 + 更新市场索引（中断后可 --resume）',
+  release: '实际发布：发布前检查 + 审批 + 全部门禁 + 验收门禁 + 发布到出口 + 发布后核对 + 更新市场索引（--preflight 只做发布前检查；中断后可 --resume）',
   sync: '按清单生成 src/declared-tools.ts 与 src/sites.ts，按 design.json 生成 src/datasource.ts',
   lint: '使用模块自己的 eslint.config.mjs；--fix 直接修改文件',
   changelog: '更新日志：check 检查该版本是否已有记录；发布时通过 release --changelog-note 写入',

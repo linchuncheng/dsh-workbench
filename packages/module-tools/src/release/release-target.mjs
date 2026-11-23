@@ -127,7 +127,7 @@ export function checkLogin(exec, info) {
   if (/ENEEDAUTH|not logged in|401|Unauthorized|E401|E403|403/i.test(text)) {
     throw new NeedsUser(
       'login',
-      `${info.target === 'public' ? 'npm' : '团队源'}尚未登录。请在终端运行 \`${loginCommandOf(info.registry)}\`，完成登录与验证后告知，随后将继续发布。`,
+      `${info.target === 'public' ? 'npm' : '团队源'}尚未登录。请在终端运行 \`${loginCommandOf(info.registry)}\`，完成登录与验证后告知。`,
       loginCommandOf(info.registry),
       { target: info.target, registry: info.registry },
     );

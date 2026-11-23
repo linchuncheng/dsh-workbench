@@ -246,17 +246,20 @@ export const checks = [
     },
   ),
   releaseCase(
-    'release：验收没打完不发（用户说"没问题"是闸，不是提示）',
+    'release：验收没打完不发（用户说"没问题"是闸，不是提示；--preflight 也不让它走到审批之后）',
     { probe: { checked: false } },
     async ({ dir, home, fake }) => {
-      const error = await failureOf(
-        releaseIn(dir, home, fake, ['--target', 'team', '--registry', 'https://npm.demo.test/', '--yes']),
-      );
+      const args = ['--target', 'team', '--registry', 'https://npm.demo.test/'];
+      const error = await failureOf(releaseIn(dir, home, fake, [...args, '--yes']));
       if (!(error instanceof NeedsUser) || error.step !== 'acceptance') {
         throw new Error(`没有拦住：${error?.message ?? error}`);
       }
       if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('验收没过却跑了 publish');
       if (hasCall(fake.calls, process.execPath, 'build')) throw new Error('验收没过就跑了 build');
+      const early = await failureOf(releaseIn(dir, home, fake, [...args, '--preflight']));
+      if (!(early instanceof NeedsUser) || early.step !== 'acceptance') {
+        throw new Error(`预检没拦住验收：${early?.message ?? early}`);
+      }
     },
   ),
   releaseCase(
@@ -972,6 +975,67 @@ export const checks = [
       );
       if (!(tooMany instanceof ReleaseError) || !tooMany.message.includes('最多两个')) {
         throw new Error(`三个标签没拦住：${tooMany?.message ?? tooMany}`);
+      }
+    },
+  ),
+  releaseCase(
+    'release：--preflight 只做发布前检查 —— 不跑门禁、不写盘、不发布、不留状态',
+    {},
+    async ({ dir, home, fake }) => {
+      const before = readFileSync(join(dir, 'package.json'), 'utf8');
+      const changelogBefore = readFileSync(join(dir, 'CHANGELOG.md'), 'utf8');
+      const result = await releaseIn(dir, home, fake, [
+        '--target',
+        'team',
+        '--registry',
+        'https://npm.demo.test/',
+        '--preflight',
+        '--json',
+      ]);
+      if (result.preflight !== true || result.target !== 'team' || result.version !== '0.1.0') {
+        throw new Error(`预检结果不对：${JSON.stringify(result)}`);
+      }
+      if (readFileSync(join(dir, 'package.json'), 'utf8') !== before) throw new Error('预检改了 package.json');
+      if (readFileSync(join(dir, 'CHANGELOG.md'), 'utf8') !== changelogBefore) throw new Error('预检改了 CHANGELOG.md');
+      if (hasCall(fake.calls, process.execPath, 'build')) throw new Error('预检跑了 build');
+      if (hasCall(fake.calls, 'npm', 'run')) throw new Error('预检跑了门禁');
+      if (hasCall(fake.calls, 'npm', 'publish')) throw new Error('预检跑了 publish');
+      if (existsSync(join(home, 'workbench', 'releases', 'probe.json'))) throw new Error('预检写了发布状态');
+    },
+  ),
+  releaseCase(
+    'release：--preflight 缺更新日志先问人，也不写 CHANGELOG',
+    { probe: { changelog: '# 更新日志\n\n## v0.0.9\n\n`2026-10-01`\n\n### ✨ 新增\n\n- 老版本\n' } },
+    async ({ dir, home, fake }) => {
+      const before = readFileSync(join(dir, 'CHANGELOG.md'), 'utf8');
+      const error = await failureOf(
+        releaseIn(dir, home, fake, ['--target', 'team', '--registry', 'https://npm.demo.test/', '--preflight']),
+      );
+      if (!(error instanceof NeedsUser) || error.step !== 'changelog') {
+        throw new Error(`预检没拦住缺更新日志：${error?.message ?? error}`);
+      }
+      if (readFileSync(join(dir, 'CHANGELOG.md'), 'utf8') !== before) throw new Error('预检写了更新日志');
+    },
+  ),
+  releaseCase(
+    'release：--preflight 不改署名，也不接受和 --dry-run 一起用',
+    { plan: { authorName: '本机', authorEmail: 'local@example.com' } },
+    async ({ dir, home, fake }) => {
+      const before = readFileSync(join(dir, 'package.json'), 'utf8');
+      await releaseIn(dir, home, fake, [
+        '--target',
+        'team',
+        '--registry',
+        'https://npm.demo.test/',
+        '--preflight',
+        '--json',
+      ]);
+      if (readFileSync(join(dir, 'package.json'), 'utf8') !== before) throw new Error('预检把推断的署名写了进去');
+      const conflict = await failureOf(
+        releaseIn(dir, home, fake, ['--target', 'team', '--preflight', '--dry-run']),
+      );
+      if (!(conflict instanceof ReleaseError) || !conflict.message.includes('--preflight')) {
+        throw new Error(`没有拦住 --preflight + --dry-run：${conflict?.message ?? conflict}`);
       }
     },
   ),

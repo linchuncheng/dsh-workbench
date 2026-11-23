@@ -16,6 +16,14 @@ export type PublishPreviewLookup =
   | { readonly ok: true; readonly preview: PublishApprovalPreview }
   | { readonly ok: false; readonly reason: string };
 
+export interface PublishPreflightAsk {
+  readonly workspace?: string | undefined;
+  readonly unit: string;
+  readonly arguments?: unknown;
+}
+
+export type PublishPreflightLookup = (ask: PublishPreflightAsk) => Promise<string | undefined>;
+
 function argsOf(call: ApprovalCall): Record<string, unknown> {
   const raw = call.arguments;
   return typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
@@ -39,6 +47,7 @@ function labelsOfArgs(raw: Record<string, unknown>): readonly string[] {
 export function publishVerdict(
   call: ApprovalCall,
   preview?: (ask: PublishPreviewAsk) => PublishPreviewLookup,
+  preflight?: PublishPreflightLookup,
 ): ApprovalVerdict {
   const raw = argsOf(call);
   if (raw['verify'] === true || raw['target'] === 'local') return { kind: 'allow' };
@@ -121,12 +130,23 @@ export function publishVerdict(
     headline: refresh
       ? { zh: '刷新市场元数据', en: 'Refresh market metadata' }
       : { zh: '发布模块', en: 'Publish module' },
+    ...(preflight === undefined
+      ? {}
+      : {
+          preflight: () =>
+            preflight({
+              ...(call.workspace === undefined ? {} : { workspace: call.workspace }),
+              unit,
+              arguments: call.arguments,
+            }),
+        }),
   };
 }
 
 export function publishVerdictFor(
   call: ApprovalCall,
   preview: ((ask: PublishPreviewAsk) => PublishPreviewLookup) | undefined,
+  preflight?: PublishPreflightLookup | undefined,
 ): ApprovalVerdict | undefined {
-  return publishVerdict(call, preview);
+  return publishVerdict(call, preview, preflight);
 }

@@ -82,6 +82,8 @@ export interface ApprovalCall {
  * （连问都不该问，`reason` 原样交给 agent）、`ask` 要用户点头（`headline` 是具体标题；没有它时
  * `question` 接在明细后，`fallback` 是没明细时的整句；`noteInDetail` 为真表示模块把 agent 的附注
  * 画在自己的详情座里，标题只留动作、不再追加）。
+ * `preflight` 是在显示审批之前先执行的机器检查：返回非空字符串表示这次执行不了，原样交给 agent、
+ * 用户不会被询问；返回空表示照常询问；抛出同样转成 `deny`（不会静默放行）。
  */
 export type ApprovalVerdict =
   | { readonly kind: 'read' }
@@ -97,6 +99,7 @@ export type ApprovalVerdict =
       readonly question: ApprovalDetail;
       readonly fallback: ApprovalDetail;
       readonly noteInDetail?: boolean;
+      readonly preflight?: (() => Promise<string | undefined>) | undefined;
     };
 
 export type ApprovalPolicy = (call: ApprovalCall) => ApprovalVerdict | undefined;
@@ -162,6 +165,16 @@ export async function approvalFor(
         `${call.name ?? '这把工具'} 在清单里声明会写东西，但它的模块没有为这次调用声明审批，已在执行前停止。` +
         '下一步：在模块的 needsApproval 中补一条审批（包含「这次会发生什么」）。',
     };
+  }
+
+  if (verdict.preflight !== undefined) {
+    let blocked: string | undefined;
+    try {
+      blocked = await verdict.preflight();
+    } catch (error) {
+      return { kind: 'deny', reason: `审批前的检查没有完成，已拒绝这次调用：${messageOf(error)}` };
+    }
+    if (blocked !== undefined && blocked.trim() !== '') return { kind: 'deny', reason: blocked.trim() };
   }
 
   let facts: ApprovalFacts | undefined;

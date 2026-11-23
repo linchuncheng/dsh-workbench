@@ -549,3 +549,60 @@ describe('writeApprovalOf：headline 可以按调用算，明细可以省', () =
     expect(approval.approvalDetail(call)).toEqual({ en: 'One item', zh: '一条' });
   });
 });
+
+describe('★ 预检：弹审批之前先跑，跑不成就直接拒（不让用户白点一次）', () => {
+  const withPreflight = (preflight: () => Promise<string | undefined>): ApprovalPolicy => () => ({
+    kind: 'ask',
+    reason: 'writes for real',
+    question: { en: 'it really does it. Allow?', zh: '会真的做这件事。允许吗？' },
+    fallback: { en: 'The agent wants to do it. Allow?', zh: 'agent 想真的做这件事。允许吗？' },
+    preflight,
+  });
+
+  it('预检通过 ⇒ 照常问', async () => {
+    const preflight = vi.fn(async () => undefined);
+    const decision = await approvalFor(writer, { writes: true, policy: withPreflight(preflight) });
+
+    expect(decision?.kind).toBe('ask');
+    expect(preflight).toHaveBeenCalledTimes(1);
+  });
+
+  it('★ 预检回了理由 ⇒ deny，原样交给 agent，不弹审批', async () => {
+    const decision = await approvalFor(writer, {
+      writes: true,
+      policy: withPreflight(async () => '发布前检查未通过，这次发布已拒绝（没有发起审批）：团队源尚未登录'),
+    });
+
+    expect(decision).toEqual({ kind: 'deny', reason: '发布前检查未通过，这次发布已拒绝（没有发起审批）：团队源尚未登录' });
+  });
+
+  it('★ 预检抛了 ⇒ 也 deny，不静默放行', async () => {
+    const decision = await approvalFor(writer, {
+      writes: true,
+      policy: withPreflight(async () => {
+        throw new Error('git 跑了没起来');
+      }),
+    });
+
+    expect(decision?.kind).toBe('deny');
+    expect(decision?.kind === 'deny' ? decision.reason : '').toContain('git 跑了没起来');
+  });
+
+  it('★ 完全权限下预检照跑：跑不成仍旧拒（这是"跑不成"，不是"要不要问"）', async () => {
+    const decision = await approvalFor(writer, {
+      writes: true,
+      skipAsk: true,
+      policy: withPreflight(async () => '缺一条验收'),
+    });
+
+    expect(decision).toEqual({ kind: 'deny', reason: '缺一条验收' });
+  });
+
+  it('不进闸门的调用（writes: false）预检一次都不跑', async () => {
+    const preflight = vi.fn(async () => undefined);
+
+    await approvalFor(writer, { writes: false, policy: withPreflight(preflight) });
+
+    expect(preflight).not.toHaveBeenCalled();
+  });
+});

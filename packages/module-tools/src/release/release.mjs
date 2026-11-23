@@ -260,6 +260,21 @@ function verifyGit(exec, info, version) {
   return { commit: commit.stdout.trim(), files };
 }
 
+function assertClaimOf({ plan, exec, home, name, unit, publisher, target }) {
+  let claim;
+  try {
+    claim = marketClaim({ plan, exec, home, name, unit, publisher });
+  } catch (error) {
+    if (error instanceof MarketIndexError) {
+      throw new NeedsUser(error.step ?? 'index-write', error.message, error.command, { target });
+    }
+    throw error;
+  }
+  if (claim.state === 'conflict' || claim.state === 'unit-taken' || claim.state === 'path-taken') {
+    throw new ReleaseError(claimProblemText(name, claim, unit));
+  }
+}
+
 export async function runRelease({
   root,
   args = [],
@@ -273,7 +288,11 @@ export async function runRelease({
   const verify = hasFlag(args, '--verify');
   const workspaceOnly = hasFlag(args, '--workspace-only');
   const indexOnly = hasFlag(args, '--index-only');
+  const preflight = hasFlag(args, '--preflight');
   if (workspaceOnly && indexOnly) throw new ReleaseError('--workspace-only 与 --index-only 不能同时使用');
+  if (preflight && (verify || dryRun || workspaceOnly || indexOnly)) {
+    throw new ReleaseError('--preflight 只做发布前检查：不能和 --verify / --dry-run / --workspace-only / --index-only 一起使用');
+  }
   const askedAuthor = argValue(args, '--author');
   const explicitAuthor = askedAuthor === undefined ? undefined : askedAuthor.trim();
   if (askedAuthor !== undefined && (explicitAuthor === '' || /[\r\n]/u.test(explicitAuthor))) {
@@ -362,7 +381,7 @@ export async function runRelease({
   const categoryForIndex = askedCategory !== '' ? askedCategory : categoryOfManifest(manifest);
   const categoryChange = verify || askedCategory === '' ? undefined : `分类 ← ${askedCategory}`;
   const explicitApplied = explicitAuthor !== undefined && !verify && !dryRun;
-  if (explicitApplied && !indexOnly) {
+  if (explicitApplied && !indexOnly && !preflight) {
     manifest.author = explicitAuthor;
     writeManifest(root, manifest);
   }
@@ -395,6 +414,14 @@ export async function runRelease({
     if (target !== 'market') throw new ReleaseError('--refresh 仅对市场索引有效（--target market）');
     if (indexPlan === undefined) {
       throw new ReleaseError('没有可写的 git 模块来源 —— 请用 --index <仓库> 指定，或先在「模块市场 → 发现」中初始化索引');
+    }
+    if (preflight) {
+      const publisher = authorTextOf(manifest) || authored.author || '';
+      if (publisher === '') throw new ReleaseError(missingPublisherText());
+      assertClaimOf({ plan: indexPlan, exec, home, name: manifest.name, unit, publisher, target });
+      const summary = { ok: true, preflight: true, target, name: manifest.name, version: manifest.version };
+      emit(out, json, summary);
+      return summary;
     }
     const cardTitle = cardTitleFromMessages(root, unit);
     const titled = cardTitle === undefined ? manifest : { ...manifest, title: cardTitle };
@@ -444,7 +471,7 @@ export async function runRelease({
     return summary;
   }
   const authorChange = explicitAuthor === undefined ? authored.change : 'author ← --author';
-  if (!explicitApplied && !indexOnly && !verify && !dryRun && authored.author !== undefined) {
+  if (!explicitApplied && !indexOnly && !verify && !dryRun && !preflight && authored.author !== undefined) {
     manifest.author = authored.author;
     writeManifest(root, manifest);
   }
@@ -452,18 +479,7 @@ export async function runRelease({
   const writesIndex = indexPlan !== undefined && target !== 'local' && target !== 'tarball';
   if (!workspaceOnly && !verify && !dryRun && writesIndex) {
     if (publisher === '') throw new ReleaseError(missingPublisherText());
-    let claim;
-    try {
-      claim = marketClaim({ plan: indexPlan, exec, home, name: manifest.name, unit, publisher });
-    } catch (error) {
-      if (error instanceof MarketIndexError) {
-        throw new NeedsUser(error.step ?? 'index-write', error.message, error.command, { target });
-      }
-      throw error;
-    }
-    if (claim.state === 'conflict' || claim.state === 'unit-taken' || claim.state === 'path-taken') {
-      throw new ReleaseError(claimProblemText(manifest.name, claim, unit));
-    }
+    assertClaimOf({ plan: indexPlan, exec, home, name: manifest.name, unit, publisher, target });
   }
   const frozenVersion = (resume || indexOnly) && typeof journal?.version === 'string' ? journal.version : undefined;
   const info =
@@ -500,7 +516,7 @@ export async function runRelease({
   const fingerprint = artifactFingerprintOf(root);
   const resumeMatchesTree =
     resume && frozenVersion !== undefined && (indexOnly || journal?.run?.fingerprint === fingerprint);
-  const tracking = !verify && !dryRun;
+  const tracking = !verify && !dryRun && !preflight;
   if (tracking && !indexOnly) {
     startRun(home, unit, {
       target,
@@ -658,6 +674,7 @@ export async function runRelease({
   const existing = earlyState;
   if (
     !dryRun &&
+    !preflight &&
     argValue(args, '--version') === undefined &&
     info.kind === 'registry' &&
     existing?.status === 'published' &&
@@ -686,6 +703,7 @@ export async function runRelease({
   }
   if (
     !dryRun &&
+    !preflight &&
     argValue(args, '--version') === undefined &&
     target === 'git' &&
     existing?.target === 'git' &&
@@ -714,7 +732,7 @@ export async function runRelease({
     emit(out, json, summary);
     return summary;
   }
-  if (!dryRun && !hasFlag(args, '--yes')) {
+  if (!dryRun && !preflight && !hasFlag(args, '--yes')) {
     throw new ReleaseError('尚未发布：确认后添加 --yes 执行实际发布；仅需预览请添加 --dry-run');
   }
   if (!resumeMatchesTree) {
@@ -738,6 +756,11 @@ export async function runRelease({
   }
   const earlyLicense = info.kind === 'registry' ? licenseOf(root, manifest, target, args) : undefined;
   if (info.kind === 'registry') checkLogin(exec, info);
+  if (preflight) {
+    const summary = { ok: true, preflight: true, target, name: manifest.name, version: releaseVersion };
+    emit(out, json, summary);
+    return summary;
+  }
   const changelog = dryRun || indexOnly
     ? undefined
     : applyChangelog(root, {

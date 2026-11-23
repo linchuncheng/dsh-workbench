@@ -27,9 +27,16 @@ import {
 import type { MarketSourceConfig } from '@dsh-workbench/shared/contract/protocol/market-index';
 import type { LongTaskRunsLookup } from './long-task-tools';
 import { publishVerdict } from './publish-approval';
+import { approvalPrecheckOf, type PanelApprovalProbes } from './approval-prechecks';
 
 export { publishVerdictFor } from './publish-approval';
-export type { PublishApprovalPreview, PublishPreviewAsk, PublishPreviewLookup } from './publish-approval';
+export type {
+  PublishApprovalPreview,
+  PublishPreflightAsk,
+  PublishPreflightLookup,
+  PublishPreviewAsk,
+  PublishPreviewLookup,
+} from './publish-approval';
 
 const SPEC_LIMIT = 80;
 
@@ -186,7 +193,10 @@ export function stopVerdictFor(call: ApprovalCall, longTaskRuns: LongTaskRunsLoo
 export function approvalVerdict(
   call: ApprovalCall,
   marketSource?: MarketSourceLookup,
+  probes?: PanelApprovalProbes,
 ): ApprovalVerdict | undefined {
+  const precheck = approvalPrecheckOf(call, probes ?? {});
+  if (precheck !== undefined) return { kind: 'deny', reason: precheck };
   if (call.name === LONG_TASKS_STOP_TOOL) return stopVerdict(call, undefined);
   if (call.name === DIY_PUBLISH_TOOL) return publishVerdict(call);
   if (call.name === DIY_DEBUG_START_TOOL || call.name === DIY_DEBUG_RESUME_TOOL) {
