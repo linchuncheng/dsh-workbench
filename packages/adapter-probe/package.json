@@ -1,6 +1,9 @@
 {
   "name": "@dsh-workbench/adapter-probe",
   "version": "1.5.2-alpha.3",
+  "engines": {
+    "dsh": ">=0.2.2-rc.2"
+  },
   "description": "Workbench adapter-probe adapter.",
   "type": "module",
   "exports": {
