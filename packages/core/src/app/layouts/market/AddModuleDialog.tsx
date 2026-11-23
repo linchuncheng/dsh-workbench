@@ -57,7 +57,7 @@ function AddModuleContent({
           <SafetyNote t={t} />
           <Button
             type="button"
-            variant="outline"
+            variant="primary"
             size="md"
             className={styles.wide}
             disabled={empty || checking}

@@ -177,7 +177,7 @@
 
 .marketUpdateAction {
   color: var(--dsw-alias-state-warn-primary);
-  border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 30%, transparent);
+  --dsh-button-outline-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 30%, transparent);
   --dsw-alias-interactive-bg-hover: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 8%, transparent);
 }
 
@@ -649,6 +649,7 @@
 
 .discoverUpdateAction {
   color: var(--dsw-alias-state-warn-primary);
+  --dsh-button-outline-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 30%, transparent);
   --dsw-alias-interactive-bg-hover: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 8%, transparent);
 }
 

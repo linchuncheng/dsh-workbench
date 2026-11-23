@@ -47,12 +47,32 @@ export const checks = [
       globalThis.document = ctx.fakeDom;
       await import(new URL('client.js', PKG_URL).href);
 
+      const meta = typeof boot?.meta === 'function' ? boot.meta() : undefined;
+      const stylesheets = Object.entries(meta?.stylesheets ?? {});
+      const resolveAsset = (reference) => reference;
+      for (const [path, descriptor] of stylesheets) {
+        ctx.injectedStyles.push({ tagName: 'style', path, textContent: descriptor.text({ asset: resolveAsset }) });
+      }
+
       report(
         'client.js 经 __ModuleLoader__.load() 注册，模块 id = 包名',
         boot !== null && boot?.id === '@dsh-workbench/core',
         boot?.id,
       );
       ctx.boot = boot;
+      ctx.moduleMeta = meta;
+    },
+  },
+  {
+    title: '★ 样式走 meta.stylesheets 交给 dsh renderer（不是自己插 style，顺序才由它保证）',
+    run(ctx, report) {
+      const stylesheets = Object.entries(ctx.moduleMeta?.stylesheets ?? {});
+      const text = stylesheets.map(([, descriptor]) => descriptor.text({ asset: (reference) => reference })).join('\n');
+      report(
+        '★ 样式走 meta.stylesheets 交给 dsh renderer（不是自己插 style，顺序才由它保证）',
+        stylesheets.length > 0 && text.trim() !== '',
+        `${stylesheets.length} 份 · ${text.length} 字`,
+      );
     },
   },
   {

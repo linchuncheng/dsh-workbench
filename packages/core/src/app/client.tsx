@@ -1,4 +1,5 @@
 import '@/shared/dev-surface/install';
+import '@/shared/styles/index.css';
 import { createElement } from 'react';
 import type {
   ChildrenDecl,
@@ -35,7 +36,6 @@ import { dockSessionId } from '@/app/layouts/flow/dock-session';
 import { FlowProgress } from '@/app/layouts/flow/FlowProgress';
 import { Rightbar } from '@/app/layouts/rightbar/Rightbar';
 import { installContextChips } from '@/shared/api/context-chips';
-import { installWorkbenchStyles } from '@/app/layouts/workbench-styles';
 import { setRuntimeTextResolver } from '@/shared/hooks/locale-text';
 import { reportBootOk } from '@/shared/hooks/boot-ok';
 import { currentSessionId, workspaceOfSession, type SessionSearch } from '@/modules/sessions';
@@ -54,15 +54,6 @@ import {
 import { bootSidebarEdition } from '@/app/layouts/sidebar/edition-boot';
 import { LongTaskDot } from '@/app/layouts/sidebar/LongTaskDot';
 import { LongTaskHover } from '@/app/layouts/sidebar/LongTaskHover';
-import rightbarCss from '@/shared/styles/rightbar.css?raw';
-import tokensCss from '@/shared/styles/tokens.css?raw';
-import paletteCss from '@/shared/styles/tokens/palette.css?raw';
-import scaleCss from '@/shared/styles/tokens/scale.css?raw';
-import sidebarAppCss from '@/shared/styles/sidebar-app.css?raw';
-import sidebarCss from '@/shared/styles/sidebar.css?raw';
-import chromeCss from '@/shared/styles/chrome.css?raw';
-import boardCss from '@/shared/styles/board.css?raw';
-import motionCss from '@/shared/styles/motion.css?raw';
 import * as chipsModule from '@/shared/api/context-chips';
 import * as apiResourceModule from '@/shared/hooks/use-api-resource';
 import * as cardSummaryModule from '@/shared/hooks/use-card-summary';
@@ -132,12 +123,6 @@ function messagesOf(units: readonly UnitClientFace[]): MessagesContribution[] {
   }));
 }
 
-const COMPONENT_CSS_MARKER = '@@WB_MODULE_CSS@@';
-
-function workbenchCss(): string {
-  return `${tokensCss}\n${paletteCss}\n${scaleCss}\n${sidebarCss}\n${sidebarAppCss}\n${rightbarCss}\n${chromeCss}\n${boardCss}\n${motionCss}\n${COMPONENT_CSS_MARKER}`;
-}
-
 const rightbarStore = createRightbarStore();
 
 type RightbarObservable = {
@@ -176,8 +161,6 @@ function mount(ctx: DshClientContext): void {
     getSnapshot: () => store.getSnapshot(),
     subscribe: (listener) => store.subscribe(listener),
   };
-
-  installWorkbenchStyles(workbenchCss());
 
   const sessionNow = (): string | undefined => {
     const sessions = ctx.get('sessions');

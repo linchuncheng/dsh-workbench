@@ -239,12 +239,11 @@ export const checks = [
         }, 0);
       const moduleCssCount = existsSync(SRC) ? countModuleCss(SRC) : 0;
       const css = injectedCss(injectedStyles);
-      const leftOver = css.includes('@@WB_MODULE_CSS@@');
       const hashedRule = /\.[a-z0-9_-]+_[a-z0-9]+_\d+\s*[,{]/.test(css);
       report(
-        '★ 组件样式（*.module.css）进了注入的那份样式（占位串已替换、哈希类名在）',
-        !leftOver && (moduleCssCount === 0 || hashedRule),
-        leftOver ? '占位串还在样式里' : `${moduleCssCount} 份组件样式`,
+        '★ 组件样式（*.module.css）进了交给 renderer 的那份样式（哈希类名在）',
+        moduleCssCount === 0 || hashedRule,
+        `${moduleCssCount} 份组件样式`,
       );
     },
   },

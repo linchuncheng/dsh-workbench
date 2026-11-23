@@ -41,10 +41,11 @@ function indent(text: string, spaces = 6): string {
     .join('\n');
 }
 
+const CLIENT_CSS_PATH = 'src/workbench.css';
+
 function moduleShell(): Plugin {
   const bodyPath = at('dist/client/client.body.js');
   const outPath = at('client.js');
-  const marker = '@@WB_MODULE_CSS@@';
 
   let componentStyles = '';
   return {
@@ -63,27 +64,14 @@ function moduleShell(): Plugin {
           delete bundle[item.fileName];
         }
       }
-      if (componentStyles === '') return;
-      for (const item of Object.values(bundle)) {
-        if (item.type === 'chunk' && item.code.includes(marker)) {
-          item.code = item.code.replace(new RegExp(`["']${marker}["']`), JSON.stringify(componentStyles));
-        }
-      }
     },
     writeBundle() {
-      let body = readFileSync(bodyPath, 'utf8');
-      if (body.includes(marker)) {
-
-        if (componentStyles !== '') {
-          body = body.replace(new RegExp(`["']${marker}["']`), JSON.stringify(componentStyles));
-          writeFileSync(bodyPath, body);
-        }
+      if (componentStyles === '') {
+        throw new Error('module-shell：这次构建没有产出组件样式 —— *.module.css 没进包');
       }
-
-      if (body.includes(marker)) {
-        throw new Error('module-shell：产物里还有未替换的组件样式占位串 —— *.module.css 没进包');
-      }
-      const output = `// ⚠️ 本文件由 scripts/build.mjs 生成（moduleShell v2：组件样式 *.module.css 已内联），请勿手改。\n// 改 src/ 后跑：pnpm run build（开发时跑 pnpm run dev 会自动重建并热换）\nwindow.__ModuleLoader__.load({\n  id: ${JSON.stringify(PLUGIN_ID)},\n  factory(require) {\n    const module = { exports: {} };\n    const exports = module.exports;\n${indent(body)}\n    return module.exports;\n  },\n});\n`;
+      const body = readFileSync(bodyPath, 'utf8');
+      const css = componentStyles;
+      const output = `// ⚠️ 本文件由 scripts/build.mjs 生成（moduleShell v3：样式以 meta.stylesheets 交给 dsh renderer 安装），请勿手改。\n// 改 src/ 后跑：pnpm run build（开发时跑 pnpm run dev 会自动重建并热换）\nwindow.__ModuleLoader__.load({\n  id: ${JSON.stringify(PLUGIN_ID)},\n  meta: () => ({\n    stylesheets: {\n      ${JSON.stringify(CLIENT_CSS_PATH)}: {\n        text: () => ${JSON.stringify(css)},\n      },\n    },\n  }),\n  factory(require) {\n    const module = { exports: {} };\n    const exports = module.exports;\n${indent(body)}\n    return module.exports;\n  },\n});\n`;
       writeFileSync(outPath, output);
       console.log(`client.js 已更新：${output.length} 字节`);
     },
