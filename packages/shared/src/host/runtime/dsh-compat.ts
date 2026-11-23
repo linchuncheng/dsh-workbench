@@ -21,7 +21,7 @@ export type DshCompatibility =
   | { readonly verdict: 'incompatible'; readonly requirements: readonly DshRequirement[] }
   | {
       readonly verdict: 'unknown';
-      readonly reason: 'no-requirement' | 'missing-dsh-version' | 'malformed';
+      readonly reason: 'no-requirement' | 'peer-only' | 'missing-dsh-version' | 'malformed';
       readonly requirements: readonly DshRequirement[];
     };
 
@@ -48,13 +48,15 @@ export function dshCompatibilityOf(input: {
 }): DshCompatibility {
   const requirements = input.requirements;
   if (requirements.length === 0) return { verdict: 'unknown', reason: 'no-requirement', requirements };
+  const engines = requirements.filter((item) => item.source === 'engines');
+  if (engines.length === 0) return { verdict: 'unknown', reason: 'peer-only', requirements };
   const version = input.dshVersion?.trim() ?? '';
   if (version === '' || semver.valid(version) === null) {
     return { verdict: 'unknown', reason: 'missing-dsh-version', requirements };
   }
   const unsatisfied: DshRequirement[] = [];
   let malformed = false;
-  for (const requirement of requirements) {
+  for (const requirement of engines) {
     const range = semver.validRange(requirement.range);
     if (range === null) {
       malformed = true;
