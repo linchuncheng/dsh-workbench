@@ -1,5 +1,6 @@
 import type { Translate } from '@dsh-workbench/shared';
-import { gitAddressOf, marketSpecPackage, marketSpecPath, requirementsText } from '@dsh-workbench/shared';
+import { gitAddressOf, marketSpecPackage, marketSpecPath } from '@dsh-workbench/shared';
+import { hostActionKey, hostRequirementParams } from '../host-requirement';
 import type {
   BundleChange,
   BundleInspectProblem,
@@ -335,9 +336,9 @@ export function failureReasonKey(code: string): string | undefined {
 export function failureReason(code: string, application: string, t: Translate, change?: BundleChange): string {
   if (code === 'incompatible-version') {
     const issue = change?.incompatible?.[0];
-    const dsh = requirementsText(issue?.requirements);
-    if (issue !== undefined && dsh !== undefined) {
-      return t('panels.market.add.failureIncompatible', { dsh, runtime: issue.runtimeVersion });
+    const params = hostRequirementParams(issue?.requirements, issue?.runtimeVersion);
+    if (params !== undefined) {
+      return `${t('panels.market.needsHostVersion', params)} ${t(hostActionKey())}`;
     }
   }
   const key = failureReasonKey(code);

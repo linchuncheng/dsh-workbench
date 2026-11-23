@@ -319,10 +319,11 @@ describe('工作台自更新：四档结果落在那一行，下次打开只说�
         state: 'failed',
         failure: 'incompatible',
         requirements,
+        runtimeVersion: '0.2.2-rc.5',
       }),
     ).toEqual({
-      key: 'panels.market.selfUpdateNeedsDsh',
-      params: { dsh: 'dsh >=0.2.3-alpha.2' },
+      key: 'panels.market.selfUpdateNeedsHost',
+      params: { host: 'dsh', version: '0.2.3-alpha.2', runtime: '0.2.2-rc.5' },
       tone: 'alert',
     });
   });

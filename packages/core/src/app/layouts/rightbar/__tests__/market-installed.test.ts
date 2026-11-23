@@ -240,8 +240,8 @@ describe('市场页的「已装（本机）」那半（module-distribution spec 
       new Set(),
     );
     expect(rows[0]?.hint).toEqual({
-      key: 'panels.market.updateNeedsDsh',
-      params: { dsh: 'dsh >=2.0.0', runtime: '1.0.0' },
+      key: 'panels.market.needsHostVersion',
+      params: { host: 'dsh', version: '2.0.0', runtime: '1.0.0' },
     });
     expect(marketActions(rows[0]!)).toEqual(['remove-bundle']);
   });

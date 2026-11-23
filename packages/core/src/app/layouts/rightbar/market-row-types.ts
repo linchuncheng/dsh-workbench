@@ -60,7 +60,7 @@ export interface MarketNote {
     | 'panels.market.selfUpdateQueued'
     | 'panels.market.selfUpdatePendingRestart'
     | 'panels.market.selfUpdateRetry'
-    | 'panels.market.selfUpdateNeedsDsh'
+    | 'panels.market.selfUpdateNeedsHost'
     | 'panels.market.selfUpdateBusy'
     | 'panels.market.selfUpdateReinstallFailed'
     | 'panels.market.selfUpdateReinstallStopped'
@@ -75,7 +75,7 @@ export type MarketHintKey =
   | 'panels.market.uncheckedHint'
   | 'panels.market.migrationHint'
   | 'panels.market.updateNeedsWorkbench'
-  | 'panels.market.updateNeedsDsh'
+  | 'panels.market.needsHostVersion'
   | 'panels.market.updateIncompatible'
   | 'panels.market.updateUnverified'
   | 'panels.market.selfUpdateMigration';

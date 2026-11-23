@@ -53,8 +53,8 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
       state: 'outdated',
       canUpdate: false,
       hint: {
-        key: 'panels.market.updateNeedsDsh',
-        params: { dsh: 'dsh >=2.0.0', runtime: '1.0.0' },
+        key: 'panels.market.needsHostVersion',
+        params: { host: 'dsh', version: '2.0.0', runtime: '1.0.0' },
       },
       moduleUpdate: { installed: '0.1.18', latest: '0.1.19', blocked },
       version: { installed: '0.1.18', latest: '0.1.19' },
@@ -97,8 +97,8 @@ describe('市场里「工作台」自己那一行（四种处境）', () => {
       state: 'outdated',
       canUpdate: false,
       hint: {
-        key: 'panels.market.updateNeedsDsh',
-        params: { dsh: 'dsh >=0.2.3-alpha.2', runtime: '0.2.2-rc.5' },
+        key: 'panels.market.needsHostVersion',
+        params: { host: 'dsh', version: '0.2.3-alpha.2', runtime: '0.2.2-rc.5' },
       },
       moduleUpdate: {
         installed: '1.5.1',
