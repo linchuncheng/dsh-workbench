@@ -64,14 +64,19 @@ export const checks = [
     },
   },
   {
-    title: '★ 样式走 meta.stylesheets 交给 dsh renderer（不是自己插 style，顺序才由它保证）',
+    title: '★ 样式走 meta.stylesheets 交给 dsh renderer；老宿主没有这条通道时自己补一份（有就不补）',
     run(ctx, report) {
       const stylesheets = Object.entries(ctx.moduleMeta?.stylesheets ?? {});
       const text = stylesheets.map(([, descriptor]) => descriptor.text({ asset: (reference) => reference })).join('\n');
+      const shell = readFileSync(new URL('client.js', PKG_URL), 'utf8');
+      const fallback =
+        shell.includes('installModuleStyles()') &&
+        shell.includes('style[data-dsh-workbench-styles]') &&
+        shell.includes('style[data-plugin=');
       report(
-        '★ 样式走 meta.stylesheets 交给 dsh renderer（不是自己插 style，顺序才由它保证）',
-        stylesheets.length > 0 && text.trim() !== '',
-        `${stylesheets.length} 份 · ${text.length} 字`,
+        '★ 样式走 meta.stylesheets 交给 dsh renderer；老宿主没有这条通道时自己补一份（有就不补）',
+        stylesheets.length > 0 && text.trim() !== '' && fallback,
+        `${stylesheets.length} 份 · ${text.length} 字 · 兜底${fallback ? '在' : '缺'}`,
       );
     },
   },

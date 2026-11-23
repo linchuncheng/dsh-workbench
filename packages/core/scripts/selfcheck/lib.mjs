@@ -371,7 +371,10 @@ export function makeFakeDom(injectedStyles, isSeatOnScreen) {
 
     createElementNS: (_namespace, tagName) => node(tagName),
     getElementById: (id) => (id === 'root' ? root : null),
-    querySelector: (selector) =>
-      selector === '[data-sidebar-right-session]' && isSeatOnScreen() ? node('div') : null,
+    querySelector: (selector) => {
+      if (selector === '[data-sidebar-right-session]' && isSeatOnScreen()) return node('div');
+      if (selector.includes('data-plugin=') && injectedStyles.length > 0) return injectedStyles[0];
+      return null;
+    },
   };
 }
