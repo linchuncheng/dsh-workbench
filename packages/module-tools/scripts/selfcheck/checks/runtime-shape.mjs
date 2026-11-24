@@ -305,11 +305,13 @@ export function apply(ctx) {
         writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
         writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
 
-        writePkg([
-          { name: 'demo', commands: ['good', 'nope'], sources: [{ kind: 'builtin' }] },
-          { name: 'ext', commands: ['ok'] },
-          { name: 'never-seen', commands: ['whatever'] },
-        ]);
+        const writeDemoPkg = (commands) =>
+          writePkg([
+            { name: 'demo', commands, sources: [{ kind: 'builtin' }] },
+            { name: 'ext', commands: ['ok'] },
+            { name: 'never-seen', commands: ['whatever'] },
+          ]);
+        writeDemoPkg(['good', 'nope']);
         writeFileSync(join(probe, 'dist/host.js'), faceSource());
         const bad = runContracts();
         if (!bad.failed) throw new Error('命令名写错了，居然没被判红');
@@ -318,11 +320,7 @@ export function apply(ctx) {
           throw new Error('对"这台机器上根本没装的插件"误伤了（那种情形没得对，不该红）');
         }
 
-        writePkg([
-          { name: 'demo', commands: ['good', 'g'], sources: [{ kind: 'builtin' }] },
-          { name: 'ext', commands: ['ok'] },
-          { name: 'never-seen', commands: ['whatever'] },
-        ]);
+        writeDemoPkg(['good', 'g']);
         writeFileSync(join(probe, 'dist/host.js'), faceSource());
         const green = runContracts();
         if (green.failed) throw new Error(`改对之后还是红的（别名也该算）：\n${green.out}`);
