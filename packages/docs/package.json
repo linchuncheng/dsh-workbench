@@ -1,6 +1,6 @@
 {
   "name": "@dsh-workbench/docs",
-  "version": "1.5.2-alpha.5",
+  "version": "1.5.2-rc.0",
   "private": true,
   "type": "module",
   "description": "dsh-workbench 文档站（Pagoda CLI）",
