@@ -163,19 +163,23 @@ async function findOnce(
   textMax: number,
   timeoutMs: number,
 ): Promise<FindOutcome | undefined> {
-  const line = backgroundLine(command, [
-    'browser',
-    session,
-    'find',
-    '--css',
-    css,
-    '--limit',
-    String(limit),
-    '--text-max',
-    String(textMax),
-    '--window',
-    'background',
-  ]);
+  const line = backgroundLine(
+    command,
+    [
+      'browser',
+      session,
+      'find',
+      '--css',
+      css,
+      '--limit',
+      String(limit),
+      '--text-max',
+      String(textMax),
+      '--window',
+      'background',
+    ],
+    { dialect: sessionDialectOf(installedOpencliVersion()) },
+  );
   const result = await seam.run({
     command: line,
     intent: noWrite(),

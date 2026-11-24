@@ -24,6 +24,10 @@ const ADAPTER_PACKAGES = new Set(['adapter-runtime', 'adapter-supply', 'adapter-
 
 const RUNTIME_FLAG = /['"`]--(?:session|window)\b/;
 
+const BROWSER_LINE = /backgroundLine\s*\(/;
+const BROWSER_ARGV = /['"]browser['"]/;
+const DIALECT = /\bdialect\b/;
+
 function walk(dir, out = []) {
   let entries;
   try {
@@ -55,7 +59,8 @@ function report(rel, lines, pattern, why, fix) {
 for (const pkg of PACKAGES) {
   for (const file of walk(join(ROOT, 'packages', pkg, 'src'))) {
     const rel = file.slice(ROOT.length + 1).split('\\').join('/');
-    const lines = readFileSync(file, 'utf8').split('\n');
+    const text = readFileSync(file, 'utf8');
+    const lines = text.split('\n');
     const hasOk = lines.some((line) => ENVELOPE_OK.test(line));
     const hasData = lines.some((line) => ENVELOPE_DATA.test(line));
 
@@ -77,6 +82,16 @@ for (const pkg of PACKAGES) {
         RUNTIME_FLAG,
         '共享层里出现了运行时的命令行旗标',
         '方言归适配器的命令面（RuntimeCommandSurface.background）；shared 只给原始 argv。',
+      );
+    }
+
+    if (ADAPTER_PACKAGES.has(pkg) && BROWSER_LINE.test(text) && BROWSER_ARGV.test(text) && !DIALECT.test(text)) {
+      report(
+        rel,
+        lines,
+        BROWSER_LINE,
+        '这里拼浏览器命令，但没有指定方言',
+        '方言按当前装的版本算（sessionDialectOf(installedOpencliVersion())）；用默认 flag 会让 1.x 直接报 unknown command。',
       );
     }
 
@@ -112,4 +127,6 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log(`✔ opencli 输出：信封与错误块只在适配器层认（扫了 ${PACKAGES.length} 个包的 src）`);
+console.log(
+  `✔ opencli 输出：信封与错误块只在适配器层认，浏览器命令都带方言（扫了 ${PACKAGES.length} 个包的 src）`,
+);
