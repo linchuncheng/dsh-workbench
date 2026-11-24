@@ -46,14 +46,85 @@ export function registryOfOrDefault(profileDir) {
   return registryOf(profileDir) ?? npmDefaultRegistry();
 }
 
-export function distTag(profileDir, core, tag) {
+const READY_POLL_MS = 15_000;
+const HEAD_TIMEOUT_MS = 8_000;
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function viewOf(profileDir, args) {
   const registry = registryOfOrDefault(profileDir);
-  const run = execaSync('npm', ['view', core, `dist-tags.${tag}`, '--registry', registry], { reject: false });
-  const version = (run.stdout ?? '').trim();
-  if (run.exitCode !== 0 || version === '') {
-    throw new Error(`读不到 ${core} 的 ${tag} dist-tag（registry ${registry}）`);
+  const run = execaSync('npm', [...args, '--registry', registry], { reject: false });
+  const stdout = (run.stdout ?? '').trim();
+  if (run.exitCode === 0 && stdout !== '') return { ok: true, stdout, detail: '' };
+  return { ok: false, stdout: '', detail: (run.stderr ?? '').trim() || `npm 退出码 ${String(run.exitCode)}` };
+}
+
+function versionsOf(profileDir, core) {
+  const read = viewOf(profileDir, ['view', core, 'versions', '--json']);
+  if (!read.ok) return { ok: false, versions: [], detail: read.detail };
+  try {
+    const parsed = JSON.parse(read.stdout);
+    const list = (Array.isArray(parsed) ? parsed : [parsed]).filter((one) => typeof one === 'string');
+    return { ok: true, versions: list, detail: '' };
+  } catch (error) {
+    return { ok: false, versions: [], detail: `versions 不是 JSON：${String(error?.message ?? error)}` };
   }
-  return version;
+}
+
+function newestCandidateOf(profileDir, core, channels, versionApi) {
+  const read = versionsOf(profileDir, core);
+  const list = read.versions.filter((one) => {
+    const channel = versionApi.prereleaseChannelOf(one);
+    return channel === undefined || channels.includes(channel);
+  });
+  list.sort((left, right) => versionApi.compareVersions(right, left) ?? 0);
+  return { newest: list[0], detail: read.detail };
+}
+
+function tarballUrlOf(profileDir, name, version) {
+  const read = viewOf(profileDir, ['view', `${name}@${version}`, 'dist.tarball']);
+  return read.ok ? read.stdout.split('\n')[0].trim() : '';
+}
+
+async function tarballLive(url) {
+  if (url === '') return false;
+  const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(HEAD_TIMEOUT_MS) }).catch(
+    () => ({ ok: false }),
+  );
+  return response.ok === true;
+}
+
+async function missingPartsOf(profileDir, packages, version) {
+  const checked = await Promise.all(
+    packages.map(async (name) => ({ name, live: await tarballLive(tarballUrlOf(profileDir, name, version)) })),
+  );
+  return checked.filter((one) => !one.live).map((one) => one.name);
+}
+
+export async function newestReleaseReady(input) {
+  const { profileDir, core, packages, channels, versionApi, budgetMs, log } = input;
+  const until = Date.now() + budgetMs;
+  let last = '';
+  for (let round = 1; Date.now() < until; round += 1) {
+    const { newest, detail } = newestCandidateOf(profileDir, core, channels, versionApi);
+    if (newest === undefined) {
+      last = `读不到 ${core} 的版本列表（${detail}）`;
+    } else {
+      const missing = await missingPartsOf(profileDir, packages, newest);
+      if (missing.length === 0) {
+        log(`第 ${round} 次探源：${core}@${newest} 整份发布已铺齐`);
+        return newest;
+      }
+      last = `${core}@${newest} 还没铺齐（缺 ${missing.join('、')}）`;
+    }
+    log(`第 ${round} 次探源：${last}`);
+    await sleep(READY_POLL_MS);
+  }
+  throw new Error(`等了 ${Math.round(budgetMs / 1000)} 秒仍没等到一份铺齐的发布：${last}`);
 }
 
 export async function distModule(root, ...parts) {

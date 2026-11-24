@@ -3,12 +3,14 @@ import { execa } from 'execa';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { distModule, distTag, plantCopiedVersion } from './self-update-version-tree.mjs';
+import { distModule, newestReleaseReady, plantCopiedVersion } from './self-update-version-tree.mjs';
 import { FIXTURE } from './fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const CORE = '@dsh-workbench/core';
 const DEFAULT_FROM = FIXTURE.updateFrom;
+const CHANNELS = ['rc'];
+const READY_BUDGET_MS = 300_000;
 
 function out(line) {
   process.stdout.write(`${line}\n`);
@@ -41,8 +43,18 @@ async function main() {
   const plan = await distModule(ROOT, 'adapter-probe', 'dist', 'self-update', 'self-update-plan.js');
   const bundles = await distModule(ROOT, 'shared', 'dist', 'host', 'profile', 'profile-bundles.js');
   const files = await distModule(ROOT, 'shared', 'dist', 'host', 'runtime', 'fs-write.js');
+  const versionApi = await distModule(ROOT, 'shared', 'dist', 'host', 'runtime', 'version.js');
+  const release = await distModule(ROOT, 'shared', 'dist', 'host', 'supply', 'release-packages.generated.js');
   const packages = plan.SELF_UPDATE_PACKAGES;
-  const newest = distTag(profileDir, CORE, 'beta');
+  const newest = await newestReleaseReady({
+    profileDir,
+    core: CORE,
+    packages: release.RELEASE_PACKAGES,
+    channels: CHANNELS,
+    versionApi,
+    budgetMs: READY_BUDGET_MS,
+    log: out,
+  });
 
   let planted;
   try {
@@ -88,7 +100,7 @@ async function main() {
     settings = {};
   }
   const kept = typeof settings === 'object' && settings !== null && !Array.isArray(settings) ? settings : {};
-  files.writeJsonFile(settingsFile, { ...kept, includePrerelease: true });
+  files.writeJsonFile(settingsFile, { ...kept, includePrerelease: true, prereleaseChannels: CHANNELS });
 
   files.writeJsonFile(
     paths.marker,

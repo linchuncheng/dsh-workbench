@@ -25,7 +25,7 @@ jobs:
   smoke:
     name: desktop / windows (${{ inputs.label }})
     runs-on: ${{ inputs.image }}
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       DESKTOP_SMOKE_OS: ${{ inputs.label }}
       DESKTOP_SMOKE_DESKTOP_MODE: ${{ inputs.desktopMode }}
@@ -72,7 +72,7 @@ jobs:
         timeout-minutes: 10
         run: node scripts/desktop-smoke/prepare-browser.mjs
       - name: Open Desktop, install workbench and market module, restart once
-        timeout-minutes: 15
+        timeout-minutes: 20
         shell: pwsh
         env:
           DESKTOP_WORKBENCH_SPEC: ${{ github.workspace }}\packages\core
