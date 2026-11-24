@@ -17,6 +17,7 @@ import * as diyTools from './checks/diy-tools.mjs';
 import * as gateChain from './checks/gate-chain.mjs';
 import * as kernelShape from './checks/kernel-shape.mjs';
 import * as platform from './checks/platform.mjs';
+import * as testPathLiterals from './checks/test-path-literals.mjs';
 import * as platformCi from './checks/platform-ci.mjs';
 import * as marketSeam from './checks/market-seam.mjs';
 import * as bootstrapSeam from './checks/bootstrap-seam.mjs';
@@ -41,6 +42,7 @@ const MODULES = [
   gateChain,
   kernelShape,
   platform,
+  testPathLiterals,
   platformCi,
   marketSeam,
   bootstrapSeam,
