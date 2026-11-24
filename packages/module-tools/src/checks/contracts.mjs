@@ -732,7 +732,7 @@ export async function run() {
         const installed = pluginCommandsIn(pluginDirOf(pluginName));
         const builtinSource = (plugin?.sources ?? []).some((source) => source?.kind === 'builtin');
         if (builtinSource) {
-          if (builtIn === undefined) {
+          if (catalog !== undefined && builtIn === undefined) {
             problems.push(
               `${name}: needs 里第 ${index} 条 extension（${pluginName}）声明了 sources: builtin，但这份 opencli 清单里没有 ${pluginName} —— ` +
                 `版本旧或安装不完整；升级 opencli 再发布`,
