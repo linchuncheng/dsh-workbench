@@ -735,7 +735,7 @@ export async function run() {
           if (builtIn === undefined) {
             problems.push(
               `${name}: needs 里第 ${index} 条 extension（${pluginName}）声明了 sources: builtin，但这份 opencli 清单里没有 ${pluginName} —— ` +
-                `版本旧或安装不完整；升级 opencli 再发布，或把版本要求写进 need.version`,
+                `版本旧或安装不完整；升级 opencli 再发布`,
             );
           }
         } else if (builtIn !== undefined && installed === undefined && (plugin?.sources ?? []).length === 0) {

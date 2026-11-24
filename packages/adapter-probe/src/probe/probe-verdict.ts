@@ -84,7 +84,7 @@ export function extensionStateOf(options: {
       return {
         ...base,
         status: 'missing',
-        detail: `${options.command} 这份清单里没有 ${options.need.name}（运行时版本旧或安装不完整）`,
+        detail: `当前 ${options.command} 的清单里没有 ${options.need.name}：${options.command} 版本旧，或这个站点不存在`,
         provision: 'ready',
       };
     }
