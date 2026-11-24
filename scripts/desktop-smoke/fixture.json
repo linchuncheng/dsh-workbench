@@ -4,7 +4,7 @@
   "plugin": "opencli-plugin-hello",
   "updateFrom": "1.2.3-beta.4",
   "desktop": {
-    "version": "0.2.2-rc.3",
+    "version": "0.2.2-rc.5",
     "macosArm64": {
       "url": "https://download.deepseek.com/desktop/dsh-latest-macos-arm64.dmg",
       "etag": "840b19c68da5d8496d67be1152671d31"
@@ -15,7 +15,7 @@
     }
   },
   "chromeForTesting": {
-    "version": "158.0.8127.36"
+    "version": "158.0.8127.88"
   },
   "opencliExtension": {
     "tag": "v2.0.3",
