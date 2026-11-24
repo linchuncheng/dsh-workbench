@@ -126,7 +126,7 @@ describe('dsh 版本从 profile 的安装锚点读', () => {
         dependencies: { '@deepseek-ai/dsh': '0.2.2-rc.2' },
       },
     });
-    expect(dshVersionFrom(anchored)?.from).toContain('@deepseek-ai/dsh-app-boot');
+    expect(dshVersionFrom(anchored)?.from).toContain(join('@deepseek-ai', 'dsh-app-boot'));
   });
 
   it('只有 dsh 清单时读它自己的版本；都读不到就是 undefined', () => {
