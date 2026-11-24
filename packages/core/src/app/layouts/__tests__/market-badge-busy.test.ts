@@ -35,7 +35,9 @@ describe('左栏那枚徽标：装的过程中 / 刚装完那一下（接线判�
     const hook = read('market/use-add-module.ts');
 
     expect(hook).toContain('usePublishMarketInstalling(');
-    expect(hook).toContain('publishMarketApplied(appliedUnitsOf(');
+    expect(hook).toContain('const applied = appliedUnitsOf(value);');
+    expect(hook).toContain('publishMarketApplied(applied);');
+    expect(hook).toContain('dropConclusion(unit)');
   });
 
   it('★ 发现页不再自己装：只把规格交给添加模块对话框', () => {

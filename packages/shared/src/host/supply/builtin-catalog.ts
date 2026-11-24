@@ -1,28 +1,24 @@
-import { readFileSync } from 'node:fs';
 import type { ExtensionNeed, LibNeed, Need } from '../../contract/needs.js';
+import { readJsonObject } from '../runtime/read-json.js';
 
 export function builtinCommandsOf(file: string): ReadonlyMap<string, readonly string[]> {
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
-    if (!Array.isArray(parsed)) return new Map();
-    const bySite = new Map<string, string[]>();
-    for (const one of parsed) {
-      if (typeof one !== 'object' || one === null) continue;
-      const row = one as Record<string, unknown>;
-      const site = typeof row['site'] === 'string' ? row['site'] : '';
-      const name = typeof row['name'] === 'string' ? row['name'] : '';
-      if (site === '' || name === '') continue;
-      const list = bySite.get(site) ?? [];
-      list.push(name);
-      for (const alias of Array.isArray(row['aliases']) ? row['aliases'] : []) {
-        if (typeof alias === 'string' && alias !== '') list.push(alias);
-      }
-      bySite.set(site, list);
+  const parsed = readJsonObject(file);
+  if (!Array.isArray(parsed)) return new Map();
+  const bySite = new Map<string, string[]>();
+  for (const one of parsed) {
+    if (typeof one !== 'object' || one === null) continue;
+    const row = one as Record<string, unknown>;
+    const site = typeof row['site'] === 'string' ? row['site'] : '';
+    const name = typeof row['name'] === 'string' ? row['name'] : '';
+    if (site === '' || name === '') continue;
+    const list = bySite.get(site) ?? [];
+    list.push(name);
+    for (const alias of Array.isArray(row['aliases']) ? row['aliases'] : []) {
+      if (typeof alias === 'string' && alias !== '') list.push(alias);
     }
-    return bySite;
-  } catch {
-    return new Map();
+    bySite.set(site, list);
   }
+  return bySite;
 }
 
 export function builtinMissingOf(

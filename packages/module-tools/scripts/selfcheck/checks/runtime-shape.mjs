@@ -278,6 +278,7 @@ export function apply(ctx) {
                     name: plugin.name,
                     commands: plugin.commands,
                     purpose: '测试',
+                    ...(plugin.sources === undefined ? {} : { sources: plugin.sources }),
                   })),
                 })));
       const runContracts = () => {
@@ -305,7 +306,7 @@ export function apply(ctx) {
         writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
 
         writePkg([
-          { name: 'demo', commands: ['good', 'nope'] },
+          { name: 'demo', commands: ['good', 'nope'], sources: [{ kind: 'builtin' }] },
           { name: 'ext', commands: ['ok'] },
           { name: 'never-seen', commands: ['whatever'] },
         ]);
@@ -318,7 +319,7 @@ export function apply(ctx) {
         }
 
         writePkg([
-          { name: 'demo', commands: ['good', 'g'] },
+          { name: 'demo', commands: ['good', 'g'], sources: [{ kind: 'builtin' }] },
           { name: 'ext', commands: ['ok'] },
           { name: 'never-seen', commands: ['whatever'] },
         ]);
