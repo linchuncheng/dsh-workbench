@@ -101,16 +101,25 @@ export const checks = [
           hits.push(`${rel}:${problem.line} 期望值 ${problem.literal} 在文件里没有现成来源：用 join(...) 拼`);
         }
       }
-      const negative = [
-        pathLiteralProblems("expect(evidence?.evidence).toBe('/tmp/wb/preflight.json');").length === 1,
-        pathLiteralProblems("const file = '/tmp/wb/preflight.json';\nexpect(read(file)).toBe('/tmp/wb/preflight.json');").length === 0,
-        pathLiteralProblems("expect(evidence?.evidence).toBe(join('/tmp/wb', 'preflight.json'));").length === 0,
-        pathLiteralProblems("expect(url).toBe('//cdn.example.com/a');").length === 0,
-        pathLiteralProblems("expect(one).toBe('/tmp');").length === 0,
-        pathLiteralProblems('expect(one).toBe(`/tmp/wb/a.json`);').length === 1,
-        pathLiteralProblems("expect(one).toContain('/tmp/wb/a.json');").length === 0,
-        pathLiteralProblems("const root = '/tmp/wb';\nexpect(read(root)).toBe('/tmp/wb/preflight.json');").length === 1,
-      ].every((one) => one === true);
+      const flagged = pathLiteralProblems("expect(evidence?.evidence).toBe('/tmp/wb/preflight.json');");
+      const echoed = pathLiteralProblems("const file = '/tmp/wb/preflight.json';\nexpect(read(file)).toBe('/tmp/wb/preflight.json');");
+      const joined = pathLiteralProblems("expect(evidence?.evidence).toBe(join('/tmp/wb', 'preflight.json'));");
+      const quiet = [
+        "expect(one).toBe(join('/tmp/wb', 'a.json'));",
+        "expect(url).toBe('//cdn.example.com/a');",
+        "expect(one).toBe('/tmp');",
+        "expect(one).toContain('/tmp/wb/a.json');",
+      ].every((text) => pathLiteralProblems(text).length === 0);
+      const template = pathLiteralProblems('expect(one).toBe(`/tmp/wb/a.json`);');
+      const derived = pathLiteralProblems("const root = '/tmp/wb';\nexpect(read(root)).toBe('/tmp/wb/preflight.json');");
+      const negative =
+        flagged.length === 1 &&
+        flagged[0]?.literal === '/tmp/wb/preflight.json' &&
+        echoed.length === 0 &&
+        joined.length === 0 &&
+        quiet &&
+        template.length === 1 &&
+        derived.length === 1;
       const allowed = ALLOWED.size === 0 ? '' : `；${ALLOWED.size} 个文件登记了原因`;
       report(
         TITLE,
