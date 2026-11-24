@@ -9,6 +9,7 @@ export type BlockerAction =
       readonly inline?: boolean;
     }
   | { readonly kind: 'copy'; readonly label: string; readonly text: string }
+  | { readonly kind: 'ask-agent'; readonly label: string; readonly prompt: string }
   | { readonly kind: 'retry'; readonly label: string }
   | {
       readonly kind: 'run-fix';
@@ -78,6 +79,17 @@ export const DIAG_ACTIONS: readonly DiagActionKind[] = [
 
 export const DIAG_LEVELS: readonly DiagLevel[] = ['info', 'warn', 'error'];
 
+function preflightSpec(code: string, key: string): DiagCodeSpec {
+  return {
+    code,
+    class: 'env',
+    area: 'preflight',
+    action: 'retry',
+    messageKey: `diag.code.${key}`,
+    hintKey: `diag.hint.${key}`,
+  };
+}
+
 export const DIAG_CODES: readonly DiagCodeSpec[] = [
   {
     code: 'READ_FAILED',
@@ -122,6 +134,11 @@ export const DIAG_CODES: readonly DiagCodeSpec[] = [
     action: 'retry',
     messageKey: 'diag.code.supplyInstallFailed',
   },
+  preflightSpec('PREFLIGHT_DIY_ROW_BROKEN', 'preflightDiyRowBroken'),
+  preflightSpec('PREFLIGHT_DIY_PRESET_MISSING', 'preflightDiyPresetMissing'),
+  preflightSpec('PREFLIGHT_BRIDGE_HOLD', 'preflightBridgeHold'),
+  preflightSpec('PREFLIGHT_HOST_OLDER', 'preflightHostOlder'),
+  preflightSpec('PREFLIGHT_HOST_NEWER', 'preflightHostNewer'),
   {
     code: 'DIAG_BAD_PARAM',
     class: 'user',
@@ -178,28 +195,30 @@ export function isDiagCode(code: string): boolean {
   return BY_CODE.has(code);
 }
 
-export const DIAG_DETAIL_KEYS: readonly string[] = [
+const DETAIL_KEYS_STEP: readonly string[] = [
   'action',
   'attempt',
   'cacheAgeMs',
   'count',
   'durationMs',
   'fromVersion',
-  'os',
-  'path',
   'phase',
-  'pid',
-  'pkg',
-  'reason',
   'requestedCode',
   'route',
-  'since',
-  'sink',
   'stage',
   'toVersion',
   'truncated',
-  'unit',
-  'version',
-  'workspace',
-  'wroteBytes',
+];
+
+const DETAIL_KEYS_SUBJECT: readonly string[] = ['os', 'path', 'pid', 'pkg', 'reason', 'unit', 'version', 'workspace'];
+
+const DETAIL_KEYS_PREFLIGHT: readonly string[] = ['issues', 'rows', 'runtime', 'tier', 'verified'];
+
+const DETAIL_KEYS_SINK: readonly string[] = ['since', 'sink', 'wroteBytes'];
+
+export const DIAG_DETAIL_KEYS: readonly string[] = [
+  ...DETAIL_KEYS_STEP,
+  ...DETAIL_KEYS_SUBJECT,
+  ...DETAIL_KEYS_PREFLIGHT,
+  ...DETAIL_KEYS_SINK,
 ];

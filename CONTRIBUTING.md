@@ -263,6 +263,6 @@ Contributions are accepted under the MIT License (see [`LICENSE`](LICENSE)).
 - 落盘：`<数据根>/diagnostics/records/record-<日期>-<pid>.jsonl`，保留 7 天、单日单进程 5 MB；坏行跳过并计数。
 - 读口：`GET /api/diag/records`（since / until / area / class / code / limit，默认 100、上限 500）。
 - 导出：动作 `export-diagnostics` 写 `<数据根>/diagnostics/<时间戳>/`（manifest / env / config / runtime / records / checks），8 MB 上限按「记录 → 日志 → 面板」截断；绝对路径与敏感键在导出前脱敏。
-- agent：常驻工具 `workbench_diag` 返回最近记录与按码计数，只读。
+- agent：常驻工具 `workbench_diag` 返回最近记录、按码计数与启动检查快照（只读）。
 
 新增失败点时：码先进注册表（`packages/shared/src/contract/blocker.ts`），再落记录；`check:swallow` 会拦住新出现的静默 catch。

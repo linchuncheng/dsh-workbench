@@ -1,4 +1,5 @@
 import type { DshHostContext } from '../../api/dsh.js';
+import type { DiagRecorder } from '../runtime/diag-records.js';
 import type { Seam } from '../seam/run.js';
 import type { RuntimeCapabilities, RuntimeProfile } from '../../contract/capabilities.js';
 import type { BrowserCaptureRow } from '../../contract/data.js';
@@ -176,6 +177,7 @@ export interface ProbePreflightInput {
   readonly runtimeLabel?: string | undefined;
   readonly warmReads: () => readonly (readonly string[])[];
   readonly extensionDir?: string | undefined;
+  readonly diag?: DiagRecorder | undefined;
 }
 
 export interface ProbePort {

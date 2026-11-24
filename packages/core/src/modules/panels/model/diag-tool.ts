@@ -3,6 +3,7 @@ import utc from 'dayjs/plugin/utc.js';
 import type { DiagReadResult, DiagRecord, DshHostContext, DshToolDefinition } from '@dsh-workbench/shared/host';
 import { diagSummary, workbenchRoot } from '@dsh-workbench/shared/host';
 import { diagRoutesOf } from '@/shared/api/host/diag-routes';
+import { preflightEvidenceOf, readPreflightSnapshot } from '@/shared/api/host/diag-preflight';
 import { OUTPUT } from './diy-context';
 import { toolRegistryOf } from './tool-registry-guard';
 import { DIAG_TOOL } from '../unit';
@@ -10,6 +11,11 @@ import { DIAG_TOOL } from '../unit';
 dayjs.extend(utc);
 
 export const DIAG_HISTORY_LIMIT = 20;
+
+const DIAG_DESCRIPTION =
+  '读取最近的故障记录、按故障码的计数与启动检查快照（只读）。启动页停住时先调它；history 是跨会话的磁盘记录。';
+
+const DIAG_INPUT = { type: 'object', properties: {}, additionalProperties: false } as const;
 
 export interface DiagHistory {
   readonly records: readonly DiagRecord[];
@@ -41,15 +47,29 @@ export function registerDiagTools(ctx: DshHostContext): Array<() => void> {
   if (tools === undefined) return [];
   const tool: DshToolDefinition = {
     name: DIAG_TOOL,
-    description: '读取最近的故障记录与按故障码的计数（只读，常驻）。',
-    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    description: DIAG_DESCRIPTION,
+    parameters: { ...DIAG_INPUT },
     output: OUTPUT,
     execute() {
       const routes = diagRoutesOf(workbenchRoot());
       const summary = diagSummary(routes.recorder);
       const day = dayjs().utc().format('YYYY-MM-DD');
       const history = diagHistoryOf(summary.records, routes.readDisk?.(day));
-      return Promise.resolve(history === undefined ? summary : { ...summary, history: { day, ...history } });
+      const root = workbenchRoot();
+      let preflight: ReturnType<typeof preflightEvidenceOf> = null;
+      try {
+        preflight = preflightEvidenceOf(readPreflightSnapshot(root), root);
+      } catch (error) {
+        ctx.logger?.warn?.(`[dsh-workbench] 读启动检查快照失败：${String(error)}`);
+      }
+      const output = {
+        counts: summary.counts,
+        shown: summary.total,
+        records: summary.records,
+        preflight,
+        ...(history === undefined ? {} : { history: { day, ...history } }),
+      };
+      return Promise.resolve(output);
     },
   };
   return [tools.register(tool)];

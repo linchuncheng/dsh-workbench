@@ -1,9 +1,9 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
-import type { DshHostContext } from '@dsh-workbench/shared/host';
+import type { DiagRecorder, DshHostContext } from '@dsh-workbench/shared/host';
 import type { RouteTable } from '@dsh-workbench/shared/host';
-import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, dshHostGapOf, dshTierOf, dshVersionFrom, hostOsOf, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
+import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, VERIFIED_DSH, dshHome, dshHostGapOf, dshTierOf, dshVersionFrom, hostOsOf, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
 import { isOpencliReady, isOpencliReadyAt, opencliBuiltAt, opencliPackageDir, opencliReadinessAt, storeDirFor, toolchainDir } from '@dsh-workbench/adapter-runtime';
 import { WAKE_BROWSER_ROUTE } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 import { runBootstrapCommand } from '../runtime/bootstrap-run.js';
@@ -113,6 +113,7 @@ export function registerPreflight(input: {
   warmReads: () => readonly (readonly string[])[];
   desktopBrowser?: DesktopBrowser | undefined;
   extensionDir?: string | undefined;
+  diag?: DiagRecorder | undefined;
 }): void {
   const command =
     input.runtimeCommands['opencli'] ?? Object.values(input.runtimeCommands)[0] ?? 'opencli';
@@ -131,16 +132,17 @@ export function registerPreflight(input: {
   const installLogger = input.ctx.logger;
   const installLog =
     installLogger === undefined ? undefined : (message: string) => installLogger.warn?.(message);
-  const runtimeDsh = (): { version?: string; log: string[] } => {
+  const runtimeDsh = (): { version?: string; from?: string; profileDir?: string; log: string[] } => {
     const dir = profileDirOf(input.ctx);
     if (dir === null) return { log: ['profile: 取不到这份工作台的配置目录'] };
     const found = dshVersionFrom(dir);
     const log = [`profile: ${dir}`, ...(found === undefined ? ['dsh: 读不到版本'] : [`dsh: ${found.version}`, `from: ${found.from}`])];
-    return found === undefined ? { log } : { version: found.version, log };
+    return found === undefined ? { profileDir: dir, log } : { version: found.version, from: found.from, profileDir: dir, log };
   };
   const preflight = createPreflight({
     seam: input.seam,
     snapshotRoot: workbenchRoot(),
+    paths: { workbenchRoot: workbenchRoot(), dshHome: dshHome() },
     command,
     installCommand,
     ...(extensionDirOf(input.extensionDir) === undefined ? {} : { extensionDir: extensionDirOf(input.extensionDir) }),
@@ -190,11 +192,18 @@ export function registerPreflight(input: {
     probeHost: () => {
       const runtime = runtimeDsh();
       const gap = dshHostGapOf(runtime.version);
+      const facts = {
+        verified: VERIFIED_DSH,
+        ...(runtime.version === undefined ? {} : { version: runtime.version }),
+        ...(runtime.from === undefined ? {} : { from: runtime.from }),
+        ...(runtime.profileDir === undefined ? {} : { profileDir: runtime.profileDir }),
+      };
+      const carried = Object.keys(facts).length === 0 ? {} : { facts };
       if (gap === undefined) {
-        return dshTierOf(runtime.version) === 'ok' ? { tier: 'ok', log: runtime.log } : undefined;
+        return dshTierOf(runtime.version) === 'ok' ? { tier: 'ok', log: runtime.log, ...carried } : undefined;
       }
       const command = gap.tier === 'older' ? { command: DIY_UPGRADE_COMMAND } : {};
-      return { ...gap, ...command, log: runtime.log };
+      return { ...gap, ...command, ...carried, log: runtime.log };
     },
     probeToolchain: () => probeDesktopToolchain(input.seam),
     provisionPnpm: async () => {
@@ -203,6 +212,7 @@ export function registerPreflight(input: {
       return provisionWorkbenchPnpm({ root, seam: input.seam });
     },
     ...(desktopBrowser === undefined ? {} : { desktopBrowser }),
+    diag: input.diag,
   });
   input.routes.preflight = preflightHandler(preflight);
   if (desktopBrowser !== undefined) {

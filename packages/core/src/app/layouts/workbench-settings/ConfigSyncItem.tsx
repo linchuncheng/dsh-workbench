@@ -246,7 +246,10 @@ export function ConfigSyncItem({ t }: ConfigSyncItemProps) {
             login: diagnose.login === undefined ? undefined : runtimeText(diagnose.login),
             bridge: diagnose.bridge === undefined ? undefined : runtimeText(diagnose.bridge),
           };
-    const blocker = blockerOfError(snapshot.error, t, { diagnose: resolved });
+    const blocker = blockerOfError(snapshot.error, t, {
+      diagnose: resolved,
+      ask: { screen: t('askAgent.screen.settings') },
+    });
     return blocker.hint === undefined ? { ...blocker, hint: t('configSync.readHint') } : blocker;
   }, [snapshot.phase, snapshot.error, t]);
   useEffect(() => {

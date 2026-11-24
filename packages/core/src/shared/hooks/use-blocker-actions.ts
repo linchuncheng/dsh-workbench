@@ -59,6 +59,10 @@ export function useBlockerActions(onRetry: () => void, onOpenMarket?: () => void
         });
       return;
     }
+    if (action.kind === 'ask-agent') {
+      copy(action.prompt);
+      return;
+    }
     if (action.kind === 'copy') {
       copy(action.text);
       return;

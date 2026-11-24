@@ -10,6 +10,7 @@ export interface BlockerActionShape {
   readonly kind: string;
   readonly label: string;
   readonly text?: string | undefined;
+  readonly prompt?: string | undefined;
 }
 
 /**

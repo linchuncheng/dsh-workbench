@@ -43,6 +43,7 @@ describe('门什么时候撤、什么时候停', () => {
 
   it('★ DIY 模式挂不起来：门也停在原地（就绪即撤 = 用户进去才发现「工作台 DIY 模式」整个不在）', () => {
     const gap = {
+      kind: 'older-dsh' as const,
       rows: ['tool-schedule'],
       detail: 'tool-schedule (…) : never started',
       command: 'npm i -g @deepseek-ai/dsh@latest',
@@ -57,7 +58,7 @@ describe('门什么时候撤、什么时候停', () => {
     for (const [name, snapshot] of [
       ['失败', snapshotOf('failed', { steps: [{ id: 'cli', status: 'failed' }] })],
       ['桥接坏', EXTENSION_MISSING],
-      ['DIY 缺', snapshotOf('ready', { diyGap: { rows: [], detail: 'x', command: 'y' } })],
+      ['DIY 缺', snapshotOf('ready', { diyGap: { kind: 'preset-missing' as const, rows: [], detail: 'x', command: 'y' } })],
     ] as const) {
       if (gateActionOf(snapshot) === 'hold') stayed.push(name);
     }

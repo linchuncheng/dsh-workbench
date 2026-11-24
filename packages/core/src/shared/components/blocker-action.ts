@@ -12,5 +12,6 @@ export function blockerActionLabel(
   if (action.kind === 'retry' && state.retrying) return t('blocker.retry.running');
   if (state.running === action.label) return t('blocker.fix.running');
   if (action.kind === 'copy' && state.copied === action.text) return t('env.copied');
+  if (action.kind === 'ask-agent' && state.copied === action.prompt) return t('askAgent.copied');
   return action.label;
 }

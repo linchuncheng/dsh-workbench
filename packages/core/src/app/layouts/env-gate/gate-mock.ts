@@ -17,6 +17,16 @@ function cliOkStep(): PreflightStep {
   };
 }
 
+const BRIDGE_OK_LOG = ['> opencli doctor', 'Everything looks good!'];
+
+function bridgeOkStep(): PreflightStep {
+  return { id: 'bridge', status: 'ok', detail: 'Everything looks good!', log: [...BRIDGE_OK_LOG] };
+}
+
+function diyWarnStep(detail: string, command?: string): PreflightStep {
+  return { id: 'diy', status: 'warn', detail, ...(command === undefined ? {} : { command }) };
+}
+
 const INSTALL_COMMAND = "pnpm add --dir '/Users/you/.dsh/workbench/opencli/toolchain' @jackwener/opencli@2.0.3 --store-dir '/Users/you/.dsh/workbench/opencli/pnpm-store' --allow-build=@jackwener/opencli --save-exact --config.update-notifier=false";
 
 export interface GateMockExpect {
@@ -70,6 +80,11 @@ const PROFILE_REPORT = [
 
 const AT = 1790574156506;
 
+const MOCK_PATHS = {
+  workbenchRoot: '/Users/you/.dsh/workbench',
+  dshHome: '/Users/you/.dsh',
+} as const;
+
 function mock(
   id: string,
   label: string,
@@ -77,7 +92,8 @@ function mock(
   snapshot: Omit<PreflightSnapshot, 'at'>,
   expect: GateMockExpect,
 ): GateMock {
-  return { id, label, note, snapshot: { ...snapshot, at: AT }, expect };
+  const paths = snapshot.phase === 'ready' && snapshot.paths === undefined ? { paths: MOCK_PATHS } : {};
+  return { id, label, note, snapshot: { ...snapshot, ...paths, at: AT }, expect };
 }
 
 const BRIDGE_PENDING = { id: 'bridge', status: 'pending' } as const;
@@ -135,7 +151,7 @@ export const GATE_MOCKS: readonly GateMock[] = [
       phase: 'ready',
       steps: [
         cliOkStep(),
-        { id: 'bridge', status: 'ok', detail: 'Everything looks good!', log: ['> opencli doctor', 'Everything looks good!'] },
+        bridgeOkStep(),
       ],
     },
     { hint: 'checking', command: false },
@@ -201,7 +217,7 @@ export const GATE_MOCKS: readonly GateMock[] = [
             'from: /Users/you/.dsh/profiles/workbench/node_modules/@deepseek-ai/dsh/package.json',
           ],
         },
-        { id: 'bridge', status: 'ok', detail: 'Everything looks good!', log: ['> opencli doctor', 'Everything looks good!'] },
+        bridgeOkStep(),
       ],
       hostGap: { tier: 'newer', runtime: '0.3.0-rc.1', verified: '0.2.3-alpha.2' },
     },
@@ -209,27 +225,61 @@ export const GATE_MOCKS: readonly GateMock[] = [
   ),
   mock(
     'warn-diy',
-    'DIY 模式：挂不起来',
-    'dsh 太旧（比这份外壳验过的那一代旧）：preset 里几行 dsh 根本没有 ⇒ 那一行挂不起来，而 dsh 的模式选择器只列挂得起来的。门**停在这一帧**：行尾说"挂不起来"，下面说清"缺哪几行" + 升级命令 + 一颗「先进入工作台」。',
+    'DIY 模式：版本过低',
+    'dsh 比这份工作台验过的那一代旧（版本事实可证）：卡片给出版本、验证过的版本与升级命令，桌面版不显示命令。门**停在这一帧**。',
     {
       phase: 'ready',
       steps: [
         cliOkStep(),
-        { id: 'bridge', status: 'ok', detail: 'Everything looks good!', log: ['> opencli doctor', 'Everything looks good!'] },
-        {
-          id: 'diy',
-          status: 'warn',
-          detail: 'tool-schedule (@deepseek-ai/dsh-tool-schedule): never started',
-          command: 'npm i -g @deepseek-ai/dsh@latest',
-        },
+        bridgeOkStep(),
+        diyWarnStep('tool-schedule (@deepseek-ai/dsh-tool-schedule): never started', 'npm i -g @deepseek-ai/dsh@latest'),
       ],
       diyGap: {
+        kind: 'older-dsh',
         rows: ['tool-schedule'],
         detail: 'tool-schedule (@deepseek-ai/dsh-tool-schedule): never started',
         command: 'npm i -g @deepseek-ai/dsh@latest',
       },
     },
     { hint: 'hold', command: false },
+  ),
+  mock(
+    'warn-diy-broken',
+    'DIY 模式：几行没有启动',
+    '版本不是原因（dsh 没升级也能出现）：某几行插件没导入成功，真正报错只在 dsh 启动日志里。卡片不再断言原因、不给命令，只陈述「哪几行没有启动」+ 复制给 agent。',
+    {
+      phase: 'ready',
+      steps: [
+        cliOkStep(),
+        bridgeOkStep(),
+        diyWarnStep('tool-schedule (@deepseek-ai/dsh-tool-schedule): never started'),
+      ],
+      diyGap: {
+        kind: 'broken-row',
+        rows: ['tool-schedule'],
+        detail: 'tool-schedule (@deepseek-ai/dsh-tool-schedule): never started',
+      },
+    },
+    { hint: 'hold', command: false },
+  ),
+  mock(
+    'warn-bridge-unknown',
+    '浏览器连接：认不出问题',
+    'doctor 报了问题但认不出是哪一类：卡片陈述事实并给「复制给 agent」，不再让人自己展开原文猜。',
+    {
+      phase: 'ready',
+      steps: [
+        cliOkStep(),
+        {
+          id: 'bridge',
+          status: 'warn',
+          detail: 'Something unexpected happened while probing the browser',
+          log: ['> opencli doctor', 'Something unexpected happened while probing the browser'],
+        },
+      ],
+      bridgeIssues: ['unknown'],
+    },
+    { hint: 'hold', command: false, bridgeIssues: ['unknown'] },
   ),
   mock(
     'failed-permission',

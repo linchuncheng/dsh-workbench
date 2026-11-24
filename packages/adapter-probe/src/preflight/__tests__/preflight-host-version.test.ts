@@ -70,6 +70,46 @@ describe('启动检查读运行中的 dsh 版本', () => {
     expect(snapshot.phase).toBe('ready');
   });
 
+  it('★ 快照带运行时事实：版本、来源与工作台配置目录跟着 host 步骤一起出来', async () => {
+    const fake = createFakeShell([]);
+    const preflight = createPreflight({
+      seam: seamFor(fake.shell),
+      capabilities: NO_CLI,
+      probeHost: () => ({
+        tier: 'ok',
+        log: [],
+        facts: { version: '0.2.3-alpha.2', from: 'DSH_CLIENT_VERSION', profileDir: '/tmp/wb' },
+      }),
+    });
+
+    const snapshot = await preflight.run();
+    expect(snapshot.hostFacts).toEqual({
+      version: '0.2.3-alpha.2',
+      from: 'DSH_CLIENT_VERSION',
+      profileDir: '/tmp/wb',
+    });
+  });
+
+  it('★ 重来一轮：上一轮的运行时事实不留在快照上', async () => {
+    const fake = createFakeShell([]);
+    let facts: { version?: string; from?: string; profileDir?: string } | undefined = {
+      version: '0.2.3-alpha.2',
+      from: 'DSH_CLIENT_VERSION',
+      profileDir: '/tmp/wb',
+    };
+    const preflight = createPreflight({
+      seam: seamFor(fake.shell),
+      capabilities: NO_CLI,
+      probeHost: () => (facts === undefined ? undefined : { tier: 'ok', log: [], facts }),
+    });
+
+    expect((await preflight.run()).hostFacts).toBeDefined();
+    facts = undefined;
+    const again = await preflight.run({ hard: true });
+    expect(again.hostFacts).toBeUndefined();
+    expect(again.steps.some((item) => item.id === 'host')).toBe(false);
+  });
+
   it('★ 读不到运行版本：这一行整个撤掉，不声称可用也不报故障', async () => {
     const fake = createFakeShell([]);
     const preflight = createPreflight({

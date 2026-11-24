@@ -15,15 +15,28 @@ export interface PreflightStep {
 }
 
 export interface PreflightDiyGap {
+  readonly kind: 'older-dsh' | 'broken-row' | 'preset-missing';
   readonly rows: readonly string[];
   readonly detail: string;
-  readonly command: string;
+  readonly command?: string;
+}
+
+export interface PreflightPaths {
+  readonly workbenchRoot: string;
+  readonly dshHome: string;
+}
+
+export interface PreflightHostFacts {
+  readonly version?: string;
+  readonly from?: string;
+  readonly profileDir?: string;
+  readonly verified?: string;
 }
 
 export type PreflightHostTier = 'newer' | 'older';
 
 export type PreflightHostStanding =
-  | { readonly tier: 'ok'; readonly log?: readonly string[] }
+  | { readonly tier: 'ok'; readonly log?: readonly string[]; readonly facts?: PreflightHostFacts }
   | PreflightHostGap;
 
 export interface PreflightHostGap {
@@ -32,6 +45,7 @@ export interface PreflightHostGap {
   readonly verified: string;
   readonly command?: string;
   readonly log?: readonly string[];
+  readonly facts?: PreflightHostFacts;
 }
 
 export interface PreflightSnapshot {
@@ -43,6 +57,8 @@ export interface PreflightSnapshot {
   readonly guidance?: PreflightGuidance;
   readonly bridgeIssues?: readonly PreflightBridgeIssue[];
   readonly hostGap?: PreflightHostGap;
+  readonly hostFacts?: PreflightHostFacts;
+  readonly paths?: PreflightPaths;
   readonly diyGap?: PreflightDiyGap;
   readonly canWakeBrowser?: boolean;
   readonly extensionDir?: string;

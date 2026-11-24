@@ -6,7 +6,7 @@ import { WAKE_BROWSER_ROUTE, type WakeBrowserReply } from '@/kernel/contract/pre
 import { apiGet } from '@dsh-workbench/shared';
 import { LOCALE_NS } from '@dsh-workbench/shared';
 import { devSurface } from '@/shared/dev-surface';
-import { runtimeProfileValue } from '@/shared/hooks/use-runtime-capabilities';
+import { hostSurfaceValue, runtimeProfileValue } from '@/shared/hooks/use-runtime-capabilities';
 import { bridgeAdviceLines, guidanceTextOf, hostVersionWhyText, stepDetailText } from './gate-text';
 import type { RuntimeProfile } from '@dsh-workbench/shared';
 import { readRuntimeCapabilities } from '@/shared/hooks/runtime-queries';
@@ -14,6 +14,8 @@ import { brandMarkIcon, el, spinnerIcon, svgIcon } from './gate-dom';
 import { createForcePlan, retryTargetOf } from './force-plan';
 import { logAtBottom } from './log-follow';
 import { hostLabel } from '@/app/layouts/host-requirement';
+import { bridgeFallbackOf, diyCardOf, type GateDeployment } from './fault-card';
+import { fallbackSectionOf } from './fallback-section';
 
 const POLL_MS = 400;
 
@@ -161,16 +163,16 @@ export function createBootGate(
   bridgeButtons.append(bridgeWake, bridgeRetry, bridgeSkip);
 bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, bridgeButtons);
 
-  const diyLines = el('ul', styles.bridgeLines);
-  const diySection = adviceSectionOf(t, { whyText: t('env.diy.why'), beforeStep: [diyLines] });
+  const diySection = adviceSectionOf(t);
   const diy = diySection.root;
-  diySection.step.textContent = t('env.diy.step');
   const diyCommand = diySection.command;
   const diyRetry = el('button', styles.button, t('env.retry'));
   diyRetry.setAttribute('type', 'button');
   const diySkip = el('button', styles.button, t('env.diy.continue'));
   diySkip.setAttribute('type', 'button');
   diySection.buttons.append(diyRetry, diySkip);
+  const diyFallback = fallbackSectionOf(t, t('env.diy.continue'));
+  const bridgeFallback = fallbackSectionOf(t, t('env.bridge.continue'));
 
   const hostRecover = el('p', styles.hint);
   const hostRecoverDetail = el('p', styles.hint);
@@ -180,7 +182,7 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
   hostSkip.setAttribute('type', 'button');
   hostSection.buttons.append(hostSkip);
 
-  card.append(brandHead, bootHint, list, actions, bridge, diy, host);
+  card.append(brandHead, bootHint, list, actions, bridge, bridgeFallback.root, diy, diyFallback.root, host);
   overlay.append(card);
   document.body.append(overlay);
 
@@ -195,6 +197,9 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
   let pinned: PreflightSnapshot | null = null;
   let lastSnapshot: PreflightSnapshot | null = null;
   let runtimeProfile: RuntimeProfile | undefined;
+  let retried = 0;
+  const deploymentOf = (): GateDeployment =>
+    hostSurfaceValue()?.deployment === 'desktop' ? 'desktop' : 'web';
 
   function close(): void {
     if (closed) return;
@@ -325,9 +330,12 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
     }
 
     const failed = snapshot.phase === 'failed';
+    const gateFacts = { deployment: deploymentOf(), retried, host: hostLabel() };
     actions.hidden = !failed;
     retry.removeAttribute('disabled');
     bridgeRetry.removeAttribute('disabled');
+    diyFallback.setDisabled(false);
+    bridgeFallback.setDisabled(false);
     const fix = snapshot.steps.find((step) => step.status === 'failed' && step.command !== undefined);
     const commandText = fix?.command;
 
@@ -351,8 +359,11 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
     const bridgeBroken =
       bridgeIssues.length > 0 ||
       (bridgeStep !== undefined && (bridgeStep.status === 'warn' || bridgeStep.status === 'failed'));
-    bridge.hidden = !bridgeBroken;
-    if (bridgeBroken) {
+    const bridgeFallbackCard = bridgeFallbackOf(snapshot, gateFacts, t);
+    bridge.hidden = !bridgeBroken || bridgeFallbackCard !== undefined;
+    if (bridgeFallbackCard === undefined) bridgeFallback.root.hidden = true;
+    else bridgeFallback.set(bridgeFallbackCard);
+    if (bridgeBroken && bridgeFallbackCard === undefined) {
       bridgeLines.replaceChildren(
         ...bridgeAdviceLines(
           bridgeIssues,
@@ -382,13 +393,19 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
       if (!canWake) wakeNote.hidden = true;
     }
 
-    const gap = snapshot.diyGap;
-    diy.hidden = gap === undefined;
-    if (gap !== undefined) {
-      const lines =
-        gap.rows.length === 0 ? [t('env.diy.noRow')] : [t('env.diy.rows', { rows: gap.rows.join('、') })];
-      diyLines.replaceChildren(...lines.map((text) => el('li', styles.bridgeLine, text)));
-      diyCommand.set(gap.command);
+    const diyCard = diyCardOf(snapshot, gateFacts, t);
+    if (diyCard === undefined) {
+      diy.hidden = true;
+      diyFallback.root.hidden = true;
+    } else if (diyCard.mode === 'deterministic') {
+      diyFallback.root.hidden = true;
+      diy.hidden = false;
+      diySection.why.textContent = diyCard.why;
+      diySection.step.textContent = diyCard.step;
+      diyCommand.set(diyCard.command);
+    } else {
+      diy.hidden = true;
+      diyFallback.set(diyCard);
     }
 
     const hostGap = snapshot.hostGap;
@@ -429,15 +446,20 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
   }
 
   function retryNow(): void {
+    retried += 1;
     forcePlan.again(retryTargetOf(pinned ?? lastSnapshot));
     actions.hidden = true;
     bridge.hidden = true;
     wakeNote.hidden = true;
     diy.hidden = true;
     host.hidden = true;
+    diyFallback.root.hidden = true;
+    bridgeFallback.root.hidden = true;
     retry.setAttribute('disabled', '');
     bridgeRetry.setAttribute('disabled', '');
     diyRetry.setAttribute('disabled', '');
+    diyFallback.setDisabled(true);
+    bridgeFallback.setDisabled(true);
     if (pinned !== null) {
       render(pinned);
       return;
@@ -480,6 +502,10 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
   bridgeSkip.addEventListener('click', close);
   diyRetry.addEventListener('click', retryNow);
   diySkip.addEventListener('click', close);
+  diyFallback.onRetry(retryNow);
+  diyFallback.onSkip(close);
+  bridgeFallback.onRetry(retryNow);
+  bridgeFallback.onSkip(close);
   hostSkip.addEventListener('click', close);
 
   const search = typeof window === 'undefined' ? '' : (window.location?.search ?? '');

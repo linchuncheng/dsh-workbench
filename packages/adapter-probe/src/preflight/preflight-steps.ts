@@ -1,5 +1,6 @@
 import type {
   PreflightDiyGap,
+  PreflightHostFacts,
   PreflightHostGap,
   PreflightHostStanding,
   PreflightStep,
@@ -17,18 +18,24 @@ export function pendingStep(id: PreflightStepId, label?: string): PreflightStep 
   return { id, status: 'pending', ...(label === undefined || label === '' ? {} : { label }) };
 }
 
+export interface SettledHost {
+  readonly gap?: PreflightHostGap;
+  readonly facts?: PreflightHostFacts;
+}
+
 export function settleHostStep(
   standing: PreflightHostStanding | undefined,
   sink: StepSink,
-): PreflightHostGap | undefined {
+): SettledHost {
   if (standing === undefined) {
     sink.drop('host');
-    return undefined;
+    return {};
   }
   const log = standing.log === undefined ? {} : { log: [...standing.log] };
+  const facts = standing.facts === undefined ? {} : { facts: standing.facts };
   if (standing.tier === 'ok') {
     sink.patch('host', { status: 'ok', ...log });
-    return undefined;
+    return facts;
   }
   sink.patch('host', {
     status: 'warn',
@@ -36,13 +43,14 @@ export function settleHostStep(
     ...(standing.command === undefined ? {} : { command: standing.command }),
     ...log,
   });
-  return standing;
+  return { gap: standing, ...facts };
 }
 
 export async function settleDiyStep(
   started: Promise<DiyPresetVerdict | undefined> | undefined,
   sink: StepSink,
   logger?: { warn?(message: string): void },
+  olderDsh = false,
 ): Promise<PreflightDiyGap | undefined> {
   if (started === undefined) return undefined;
   const verdict = await started.catch((error: unknown) => {
@@ -59,6 +67,8 @@ export async function settleDiyStep(
     sink.patch('diy', { status: 'ok', detail: verdict.detail });
     return undefined;
   }
-  sink.patch('diy', { status: 'warn', detail: verdict.detail, command: DIY_UPGRADE_COMMAND });
-  return { rows: verdict.rows, detail: verdict.detail, command: DIY_UPGRADE_COMMAND };
+  const kind = olderDsh ? 'older-dsh' : verdict.rows.length === 0 ? 'preset-missing' : 'broken-row';
+  const command = kind === 'older-dsh' ? { command: DIY_UPGRADE_COMMAND } : {};
+  sink.patch('diy', { status: 'warn', detail: verdict.detail, ...command });
+  return { kind, rows: verdict.rows, detail: verdict.detail, ...command };
 }

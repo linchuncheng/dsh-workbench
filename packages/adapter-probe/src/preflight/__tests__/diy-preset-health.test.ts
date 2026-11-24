@@ -104,9 +104,35 @@ describe('启动体检把 DIY 那一行接进来', () => {
       'bridge=ok',
       'diy=warn',
     ]);
+    expect(snapshot.diyGap?.kind).toBe('broken-row');
     expect(snapshot.diyGap?.rows).toEqual(['tool-schedule']);
-    expect(snapshot.diyGap?.command).toBe('npm i -g @deepseek-ai/dsh@latest');
+    expect(snapshot.diyGap?.command).toBeUndefined();
     expect(fake.calls.map((call) => call.command)).toEqual(["'opencli' --version", "'opencli' doctor"]);
+  });
+
+  it('★ 名册里没有那一行 → preset-missing（事实是「没找到」，不声称版本旧）', async () => {
+    const { preflight } = buildPreflight(async () => diyPresetVerdictOf([{ id: 'standard' }, { id: 'minimal' }]));
+    const snapshot = await preflight.run();
+
+    expect(snapshot.diyGap?.kind).toBe('preset-missing');
+    expect(snapshot.diyGap?.rows).toEqual([]);
+  });
+
+  it('★ dsh 版本过低 → older-dsh（唯一由证据给出命令的 DIY 分支）', async () => {
+    const { preflight } = buildPreflight(async () => diyPresetVerdictOf(BROKEN), {
+      probeHost: () => ({
+        tier: 'older',
+        runtime: '0.2.2-rc.5',
+        verified: '0.2.3-alpha.2',
+        facts: { version: '0.2.2-rc.5', profileDir: '/tmp/wb' },
+      }),
+    });
+    const snapshot = await preflight.run();
+
+    expect(snapshot.hostGap?.tier).toBe('older');
+    expect(snapshot.diyGap?.kind).toBe('older-dsh');
+    expect(snapshot.diyGap?.command).toBe('npm i -g @deepseek-ai/dsh@latest');
+    expect(snapshot.hostFacts).toMatchObject({ version: '0.2.2-rc.5', profileDir: '/tmp/wb' });
   });
 
   it('挂得起来 → 步骤行 ok、不带 gap（门照常放行）', async () => {
@@ -126,8 +152,11 @@ describe('启动体检把 DIY 那一行接进来', () => {
   });
 });
 
-function buildPreflight(probe: () => Promise<ReturnType<typeof diyPresetVerdictOf>>) {
+function buildPreflight(
+  probe: () => Promise<ReturnType<typeof diyPresetVerdictOf>>,
+  extra: Partial<Parameters<typeof createPreflight>[0]> = {},
+) {
   const fake = createFakeShell(ALL_OK.map((step) => ({ ...step })));
-  const preflight = createPreflight({ seam: seamFor(fake.shell), probeDiy: probe });
+  const preflight = createPreflight({ seam: seamFor(fake.shell), probeDiy: probe, ...extra });
   return { fake, preflight };
 }

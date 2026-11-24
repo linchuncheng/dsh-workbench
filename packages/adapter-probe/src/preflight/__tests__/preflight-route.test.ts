@@ -29,7 +29,9 @@ const BROKEN: readonly DshAgentPresetRow[] = [
 type Answer = {
   ok: boolean;
   phase?: string;
-  diyGap?: { rows: readonly string[]; command: string };
+  diyGap?: { kind: string; rows: readonly string[]; command?: string };
+  hostGap?: { tier: string; runtime: string; verified: string };
+  hostFacts?: { version?: string; from?: string; profileDir?: string };
   canWakeBrowser?: boolean;
   status?: string;
 };
@@ -91,8 +93,25 @@ describe('registerPreflight（把启动体检接上 preflight 路由）', () => 
     const answer = await settled(handler);
 
     expect(answer.ok).toBe(true);
+    expect(answer.diyGap?.kind).toBe('broken-row');
     expect(answer.diyGap?.rows).toEqual(['tool-schedule']);
-    expect(answer.diyGap?.command).toBe('npm i -g @deepseek-ai/dsh@latest');
+    expect(answer.diyGap?.command).toBeUndefined();
+  });
+
+  it('★ 快照带运行时事实：dsh 版本、来源与工作台配置目录（提示词与落盘都用它）', async () => {
+    vi.stubEnv('DSH_CLIENT_VERSION', '');
+    vi.stubEnv('DSH_VERSION', '0.2.3-alpha.2');
+    const { handler } = wire(BROKEN, '/Users/who/.dsh/profiles/workbench');
+    const answer = await settled(handler);
+    vi.stubEnv('DSH_CLIENT_VERSION', '');
+    vi.stubEnv('DSH_VERSION', '');
+
+    expect(answer.hostGap).toBeUndefined();
+    expect(answer.hostFacts).toMatchObject({
+      version: '0.2.3-alpha.2',
+      from: 'DSH_VERSION',
+      profileDir: '/Users/who/.dsh/profiles/workbench',
+    });
   });
 
   it('挂得起来 → 不带 gap（门照常放行）', async () => {

@@ -1,7 +1,30 @@
 import { createElement as h } from 'react';
 import type { ModuleBlocker, Translate } from '@dsh-workbench/shared';
-import { blockerOfDiag, isDiagCode } from '@dsh-workbench/shared';
+import { askAgentActionOf, blockerOfDiag, isDiagCode } from '@dsh-workbench/shared';
 import { BlockerState } from '@/shared/components/BlockerState';
+
+function fallbackOf(t: Translate, detail: string | null, code: string | null | undefined): ModuleBlocker {
+  const title = t('panels.boardReadFailed');
+  const reason = (detail ?? '')
+    .split('\n')
+    .map((one) => one.trim())
+    .find((one) => one !== '');
+  return {
+    id: code ?? 'board-read-failed',
+    severity: 'block',
+    title,
+    hint: t('panels.boardReadFailedHint'),
+    ...(detail === null ? {} : { detail }),
+    actions: [
+      askAgentActionOf(t, {
+        screen: t('askAgent.screen.board'),
+        step: title,
+        problem: { why: title, ...(reason === undefined ? {} : { reason }) },
+      }),
+      { kind: 'retry', label: t('panels.retry') },
+    ],
+  };
+}
 
 export function BoardReadFailed({
   t,
@@ -19,13 +42,6 @@ export function BoardReadFailed({
   const blocker: ModuleBlocker =
     code !== undefined && code !== null && isDiagCode(code)
       ? blockerOfDiag(code, t, detail)
-      : {
-          id: code ?? 'board-read-failed',
-          severity: 'block',
-          title: t('panels.boardReadFailed'),
-          hint: t('panels.boardReadFailedHint'),
-          ...(detail === null ? {} : { detail }),
-          actions: [{ kind: 'retry', label: t('panels.retry') }],
-        };
+      : fallbackOf(t, detail, code);
   return <BlockerState blocker={blocker} t={t} busy={busy ?? false} onRetry={onRetry} />;
 }

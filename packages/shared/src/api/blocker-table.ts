@@ -3,6 +3,7 @@ import type { CapabilityPayload } from '../contract/workbench-contract.js';
 import type { ApiError } from './workbench-client.js';
 import type { BlockerAction, ModuleBlocker } from '../contract/blocker.js';
 import { DIAG_FALLBACK_CODE, diagSpecOf, isDiagCode } from '../contract/blocker.js';
+import { faultPromptOf, firstLineOf, type PromptFacts } from '../lib/fault-prompt.js';
 import { shortenPath } from '../lib/ui.js';
 
 function retryAction(t: Translate): BlockerAction {
@@ -11,6 +12,40 @@ function retryAction(t: Translate): BlockerAction {
 
 function copyAction(t: Translate, text: string): BlockerAction {
   return { kind: 'copy', label: t('blocker.copy'), text };
+}
+
+export interface BlockerAsk {
+  readonly screen?: string;
+  readonly step?: string;
+}
+
+export function askAgentActionOf(t: Translate, facts: PromptFacts): BlockerAction {
+  return { kind: 'ask-agent', label: t('askAgent.copy'), prompt: faultPromptOf(facts, t) };
+}
+
+function askOf(t: Translate, ask: BlockerAsk | undefined): PromptFacts & { screen: string } {
+  return {
+    screen: ask?.screen ?? t('askAgent.screen.board'),
+    ...(ask?.step === undefined ? {} : { step: ask.step }),
+  };
+}
+
+function cardBlocker(parts: {
+  readonly id: string;
+  readonly severity: 'block' | 'notice';
+  readonly title: string;
+  readonly hint: string;
+  readonly detail: string | undefined;
+  readonly actions: readonly BlockerAction[];
+}): ModuleBlocker {
+  const base: ModuleBlocker = {
+    id: parts.id,
+    severity: parts.severity,
+    title: parts.title,
+    hint: parts.hint,
+    actions: parts.actions,
+  };
+  return parts.detail === undefined ? base : { ...base, detail: parts.detail };
 }
 
 /**
@@ -24,15 +59,27 @@ export function blockerOfDiag(
   code: string,
   t: Translate,
   detail: string | null = null,
+  ask?: BlockerAsk,
 ): ModuleBlocker {
-  const spec = diagSpecOf(isDiagCode(code) ? code : DIAG_FALLBACK_CODE);
+  const known = isDiagCode(code);
+  const spec = diagSpecOf(known ? code : DIAG_FALLBACK_CODE);
+  const title = t(spec?.messageKey ?? 'diag.code.unknownCode');
+  const actions: readonly BlockerAction[] = known
+    ? [retryAction(t)]
+    : [
+        askAgentActionOf(t, {
+          ...askOf(t, ask),
+          problem: { why: title, issue: code, ...(detail === null ? {} : { reason: firstLineOf(detail) }) },
+        }),
+        retryAction(t),
+      ];
   return {
     id: `diag:${spec?.code ?? DIAG_FALLBACK_CODE}`,
     severity: 'block',
-    title: t(spec?.messageKey ?? 'diag.code.unknownCode'),
+    title,
     ...(spec?.hintKey === undefined ? {} : { hint: t(spec.hintKey) }),
     ...(detail === null ? {} : { detail }),
-    actions: [retryAction(t)],
+    actions,
   };
 }
 
@@ -50,14 +97,16 @@ export function blockerOfError(
     path?: string | null;
     platform?: string;
     diagnose?: Readonly<Partial<Record<'exec' | 'login' | 'bridge', string>>>;
+    ask?: BlockerAsk;
   } = {},
 ): ModuleBlocker {
   if (error === undefined) {
+    const title = t('blocker.unknown.title');
     return {
       id: 'unknown',
       severity: 'block',
-      title: t('blocker.unknown.title'),
-      actions: [retryAction(t)],
+      title,
+      actions: [askAgentActionOf(t, { ...askOf(t, context.ask), problem: { why: title } }), retryAction(t)],
     };
   }
 
@@ -137,15 +186,29 @@ export function blockerOfError(
         actions: [retryAction(t)],
       };
 
-    default:
+    default: {
+      const title = t('blocker.unknown.title');
       return {
         id: error.code,
         severity: 'block',
-        title: t('blocker.unknown.title'),
+        title,
         ...(error.hint === undefined ? {} : { hint: error.hint }),
         detail: error.detail ?? error.message,
-        actions: [retryAction(t)],
+        actions: [
+          askAgentActionOf(t, {
+            ...askOf(t, context.ask),
+            problem: {
+              why: title,
+              issue: error.code,
+              ...(firstLineOf(error.detail ?? error.message) === undefined
+                ? {}
+                : { reason: firstLineOf(error.detail ?? error.message) }),
+            },
+          }),
+          retryAction(t),
+        ],
       };
+    }
   }
 }
 
@@ -164,20 +227,20 @@ export function blockerOf(parts: {
   readonly t: Translate;
   readonly platform?: string | undefined;
   readonly loginUrl?: string | undefined;
+  readonly ask?: BlockerAsk | undefined;
 }): ModuleBlocker | undefined {
   if (parts.capability !== undefined) {
-    const fromCapability = blockerOfCapability(parts.capability, parts.t);
+    const fromCapability = blockerOfCapability(parts.capability, parts.t, parts.ask);
     if (fromCapability !== undefined) return fromCapability;
   }
   if (parts.error === undefined) return undefined;
   const isLogin = parts.error.code === 'auth-required' || parts.error.code === 'auth';
   const helpUrl = parts.error.helpUrl !== undefined || !isLogin ? parts.error.helpUrl : parts.loginUrl;
   const withHelp = helpUrl === undefined ? parts.error : { ...parts.error, helpUrl };
-  return blockerOfError(
-    withHelp,
-    parts.t,
-    parts.platform === undefined ? {} : { platform: parts.platform },
-  );
+  return blockerOfError(withHelp, parts.t, {
+    ...(parts.platform === undefined ? {} : { platform: parts.platform }),
+    ...(parts.ask === undefined ? {} : { ask: parts.ask }),
+  });
 }
 
 /**
@@ -186,7 +249,11 @@ export function blockerOf(parts: {
  * @param t 文案函数，键都在 env.unit.* / blocker.* 下。
  * @returns status 为 'ok' 时给 undefined（没有卡住态），其余状态一律给一张。
  */
-export function blockerOfCapability(capability: CapabilityPayload, t: Translate): ModuleBlocker | undefined {
+export function blockerOfCapability(
+  capability: CapabilityPayload,
+  t: Translate,
+  ask?: BlockerAsk,
+): ModuleBlocker | undefined {
   if (capability.status === 'ok') return undefined;
 
   const problem = capability.needs.find((need) => need.status !== 'ok');
@@ -209,58 +276,46 @@ export function blockerOfCapability(capability: CapabilityPayload, t: Translate)
   const detail = problem?.detail ?? capability.detail;
 
   if (capability.status === 'failed') {
-    return {
+    const title = t('env.unit.failed');
+    const reason = firstLineOf(capability.detail);
+    return cardBlocker({
       id: 'unit-mount-failed',
       severity: 'block',
-      title: t('env.unit.failed'),
+      title,
       hint: t('env.unit.failedHint'),
-      ...(capability.detail === undefined ? {} : { detail: capability.detail }),
-      actions: [retryAction(t)],
-    };
+      detail: capability.detail,
+      actions: [
+        askAgentActionOf(t, {
+          ...askOf(t, ask),
+          step: ask?.step ?? capability.unit,
+          problem: { why: title, ...(reason === undefined ? {} : { reason }) },
+        }),
+        retryAction(t),
+      ],
+    });
   }
 
-  if (capability.status === 'unsupported') {
-    return {
-      id: 'unit-unsupported',
-      severity: 'block',
-      title: t('env.unit.unsupported'),
-      hint: t('env.unit.unsupportedHint'),
-      ...(detail === undefined ? {} : { detail }),
+  if (capability.status === 'unsupported' || capability.status === 'degraded') {
+    const notice = capability.status === 'degraded';
+    return cardBlocker({
+      id: notice ? 'unit-degraded' : 'unit-unsupported',
+      severity: notice ? 'notice' : 'block',
+      title: t(notice ? 'env.unit.degraded' : 'env.unit.unsupported'),
+      hint: t(notice ? 'env.unit.degradedHint' : 'env.unit.unsupportedHint'),
+      detail,
       actions: [retryAction(t)],
-    };
+    });
   }
 
-  if (capability.status === 'degraded') {
-    return {
-      id: 'unit-degraded',
-      severity: 'notice',
-      title: t('env.unit.degraded'),
-      hint: t('env.unit.degradedHint'),
-      ...(detail === undefined ? {} : { detail }),
-      actions: [retryAction(t)],
-    };
-  }
-
-  if (problem === undefined) {
-    return {
+  if (problem === undefined || problem.status === 'unchecked') {
+    return cardBlocker({
       id: 'unit-unchecked',
       severity: 'notice',
       title: t('env.unit.unchecked'),
       hint: t('env.unit.uncheckedHint'),
-      ...(capability.detail === undefined ? {} : { detail: capability.detail }),
+      detail: problem === undefined ? capability.detail : detail,
       actions: [retryAction(t)],
-    };
-  }
-
-  if (problem.status === 'unchecked') {
-    return {
-      id: 'unit-unchecked',
-      severity: 'notice',
-      title: t('env.unit.unchecked'),
-      hint: t('env.unit.uncheckedHint'),
-      ...(detail === undefined ? {} : { detail }),
-      actions: [retryAction(t)],
-    };
+    });
   }
 
   const kindTitle = `env.need.${problem.kind}.${problem.status}`;

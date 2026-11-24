@@ -7,6 +7,7 @@ const RETRY = { kind: 'retry', label: '重试' } as const;
 const LOGIN = { kind: 'open-url', label: '去登录', url: 'https://inventory.example/login', inline: true } as const;
 const COPY = { kind: 'copy', label: '复制命令', text: 'opencli inventory envs' } as const;
 const FIX = { kind: 'run-fix', label: '帮我安装', unit: 'inventory', fix: 'install' } as const;
+const ASK = { kind: 'ask-agent', label: '复制给 agent', prompt: '位置：看板 · issues' } as const;
 
 const idle = { retrying: false, running: null, copied: null } as const;
 
@@ -36,5 +37,12 @@ describe('阻断态那颗按钮说什么', () => {
     expect(blockerPending(true, null)).toBe(true);
     expect(blockerPending(false, '帮我安装')).toBe(true);
     expect(blockerPending(false, null)).toBe(false);
+  });
+});
+
+describe('复制给 agent 那颗按钮', () => {
+  it('★ 复制成功 → 说「已复制」；没复制过就是原文', () => {
+    expect(blockerActionLabel(ASK, { ...idle, copied: '别的文本' }, t)).toBe('复制给 agent');
+    expect(blockerActionLabel(ASK, { ...idle, copied: '位置：看板 · issues' }, t)).toBe('«askAgent.copied»');
   });
 });

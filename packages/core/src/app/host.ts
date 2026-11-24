@@ -385,6 +385,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
       ...(runtimeCheck === undefined ? {} : { runtimeCheck: () => runtimeCheck(ctx) }),
       ...(runtimeProfile === null ? {} : { runtimeLabel: runtimeProfile.label }),
       warmReads: () => [...mounted.values()].flatMap((item) => item.plan.warmReads()),
+      diag: diagRoutesOf(workbenchRoot()).recorder,
     });
     routes.capability = capabilityHandler(async (unit, force) => {
       if (unit === undefined) {

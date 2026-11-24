@@ -1,9 +1,14 @@
 import type { Translate } from '../../lib/dsh-client.js';
 import type { ReactNode } from '../../lib/react.js';
 import { Component, h } from '../../lib/react.js';
+import { CodeBlock, DisclosureRow, IconInfoOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives';
+import { createCopyFlash } from '../../lib/copy-flash.js';
+import { faultPromptOf, firstLineOf } from '../../lib/fault-prompt.js';
 import { Note } from '../feedback/Note.js';
 import { FormActions } from '../form/FormActions.js';
 import styles from './CardBoundary.module.css';
+
+const COPIED_MS = 1500;
 
 /**
  * `CardBoundary` 的契约：被守的 unit、重来键与失败回调。
@@ -18,10 +23,12 @@ export interface CardBoundaryProps {
 }
 
 /**
- * `CardBoundary` 的状态：这次渲染炸出来的那句话，没炸是 `null`。
+ * `CardBoundary` 的状态：这次渲染炸出来的那句话、折叠行是否展开、刚复制过没有。
  */
 export interface CardBoundaryState {
   readonly reason: string | null;
+  readonly detailsOpen: boolean;
+  readonly copied: boolean;
 }
 
 /**
@@ -35,20 +42,47 @@ export function errorReasonOf(error: unknown): string {
 }
 
 /**
+ * 卡片渲染崩溃时要交给 agent 的那段提示词：位置 + 哪个模块 + 报错首行。
+ * @param unit - 出事的 unit id。
+ * @param reason - 拦截到的失败原因。
+ * @param t - 文案函数，键在 askAgent.* 与 panels.* 下。
+ * @returns 可直接粘贴给 agent 的多行提示词。
+ */
+export function cardBrokenPromptOf(unit: string, reason: string, t: Translate): string {
+  const cause = firstLineOf(reason);
+  return faultPromptOf(
+    {
+      screen: t('askAgent.screen.board'),
+      problem: {
+        why: t('panels.cardBroken', { unit }),
+        ...(cause === undefined ? {} : { reason: cause }),
+      },
+    },
+    t,
+  );
+}
+
+function stateOf(reason: string | null): CardBoundaryState {
+  return { reason, detailsOpen: false, copied: false };
+}
+
+/**
  * 卡片级错误边界：一张卡渲染炸了只画一条报错 + 重试，不让整块面板跟着塌。
  * @param props.unit - 出事的 unit id，写进报错文案并作为上报标识。
  * @param props.resetKey - 重来键：它一变（如切了工作区）就自动清掉报错，把卡片重新渲染一遍。
- * @param props.t - 报错那句与重试钮文案的翻译函数。
+ * @param props.t - 报错那句、重试钮与「复制给 agent」的翻译函数。
  * @param props.onFailure - 失败时把原因报给宿主（面板状态要用）；不给就只打一条 console。
- * @param props.fallback - 出错时改画这一份；不给就画卡片失败提示与重试。
+ * @param props.fallback - 出错时改画这一份；不给就画卡片失败提示、可折叠的原文与两颗按钮。
  * @param props.children - 正常时要渲染的卡片内容。
  * @returns 正常时是 `children`，炸过且还没重来之前是一条报错。
  */
 export class CardBoundary extends Component<CardBoundaryProps, CardBoundaryState> {
-  override state: CardBoundaryState = { reason: null };
+  override state: CardBoundaryState = stateOf(null);
+
+  private readonly flash = createCopyFlash(COPIED_MS);
 
   static getDerivedStateFromError(error: unknown): CardBoundaryState {
-    return { reason: errorReasonOf(error) };
+    return stateOf(errorReasonOf(error));
   }
 
   override componentDidCatch(error: unknown): void {
@@ -59,32 +93,69 @@ export class CardBoundary extends Component<CardBoundaryProps, CardBoundaryState
 
   override componentDidUpdate(previous: CardBoundaryProps): void {
     if (previous.resetKey !== this.props.resetKey && this.state.reason !== null) {
-      this.setState({ reason: null });
+      this.reset();
     }
   }
 
-  private readonly retry = (): void => {
-    this.setState({ reason: null });
+  override componentWillUnmount(): void {
+    this.flash.dispose();
+  }
+
+  private readonly reset = (): void => {
+    this.flash.dispose();
+    this.setState(stateOf(null));
+  };
+
+  private readonly copyPrompt = (): void => {
+    const reason = this.state.reason;
+    if (reason === null) return;
+    this.flash.copy(cardBrokenPromptOf(this.props.unit, reason, this.props.t), (copied) =>
+      this.setState({ copied }),
+    );
   };
 
   override render(): ReactNode {
-    const { reason } = this.state;
+    const { reason, detailsOpen, copied } = this.state;
     if (reason === null) return this.props.children;
     if (this.props.fallback !== undefined) return this.props.fallback;
     return (
       <Note tone="problem">
         <div className={styles.failure}>
-          <span>{this.props.t('panels.cardBroken', { unit: this.props.unit, reason })}</span>
+          <span>{this.props.t('panels.cardBroken', { unit: this.props.unit })}</span>
+          {reason === '' ? null : (
+            <DisclosureRow
+              className={styles.raw}
+              icon={<IconInfoOutlineRegular size={14} />}
+              title={this.props.t('env.fix.details')}
+              open={detailsOpen}
+              expandable
+              expandOnRowClick
+              previewChevron
+              onToggle={() => this.setState({ detailsOpen: !detailsOpen })}
+            >
+              <CodeBlock
+                code={reason}
+                copyLabel={this.props.t('blocker.copy')}
+                copiedLabel={this.props.t('env.copied')}
+              />
+            </DisclosureRow>
+          )}
           <FormActions
             actions={[
               {
                 key: 'retry',
                 label: this.props.t('panels.cardRetry'),
-                kind: 'default',
-                onClick: this.retry,
+                onClick: this.reset,
+              },
+              {
+                key: 'ask-agent',
+                label: this.props.t('askAgent.copy'),
+                kind: 'primary',
+                onClick: this.copyPrompt,
               },
             ]}
           />
+          {copied ? <p className={styles.hint}>{this.props.t('askAgent.hint')}</p> : null}
         </div>
       </Note>
     );

@@ -1,7 +1,8 @@
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
 import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, WARM_TIMEOUT_MS, hostOsOf, now, productWrite, quoteShellArgFor, tailLines, type Seam } from '@dsh-workbench/shared/host';
 import { opencliCommandLine, OPENCLI_SITE_SESSION_ENV, OPENCLI_WINDOW_ENV } from '@dsh-workbench/adapter-runtime';
-import { notePreflightFailed } from './preflight-note.js';
+import { classifyFailure } from './preflight-failure.js';
+import { notePreflightFailed, notePreflightHold } from './preflight-note.js';
 import { persistPreflightSnapshot } from './preflight-snapshot.js';
 import type { DiyPresetVerdict } from './diy-preset-health.js';
 import { pendingStep, settleDiyStep, settleHostStep } from './preflight-steps.js';
@@ -12,23 +13,9 @@ import type { DesktopBrowser } from '../runtime/browser-wake.js';
 import { bridgeFixCommand } from '../runtime/browser-wake.js';
 import { probeOpencliVersion, type OpencliVersionRun, type OpencliVersionVerdict } from '../self-update/version/version-probe.js';
 
-export type PreflightFailure = 'permission' | 'network' | 'missing' | 'host' | 'unknown';
+export { classifyFailure, type PreflightFailure } from './preflight-failure.js';
 
 const WARM_ENV: Readonly<Record<string, string>> = { ...OPENCLI_WINDOW_ENV, ...OPENCLI_SITE_SESSION_ENV };
-
-export function classifyFailure(text: string): PreflightFailure {
-  const lower = text.toLowerCase();
-  if (/eacces|eperm|permission denied|operation not permitted/.test(lower)) return 'permission';
-  if (
-    /enotfound|etimedout|econnrefused|econnreset|econnaborted|eai_again|eproto|enetunreach|ehostunreach|enetdown|err_socket|und_err|err_pnpm_fetch_5|err_pnpm_meta_fetch_fail|err_pnpm_tarball_fetch|socket hang up|network|proxy|fetch failed|request failed|tls|ssl|certificate|self[- ]signed|unable to verify|tlssocket|onhttpsocketclose/.test(
-      lower,
-    )
-  ) {
-    return 'network';
-  }
-  if (/command not found|not found|no such file|enoent/.test(lower)) return 'missing';
-  return 'unknown';
-}
 
 export type PreflightGuidance = 'install' | 'path' | 'shell' | 'host';
 
@@ -38,6 +25,7 @@ export type PreflightStepStatus = 'pending' | 'running' | 'ok' | 'warn' | 'faile
 
 import type {
   PreflightHostStanding,
+  PreflightPaths,
   PreflightSnapshot,
   PreflightStep,
 } from '@dsh-workbench/shared/host';
@@ -95,6 +83,7 @@ export function createPreflight(options: {
   platform?: NodeJS.Platform | undefined;
   diag?: import('@dsh-workbench/shared/host').DiagRecorder | undefined;
   snapshotRoot?: string | undefined;
+  paths?: PreflightPaths | undefined;
 }): Preflight {
   const { seam, command = 'opencli', logger } = options;
   const platform = options.platform;
@@ -139,6 +128,7 @@ export function createPreflight(options: {
     steps: steps(),
     at: now(),
     log: [],
+    ...(options.paths === undefined ? {} : { paths: options.paths }),
     ...(options.desktopBrowser === undefined ? {} : { canWakeBrowser: true }),
     ...(options.extensionDir === undefined ? {} : { extensionDir: options.extensionDir }),
   };
@@ -147,7 +137,10 @@ export function createPreflight(options: {
   let daemonHealed = false;
 
   function set(next: Partial<PreflightSnapshot> & { steps?: PreflightStep[] }): PreflightSnapshot {
-    if (next.phase === 'failed') notePreflightFailed(options.diag, next.failure ?? 'unknown', next.error ?? '');
+    if (next.phase === 'failed') {
+      const stage = (next.steps ?? current.steps).find((item) => item.status === 'failed')?.id;
+      notePreflightFailed(options.diag, next.failure ?? 'unknown', next.error ?? '', stage);
+    }
     current = { ...current, ...next, log: [...logLines], at: now() };
     if (options.snapshotRoot !== undefined) persistPreflightSnapshot(options.snapshotRoot, current);
     return current;
@@ -326,6 +319,7 @@ export function createPreflight(options: {
       guidance: undefined,
       bridgeIssues: undefined,
       hostGap: undefined,
+      hostFacts: undefined,
       diyGap: undefined,
       steps: steps().map((item) => {
         const kept = skip(item.id) ? previous.get(item.id) : undefined;
@@ -393,7 +387,7 @@ export function createPreflight(options: {
       if (!verdict.ok) return set({ phase: 'failed', error: verdict.detail, failure: 'missing', guidance: 'install' });
     }
 
-    const hostGap = settleHostStep(options.probeHost?.(), stepSink);
+    const host = settleHostStep(options.probeHost?.(), stepSink);
 
     const diyStarted = skip('diy') ? undefined : options.probeDiy?.();
     if (withConsole && !skip('cli')) {
@@ -492,17 +486,20 @@ export function createPreflight(options: {
     }
 
     const settled = withBridge ? await warmSites(bridge) : bridge;
-    const diyGap = await settleDiyStep(diyStarted, stepSink, logger);
+    const diyGap = await settleDiyStep(diyStarted, stepSink, logger, host.gap?.tier === 'older');
 
     logger?.warn?.(
       `[dsh-workbench] 环境体检：${current.steps.map((item) => `${item.id}=${item.status}`).join(' ')}`,
     );
-    return set({
+    const ready = set({
       phase: 'ready',
       ...(settled.ok ? {} : { bridgeIssues: settled.issues }),
-      ...(hostGap === undefined ? {} : { hostGap }),
+      ...(host.gap === undefined ? {} : { hostGap: host.gap }),
+      ...(host.facts === undefined ? {} : { hostFacts: host.facts }),
       ...(diyGap === undefined ? {} : { diyGap }),
     });
+    notePreflightHold(options.diag, ready);
+    return ready;
   }
 
   function freshReady(): boolean {

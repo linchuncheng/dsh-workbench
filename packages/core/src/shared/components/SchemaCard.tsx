@@ -143,7 +143,10 @@ function SchemaReadCard(props: SchemaCardProps) {
     onRefresh: props.onRefresh,
     onSummary: props.onSummary,
     t: props.t,
-    platformBlocker: (error, translate) => blockerOfError(error, translate),
+    platformBlocker: (error, translate) =>
+      blockerOfError(error, translate, {
+        ask: { screen: translate('askAgent.screen.board'), step: unit },
+      }),
     read: () => feed,
   });
   const hasLongTask = view.sections?.longTask !== undefined;

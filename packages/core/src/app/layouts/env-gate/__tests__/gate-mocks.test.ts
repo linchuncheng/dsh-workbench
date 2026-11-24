@@ -220,6 +220,7 @@ describe('GATE_MOCKS', () => {
         continue;
       }
 
+      if ((item.snapshot.bridgeIssues ?? []).includes('unknown')) continue;
       expect(bridge.command, item.id).toBeDefined();
       expect(bridge.command ?? '', item.id).not.toContain('doctor');
     }

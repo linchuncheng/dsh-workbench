@@ -3,6 +3,8 @@ import type { Translate } from '../../lib/dsh-client.js';
 import type { CapabilityPayload } from '../../contract/workbench-contract.js';
 import type { NeedState } from '../../contract/unit-capability.js';
 import { blockerOf, blockerOfCapability, blockerOfDiag, blockerOfError } from '../blocker-table.js';
+import type { ApiError } from '../workbench-client.js';
+import type { ModuleBlocker } from '../../contract/blocker.js';
 
 const t: Translate = (key, params) => (params === undefined ? key : `${key}(${JSON.stringify(params)})`);
 
@@ -111,12 +113,19 @@ describe('blockerOfError', () => {
     expect(blocker.actions.map((action) => action.kind)).toEqual(['retry']);
   });
 
-  it('未知错误 → 说人话，原文收进详情，并给重试', () => {
+  it('未知错误 → 说人话，原文收进详情，并给「复制给 agent」+ 重试', () => {
     const blocker = blockerOfError({ code: 'weird', message: '怪错误' }, t);
 
     expect(blocker.title).toBe('blocker.unknown.title');
     expect(blocker.detail).toBe('怪错误');
-    expect(blocker.actions.map((action) => action.kind)).toEqual(['retry']);
+    expect(blocker.actions.map((action) => action.kind)).toEqual(['ask-agent', 'retry']);
+    const ask = blocker.actions[0];
+    expect(ask?.kind).toBe('ask-agent');
+    if (ask?.kind !== 'ask-agent') return;
+    expect(ask.label).toBe('askAgent.copy');
+    expect(ask.prompt).toContain('askAgent.prompt.where');
+    expect(ask.prompt).toContain('"issue":"weird"');
+    expect(ask.prompt).toContain('"reason":"怪错误"');
   });
 
   it('没有错误对象 → 兜底文案 + 重试（不炸）', () => {
@@ -174,7 +183,9 @@ describe('blockerOfCapability', () => {
     expect(blocker?.title).toBe('env.unit.failed');
     expect(blocker?.detail).toBe('模块自己的 bug：kit.components.StateBlock 取不到');
     expect(blocker?.hint).toBe('env.unit.failedHint');
-    expect(blocker?.actions.map((action) => action.kind)).toEqual(['retry']);
+    expect(blocker?.actions.map((action) => action.kind)).toEqual(['ask-agent', 'retry']);
+    const ask = blocker?.actions[0];
+    expect(ask?.kind === 'ask-agent' ? ask.prompt : '').toContain('"step":"issues"');
   });
 
   it('★ 未知 kind（模块跑在更新的工作台上）→ 单独一档，叫升级工作台，不猜怎么修', () => {
@@ -412,5 +423,103 @@ describe('blockerOfDiag', () => {
 
     expect(blocker.id).toBe('diag:DIAG_UNKNOWN_CODE');
     expect(blocker.title).toBe('diag.code.unknownCode');
+  });
+});
+
+describe('兜底分支的第三个出口：复制给 agent', () => {
+  it('★ 未登记的诊断码 → 「复制给 agent」+ 重试，提示词带码与原文首行', () => {
+    const blocker = blockerOfDiag('MY_WEIRD_CODE', t, '原文第一行\n第二行');
+    expect(blocker.actions.map((action) => action.kind)).toEqual(['ask-agent', 'retry']);
+
+    const ask = blocker.actions[0];
+    expect(ask?.kind).toBe('ask-agent');
+    if (ask?.kind !== 'ask-agent') return;
+    expect(ask.label).toBe('askAgent.copy');
+    expect(ask.prompt).toContain('"issue":"MY_WEIRD_CODE"');
+    expect(ask.prompt).toContain('"reason":"原文第一行"');
+    expect(ask.prompt).toContain('"screen":"askAgent.screen.board"');
+  });
+
+  it('已登记的码不加这颗（原因已经说得清）', () => {
+    expect(blockerOfDiag('SELF_UPDATE_FAILED', t).actions.map((action) => action.kind)).toEqual(['retry']);
+  });
+
+  it('★ 连错误对象都没有：也要有出口（复制 + 重试）', () => {
+    expect(blockerOfError(undefined, t).actions.map((action) => action.kind)).toEqual(['ask-agent', 'retry']);
+  });
+
+  it('调用方能指定屏幕与步骤（配置同步 / 具体模块）', () => {
+    const blocker = blockerOfError({ code: 'weird', message: 'x' }, t, {
+      ask: { screen: 'askAgent.screen.settings', step: 'my-unit' },
+    });
+    const ask = blocker.actions[0];
+    expect(ask?.kind).toBe('ask-agent');
+    if (ask?.kind !== 'ask-agent') return;
+    expect(ask.prompt).toContain('"screen":"askAgent.screen.settings"');
+    expect(ask.prompt).toContain('"step":"my-unit"');
+  });
+});
+
+describe('故障面出口矩阵：每个分支都有下一步', () => {
+  const ACTION_KINDS = new Set(['open-url', 'copy', 'retry', 'run-fix', 'open-market', 'ask-agent']);
+  const ERROR_CODES = [
+    'auth',
+    'auth-required',
+    'permission-denied',
+    'cli-timeout',
+    'cli-exec-failed',
+    'project-unsupported',
+    'weird',
+  ] as const;
+  const CAPABILITY_STATUSES = ['ok', 'degraded', 'missing', 'outdated', 'unchecked', 'unsupported', 'failed'] as const;
+  const NEED_STATUSES = ['ok', 'missing', 'outdated', 'unsatisfied', 'unchecked'] as const;
+
+  function allBlockers(): ModuleBlocker[] {
+    return [
+      blockerOfError(undefined, t),
+      blockerOfDiag('SELF_UPDATE_FAILED', t),
+      blockerOfDiag('NOT_REGISTERED', t),
+      ...ERROR_CODES.map((code) => blockerOfError({ code, message: 'x' } as ApiError, t)),
+      ...CAPABILITY_STATUSES.map((status) => blockerOfCapability(capability({ status }), t)),
+      ...NEED_STATUSES.map((status) =>
+        blockerOfCapability(capability({ needs: [needOf({ kind: 'bin', name: 'git', status })] }), t),
+      ),
+    ].filter((one): one is ModuleBlocker => one !== undefined);
+  }
+
+  it('★ 每个分支至少一颗动作，且动作种类都在协议里（没有一条路是死的）', () => {
+    const blockers = allBlockers();
+
+    expect(blockers.length).toBeGreaterThan(10);
+    for (const blocker of blockers) {
+      expect(blocker.actions.length, blocker.id).toBeGreaterThan(0);
+      for (const action of blocker.actions) {
+        expect(ACTION_KINDS.has(action.kind), `${blocker.id}:${action.kind}`).toBe(true);
+      }
+    }
+  });
+
+  it('★ 认不出原因的分支必须有「复制给 agent」', () => {
+    const fallbacks: readonly (ModuleBlocker | undefined)[] = [
+      blockerOfError(undefined, t),
+      blockerOfError({ code: 'weird', message: 'x' } as ApiError, t),
+      blockerOfDiag('NOT_REGISTERED', t),
+      blockerOfCapability(capability({ status: 'failed' }), t),
+    ];
+
+    for (const blocker of fallbacks) {
+      expect(blocker?.actions.some((action) => action.kind === 'ask-agent'), blocker?.id).toBe(true);
+    }
+  });
+
+  it('有确定解释的分支不硬塞「复制给 agent」', () => {
+    const known = [
+      blockerOfError({ code: 'auth-required', message: '需要登录' } as ApiError, t),
+      blockerOfDiag('SELF_UPDATE_FAILED', t),
+    ];
+
+    for (const blocker of known) {
+      expect(blocker.actions.some((action) => action.kind === 'ask-agent'), blocker.id).toBe(false);
+    }
   });
 });
