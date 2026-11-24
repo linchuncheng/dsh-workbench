@@ -136,6 +136,7 @@ export * from './host/supply/installed-sources.js';
 export * from './host/supply/lib-capabilities.js';
 export * from './host/supply/lib-install.js';
 export * from './host/supply/lib-runners.js';
+export * from './host/supply/builtin-catalog.js';
 export * from './host/supply/market-index-claim.js';
 export * from './host/supply/market-index-doc.js';
 export * from './host/supply/market-index-parse.js';

@@ -24,6 +24,7 @@ export type BundleInspectProblem =
   | 'not-a-bundle'
   | 'not-a-workbench-module'
   | 'not-a-module-or-plugin'
+  | 'module-builtin-missing'
   | 'network'
   | 'unknown';
 

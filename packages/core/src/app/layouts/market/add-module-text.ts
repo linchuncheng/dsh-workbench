@@ -273,6 +273,7 @@ const PROBLEM_KEYS: Readonly<Record<BundleInspectProblem, string>> = {
   'not-a-bundle': 'panels.market.add.problemNotBundle',
   'not-a-workbench-module': 'panels.market.add.problemNotWorkbenchModule',
   'not-a-module-or-plugin': 'panels.market.add.problemNotModuleOrPlugin',
+  'module-builtin-missing': 'panels.market.add.problemBuiltinMissing',
   network: 'panels.market.add.problemNetwork',
   unknown: 'panels.market.add.problemUnknown',
 };

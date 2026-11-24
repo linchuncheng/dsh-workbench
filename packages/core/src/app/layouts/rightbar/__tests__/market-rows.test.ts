@@ -229,7 +229,7 @@ describe('marketRows', () => {
       ]),
     )[0];
 
-    expect(row?.note).toEqual({ key: 'panels.market.needBuiltinMissing' });
+    expect(row?.note).toEqual({ key: 'panels.market.needBuiltinMissing', params: {} });
     expect(row?.canInstall).toBe(false);
   });
 

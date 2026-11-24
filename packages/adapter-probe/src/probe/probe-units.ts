@@ -4,6 +4,7 @@ import { commandNamesMatch } from './command-name.js';
 import {
   OPENCLI_TIMEOUT_MS,
   PROBE_TTL_MS,
+  builtinCommandsOf,
   buildSupplyIndex,
   NEED_KIND_SPECS,
   needIdOf,
@@ -30,7 +31,6 @@ import { probeRelease } from './release-port.js';
 import { createTimedMemo } from './probe-cache.js';
 import { probeLibs } from './probe-libs.js';
 import { cliCatalogPath } from '@dsh-workbench/adapter-runtime';
-import { readFileSync } from 'node:fs';
 import { aggregate, binStateOf, envStateOf, extensionStateOf } from './probe-verdict.js';
 
 export type {
@@ -162,30 +162,6 @@ function runtimeMismatchIn(
   return undefined;
 }
 
-function builtinCommandsOf(): ReadonlyMap<string, readonly string[]> {
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(cliCatalogPath(), 'utf8'));
-    if (!Array.isArray(parsed)) return new Map();
-    const bySite = new Map<string, string[]>();
-    for (const one of parsed) {
-      if (typeof one !== 'object' || one === null) continue;
-      const row = one as Record<string, unknown>;
-      const site = typeof row['site'] === 'string' ? row['site'] : '';
-      const name = typeof row['name'] === 'string' ? row['name'] : '';
-      if (site === '' || name === '') continue;
-      const list = bySite.get(site) ?? [];
-      list.push(name);
-      for (const alias of Array.isArray(row['aliases']) ? row['aliases'] : []) {
-        if (typeof alias === 'string' && alias !== '') list.push(alias);
-      }
-      bySite.set(site, list);
-    }
-    return bySite;
-  } catch {
-    return new Map();
-  }
-}
-
 const pendingProbes = new Map<string, Promise<UnitCapability[]>>();
 
 function cacheKeyOf(commandKey: string, units: readonly NeedProbeInput[], unit: string): string {
@@ -295,7 +271,7 @@ async function loadCapabilities(options: {
   const libProbes = probeLibs({ needs: libNeeds, seam, force, index });
   const releaseProbes = releasesOf(index, { seam, force });
   const [, , libStates, releases] = await Promise.all([binProbes, runtimeProbes, libProbes, releaseProbes]);
-  const builtin = builtinCommandsOf();
+  const builtin = builtinCommandsOf(cliCatalogPath());
 
   const runtimeProblems = runtimeMismatchOf(options.runtimeReport);
   const statesOfUnit = (unit: NeedProbeInput): NeedState[] =>

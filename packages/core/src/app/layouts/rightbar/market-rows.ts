@@ -326,7 +326,7 @@ function noteOf(
     (declared.kind === 'extension' || declared.kind === 'lib') &&
     (declared.sources ?? []).some((source) => source.kind === 'builtin');
   if (builtin && problem.status === 'missing') {
-    return { key: 'panels.market.needBuiltinMissing' };
+    return { key: 'panels.market.needBuiltinMissing', params: {} };
   }
   if (problem.provision === 'env-missing') {
     const need = manifest.needs?.find((item) => item.kind === 'extension' && item.name === problem.name);

@@ -657,6 +657,8 @@ export const zh = {
   'panels.market.add.removed': '已移除。',
   'panels.market.add.supplyPending': '该模块所需的插件会在重启后安装。',
   'panels.market.add.supplyFailed': '该模块所需的插件未安装：{reason}',
+  'panels.market.add.problemBuiltinMissing':
+    '这个模块声明的依赖有问题：需要模块作者修复（或等模块更新）。',
   'panels.market.add.notModule': '这不是工作台模块（没有 dsh.workbench 声明），不会出现在面板上。',
   'panels.market.add.removedRestart': '已卸载，重启后彻底生效。',
   'panels.market.add.remove': '移除它',

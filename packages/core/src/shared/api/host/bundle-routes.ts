@@ -1,6 +1,8 @@
 import { basename, dirname } from 'node:path';
 import type { DiagRecorder, DshHostContext } from '@dsh-workbench/shared/host';
 import {
+  builtinCommandsOf,
+  builtinMissingOf,
   declarationProblemsOf,
   declaresPackage,
   dshVersionIn,
@@ -455,8 +457,20 @@ export function bundleInspectHandler(ctx: DshHostContext): RouteHandler {
         : refusedInspection(supply.declarationRefusalOf(declared.subject, declared.raw)));
     let finalInspection = refused ?? inspection;
     if (finalInspection.status === 'accepted' && declared !== undefined) {
-      const origins = readDeclaration(declared.subject, declared.raw).manifest?.host.origins;
+      const manifest = readDeclaration(declared.subject, declared.raw).manifest;
+      const origins = manifest?.host.origins;
       if (origins !== undefined) finalInspection = { ...finalInspection, origins };
+      const catalogPath = supply.cliCatalogPath?.();
+      if (manifest !== undefined && catalogPath !== undefined) {
+        const missing = builtinMissingOf(manifest.needs, builtinCommandsOf(catalogPath));
+        if (missing.length > 0) {
+          finalInspection = {
+            status: 'refused',
+            problem: 'module-builtin-missing',
+            reason: `这个模块声明的依赖有问题：需要模块作者修复（或等模块更新）。缺少：${missing.join('、')}`,
+          };
+        }
+      }
     }
     const payload: BundleInspectionPayload = { inspection: finalInspection };
     return { ok: true, ...payload };
