@@ -26,7 +26,7 @@ describe('运行中的 dsh 与验证过的 dsh 分档', () => {
   });
 
   it('★ 缺省以常量为准：它必须和 engines.dsh 一致（由自动检查钉住）', () => {
-    expect(VERIFIED_DSH).toBe('0.2.3-alpha.2');
+    expect(VERIFIED_DSH).toBe('0.2.2-rc.2');
     expect(dshTierOf('0.2.3')).toBe('ok');
   });
 });

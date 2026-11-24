@@ -1,7 +1,7 @@
 import semver from 'semver';
 import type { PreflightHostGap } from '../supply/preflight.js';
 
-export const VERIFIED_DSH = '0.2.3-alpha.2';
+export const VERIFIED_DSH = '0.2.2-rc.2';
 
 export type DshTier = 'ok' | 'newer' | 'older' | 'unknown';
 

@@ -12,7 +12,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-input-trigger/client';
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client';
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client';
 import type {} from '@deepseek-ai/dsh-client-ui-session/client';
-import type {} from '@deepseek-ai/dsh-client-ui-session-status/client';
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client';
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client';
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client';
@@ -20,7 +19,7 @@ import type {} from '@deepseek-ai/dsh-subagent';
 import type { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client';
 import type { PropsRenderSlots, SlotLabel } from '@deepseek-ai/dsh-client-ui-slots';
 import type { SessionInput as OfficialSessionInput } from '@deepseek-ai/dsh-client-ui-conversation/client';
-import type { SessionStatus as OfficialSessionStatus } from '@deepseek-ai/dsh-client-ui-session-status/client';
+import type { SessionStatus as OfficialSessionStatus } from '@deepseek-ai/dsh-client-ui-session/client';
 import type { SessionSummary as OfficialSessionSummary } from '@deepseek-ai/dsh-api-session-controller/client';
 import type {
   WorkspaceSnapshot as OfficialWorkspaceSnapshot,
