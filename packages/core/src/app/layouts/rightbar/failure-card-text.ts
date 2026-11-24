@@ -11,7 +11,7 @@ export interface FailureCardModel {
   readonly fact: string;
   readonly fixLabel: string;
   readonly fix: string;
-  readonly copiedHint: string;
+  readonly copiedHint?: string | undefined;
 }
 
 const TITLE_KEY: Readonly<Record<InstallFailure['kind'], string>> = {
@@ -79,7 +79,6 @@ function agentCardOf(
     fact: text.fact,
     fixLabel: t(ASK_AGENT_KEY),
     fix: text.fix,
-    copiedHint: t('panels.market.failure.askAgentHint'),
     command: failure.command,
     output: failure.output,
     exitCode: failure.exitCode,

@@ -36,6 +36,7 @@ import { applyPlanFailures, declaredNotesOf, mountUnits, failureReasonOf, type U
 import { createUnitProbe } from '@/kernel/host/unit-probe';
 import { createUnitRegistry, installableUnitsOf, type HostUnit } from '@/kernel/host/unit-registry';
 import { bindRosterFacts } from '@/shared/api/host/unit-roster-facts';
+import { refusalRowsOf } from '@/shared/api/host/unit-refusals';
 import { createDraftStore, createWorkspaceStore, withLibRunners } from '@dsh-workbench/shared/host';
 import { CONFIG_SYNC_ROUTE } from '@/kernel/contract/config-sync';
 import { PROFILE_CREATE_ROUTE } from '@/kernel/contract/profile-create';
@@ -149,6 +150,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     ok: true,
     manifests: units.manifests(),
     installable: installableUnitsOf(units),
+    refusals: refusalRowsOf(units),
   });
   assembleHostUnits(units);
   ctx.inject(['workspaceRegistry'], (scoped) => {

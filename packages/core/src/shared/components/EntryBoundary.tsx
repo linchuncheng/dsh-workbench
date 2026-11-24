@@ -66,7 +66,6 @@ export class EntryBoundary extends Component<EntryBoundaryProps, EntryBoundarySt
         { type: 'button', className: 'wb-link', onClick: this.copyPrompt },
         this.state.copied ? t('askAgent.copied') : t('askAgent.copy'),
       ),
-      this.state.copied ? createElement('span', { className: styles.hint }, t('askAgent.hint')) : null,
     );
   }
 }

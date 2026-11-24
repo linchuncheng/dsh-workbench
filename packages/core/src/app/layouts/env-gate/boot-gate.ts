@@ -370,6 +370,7 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
           t,
           runtimeProfile?.bridge ?? runtimeProfileValue()?.bridge,
           snapshot.extensionDir,
+          snapshot.extensionTarget,
         ).map(
           (advice) => {
             const item = el('li', styles.bridgeLine, advice.text);

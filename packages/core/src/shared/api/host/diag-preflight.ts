@@ -41,12 +41,13 @@ function textOf(value: unknown): string | undefined {
 }
 
 function stepOf(step: PreflightSnapshot['steps'][number]): PreflightEvidenceStep {
-  return {
+  const full: PreflightEvidenceStep = {
     id: step.id,
     status: step.status,
     detail: step.detail,
     command: step.command,
   };
+  return Object.fromEntries(Object.entries(full).filter(([, value]) => value !== undefined)) as PreflightEvidenceStep;
 }
 
 export function preflightEvidenceOf(snapshot: unknown, root: string): PreflightEvidence | null {

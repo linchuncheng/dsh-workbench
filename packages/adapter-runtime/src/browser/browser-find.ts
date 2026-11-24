@@ -1,6 +1,6 @@
 import { now } from '@dsh-workbench/shared/host';
 import { BROWSER_READ_SESSION } from './browser-read.js';
-import { backgroundLine, OPENCLI_WINDOW_ENV } from '../cli/index.js';
+import { backgroundLine, installedOpencliVersion, OPENCLI_WINDOW_ENV, sessionDialectOf } from '../cli/index.js';
 import { noWrite, type Seam } from '@dsh-workbench/shared/host';
 import { asRecord, textOf } from './page-value.js';
 import { opencliResultOf } from '../cli/opencli-wire.js';
@@ -127,7 +127,9 @@ async function currentUrl(
   command: string,
   session: string,
 ): Promise<string> {
-  const line = backgroundLine(command, ['browser', session, 'get', 'url', '--window', 'background']);
+  const line = backgroundLine(command, ['browser', session, 'get', 'url', '--window', 'background'], {
+    dialect: sessionDialectOf(installedOpencliVersion()),
+  });
   try {
     const result = await seam.run({
       command: line,
@@ -202,7 +204,9 @@ async function openOnce(
   url: string,
   timeoutMs: number,
 ): Promise<string | undefined> {
-  const line = backgroundLine(command, ['browser', session, 'open', url, '--window', 'background']);
+  const line = backgroundLine(command, ['browser', session, 'open', url, '--window', 'background'], {
+    dialect: sessionDialectOf(installedOpencliVersion()),
+  });
   try {
     const result = await seam.run({
       command: line,

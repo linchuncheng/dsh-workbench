@@ -1,6 +1,12 @@
 import { now } from '@dsh-workbench/shared/host';
 import { tailLines } from '@dsh-workbench/shared/host';
-import { backgroundLine, OPENCLI_WINDOW_ENV } from '../cli/index.js';
+import {
+  backgroundLine,
+  installedOpencliVersion,
+  OPENCLI_WINDOW_ENV,
+  sessionDialectOf,
+  type SessionDialect,
+} from '../cli/index.js';
 import { noWrite, type Seam } from '@dsh-workbench/shared/host';
 import { asRecord, textOf } from './page-value.js';
 
@@ -53,6 +59,7 @@ export interface BrowserReadOptions {
   readonly settleMs?: number;
   readonly signal?: AbortSignal;
   readonly platform?: NodeJS.Platform;
+  readonly dialect?: SessionDialect;
 }
 
 function codeOf(page: unknown): string {
@@ -113,6 +120,20 @@ type Attempt =
   | { readonly kind: 'aborted' }
   | { readonly kind: 'failure'; readonly result: Omit<BrowserReadResult, 'at'> };
 
+type Settled = { readonly value: unknown } | { readonly failed: BrowserReadResult };
+
+function abortedResultOf(at: number): BrowserReadResult {
+  return { ok: false, code: 'aborted', pageCode: 'aborted', at, message: '已停止' };
+}
+
+function settledOf(attempt: Attempt, at: number): Settled {
+  if (attempt.kind === 'aborted') {
+    return { failed: abortedResultOf(at) };
+  }
+  if (attempt.kind === 'failure') return { failed: { ...attempt.result, at } };
+  return { value: attempt.value };
+}
+
 type ShellOutcome =
   | { readonly kind: 'ok'; readonly stdout: string }
   | { readonly kind: 'aborted'; readonly detail: string; readonly stderr: string }
@@ -126,10 +147,11 @@ async function shellRun(
   timeoutMs: number,
   platform?: NodeJS.Platform,
   signal?: AbortSignal,
+  dialect?: SessionDialect,
 ): Promise<ShellOutcome> {
   if (signal?.aborted === true) return { kind: 'aborted', detail: '已停止', stderr: '' };
   const result = await seam.run({
-    command: backgroundLine(command, argv, { platform }),
+    command: backgroundLine(command, argv, { ...(platform === undefined ? {} : { platform }), ...(dialect === undefined ? {} : { dialect }) }),
     intent: noWrite(),
     retry: 'safe',
     timeoutMs,
@@ -156,6 +178,7 @@ async function evalOnce(
   retry: boolean,
   platform?: NodeJS.Platform,
   signal?: AbortSignal,
+  dialect?: SessionDialect,
 ): Promise<Attempt> {
   const run = async (): Promise<Attempt> => {
     let attempt: Awaited<ReturnType<typeof shellRun>>;
@@ -167,6 +190,7 @@ async function evalOnce(
         timeoutMs,
         platform,
         signal,
+        dialect,
       );
     } catch (error) {
       return {
@@ -239,6 +263,7 @@ async function openOnce(
   timeoutMs: number,
   platform?: NodeJS.Platform,
   signal?: AbortSignal,
+  dialect?: SessionDialect,
 ): Promise<Omit<BrowserReadResult, 'at'> | undefined> {
   let attempt: Awaited<ReturnType<typeof shellRun>>;
   try {
@@ -249,6 +274,7 @@ async function openOnce(
       timeoutMs,
       platform,
       signal,
+      dialect,
     );
   } catch (error) {
     return {
@@ -283,16 +309,14 @@ export async function browserRead(options: BrowserReadOptions): Promise<BrowserR
   const retry = options.retry ?? true;
   const settleMs = options.settleMs ?? DEFAULT_SETTLE_MS;
   const platform = options.platform;
+  const dialect = options.dialect ?? sessionDialectOf(installedOpencliVersion());
   const at = now();
-  if (signal?.aborted === true) {
-    return { ok: false, code: 'aborted', pageCode: 'aborted', at, message: '已停止' };
-  }
+  if (signal?.aborted === true) return abortedResultOf(at);
+  const runEval = async (): Promise<Settled> =>
+    settledOf(await evalOnce(seam, command, session, script, timeoutMs, retryMs, retry, platform, signal, dialect), at);
 
-  const first = await evalOnce(seam, command, session, script, timeoutMs, retryMs, retry, platform, signal);
-  if (first.kind === 'aborted') {
-    return { ok: false, code: 'aborted', pageCode: 'aborted', at, message: '已停止' };
-  }
-  if (first.kind === 'failure') return { ...first.result, at };
+  const first = await runEval();
+  if ('failed' in first) return first.failed;
   let page = first.value;
 
   if (codeOf(page) === 'not-on-site') {
@@ -307,17 +331,12 @@ export async function browserRead(options: BrowserReadOptions): Promise<BrowserR
         ...(url === undefined ? {} : { helpUrl: url }),
       };
     }
-    const opened = await openOnce(seam, command, session, url, timeoutMs, platform, signal);
+    const opened = await openOnce(seam, command, session, url, timeoutMs, platform, signal, dialect);
     if (opened !== undefined) return { ...opened, at };
     await sleep(settleMs, signal);
-    if (abortedNow(signal)) {
-      return { ok: false, code: 'aborted', pageCode: 'aborted', at, message: '已停止' };
-    }
-    const second = await evalOnce(seam, command, session, script, timeoutMs, retryMs, retry, platform, signal);
-    if (second.kind === 'aborted') {
-      return { ok: false, code: 'aborted', pageCode: 'aborted', at, message: '已停止' };
-    }
-    if (second.kind === 'failure') return { ...second.result, at };
+    if (abortedNow(signal)) return abortedResultOf(at);
+    const second = await runEval();
+    if ('failed' in second) return second.failed;
     page = second.value;
     if (codeOf(page) === 'not-on-site') {
       return {

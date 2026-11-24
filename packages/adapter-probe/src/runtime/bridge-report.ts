@@ -1,9 +1,39 @@
 import { tailLines } from '@dsh-workbench/shared/host';
 import { opencliResultOf } from '@dsh-workbench/adapter-runtime';
 
-export type PreflightBridgeIssue = 'daemon' | 'extension' | 'profile' | 'stale' | 'unknown';
+export type PreflightBridgeIssue =
+  | 'daemon'
+  | 'extension'
+  | 'extension-incompatible'
+  | 'profile'
+  | 'stale'
+  | 'unknown';
 
-export const BRIDGE_ISSUE_ORDER: readonly PreflightBridgeIssue[] = ['profile', 'stale', 'daemon', 'extension', 'unknown'];
+const EXTENSION_INCOMPATIBLE = /CLI version incompatible with extension|does not report command journal support/iu;
+
+function extensionVersionOf(text: string): string | undefined {
+  const line = /^\[OK\] Extension:[^\n]*$/mu.exec(text)?.[0] ?? '';
+  return /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/.exec(line)?.[1];
+}
+
+function textFactsOf(text: string): BridgeFacts {
+  const extension = extensionVersionOf(text);
+  const daemonLine = /^\[[A-Z]+\] Daemon:[^\n]*$/mu.exec(text)?.[0] ?? '';
+  return {
+    ...(extension === undefined ? {} : { extension }),
+    ...(/^\[OK\] Extension:/m.test(text) ? { connected: true } : {}),
+    ...(/stale|!=/iu.test(daemonLine) ? { stale: true } : {}),
+  };
+}
+
+export const BRIDGE_ISSUE_ORDER: readonly PreflightBridgeIssue[] = [
+  'profile',
+  'stale',
+  'daemon',
+  'extension',
+  'extension-incompatible',
+  'unknown',
+];
 
 function jsonReportOf(text: string): BridgeReport | undefined {
   const trimmed = text.trim();
@@ -80,10 +110,11 @@ export function readBridgeReport(stdout: string): BridgeReport {
   const text = String(stdout ?? '');
   const fromJson = jsonReportOf(text);
   if (fromJson !== undefined) return fromJson;
+  const incompatible = EXTENSION_INCOMPATIBLE.test(text);
   const ok = /^\[OK\] Daemon:/m.test(text) && /^\[OK\] Extension:/m.test(text) && /^\[OK\] Connectivity:/m.test(text);
-  if (ok) {
+  if (ok && !incompatible) {
     const good = text.split('\n').find((line) => line.trim() === 'Everything looks good!');
-    return { ok: true, issues: [], detail: good?.trim() ?? tailLines(text, 1) };
+    return { ok: true, issues: [], detail: good?.trim() ?? tailLines(text, 1), facts: textFactsOf(text) };
   }
 
   const found = new Set<PreflightBridgeIssue>();
@@ -91,6 +122,7 @@ export function readBridgeReport(stdout: string): BridgeReport {
   const daemonLine = /^\[[A-Z]+\] Daemon:[^\n]*$/mu.exec(text)?.[0] ?? '';
   if (/stale|!=/iu.test(daemonLine)) found.add('stale');
   if (!/^\[OK\] Extension:/m.test(text)) found.add('extension');
+  if (incompatible) found.add('extension-incompatible');
   if (/Multiple Chrome profiles are connected/i.test(text)) found.add('profile');
   if (/Default browser profile is stale|Selected browser profile is not connected/i.test(text)) {
     found.add('stale');
@@ -98,7 +130,12 @@ export function readBridgeReport(stdout: string): BridgeReport {
   if (found.has('profile') || found.has('stale')) found.delete('extension');
   if (found.size === 0) found.add('unknown');
 
-  return { ok: false, issues: BRIDGE_ISSUE_ORDER.filter((issue) => found.has(issue)), detail: issuesSection(text) };
+  return {
+    ok: false,
+    issues: BRIDGE_ISSUE_ORDER.filter((issue) => found.has(issue)),
+    detail: issuesSection(text),
+    facts: textFactsOf(text),
+  };
 }
 
 function issuesSection(text: string): string {

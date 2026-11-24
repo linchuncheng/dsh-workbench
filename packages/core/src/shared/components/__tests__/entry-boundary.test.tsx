@@ -60,15 +60,13 @@ describe('客户端入口失败：那一块自己说清楚，别人不受影响'
     expect(rendered).toContain('wb-link');
   });
 
-  it('★ 复制成功后按钮变「已复制」，并出提示', () => {
+  it('★ 复制成功后按钮变「已复制」', () => {
     const one = boundary();
     (one as unknown as { copyPrompt(): void }).copyPrompt();
 
     return Promise.resolve().then(() => {
       expect(one.state.copied).toBe(true);
-      const rendered = JSON.stringify(renderOf(one));
-      expect(rendered).toContain('askAgent.copied');
-      expect(rendered).toContain('askAgent.hint');
+      expect(JSON.stringify(renderOf(one))).toContain('askAgent.copied');
     });
   });
 

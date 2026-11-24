@@ -1,6 +1,6 @@
 import type { Translate } from '@dsh-workbench/shared';
 import type { PreflightBridgeIssue, PreflightGuidance, PreflightHostGap, PreflightSnapshot, PreflightStep } from '@dsh-workbench/shared/host';
-import type { RuntimeProfile } from '@dsh-workbench/shared';
+import type { RuntimeBridgeFix, RuntimeProfile } from '@dsh-workbench/shared';
 import { runtimeText } from '@/shared/hooks/locale-text';
 import { hostLabel } from '@/app/layouts/host-requirement';
 
@@ -69,33 +69,38 @@ export interface BridgeAdvice {
   readonly link?: { readonly label: string; readonly href: string };
 }
 
+function adviceWithLink(text: string, link: RuntimeBridgeFix['link'] | undefined): BridgeAdvice {
+  return {
+    text,
+    ...(link === undefined ? {} : { link: { label: runtimeText(link.label), href: link.href } }),
+  };
+}
+
 export function bridgeAdvice(
   issue: PreflightBridgeIssue,
   t: Translate,
   fixes?: RuntimeProfile['bridge'],
   extensionDir?: string | undefined,
+  extensionTarget?: string | undefined,
 ): BridgeAdvice {
   const fix = fixes?.[issue];
+  if (issue === 'extension-incompatible') {
+    return adviceWithLink(
+      extensionTarget === undefined
+        ? t('env.bridge.extensionIncompatibleAny')
+        : t('env.bridge.extensionIncompatible', { version: extensionTarget }),
+      fix?.link,
+    );
+  }
   if (issue === 'extension') {
-    const store = fix?.link;
-    return {
-      text:
-        extensionDir === undefined
-          ? t('env.bridge.extensionOffline')
-          : t('env.bridge.extensionLocal', { dir: extensionDir }),
-      ...(store === undefined
-        ? {}
-        : { link: { label: runtimeText(store.label), href: store.href } }),
-    };
+    return adviceWithLink(
+      extensionDir === undefined
+        ? t('env.bridge.extensionOffline')
+        : t('env.bridge.extensionLocal', { dir: extensionDir }),
+      fix?.link,
+    );
   }
-  if (fix !== undefined) {
-    return {
-      text: runtimeText(fix.text),
-      ...(fix.link === undefined
-        ? {}
-        : { link: { label: runtimeText(fix.link.label), href: fix.link.href } }),
-    };
-  }
+  if (fix !== undefined) return adviceWithLink(runtimeText(fix.text), fix.link);
   return { text: t('env.bridge.unknown') };
 }
 
@@ -104,12 +109,13 @@ export function bridgeAdviceLines(
   t: Translate,
   fixes?: RuntimeProfile['bridge'],
   extensionDir?: string | undefined,
+  extensionTarget?: string | undefined,
 ): readonly BridgeAdvice[] {
   const listed: readonly PreflightBridgeIssue[] = issues.length === 0 ? ['unknown'] : issues;
   const seen = new Set<string>();
   const out: BridgeAdvice[] = [];
   for (const issue of listed) {
-    const advice = bridgeAdvice(issue, t, fixes, extensionDir);
+    const advice = bridgeAdvice(issue, t, fixes, extensionDir, extensionTarget);
     const key = `${advice.text}|${advice.link?.href ?? ''}`;
     if (seen.has(key)) continue;
     seen.add(key);

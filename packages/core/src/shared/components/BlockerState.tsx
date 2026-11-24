@@ -139,9 +139,6 @@ export function BlockerState({
 
       {buttonActions.length === 0 ? null : <div className={styles.actions}>{buttons}</div>}
 
-      {copied !== null && blocker.actions.some((action) => action.kind === 'ask-agent' && action.prompt === copied) ? (
-        <p className={styles.hint}>{t('askAgent.hint')}</p>
-      ) : null}
     </div>
   );
 }

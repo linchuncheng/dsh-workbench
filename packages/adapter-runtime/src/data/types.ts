@@ -1,4 +1,5 @@
 import { BROWSER_READ_SESSION, BROWSER_WRITE_SESSION, type Seam } from '@dsh-workbench/shared/host';
+import type { SessionDialect } from '../cli/opencli-session.js';
 import type { QueueWaitEvent } from './queue.js';
 
 export interface SaveBytesInput {
@@ -21,6 +22,7 @@ export interface DataReaderOptions {
   readonly sessionIdleMs?: number | undefined;
   readonly onQueue?: ((event: QueueWaitEvent) => void) | undefined;
   readonly saveBytes?: SaveBytes | undefined;
+  readonly dialectOf?: (() => SessionDialect) | undefined;
 }
 
 export function sessionOf(value: string | undefined): string {

@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
+import { jsonAt } from '../cli/json-file.js';
 import { join } from 'node:path';
 import type { PluginPlanStep } from '@dsh-workbench/shared/host';
 import { planLineOf, quoteShellArg } from '@dsh-workbench/shared/host';
@@ -28,14 +29,9 @@ function textOf(value: unknown): string {
 }
 
 export function channelVersionOf(dir: string): string | undefined {
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(join(dir, 'opencli-plugin.json'), 'utf8'));
-    if (typeof parsed !== 'object' || parsed === null) return undefined;
-    const version = textOf((parsed as Record<string, unknown>)['version']);
-    return version === '' ? undefined : version;
-  } catch {
-    return undefined;
-  }
+  const parsed = jsonAt(join(dir, 'opencli-plugin.json'));
+  const version = textOf(parsed?.['version']);
+  return version === '' ? undefined : version;
 }
 
 export function channelPluginPlan(options: {

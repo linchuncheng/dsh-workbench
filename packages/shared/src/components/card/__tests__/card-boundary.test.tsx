@@ -96,13 +96,14 @@ describe('卡片渲染崩溃：事实 + 折叠原文 + 两个出口', () => {
     expect(actions[1]?.kind).toBe('primary');
   });
 
-  it('复制成功后出提示；按钮态由外层按 copied 渲染', () => {
-    const rendered = JSON.stringify(renderOf(boundary()));
-    expect(rendered).not.toContain('askAgent.hint');
+  it('★ 复制成功后按钮自己变「已复制」，不另加一句提示', () => {
+    const before = JSON.stringify(renderOf(boundary()));
+    expect(before).toContain('askAgent.copy');
+    expect(before).not.toContain('askAgent.copied');
 
     const one = boundary();
     one.setState({ copied: true });
-    expect(JSON.stringify(renderOf(one))).toContain('askAgent.hint');
+    expect(JSON.stringify(renderOf(one))).toContain('askAgent.copied');
   });
 
   it('★ 复制走的是提示词构造器：位置 + 哪个模块 + 报错首行', async () => {

@@ -1,4 +1,5 @@
 import { productWrite, type Seam } from '@dsh-workbench/shared/host';
+import { backgroundLine, type SessionDialect } from '../cli/index.js';
 import { createSessionPool } from './session-pool.js';
 import { createSessionRegistry } from './session-registry.js';
 
@@ -14,6 +15,7 @@ export function createSessionKeeper(input: {
   readonly max: number;
   readonly registryDir?: string | undefined;
   readonly idleMs?: number | undefined;
+  readonly dialectOf?: (() => SessionDialect) | undefined;
 }): SessionKeeper {
   const inFlight = new Map<string, number>();
   const opened = new Set<string>();
@@ -22,7 +24,11 @@ export function createSessionKeeper(input: {
     if (input.seam === undefined) return;
     await input.seam
       .run({
-        argv: [input.command, 'browser', '--session', session, 'close'],
+        command: backgroundLine(
+          input.command,
+          ['browser', session, 'close'],
+          input.dialectOf === undefined ? {} : { dialect: input.dialectOf() },
+        ),
         intent: productWrite(),
         timeoutMs: 15_000,
         bestEffort: true,

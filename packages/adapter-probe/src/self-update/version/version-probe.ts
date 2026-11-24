@@ -1,5 +1,11 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { OPENCLI_SUPPORTED_RANGE, checkVersionRange } from '@dsh-workbench/shared/host';
+import {
+  OPENCLI_PIN,
+  OPENCLI_PIN_ENV,
+  OPENCLI_SUPPORTED_RANGE,
+  checkVersionRange,
+  runtimePinOf,
+} from '@dsh-workbench/shared/host';
 
 export type OpencliVersionRun =
   | { kind: 'ok'; stdout: string }
@@ -17,6 +23,7 @@ export interface VersionProbeInput {
 export interface OpencliVersionVerdict {
   readonly ok: boolean;
   readonly missing: boolean;
+  readonly behind?: boolean | undefined;
   readonly detail: string;
   readonly stalled: boolean;
 }
@@ -39,8 +46,12 @@ export async function probeOpencliVersion(input: VersionProbeInput): Promise<Ope
   if (result.kind === 'ok') {
     const detail = result.stdout.trim().split('\n')[0] ?? '';
     const version = versionOf(detail);
-    if (version !== undefined && checkVersionRange(OPENCLI_SUPPORTED_RANGE, version) === 'unsatisfied') {
-      return { ok: false, missing: true, detail: `装的是 ${version}，这段只认 ${OPENCLI_SUPPORTED_RANGE}`, stalled: false };
+    const pin = runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV);
+    if (version !== undefined && version !== pin) {
+      if (checkVersionRange(OPENCLI_SUPPORTED_RANGE, version) === 'unsatisfied') {
+        return { ok: false, missing: true, detail: `装的是 ${version}，这段只认 ${OPENCLI_SUPPORTED_RANGE}`, stalled: false };
+      }
+      return { ok: false, missing: false, behind: true, detail: `装的是 ${version}，这段固定 ${pin}`, stalled: false };
     }
     return { ok: true, missing: false, detail, stalled: false };
   }

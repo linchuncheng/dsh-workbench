@@ -86,6 +86,18 @@ export function isOpencliReady(): boolean {
   return isOpencliReadyAt(toolchainDir());
 }
 
+export function opencliPin(): string {
+  return runtimePinOf(OPENCLI_PIN, OPENCLI_PIN_ENV);
+}
+
+export function isOpencliAtPinAt(projectDir: string): boolean {
+  return packageVersionOf(join(opencliPackageDir(projectDir), 'package.json')) === opencliPin();
+}
+
+export function isOpencliAtPin(): boolean {
+  return isOpencliAtPinAt(toolchainDir());
+}
+
 export function opencliBuiltAt(projectDir: string): string | undefined {
   try {
     const parsed: unknown = JSON.parse(readFileSync(join(projectDir, '.ready.json'), 'utf8'));

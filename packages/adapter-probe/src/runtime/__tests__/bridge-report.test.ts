@@ -121,6 +121,41 @@ describe('readBridgeReport：手上的 doctor 是 JSON 还是文本', () => {
     expect(report.ok).toBe(false);
     expect(report.issues).toEqual(['unknown']);
   });
+
+  it('★★ 三行都 OK，但 Issues 里说扩展和 CLI 不兼容 → 不算过，归到 extension', () => {
+    const report = readBridgeReport(
+      [
+        'opencli v2.0.3 doctor (node v24.15.0)',
+        '',
+        '[OK] Daemon: running on port 19825 (v2.0.3)',
+        '[OK] Extension: connected (v1.0.27)',
+        '[OK] Connectivity: connected in 0.0s',
+        '',
+        'Issues:',
+        'CLI version incompatible with extension: extension v1.0.27 requires CLI <2.0.0, but CLI is v2.0.3',
+      ].join('\n'),
+    );
+
+    expect(report.ok).toBe(false);
+    expect(report.issues).toEqual(['extension-incompatible']);
+    expect(report.detail).toContain('incompatible');
+    expect(report.facts?.extension).toBe('1.0.27');
+  });
+
+  it('★ 文本报告也带 facts：扩展版本与连上了', () => {
+    const report = readBridgeReport(
+      [
+        '[OK] Daemon: running on port 19825 (v2.0.3)',
+        '[OK] Extension: connected (v1.0.27)',
+        '[OK] Connectivity: connected in 0.0s',
+        '',
+        'Everything looks good!',
+      ].join('\n'),
+    );
+
+    expect(report.ok).toBe(true);
+    expect(report.facts).toEqual({ extension: '1.0.27', connected: true });
+  });
 });
 
 describe('readBridgeReport：把 JSON 里的可用事实带出来', () => {

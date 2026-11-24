@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createSeam, type DshShell } from '@dsh-workbench/shared/host';
 import { createDataReader } from '../index.js';
 
-function readerOf() {
+type Dialect = 'flag' | 'positional';
+
+function readerOf(dialect: Dialect | (() => Dialect) = 'flag') {
   const lines: string[] = [];
   const shell = {
     resolve(request: { command?: string; argv?: readonly string[]; signal?: AbortSignal }) {
@@ -24,7 +26,14 @@ function readerOf() {
       };
     },
   } as unknown as DshShell;
-  return { reader: createDataReader({ seam: createSeam({ shell, runtimeRoot: '/tmp/wb-write-session' }), channel: false }), lines };
+  return {
+    reader: createDataReader({
+      seam: createSeam({ shell, runtimeRoot: '/tmp/wb-write-session' }),
+      channel: false,
+      dialectOf: typeof dialect === 'function' ? dialect : () => dialect,
+    }),
+    lines,
+  };
 }
 
 function recipeOf(method: 'GET' | 'POST') {
@@ -56,6 +65,29 @@ describe('写会话是用完就关，读会话留着复用', () => {
       reader.submit(recipeOf('POST')),
     ]);
 
+    expect(closes(lines)).toBe(1);
+  });
+
+  it('★ 方言每条命令现算：中途换了运行时，下一条命令跟着换', async () => {
+    let current: Dialect = 'positional';
+    const { reader, lines } = readerOf(() => current);
+    await reader.submit(recipeOf('POST'));
+
+    expect(lines.filter((line) => line.includes('--session'))).toHaveLength(0);
+
+    current = 'flag';
+    await reader.submit(recipeOf('POST'));
+
+    expect(lines.some((line) => line.includes('--session'))).toBe(true);
+  });
+
+  it('★ 1.x 的关窗也按位置参数发（不带 --session）', async () => {
+    const { reader, lines } = readerOf('positional');
+    await reader.submit(recipeOf('POST'));
+
+    const closeLine = lines.find((line) => /close['"]?\s*$/.test(line)) ?? '';
+    expect(closeLine).toContain('browser');
+    expect(closeLine).not.toContain('--session');
     expect(closes(lines)).toBe(1);
   });
 

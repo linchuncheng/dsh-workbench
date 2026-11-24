@@ -320,4 +320,73 @@ describe('createUnitManifestLoader', () => {
     expect(units.refusals().map((item) => item.unit)).toEqual(['ghost']);
     warn.mockRestore();
   });
+
+  it('★ 工作台说清哪几个模块被拒：不再空等 30 次，也不在看板上挂横幅', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { createUnitManifestLoader } = await import('../manifests');
+    const { createClientUnitRegistry } = await import('@/kernel/client/registry');
+    let calls = 0;
+    vi.stubGlobal('fetch', (url: string) => {
+      if (!String(url).includes(UNIT_MANIFESTS_ROUTE)) {
+        return Promise.resolve({ ok: false, status: 404, json: async () => ({ ok: false }) });
+      }
+      calls += 1;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          manifests: [manifest('panels')],
+          refusals: [
+            {
+              unit: 'jj-news',
+              pkg: '@pkg/module-jj-news',
+              reasons: ['dsh.workbench.apiVersion 是 1，这里只认 3'],
+            },
+          ],
+        }),
+      });
+    });
+    const load = createUnitManifestLoader({ retryDelayMs: 0, maxRetries: 5 });
+    const units = createClientUnitRegistry({ onUnknownUnit: () => load(units) });
+
+    load(units);
+    await flush();
+    units.register({ unit: 'jj-news', card: () => null });
+    for (let round = 0; round < 8; round += 1) await flush();
+
+    expect(units.manifestReadFailure()).toBeNull();
+    expect(units.refusals().map((item) => item.unit)).toEqual(['jj-news']);
+    expect(calls).toBeLessThan(5);
+    warn.mockRestore();
+  });
+
+  it('★ 老宿主不带拒绝理由：照旧重试到上限，报「读了 30 次」', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { createUnitManifestLoader } = await import('../manifests');
+    const { createClientUnitRegistry } = await import('@/kernel/client/registry');
+    let calls = 0;
+    vi.stubGlobal('fetch', (url: string) => {
+      if (!String(url).includes(UNIT_MANIFESTS_ROUTE)) {
+        return Promise.resolve({ ok: false, status: 404, json: async () => ({ ok: false }) });
+      }
+      calls += 1;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, manifests: [manifest('panels')] }),
+      });
+    });
+    const load = createUnitManifestLoader({ retryDelayMs: 0, maxRetries: 2 });
+    const units = createClientUnitRegistry({ onUnknownUnit: () => load(units) });
+
+    load(units);
+    await flush();
+    units.register({ unit: 'ghost', card: () => null });
+    for (let round = 0; round < 10; round += 1) await flush();
+
+    expect(units.manifestReadFailure()).toContain('模块清单读了 30 次都没成功');
+    expect(calls).toBeGreaterThan(1);
+    warn.mockRestore();
+  });
 });

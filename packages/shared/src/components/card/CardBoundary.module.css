@@ -7,9 +7,3 @@
 .raw {
   margin-top: var(--wb-len-4);
 }
-
-.hint {
-  margin-top: var(--wb-len-4);
-  font-size: var(--dsw-font-xxs-12-font-size);
-  color: var(--dsw-alias-label-secondary);
-}

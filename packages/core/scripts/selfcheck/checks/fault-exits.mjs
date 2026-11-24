@@ -7,7 +7,7 @@ const SURFACE_ROWS = [
   '启动页兜底卡的出口按钮|core|app/layouts/env-gate/fallback-section.ts|askAgent.copy|writeClipboard',
   '模块卡阻断|shared|api/blocker-table.ts|ask-agent|askAgentActionOf',
   '看板读失败|core|app/layouts/rightbar/BoardReadFailed.tsx|askAgentActionOf',
-  '卡片渲染崩溃|shared|components/card/CardBoundary.tsx|askAgent.copy|askAgent.hint',
+  '卡片渲染崩溃|shared|components/card/CardBoundary.tsx|askAgent.copy|askAgent.copied',
   '客户端入口失败|core|shared/components/EntryBoundary.tsx|askAgent.copy|entryPromptOf',
   '模块市场失败卡|core|app/layouts/rightbar/failure-card-text.ts|panels.market.failure.askAgent',
 ];

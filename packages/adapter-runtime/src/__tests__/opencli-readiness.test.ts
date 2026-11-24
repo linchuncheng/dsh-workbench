@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OPENCLI_PIN } from '@dsh-workbench/shared/host';
-import { isOpencliReady, isOpencliReadyAt, opencliBuiltAt, opencliReadiness, opencliReadinessAt } from '../index.js';
+import { isOpencliAtPin, isOpencliAtPinAt, isOpencliReady, isOpencliReadyAt, opencliBuiltAt, opencliReadiness, opencliReadinessAt } from '../index.js';
 
 function seedProject(projectDir: string, version: string, main: boolean): void {
   const dir = join(projectDir, 'node_modules', '@jackwener', 'opencli');
@@ -46,12 +46,20 @@ describe('opencliReadiness', () => {
     expect(verdict.detail).toContain('dist/src/main.js');
   });
 
-  it('★★ 版本在支持的范围内（1.8.8）→ 就绪：认整段，不只认 pin', () => {
+  it('★★ 版本在支持的范围内（1.8.8）→ 就绪：能用就不拦，对齐 pin 是另一回事', () => {
     const root = homeOf();
     seedCopy(root, '1.8.8', true);
     const verdict = opencliReadiness();
     expect(verdict.ready).toBe(true);
     expect(verdict.detail).toBe('1.8.8');
+    expect(isOpencliAtPin()).toBe(false);
+  });
+
+  it('★ 装的就是 pin → 对齐', () => {
+    const root = homeOf();
+    seedCopy(root, OPENCLI_PIN, true);
+    expect(isOpencliAtPin()).toBe(true);
+    expect(isOpencliAtPinAt(join(root, 'opencli', 'toolchain'))).toBe(true);
   });
 
   it('版本出了范围（0.0.1）→ 未就绪，并说清范围与实装', () => {

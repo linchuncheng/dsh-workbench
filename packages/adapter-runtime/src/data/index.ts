@@ -72,6 +72,7 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
       ? {}
       : { registryDir: options.sessionRegistryDir }),
     idleMs: options.sessionIdleMs ?? BROWSER_SESSION_IDLE_MS,
+    ...(options.dialectOf === undefined ? {} : { dialectOf: options.dialectOf }),
   });
 
   const readCommand = createCommandRead({ seam: options.seam, command });
@@ -93,6 +94,7 @@ export function createDataReader(options: DataReaderOptions = {}): DataReader {
       seam: input.seam,
       script: input.script,
       command,
+      ...(options.dialectOf === undefined ? {} : { dialect: options.dialectOf() }),
       ...(input.url === undefined ? {} : { url: input.url }),
       ...(input.loginUrl === undefined || input.loginUrl === '' ? {} : { loginUrl: input.loginUrl }),
       session: input.session,

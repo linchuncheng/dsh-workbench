@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { DshHostContext, DshToolDefinition, DshToolRegistry } from '@dsh-workbench/shared/host';
+import { UNITS_SERVICE } from '@dsh-workbench/shared/host';
 import { diagHistoryOf, DIAG_HISTORY_LIMIT, registerDiagTools } from '../diag-tool';
 import type { DiagReadResult, DiagRecord } from '@dsh-workbench/shared/host';
 
@@ -100,6 +101,31 @@ describe('诊断工具：带上启动检查快照', () => {
     expect(JSON.stringify(preflight)).not.toContain('opencli --version');
   });
 
+  it('★ 返回值能原样过一遍 JSON：没有 undefined 属性（线上工具面按这个判据收结果）', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wb-diag-json-'));
+    writeFileSync(
+      join(root, 'preflight.json'),
+      JSON.stringify({
+        phase: 'ready',
+        at: 1,
+        steps: [
+          { id: 'host', status: 'ok', detail: null },
+          { id: 'warm', status: 'warn' },
+        ],
+      }),
+    );
+    const result = await executeWith(root);
+    vi.stubEnv('DSH_WORKBENCH_HOME', '');
+    rmSync(root, { recursive: true, force: true });
+
+    expect(JSON.parse(JSON.stringify(result))).toStrictEqual(result);
+    const steps = (result['preflight'] as Record<string, unknown>)['steps'] as Array<Record<string, unknown>>;
+    expect(steps.map((step) => Object.keys(step).sort())).toEqual([
+      ['detail', 'id', 'status'],
+      ['id', 'status'],
+    ]);
+  });
+
   it('★ 快照坏了 → null（一个坏文件不该让诊断工具失败）', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wb-diag-preflight-bad-'));
     writeFileSync(join(root, 'preflight.json'), '{not json');
@@ -117,5 +143,37 @@ describe('诊断工具：带上启动检查快照', () => {
     rmSync(root, { recursive: true, force: true });
 
     expect(result['preflight']).toBeNull();
+  });
+
+  it('★ 带上工作台拒绝的模块清单：被拒的模块在诊断里一眼看见', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wb-diag-refusals-'));
+    const registered: DshToolDefinition[] = [];
+    const tools = {
+      register: (tool: DshToolDefinition) => {
+        registered.push(tool);
+        return () => undefined;
+      },
+    } as unknown as DshToolRegistry;
+    const units = {
+      refusals: () => [
+        { unit: 'jj-news', pkg: '@pkg/module-jj-news', reasons: ['dsh.workbench.apiVersion 是 1，这里只认 3'] },
+        { unit: 'ghost', reasons: ['没装进这份 profile'] },
+      ],
+    };
+    const ctx = {
+      get: (name: string) =>
+        name === 'tools' ? tools : name === UNITS_SERVICE ? units : undefined,
+    } as unknown as DshHostContext;
+    vi.stubEnv('DSH_WORKBENCH_HOME', root);
+    registerDiagTools(ctx);
+    const result = await registered[0]?.execute({}, {} as never);
+    vi.stubEnv('DSH_WORKBENCH_HOME', '');
+    rmSync(root, { recursive: true, force: true });
+
+    expect((result as { refusals: unknown }).refusals).toEqual([
+      { unit: 'jj-news', pkg: '@pkg/module-jj-news', reasons: ['dsh.workbench.apiVersion 是 1，这里只认 3'] },
+      { unit: 'ghost', reasons: ['没装进这份 profile'] },
+    ]);
+    expect(JSON.parse(JSON.stringify(result))).toStrictEqual(result);
   });
 });

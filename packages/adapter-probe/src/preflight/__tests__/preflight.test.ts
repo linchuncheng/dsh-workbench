@@ -1,8 +1,9 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { DshShell } from '@dsh-workbench/shared/host';
+import { OPENCLI_PIN } from '@dsh-workbench/shared/host';
 import { classifyFailure, createPreflight, holdToolchainLock, opencliInstallCommandDefault } from '../../index.js';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { createSeam } from '@dsh-workbench/shared/host';
@@ -25,7 +26,7 @@ describe('createPreflight', () => {
   });
 
   it('★ 自检那行在"不在"时带上原因（换根 / 换 pin / 被删，只有这行能分开）', async () => {
-    const fake = createFakeShell([{ stdout: '1.8.8\n' }, { stdout: 'ok\n' }]);
+    const fake = createFakeShell([{ stdout: `${OPENCLI_PIN}\n` }, { stdout: 'ok\n' }]);
     const preflight = createPreflight({
       seam: seamFor(fake.shell),
       installed: () => false,
@@ -38,6 +39,84 @@ describe('createPreflight', () => {
       '> 自检隔离运行时：不在（隔离副本不在；上次装到 /a/toolchain，这次看的是 /b/toolchain）（探测前）',
     );
     expect(snapshot.phase).toBe('ready');
+  });
+
+  it('★ 装的是区间内的旧版本 → 按 pin 升级，升上去才算过', async () => {
+    const { fake, preflight } = build(
+      [{ stdout: '1.8.8\n' }, { stdout: '2.0.3\n' }, { stdout: GOOD_BRIDGE_REPORT }],
+      async () => ({ ok: true, detail: 'added 1 package' }),
+      undefined,
+      () => true,
+    );
+
+    const snapshot = await preflight.run();
+
+    expect(snapshot.phase).toBe('ready');
+    expect(snapshot.steps[0]?.status).toBe('ok');
+    expect(snapshot.steps[0]?.detail).toBe('2.0.3');
+    expect(snapshot.steps[0]?.log.join('\n')).toContain('这段固定');
+    expect(fake.calls.map((call) => call.command)).toEqual([
+      "'opencli' --version",
+      "'opencli' --version",
+      "'opencli' doctor",
+    ]);
+  });
+
+  it('★ 升不上去 → 不挡启动：cli 记 warn，按现有版本继续', async () => {
+    const { preflight } = build(
+      [{ stdout: '1.8.8\n' }, { stdout: GOOD_BRIDGE_REPORT }],
+      async () => ({ ok: false, detail: '网络断了' }),
+      undefined,
+      () => true,
+    );
+
+    const snapshot = await preflight.run();
+
+    expect(snapshot.phase).toBe('ready');
+    expect(snapshot.steps[0]?.status).toBe('warn');
+    expect(snapshot.steps[0]?.detail).toContain('网络断了');
+    expect(snapshot.steps[0]?.log.join('\n')).toContain('先按现有的版本用');
+  });
+
+  it('★ 扩展版本和自带的不一致 → bridge 记 warn，不拦', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-ext-'));
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ version: '1.0.30' }));
+    const fake = createFakeShell(ALL_OK);
+    const preflight = createPreflight({ seam: seamFor(fake.shell), extensionDir: dir });
+
+    const snapshot = await preflight.run();
+    rmSync(dir, { recursive: true, force: true });
+
+    const step = snapshot.steps.find((one) => one.id === 'bridge');
+    expect(snapshot.phase).toBe('ready');
+    expect(step?.status).toBe('warn');
+    expect(step?.detail).toContain('1.0.24');
+    expect(step?.detail).toContain('1.0.30');
+  });
+
+  it('★ doctor 说扩展不兼容 → bridge 记 failed，并带上要升级到的版本', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-ext-'));
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ version: '1.0.30' }));
+    const incompatible = [
+      'opencli v2.0.3 doctor (node v24.15.0)',
+      '',
+      '[OK] Daemon: running on port 19825 (v2.0.3)',
+      '[OK] Extension: connected (v1.0.27)',
+      '[OK] Connectivity: connected in 0.0s',
+      '',
+      'Issues:',
+      'CLI version incompatible with extension: extension v1.0.27 requires CLI <2.0.0, but CLI is v2.0.3',
+    ].join('\n');
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: incompatible }]);
+    const preflight = createPreflight({ seam: seamFor(fake.shell), extensionDir: dir });
+
+    const snapshot = await preflight.run();
+    rmSync(dir, { recursive: true, force: true });
+
+    expect(snapshot.phase).toBe('ready');
+    expect(snapshot.steps.find((one) => one.id === 'bridge')?.status).toBe('failed');
+    expect(snapshot.bridgeIssues).toEqual(['extension-incompatible']);
+    expect(snapshot.extensionTarget).toBe('1.0.30');
   });
 
   it('缺 opencli → 自动安装 → 重探 → 放行；安装期间界面能拿到"正在执行的动作"', async () => {

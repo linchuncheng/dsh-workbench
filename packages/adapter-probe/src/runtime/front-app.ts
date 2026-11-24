@@ -1,5 +1,10 @@
 import type { Seam } from '@dsh-workbench/shared/host';
-import { opencliResultOf } from '@dsh-workbench/adapter-runtime';
+import {
+  backgroundLine,
+  installedOpencliVersion,
+  opencliResultOf,
+  sessionDialectOf,
+} from '@dsh-workbench/adapter-runtime';
 import { activateAppCommand, bringBackCommand, browserAppNamesOf, frontAppCommand, frontAppOf, isBrowserAppName, noWrite } from '@dsh-workbench/shared/host';
 import { currentHostOs } from './platform.js';
 
@@ -55,7 +60,11 @@ const browserAppOf = (app: string): boolean => isBrowserAppName(app);
 async function chromeCall(seam: Seam, command: string, method: string, args: string): Promise<unknown> {
   const result = await seam
     .run({
-      argv: [command, 'browser', '--session', 'workbench-probe', 'chrome', 'call', method, args],
+      command: backgroundLine(
+        command,
+        ['browser', 'workbench-probe', 'chrome', 'call', method, args],
+        { dialect: sessionDialectOf(installedOpencliVersion()) },
+      ),
       intent: noWrite(),
       timeoutMs: 10_000,
       bestEffort: true,

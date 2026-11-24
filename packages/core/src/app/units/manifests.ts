@@ -1,5 +1,5 @@
 import { apiGet, factOfRoute } from '@dsh-workbench/shared';
-import { UNIT_MANIFESTS_ROUTE, type UnitManifestsPayload } from '@/kernel/contract/unit-manifests';
+import { UNIT_MANIFESTS_ROUTE, type UnitManifestRefusal, type UnitManifestsPayload } from '@/kernel/contract/unit-manifests';
 import { subscribeFactRevision } from '@/shared/hooks/use-facts';
 import type { ClientUnitRegistry } from '@/kernel/client/registry';
 
@@ -12,6 +12,13 @@ export interface UnitManifestLoaderOptions {
 const DEFAULT_RETRY_DELAY_MS = 1000;
 
 const MANIFESTS_GAVE_UP = '模块清单读了 30 次都没成功：面板会一直是空的，检查宿主日志';
+
+function hostRefusalOf(
+  rows: readonly UnitManifestRefusal[] | undefined,
+  unit: string,
+): UnitManifestRefusal | undefined {
+  return rows?.find((one) => one.unit === unit);
+}
 
 const DEFAULT_MAX_RETRIES = 30;
 
@@ -47,7 +54,12 @@ export function createUnitManifestLoader(
           Array.isArray(response.installable) ? response.installable : undefined,
         );
         registry.setManifestReadFailure(null);
-        settled = !registry.refusals().some((item) => item.kind === 'no-manifest');
+        const missing = registry.refusals().filter((item) => item.kind === 'no-manifest');
+        const explained =
+          response.refusals === undefined
+            ? []
+            : missing.filter((item) => hostRefusalOf(response.refusals, item.unit) !== undefined);
+        settled = missing.length === 0 || explained.length === missing.length;
       }
     } finally {
       inFlight = false;

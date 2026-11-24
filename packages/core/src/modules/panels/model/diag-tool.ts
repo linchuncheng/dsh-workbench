@@ -1,8 +1,9 @@
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import type { DiagReadResult, DiagRecord, DshHostContext, DshToolDefinition } from '@dsh-workbench/shared/host';
-import { diagSummary, workbenchRoot } from '@dsh-workbench/shared/host';
+import { diagSummary, UNITS_SERVICE, workbenchRoot } from '@dsh-workbench/shared/host';
 import { diagRoutesOf } from '@/shared/api/host/diag-routes';
+import { refusalRowsOf, type UnitRefusalRow } from '@/shared/api/host/unit-refusals';
 import { preflightEvidenceOf, readPreflightSnapshot } from '@/shared/api/host/diag-preflight';
 import { OUTPUT } from './diy-context';
 import { toolRegistryOf } from './tool-registry-guard';
@@ -62,10 +63,13 @@ export function registerDiagTools(ctx: DshHostContext): Array<() => void> {
       } catch (error) {
         ctx.logger?.warn?.(`[dsh-workbench] 读启动检查快照失败：${String(error)}`);
       }
+      const units = ctx.get(UNITS_SERVICE) as { refusals(): readonly UnitRefusalRow[] } | undefined;
+      const refusals = units === undefined ? [] : refusalRowsOf(units);
       const output = {
         counts: summary.counts,
         shown: summary.total,
         records: summary.records,
+        ...(refusals.length === 0 ? {} : { refusals }),
         preflight,
         ...(history === undefined ? {} : { history: { day, ...history } }),
       };

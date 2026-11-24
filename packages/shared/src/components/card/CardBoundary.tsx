@@ -149,13 +149,12 @@ export class CardBoundary extends Component<CardBoundaryProps, CardBoundaryState
               },
               {
                 key: 'ask-agent',
-                label: this.props.t('askAgent.copy'),
+                label: this.props.t(copied ? 'askAgent.copied' : 'askAgent.copy'),
                 kind: 'primary',
                 onClick: this.copyPrompt,
               },
             ]}
           />
-          {copied ? <p className={styles.hint}>{this.props.t('askAgent.hint')}</p> : null}
         </div>
       </Note>
     );

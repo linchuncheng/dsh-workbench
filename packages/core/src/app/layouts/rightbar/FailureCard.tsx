@@ -71,7 +71,7 @@ export function FailureCard({
           </Button>
         ) : null}
       </div>
-      {copied ? <p className={styles.hint}>{model.copiedHint}</p> : null}
+      {copied && model.copiedHint !== undefined ? <p className={styles.hint}>{model.copiedHint}</p> : null}
       {open && hasOutput ? (
         <TerminalBlock
           command={model.command}

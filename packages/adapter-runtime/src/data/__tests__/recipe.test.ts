@@ -17,7 +17,7 @@ const RECIPE: RequestRecipe = {
 
 function readerOf(plan: Parameters<typeof createFakeShell>[0]) {
   const fake = createFakeShell(plan);
-  return { reader: createDataReader({ seam: seamFor(fake.shell), channel: false }), fake };
+  return { reader: createDataReader({ seam: seamFor(fake.shell), channel: false, dialectOf: () => 'flag' }), fake };
 }
 
 describe('DataReader.request · 配方读', () => {

@@ -1,5 +1,7 @@
+
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
 import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, WARM_TIMEOUT_MS, hostOsOf, now, productWrite, quoteShellArgFor, tailLines, type Seam } from '@dsh-workbench/shared/host';
+import { bundledExtensionVersion, canWarm, createBridgeProbe, extensionDriftOf, type BridgeVerdict } from './preflight-bridge.js';
 import { opencliCommandLine, OPENCLI_SITE_SESSION_ENV, OPENCLI_WINDOW_ENV } from '@dsh-workbench/adapter-runtime';
 import { classifyFailure } from './preflight-failure.js';
 import { notePreflightFailed, notePreflightHold } from './preflight-note.js';
@@ -29,8 +31,6 @@ import type {
   PreflightSnapshot,
   PreflightStep,
 } from '@dsh-workbench/shared/host';
-import { readBridgeReport, type PreflightBridgeIssue } from '../runtime/bridge-report.js';
-import { rememberBridgeFacts } from '../runtime/bridge-facts.js';
 export { BRIDGE_ISSUE_ORDER, readBridgeReport } from '../runtime/bridge-report.js';
 export type { PreflightBridgeIssue } from '../runtime/bridge-report.js';
 export type { PreflightDiyGap, PreflightHostGap, PreflightHostStanding, PreflightSnapshot, PreflightStep } from '@dsh-workbench/shared/host';
@@ -44,19 +44,7 @@ export function opencliInstallCommandDefault(): string {
   return opencliInstallCommand();
 }
 
-const WARMABLE_BRIDGE_ISSUES: readonly PreflightBridgeIssue[] = ['daemon', 'stale'];
-
-export interface BridgeVerdict {
-  readonly ok: boolean;
-  readonly detail: string;
-  readonly issues: readonly PreflightBridgeIssue[];
-  readonly command?: string | undefined;
-  readonly stalled?: boolean | undefined;
-}
-
-export function canWarm(bridge: { ok: boolean; issues: readonly PreflightBridgeIssue[] }): boolean {
-  return bridge.ok || bridge.issues.every((issue) => WARMABLE_BRIDGE_ISSUES.includes(issue));
-}
+export { canWarm, type BridgeVerdict } from './preflight-bridge.js';
 
 export function createPreflight(options: {
   seam: Seam;
@@ -134,7 +122,6 @@ export function createPreflight(options: {
   };
   let running: Promise<PreflightSnapshot> | null = null;
   let shellStalled = false;
-  let daemonHealed = false;
 
   function set(next: Partial<PreflightSnapshot> & { steps?: PreflightStep[] }): PreflightSnapshot {
     if (next.phase === 'failed') {
@@ -216,34 +203,13 @@ export function createPreflight(options: {
     });
   }
 
-  async function probeBridge(): Promise<BridgeVerdict> {
-    const result = await exec('bridge', `${commandToken} doctor`, PREFLIGHT_DOCTOR_TIMEOUT_MS);
-    if (result.kind === 'stalled') {
-      return { ok: false, detail: result.detail, issues: ['unknown'], stalled: true };
-    }
-    if (result.kind !== 'ok') return { ok: false, detail: result.detail, issues: ['unknown'] };
-    const report = readBridgeReport(result.stdout);
-    rememberBridgeFacts(report.facts);
-    if (report.ok) return report;
-    const healed = await restartStaleDaemon(report);
-    if (healed !== undefined) return healed;
-    return { ...report, command: bridgeFixCommand(command, report.issues, platform) };
-  }
-
-  async function restartStaleDaemon(report: { ok: boolean; issues: readonly PreflightBridgeIssue[] }): Promise<BridgeVerdict | undefined> {
-    if (daemonHealed) return undefined;
-    if (!report.issues.includes('stale')) return undefined;
-    daemonHealed = true;
-    appendLog('bridge', '先停旧 daemon 再起新的：版本不一致时 restart 顶不掉占着端口的那一个');
-    await exec('bridge', `${commandToken} daemon stop`, PREFLIGHT_DOCTOR_TIMEOUT_MS, 'never');
-    const started = await exec('bridge', `${commandToken} daemon restart`, PREFLIGHT_DOCTOR_TIMEOUT_MS, 'never');
-    if (started.kind !== 'ok') return undefined;
-    const again = await exec('bridge', `${commandToken} doctor`, PREFLIGHT_DOCTOR_TIMEOUT_MS);
-    if (again.kind !== 'ok') return undefined;
-    const healed = readBridgeReport(again.stdout);
-    rememberBridgeFacts(healed.facts);
-    return healed.ok ? healed : { ...healed, command: bridgeFixCommand(command, healed.issues, platform) };
-  }
+  const probeBridge = createBridgeProbe({
+    doctor: () => exec('bridge', `${commandToken} doctor`, PREFLIGHT_DOCTOR_TIMEOUT_MS),
+    stop: () => exec('bridge', `${commandToken} daemon stop`, PREFLIGHT_DOCTOR_TIMEOUT_MS, 'never'),
+    restart: () => exec('bridge', `${commandToken} daemon restart`, PREFLIGHT_DOCTOR_TIMEOUT_MS, 'never'),
+    log: (line) => appendLog('bridge', line),
+    fixCommand: (issues) => bridgeFixCommand(command, issues, platform),
+  });
 
   async function installOpencli(): Promise<{ ok: boolean; detail: string }> {
     if (options.install !== undefined) {
@@ -402,7 +368,8 @@ export function createPreflight(options: {
         patchStep('cli', { status: 'failed', detail: version.detail, action: undefined });
         return hostFailure(version.detail);
       }
-      if (!version.ok && !version.missing) {
+      const behind = version.behind === true;
+      if (!version.ok && !version.missing && !behind) {
         patchStep('cli', { status: 'failed', detail: version.detail, action: undefined });
         return set({
           phase: 'failed',
@@ -411,50 +378,72 @@ export function createPreflight(options: {
           guidance: 'shell',
         });
       }
+      let keptOld = false;
       if (!version.ok) {
         appendLog('cli', `> 体检为何要装：${version.detail}`);
-        if (toolchain?.npmMissing === true && installCommand.trim().startsWith('npm ')) {
-          patchStep('cli', { status: 'failed', detail: '没有 npm：装不了 opencli（只影响 opencli 安装）' });
-          return set({
-            phase: 'failed',
-            error: '没有 npm：装不了 opencli（只影响 opencli 安装）',
-            failure: 'missing',
-            guidance: 'install',
-          });
-        }
-        set({ phase: 'installing' });
-        patchStep('cli', { status: 'running', action: '安装 opencli', command: installCommand });
-        const installed = await installOpencli();
-        if (!installed.ok) {
+        const keepOld = (detail: string, command?: string): void => {
+          keptOld = true;
+          appendLog('cli', `> 先按现有的版本用：${detail}`);
           patchStep('cli', {
-            status: 'failed',
-            detail: installed.detail,
-            command: installCommand,
+            status: 'warn',
+            detail: `升级没成：${detail}`,
+            ...(command === undefined ? {} : { command }),
           });
-          return set({
-            phase: 'failed',
-            error: installed.detail,
-            failure: classifyFailure(installed.detail),
-            guidance: 'install',
-          });
-        }
-        patchStep('cli', { status: 'running', action: '检查 opencli 版本' });
-        version = await probeVersion();
-        if (version.stalled) {
-          patchStep('cli', { status: 'failed', detail: version.detail, action: undefined });
-          return hostFailure(version.detail);
-        }
-        if (!version.ok) {
-          patchStep('cli', { status: 'failed', detail: version.detail, command: installCommand });
-          return set({
-            phase: 'failed',
-            error: version.detail,
-            failure: classifyFailure(version.detail),
-            guidance: 'path',
-          });
+        };
+        if (toolchain?.npmMissing === true && installCommand.trim().startsWith('npm ')) {
+          const detail = '没有 npm：装不了 opencli（只影响 opencli 安装）';
+          if (!behind) {
+            patchStep('cli', { status: 'failed', detail });
+            return set({
+              phase: 'failed',
+              error: detail,
+              failure: 'missing',
+              guidance: 'install',
+            });
+          }
+          keepOld(detail);
+        } else {
+          set({ phase: 'installing' });
+          patchStep('cli', { status: 'running', action: behind ? '升级 opencli' : '安装 opencli', command: installCommand });
+          const installed = await installOpencli();
+          if (!installed.ok) {
+            if (!behind) {
+              patchStep('cli', {
+                status: 'failed',
+                detail: installed.detail,
+                command: installCommand,
+              });
+              return set({
+                phase: 'failed',
+                error: installed.detail,
+                failure: classifyFailure(installed.detail),
+                guidance: 'install',
+              });
+            }
+            keepOld(installed.detail, installCommand);
+          } else {
+            patchStep('cli', { status: 'running', action: '检查 opencli 版本' });
+            version = await probeVersion();
+            if (version.stalled) {
+              patchStep('cli', { status: 'failed', detail: version.detail, action: undefined });
+              return hostFailure(version.detail);
+            }
+            if (!version.ok) {
+              if (!behind) {
+                patchStep('cli', { status: 'failed', detail: version.detail, command: installCommand });
+                return set({
+                  phase: 'failed',
+                  error: version.detail,
+                  failure: classifyFailure(version.detail),
+                  guidance: 'path',
+                });
+              }
+              keepOld(version.detail, installCommand);
+            }
+          }
         }
       }
-      patchStep('cli', { status: 'ok', detail: version.detail, action: undefined });
+      if (!keptOld) patchStep('cli', { status: 'ok', detail: version.detail, action: undefined });
     }
 
     const keptBridge = previous.get('bridge');
@@ -476,10 +465,14 @@ export function createPreflight(options: {
       await options.desktopBrowser.observe().catch(() => undefined);
     }
     const healable = !bridge.ok && warmReads().length > 0 && canWarm(bridge);
+    const drift = bridge.ok
+      ? extensionDriftOf(bridge.facts?.extension, bundledExtensionVersion(options.extensionDir))
+      : undefined;
+    const incompatible = bridge.issues.includes('extension-incompatible');
     if (!healable) {
       patchStep('bridge', {
-        status: bridge.ok ? 'ok' : 'warn',
-        detail: bridge.detail,
+        status: bridge.ok ? (drift === undefined ? 'ok' : 'warn') : incompatible ? 'failed' : 'warn',
+        detail: drift === undefined ? bridge.detail : [bridge.detail, drift].filter((one) => one !== '').join(' · '),
         action: undefined,
         ...(bridge.command === undefined ? {} : { command: bridge.command }),
       });
@@ -491,9 +484,13 @@ export function createPreflight(options: {
     logger?.warn?.(
       `[dsh-workbench] 环境体检：${current.steps.map((item) => `${item.id}=${item.status}`).join(' ')}`,
     );
+    const extensionTarget = incompatible
+      ? bundledExtensionVersion(options.extensionDir)
+      : undefined;
     const ready = set({
       phase: 'ready',
       ...(settled.ok ? {} : { bridgeIssues: settled.issues }),
+      ...(extensionTarget === undefined ? {} : { extensionTarget }),
       ...(host.gap === undefined ? {} : { hostGap: host.gap }),
       ...(host.facts === undefined ? {} : { hostFacts: host.facts }),
       ...(diyGap === undefined ? {} : { diyGap }),

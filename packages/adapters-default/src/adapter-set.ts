@@ -6,7 +6,9 @@ import {
   createDataReader,
   createGitReader,
   createLibReader,
+  installedOpencliVersion,
   opencliCommandOf,
+  sessionDialectOf,
   sessionStateDir,
   type QueueWaitEvent,
   type SaveBytesInput,
@@ -67,6 +69,7 @@ export function createAdapterSet(ctx: DshHostContext, options: DefaultAdapterSet
     data: createDataReader({
       seam,
       command: opencli.command,
+      dialectOf: () => sessionDialectOf(installedOpencliVersion()),
       sessionRegistryDir: sessionStateDir(),
       ...(onQueue === undefined ? {} : { onQueue }),
       ...(saveBytes === undefined ? {} : { saveBytes }),

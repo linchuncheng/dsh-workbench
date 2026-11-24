@@ -38,7 +38,7 @@ function fakeShell(plan: readonly Step[]) {
   return { shell: shell as never, seam, commands, calls };
 }
 
-const FAST = { retryMs: 1, settleMs: 1, timeoutMs: 50 } as const;
+const FAST = { retryMs: 1, settleMs: 1, timeoutMs: 50, dialect: 'flag' } as const;
 const script = 'return 1';
 const URL = 'https://example.test/wallet';
 
@@ -51,6 +51,14 @@ describe('browserRead · 读成功', () => {
     expect(out.code).toBe('ok');
     expect(out.value).toEqual({ ok: true, n: 3 });
     expect(commands[0]).toContain(`'browser' '--session' '${BROWSER_READ_SESSION}' 'eval'`);
+  });
+
+  it('★ opencli 1.x：会话走位置参数，不发 --session（1.8.8 会直接拒）', async () => {
+    const { seam, commands } = fakeShell([{ stdout: JSON.stringify({ ok: true }) }]);
+    await browserRead({ seam, script, url: URL, ...FAST, dialect: 'positional' });
+
+    expect(commands[0]).toContain(`'browser' '${BROWSER_READ_SESSION}' 'eval'`);
+    expect(commands[0]).not.toContain('--session');
   });
 
   it('脚本没回 ok 字段（例如直接回一个数）也算读到了', async () => {

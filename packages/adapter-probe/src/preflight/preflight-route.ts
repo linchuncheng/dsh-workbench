@@ -4,7 +4,7 @@ import type { RuntimeCapabilities } from '@dsh-workbench/shared';
 import type { DiagRecorder, DshHostContext } from '@dsh-workbench/shared/host';
 import type { RouteTable } from '@dsh-workbench/shared/host';
 import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, VERIFIED_DSH, dshHome, dshHostGapOf, dshTierOf, dshVersionFrom, hostOsOf, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
-import { isOpencliReady, isOpencliReadyAt, opencliBuiltAt, opencliPackageDir, opencliReadinessAt, storeDirFor, toolchainDir } from '@dsh-workbench/adapter-runtime';
+import { isOpencliAtPin, isOpencliAtPinAt, isOpencliReady, opencliBuiltAt, opencliPackageDir, opencliReadinessAt, storeDirFor, toolchainDir } from '@dsh-workbench/adapter-runtime';
 import { WAKE_BROWSER_ROUTE } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 import { runBootstrapCommand } from '../runtime/bootstrap-run.js';
 import { createDiyPresetProbe, DIY_UPGRADE_COMMAND } from './diy-preset-health.js';
@@ -157,7 +157,7 @@ export function registerPreflight(input: {
     withToolchainLock: (run) => holdToolchainLock(toolchainDir(), run).catch(() => run()),
     install: () =>
       holdToolchainLock(toolchainDir(), async () => {
-        if (isOpencliReady()) return { ok: true, detail: '另一个实例已经装好，不再重装' };
+        if (isOpencliAtPin()) return { ok: true, detail: '另一个实例已经装好，不再重装' };
         const store = storeDirFor(toolchainDir());
         const installed = await installIsolatedRuntime({
           liveDir: toolchainDir(),
@@ -167,7 +167,7 @@ export function registerPreflight(input: {
               timeoutMs: PREFLIGHT_INSTALL_TIMEOUT_MS,
               seam: input.seam,
             }),
-          ready: (dir) => isOpencliReadyAt(dir),
+          ready: (dir) => isOpencliAtPinAt(dir),
           describe: (dir) => describeToolchain(dir, opencliPackageDir(dir)),
           ...(installLog === undefined ? {} : { log: installLog }),
         });

@@ -56,6 +56,7 @@ export interface PreflightSnapshot {
   readonly failure?: PreflightFailure;
   readonly guidance?: PreflightGuidance;
   readonly bridgeIssues?: readonly PreflightBridgeIssue[];
+  readonly extensionTarget?: string;
   readonly hostGap?: PreflightHostGap;
   readonly hostFacts?: PreflightHostFacts;
   readonly paths?: PreflightPaths;
