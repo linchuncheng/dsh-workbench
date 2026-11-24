@@ -109,8 +109,9 @@ after the release build, `packages/core/CHANGELOG.md` (shipped with
 
 `compat-watch` 每 6 小时把 Desktop / Chrome for Testing / opencli 的 latest 与
 `scripts/desktop-smoke/fixture.json` 里的固定版本比较；漂了会开 `compat` issue。需要跑桌面 smoke 的
-required 路径用 fixture 里的固定版本（Desktop 用 ETag 校验，Chrome / opencli 用版本号校验）；升级
-fixture 只走独立 bump PR，不和产品改动混在一起。
+required 路径用 fixture 里的固定版本（Desktop 比两样：下载地址的 ETag，和 `content-disposition` 里的
+版本号——上游可能只改文件名、产物字节不变；Chrome / opencli 用版本号校验）；升级 fixture 只走独立
+bump PR，不和产品改动混在一起。
 
 ## Documentation facts
 

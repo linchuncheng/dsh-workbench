@@ -28,14 +28,22 @@ const opencliAsset = /opencli-extension-v[0-9.]+\.zip/u.exec(opencliAssets)?.[0]
 
 const desktopMac = await headDesktop(FIXTURE.desktop.macosArm64.url);
 const desktopWin = await headDesktop(FIXTURE.desktop.windowsX64.url);
-const desktopChanged =
+const desktopVersion = desktopMac.version || desktopWin.version;
+const desktopVersionChanged = desktopVersion !== '' && desktopVersion !== FIXTURE.desktop.version;
+const desktopEtagChanged =
   desktopMac.etag !== FIXTURE.desktop.macosArm64.etag || desktopWin.etag !== FIXTURE.desktop.windowsX64.etag;
+const desktopChanged = desktopEtagChanged || desktopVersionChanged;
 const browserChanged =
   cftMeta.channels.Stable.version !== FIXTURE.chromeForTesting.version ||
   opencliTag !== FIXTURE.opencliExtension.tag ||
   opencliAsset !== FIXTURE.opencliExtension.asset;
 const changes = [];
 
+if (desktopVersionChanged) {
+  changes.push(
+    `desktop version: ${FIXTURE.desktop.version} -> ${desktopVersion}（产物 ETag ${desktopEtagChanged ? '也变了' : '没变'}）`,
+  );
+}
 if (desktopMac.etag !== FIXTURE.desktop.macosArm64.etag) changes.push(`desktop macos: ${desktopMac.etag}`);
 if (desktopWin.etag !== FIXTURE.desktop.windowsX64.etag) changes.push(`desktop windows: ${desktopWin.etag}`);
 if (cftMeta.channels.Stable.version !== FIXTURE.chromeForTesting.version) {
@@ -52,7 +60,9 @@ const result = {
   changes,
   desktop: {
     pinnedVersion: FIXTURE.desktop.version,
-    latestVersion: desktopMac.version || desktopWin.version,
+    latestVersion: desktopVersion,
+    versionChanged: desktopVersionChanged,
+    etagChanged: desktopEtagChanged,
     macos: { pinnedEtag: FIXTURE.desktop.macosArm64.etag, latestEtag: desktopMac.etag, url: desktopMac.url },
     windows: { pinnedEtag: FIXTURE.desktop.windowsX64.etag, latestEtag: desktopWin.etag, url: desktopWin.url },
   },
