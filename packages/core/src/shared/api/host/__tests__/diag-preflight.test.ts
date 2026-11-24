@@ -48,7 +48,7 @@ describe('启动检查摘要（给 agent 的症状，不带日志）', () => {
     expect(evidence?.facts).toMatchObject({ version: '0.2.2' });
     expect(evidence?.paths).toMatchObject({ workbenchRoot: '/tmp/wb' });
     expect(evidence?.bridgeIssues).toEqual(['extension']);
-    expect(evidence?.evidence).toBe('/tmp/wb/preflight.json');
+    expect(evidence?.evidence).toBe(path.join('/tmp/wb', 'preflight.json'));
     expect(JSON.stringify(evidence)).not.toContain('第一行');
   });
 
