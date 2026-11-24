@@ -730,11 +730,19 @@ export async function run() {
         if (pluginName === '' || declared.length === 0) return;
         const builtIn = catalog?.get(pluginName);
         const installed = pluginCommandsIn(pluginDirOf(pluginName));
-        if (builtIn !== undefined && installed === undefined && (plugin?.sources ?? []).length === 0) {
+        const builtinSource = (plugin?.sources ?? []).some((source) => source?.kind === 'builtin');
+        if (builtinSource) {
+          if (builtIn === undefined) {
+            problems.push(
+              `${name}: needs 里第 ${index} 条 extension（${pluginName}）声明了 sources: builtin，但这份 opencli 清单里没有 ${pluginName} —— ` +
+                `版本旧或安装不完整；升级 opencli 再发布，或把版本要求写进 need.version`,
+            );
+          }
+        } else if (builtIn !== undefined && installed === undefined && (plugin?.sources ?? []).length === 0) {
           problems.push(
-            `${name}: needs 里第 ${index} 条 extension（${pluginName}）是 opencli 自带站点，不是可安装插件 —— ` +
-              `没有 sources 时工作台只认已装插件，会一直显示「已装插件里没有 ${pluginName}」和「这个模块没有声明安装方式」。` +
-              `做法：删掉这条 need，直接调 ${pluginName} 的站点命令；确实要安装时改成插件并写 sources`,
+            `${name}: needs 里第 ${index} 条 extension（${pluginName}）是 opencli 自带站点，但没写 sources —— ` +
+              `不写来源时工作台只认已装插件，会一直显示「已装插件里没有 ${pluginName}」和「这个模块没有声明安装方式」。` +
+              `做法：声明它由运行时自带，写 sources: [{ "kind": "builtin" }]`,
           );
         }
         if (builtIn === undefined && installed === undefined) return;

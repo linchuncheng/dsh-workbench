@@ -48,6 +48,7 @@ export interface MarketNote {
     | 'panels.market.badSource'
     | 'panels.market.needBinary'
     | 'panels.market.needLib'
+    | 'panels.market.needBuiltinMissing'
     | 'panels.market.moduleRefused'
     | 'panels.market.moduleRestartHint'
     | 'panels.market.pluginAlsoKnownAs'

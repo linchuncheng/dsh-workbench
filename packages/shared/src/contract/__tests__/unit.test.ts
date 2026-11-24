@@ -37,6 +37,13 @@ describe('provisionableNeedsOf（缺来源时那条回退口径，宿主与浏�
     expect(provisionableNeedsOf(manifest())).toEqual([]);
   });
 
+  it('★ 只声明「运行时自带」的 extension 不算供给 —— 宿主不该去装它', () => {
+    const needs: Need[] = [
+      { kind: 'extension', runtime: 'opencli', name: 'zhihu', purpose: '测试', sources: [{ kind: 'builtin' }] },
+    ];
+    expect(provisionableNeedsOf(manifest(needs))).toEqual([]);
+  });
+
   it('needsOf 没写就是空表', () => {
     expect(needsOf(manifest())).toEqual([]);
   });

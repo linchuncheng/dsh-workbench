@@ -269,6 +269,8 @@ export const en: Record<keyof WorkbenchMessages, string> = {
   'panels.market.needLib': 'Install the library {name} first.',
   'panels.market.localMark': 'local',
   'panels.market.noSource': 'This module does not declare an install method; handle it manually.',
+  'panels.market.needBuiltinMissing':
+    'This module declares a broken dependency: the module author needs to fix it (or wait for a module update).',
   'panels.market.badSource': 'The install method is incomplete; handle it manually.',
   'panels.market.empty': 'No modules available to install yet. Add a module source or refresh and try again.',
   'panels.market.updateAllPlugins': 'Update all',

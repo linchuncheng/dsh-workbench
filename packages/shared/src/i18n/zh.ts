@@ -265,6 +265,7 @@ export const zh = {
   'panels.market.needLib': '请先安装库 {name}。',
   'panels.market.localMark': '本地',
   'panels.market.noSource': '这个模块没有声明安装方式，只能手动处理。',
+  'panels.market.needBuiltinMissing': '这个模块声明的依赖有问题：需要模块作者修复（或等模块更新）。',
   'panels.market.badSource': '安装方式不完整，只能手动处理。',
   'panels.market.empty': '还没有可安装的模块。请添加模块来源或刷新后重试。',
   'panels.market.updateAllPlugins': '全部更新',

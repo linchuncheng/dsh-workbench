@@ -32,7 +32,7 @@ export const SHARED_DOT: Readonly<
 };
 
 export interface SharedSource {
-  readonly kind: 'npm' | 'git' | 'local';
+  readonly kind: 'npm' | 'git' | 'local' | 'builtin';
   readonly text: string;
   readonly code: boolean;
   readonly registry?: string;
@@ -61,6 +61,7 @@ function sharedSourceOf(need: ExtensionNeed | LibNeed): SharedSource | undefined
     const text = source.ref === undefined ? source.url : `${source.url}#${source.ref}`;
     return { kind: 'git', text, code: true };
   }
+  if (source.kind === 'builtin') return { kind: 'builtin', text: '运行时自带', code: false };
   const text = source.path?.trim() ?? (source.env === undefined ? '' : `$${source.env}`);
   if (text === '') return undefined;
   return { kind: 'local', text, code: false };

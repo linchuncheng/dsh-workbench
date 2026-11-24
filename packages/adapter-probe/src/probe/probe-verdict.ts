@@ -70,6 +70,7 @@ export function extensionStateOf(options: {
   readonly need: ExtensionNeed;
   readonly hit?: { readonly commands?: unknown } | undefined;
   readonly failure?: string | undefined;
+  readonly builtin?: boolean | undefined;
   readonly command: string;
   readonly release?: PluginRelease | undefined;
   readonly sources: readonly SupplySource[];
@@ -79,6 +80,14 @@ export function extensionStateOf(options: {
     return { ...base, status: 'unchecked', detail: options.failure };
   }
   if (options.hit === undefined) {
+    if (options.builtin === true) {
+      return {
+        ...base,
+        status: 'missing',
+        detail: `${options.command} 这份清单里没有 ${options.need.name}（运行时版本旧或安装不完整）`,
+        provision: 'ready',
+      };
+    }
     const resolved = firstResolvable(options.need, options.command, options.sources);
     return {
       ...base,
