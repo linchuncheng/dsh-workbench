@@ -109,6 +109,7 @@ export function resolvePluginSource(
   if (source === undefined) return { ok: false, problem: 'not-declared' };
 
   const command = options.command ?? 'opencli';
+  if (source.kind === 'builtin') return { ok: false, problem: 'not-declared' };
   if (source.kind === 'git') {
     const url = source.url.trim();
     return url === '' ? { ok: false, problem: 'malformed' } : installOne(command, url);

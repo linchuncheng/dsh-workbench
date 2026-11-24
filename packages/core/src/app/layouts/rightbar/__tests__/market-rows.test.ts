@@ -221,6 +221,18 @@ describe('marketRows', () => {
     );
   });
 
+  it('★ 声明由运行时自带、但这份运行时没有 → 说清楚是模块的问题', () => {
+    const row = marketRows(
+      [unit('issues', [extensionNeedOf('zhihu', { runtime: 'opencli', sources: [{ kind: 'builtin' }] })])],
+      capsOf('issues', 'missing', [
+        needStateOf(extensionNeedOf('zhihu', { sources: [{ kind: 'builtin' }] }), 'missing', { provision: 'ready' }),
+      ]),
+    )[0];
+
+    expect(row?.note).toEqual({ key: 'panels.market.needBuiltinMissing', params: {} });
+    expect(row?.canInstall).toBe(false);
+  });
+
   it('已装时不给"点不动"的理由（那是未装才有的问题）', () => {
     const row = marketRows(
       [unit('issues')],

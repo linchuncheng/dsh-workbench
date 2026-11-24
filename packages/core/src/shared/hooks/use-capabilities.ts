@@ -117,16 +117,33 @@ async function fetchAll(force: boolean): Promise<CapabilityMap | null> {
   return Object.fromEntries(response.units.map((unit) => [unit.unit, unit]));
 }
 
+function sameNeeds(left: CapabilityPayload['needs'], right: CapabilityPayload['needs']): boolean {
+  if (left.length !== right.length) return false;
+  const keyOf = (need: CapabilityPayload['needs'][number]): string => `${need.kind}:${need.name}`;
+  const leftKeys = left.map(keyOf).sort();
+  const rightKeys = right.map(keyOf).sort();
+  return leftKeys.every((value, index) => value === rightKeys[index]);
+}
+
 function keepConclusion(previous: CapabilityMap | null, next: CapabilityMap): CapabilityMap {
   if (previous === null) return next;
   let merged: CapabilityMap | null = null;
   for (const [unit, payload] of Object.entries(next)) {
     const before = previous[unit];
     if (payload.status !== 'unchecked' || before === undefined || before.status === 'unchecked') continue;
+    if (!sameNeeds(before.needs, payload.needs)) continue;
     merged ??= { ...next };
     merged[unit] = before;
   }
   return merged ?? next;
+}
+
+export function dropConclusion(unit: string): void {
+  const current = capabilityValue();
+  if (current === null || current[unit] === undefined) return;
+  const next = { ...current };
+  delete next[unit];
+  setCapabilities(next);
 }
 
 export function publishCapability(result: CapabilityMap | null, rechecked = false): boolean {

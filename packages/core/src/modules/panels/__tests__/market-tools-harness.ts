@@ -53,6 +53,7 @@ export function libUnit(id: string, libName: string): UnitManifest {
 function installLineOf(sources: readonly SupplySource[] | undefined, name: string): string {
   const source = sources?.[0];
   if (source === undefined) return `${quoteShellArg('opencli')} plugin install <${name}源>`;
+  if (source.kind === 'builtin') return `${quoteShellArg('opencli')} ${quoteShellArg(name)} --help`;
   const spec =
     source.kind === 'git' ? source.url : source.kind === 'local' ? (source.path ?? name) : (source.package ?? name);
   return `${quoteShellArg('opencli')} plugin install ${quoteShellArg(spec)}`;

@@ -265,6 +265,7 @@ export const zh = {
   'panels.market.needLib': '请先安装库 {name}。',
   'panels.market.localMark': '本地',
   'panels.market.noSource': '这个模块没有声明安装方式，只能手动处理。',
+  'panels.market.needBuiltinMissing': '这个模块声明的依赖有问题：需要模块作者修复（或等模块更新）。',
   'panels.market.badSource': '安装方式不完整，只能手动处理。',
   'panels.market.empty': '还没有可安装的模块。请添加模块来源或刷新后重试。',
   'panels.market.updateAllPlugins': '全部更新',
@@ -656,6 +657,8 @@ export const zh = {
   'panels.market.add.removed': '已移除。',
   'panels.market.add.supplyPending': '该模块所需的插件会在重启后安装。',
   'panels.market.add.supplyFailed': '该模块所需的插件未安装：{reason}',
+  'panels.market.add.problemBuiltinMissing':
+    '这个模块声明的依赖有问题：需要模块作者修复（或等模块更新）。',
   'panels.market.add.notModule': '这不是工作台模块（没有 dsh.workbench 声明），不会出现在面板上。',
   'panels.market.add.removedRestart': '已卸载，重启后彻底生效。',
   'panels.market.add.remove': '移除它',

@@ -5,6 +5,7 @@ import {
   beginProbe,
   bumpCapabilityEpoch,
   capabilityValue,
+  dropConclusion,
   endProbe,
   probeValue,
   publishCapability,
@@ -382,5 +383,52 @@ describe('探测的新鲜度（最近检查 / 正在探）', () => {
     setCapabilities(null);
 
     expect(probeValue()).toEqual({ checkedAt: null, checking: false });
+  });
+});
+
+const needOf = (
+  kind: 'bin' | 'extension',
+  name: string,
+  status: 'missing' | 'unchecked',
+): CapabilityPayload['needs'][number] => ({
+  id: `${kind}:${name}`,
+  kind,
+  name,
+  status,
+  detail: '',
+});
+
+describe('旧结论的复用', () => {
+  afterEach(() => setCapabilities(null));
+
+  it('★ 契约变了（四条扩展 → 一条 bin）→ 不复用旧结论', () => {
+    setCapabilities({
+      'creator-daily': {
+        unit: 'creator-daily',
+        status: 'missing',
+        needs: ['zhihu', 'weibo', 'bilibili', 'xiaohongshu'].map((name) => needOf('extension', name, 'missing')),
+      },
+    });
+    publishCapability({
+      'creator-daily': {
+        unit: 'creator-daily',
+        status: 'unchecked',
+        needs: [needOf('bin', 'opencli', 'unchecked')],
+      },
+    });
+    expect(capabilityValue()?.['creator-daily']?.status).toBe('unchecked');
+  });
+
+  it('契约没变 → 继续用旧结论，不闪', () => {
+    const needs = [needOf('bin', 'opencli', 'missing')];
+    setCapabilities({ u: { unit: 'u', status: 'missing', needs } });
+    publishCapability({ u: { unit: 'u', status: 'unchecked', needs } });
+    expect(capabilityValue()?.['u']?.status).toBe('missing');
+  });
+
+  it('dropConclusion 之后这个单元不再有结论', () => {
+    setCapabilities({ u: { unit: 'u', status: 'missing', needs: [] } });
+    dropConclusion('u');
+    expect(capabilityValue()?.['u']).toBeUndefined();
   });
 });

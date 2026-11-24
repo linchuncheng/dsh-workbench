@@ -14,6 +14,7 @@ import type {
 } from '@/kernel/contract/bundle-install';
 import type { InstallRoute } from '@/kernel/contract/market-index';
 import { readBundleInspection, readBundleRegistries } from '@/shared/hooks/bundle-queries';
+import { dropConclusion } from '@/shared/hooks/use-capabilities';
 import { useHostWrite } from '@/shared/hooks/use-host-write';
 import { useVisibleBusy } from '@/shared/hooks/use-visible-busy';
 import {
@@ -178,7 +179,9 @@ export function useAddModule(options: {
             supply: value.supply,
             ...(value.plugin === undefined ? {} : { plugin: value.plugin }),
           });
-          publishMarketApplied(appliedUnitsOf(value));
+          const applied = appliedUnitsOf(value);
+          for (const unit of applied) dropConclusion(unit);
+          publishMarketApplied(applied);
           setPhase('result');
           if (value.change.application === 'applied' || value.change.application === 'restart-required') {
             onInstalled();

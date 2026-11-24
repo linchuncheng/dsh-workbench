@@ -20,12 +20,13 @@ export type SupplySource =
       readonly registryDefault?: string;
     }
   | { readonly kind: 'git'; readonly url: string; readonly ref?: string }
-  | { readonly kind: 'local'; readonly path?: string; readonly env?: string };
+  | { readonly kind: 'local'; readonly path?: string; readonly env?: string }
+  | { readonly kind: 'builtin' };
 
 /**
  * 协议认得的外部来源种类。
  */
-export const SUPPLY_SOURCE_KINDS = ['npm', 'git', 'local'] as const;
+export const SUPPLY_SOURCE_KINDS = ['npm', 'git', 'local', 'builtin'] as const;
 
 /**
  * 外部来源的类别。
@@ -191,6 +192,7 @@ function sourceProblemsOf(raw: unknown, at: string): readonly string[] {
     if (text(raw['url']) === '') errors.push(`${at}.url 没写`);
     return errors;
   }
+  if (kind === 'builtin') return errors;
   if (text(raw['path']) === '' && text(raw['env']) === '') {
     errors.push(`${at} 是 local，但 path 与 env 都没写`);
   }
@@ -318,7 +320,7 @@ export const NEED_KIND_SPECS: Readonly<Record<NeedKind, NeedKindSpec>> = Object.
   extension: Object.freeze({
     kind: 'extension',
     probe: 'extension',
-    sources: Object.freeze(['npm', 'git', 'local'] as SupplySourceKind[]),
+    sources: Object.freeze(['npm', 'git', 'local', 'builtin'] as SupplySourceKind[]),
     validate: validateKind('extension'),
   }),
   lib: Object.freeze({

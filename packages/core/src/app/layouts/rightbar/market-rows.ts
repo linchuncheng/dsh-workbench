@@ -318,6 +318,16 @@ function noteOf(
   if (problem.kind === 'env') return { key: 'panels.market.needEnv', params: { env: problem.name } };
   if (problem.kind === 'bin') return { key: 'panels.market.needBinary', params: { command: problem.name } };
   if (problem.kind === 'lib') return { key: 'panels.market.needLib', params: { name: problem.name } };
+  const declared = manifest.needs?.find(
+    (item) => item.kind === problem.kind && item.name === problem.name,
+  );
+  const builtin =
+    declared !== undefined &&
+    (declared.kind === 'extension' || declared.kind === 'lib') &&
+    (declared.sources ?? []).some((source) => source.kind === 'builtin');
+  if (builtin && problem.status === 'missing') {
+    return { key: 'panels.market.needBuiltinMissing', params: {} };
+  }
   if (problem.provision === 'env-missing') {
     const need = manifest.needs?.find((item) => item.kind === 'extension' && item.name === problem.name);
     const source = need?.kind === 'extension' ? need.sources?.find((item) => envNameOf(item) !== '') : undefined;
@@ -446,6 +456,17 @@ export function marketRows(
     const shown: MarketState =
       moduleUpdate === undefined ? (depsOnly ? 'installed' : state) : 'outdated';
     const note = noteOf(shown, capability, manifest);
+    const builtinBroken = (capability?.needs ?? []).some((need) => {
+      if (need.status !== 'missing') return false;
+      const declared = manifest.needs?.find(
+        (item) => item.kind === need.kind && item.name === need.name,
+      );
+      return (
+        declared !== undefined &&
+        (declared.kind === 'extension' || declared.kind === 'lib') &&
+        (declared.sources ?? []).some((source) => source.kind === 'builtin')
+      );
+    });
     const hint: MarketHint | undefined =
       moduleUpdate?.blocked !== undefined
         ? updateBlockHintOf(moduleUpdate.blocked)
@@ -458,7 +479,7 @@ export function marketRows(
       id: manifest.id,
       titleKey: manifest.titleKey,
       state: shown,
-      canInstall: !depsOnly && state !== 'installed' && (install || reAdopt),
+      canInstall: !depsOnly && !builtinBroken && state !== 'installed' && (install || reAdopt),
       canUpdate: onMachine && isOutdated(capability),
       canUninstall: entry !== undefined || isOnMachine(state),
       ...(staleDeps.length === 0 ? {} : { staleDeps: staleDeps.length }),

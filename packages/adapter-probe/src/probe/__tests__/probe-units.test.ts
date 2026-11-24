@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createFakeShell } from '@dsh-workbench/shared/testing';
 import { createSeam } from '@dsh-workbench/shared/host';
@@ -469,5 +472,36 @@ describe('跨平台的命令形态', () => {
     await probeUnits({ seam: seamFor(fake.shell), runtimeCommands: RUNTIMES, units, platform: 'linux' });
 
     expect(commands).toEqual(["where.exe 'gh'", "command -v 'gh'"]);
+  });
+});
+
+function catalogFileOf(entries: readonly unknown[]): string {
+  const dir = mkdtempSync(join(tmpdir(), 'wb-catalog-'));
+  const file = join(dir, 'cli-manifest.json');
+  writeFileSync(file, JSON.stringify(entries));
+  return file;
+}
+
+describe('probeUnits：builtin 来源', () => {
+  it('站点在 opencli 清单里 → 不看已装插件，need ok', async () => {
+    vi.stubEnv('DSH_WB_OPENCLI_CATALOG', catalogFileOf([{ site: 'zhihu', name: 'hot' }]));
+    const { capability } = await probeOne(
+      [extensionNeedOf('zhihu', { runtime: 'opencli', commands: ['hot'], sources: [{ kind: 'builtin' }] })],
+      [{ stdout: JSON.stringify([]) }],
+    );
+    expect(capability.status).toBe('ok');
+    expect(stateOf(capability, 'extension', 'zhihu')).toMatchObject({ status: 'ok' });
+  });
+
+  it('清单里没有这个站点 → missing，不是「缺安装方式」', async () => {
+    vi.stubEnv('DSH_WB_OPENCLI_CATALOG', catalogFileOf([{ site: 'zhihu', name: 'hot' }]));
+    const { capability } = await probeOne(
+      [extensionNeedOf('weibo', { runtime: 'opencli', commands: ['hot'], sources: [{ kind: 'builtin' }] })],
+      [{ stdout: JSON.stringify([]) }],
+    );
+    const state = stateOf(capability, 'extension', 'weibo');
+    expect(state?.status).toBe('missing');
+    expect(state?.provision).toBe('ready');
+    expect(state?.detail).toContain('清单里没有');
   });
 });

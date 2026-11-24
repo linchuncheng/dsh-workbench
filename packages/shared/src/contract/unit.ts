@@ -127,7 +127,8 @@ export function needsOf(manifest: UnitManifest): readonly Need[] {
 export function provisionableNeedsOf(manifest: UnitManifest): readonly (ExtensionNeed | LibNeed)[] {
   return needsOf(manifest).filter(
     (need): need is ExtensionNeed | LibNeed =>
-      (need.kind === 'extension' || need.kind === 'lib') && (need.sources ?? []).length > 0,
+      (need.kind === 'extension' || need.kind === 'lib') &&
+      (need.sources ?? []).some((source) => source.kind !== 'builtin'),
   );
 }
 

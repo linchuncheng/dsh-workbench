@@ -4,6 +4,7 @@ import { commandNamesMatch } from './command-name.js';
 import {
   OPENCLI_TIMEOUT_MS,
   PROBE_TTL_MS,
+  builtinCommandsOf,
   buildSupplyIndex,
   NEED_KIND_SPECS,
   needIdOf,
@@ -29,6 +30,7 @@ import { npmRegistryOf } from '@dsh-workbench/adapter-supply';
 import { probeRelease } from './release-port.js';
 import { createTimedMemo } from './probe-cache.js';
 import { probeLibs } from './probe-libs.js';
+import { cliCatalogPath } from '@dsh-workbench/adapter-runtime';
 import { aggregate, binStateOf, envStateOf, extensionStateOf } from './probe-verdict.js';
 
 export type {
@@ -269,6 +271,7 @@ async function loadCapabilities(options: {
   const libProbes = probeLibs({ needs: libNeeds, seam, force, index });
   const releaseProbes = releasesOf(index, { seam, force });
   const [, , libStates, releases] = await Promise.all([binProbes, runtimeProbes, libProbes, releaseProbes]);
+  const builtin = builtinCommandsOf(cliCatalogPath());
 
   const runtimeProblems = runtimeMismatchOf(options.runtimeReport);
   const statesOfUnit = (unit: NeedProbeInput): NeedState[] =>
@@ -308,14 +311,19 @@ async function loadCapabilities(options: {
       }
       const probe = lists.get(need.runtime) ?? { failure: '没跑这一轮探测' };
       const command = runtimeCommandOf(need, runtimeCommands) ?? need.runtime;
-      const hit = probe.list?.find(
+      const usesBuiltin =
+        need.runtime === 'opencli' && (need.sources ?? []).some((one) => one.kind === 'builtin');
+      const builtinCommands = usesBuiltin ? builtin.get(need.name) : undefined;
+      const listed = probe.list?.find(
         (item): item is { readonly commands?: unknown } =>
           typeof item === 'object' && item !== null && String((item as { name?: unknown }).name) === need.name,
       );
+      const hit = builtinCommands === undefined ? listed : { commands: builtinCommands };
       return extensionStateOf({
         need,
-        ...(probe.list === undefined ? {} : { hit }),
-        ...(probe.failure === undefined ? {} : { failure: probe.failure }),
+        ...(hit === undefined ? {} : { hit }),
+        ...(usesBuiltin ? { builtin: true } : {}),
+        ...(hit === undefined && !usesBuiltin && probe.failure !== undefined ? { failure: probe.failure } : {}),
         command,
         ...(releases.get(`${need.runtime}:${need.name}`) === undefined
           ? {}

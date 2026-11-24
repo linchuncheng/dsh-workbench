@@ -69,6 +69,7 @@ function conventionPackage(name: string, prefix: string): string {
 function nativeSourcePackage(source: SupplySource): string {
   if (source.kind === 'npm') return text(source.package);
   if (source.kind === 'git') return `git:${text(source.url)}`;
+  if (source.kind === 'builtin') return 'builtin';
   return `local:${text(source.env) || text(source.path)}`;
 }
 
@@ -114,6 +115,7 @@ function sourceCompatible(
   if (left.kind === 'local' && right.kind === 'local') {
     return text(left.env) === text(right.env) && text(left.path) === text(right.path);
   }
+  if (left.kind === 'builtin' && right.kind === 'builtin') return true;
   return false;
 }
 
@@ -168,6 +170,7 @@ function sourceText(source: SupplySource): string {
     return `${source.package === undefined ? '按包名约定' : source.package}（${source.registryEnv ?? '默认源'}）`;
   }
   if (source.kind === 'git') return `git:${source.url}`;
+  if (source.kind === 'builtin') return '运行时自带';
   return `local:${source.env ?? source.path ?? ''}`;
 }
 
