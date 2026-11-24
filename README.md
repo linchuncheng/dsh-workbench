@@ -26,7 +26,7 @@
   <a href="#常见问题">常见问题</a>
 </p>
 
-<img src="assets/readme-hero.png" alt="工作台：左侧项目与会话，中间常驻对话，右侧一块轻交互看板" width="100%"/>
+<img src="packages/core/assets/readme-hero.png" alt="工作台：左侧项目与会话，中间常驻对话，右侧一块轻交互看板" width="100%"/>
 
 </div>
 
