@@ -82,6 +82,8 @@ import {
   writeText,
 } from '@dsh-workbench/shared';
 export { SchemaCardView as schemaCard } from '@/shared/components/SchemaCardView';
+import { attemptEntry, guardedEffect, reportEntryFailure } from '@/shared/hooks/entry-report';
+import { boundaryOf } from '@/shared/components/EntryBoundary';
 
 export const kit = {
   hooks: {
@@ -130,32 +132,36 @@ type RightbarObservable = {
   subscribe(listener: () => void): () => void;
 };
 
-export const inject = ['slots', 'locale', 'layout', 'uiWorkspace', 'workspaces', 'shortcuts', 'remote', 'remote.session', 'remote.agentPresets', 'inputTriggers', 'conversation', 'contextMenus', 'sidebarRight', 'sessions', 'uiSession.sessionStatus'];
+export const inject = ['slots', 'locale', 'layout', 'uiWorkspace', 'workspaces', 'remote', 'remote.session', 'remote.agentPresets', 'inputTriggers', 'conversation', 'contextMenus', 'sessions'];
 
 export function apply(ctx: DshClientContext): void {
   try {
     mount(ctx);
   } catch (error) {
-    console.error('[dsh-workbench] apply failed', error);
-    throw error;
+    reportEntryFailure('mount', error);
+    return;
   }
   reportBootOk();
 }
 
 function mount(ctx: DshClientContext): void {
-  setRuntimeTextResolver((text) => ctx.locale.resolveText?.({ zh: text.zh, en: text.en }) ?? text.zh);
+  attemptEntry('locale', () => {
+    setRuntimeTextResolver((text) => ctx.locale.resolveText?.({ zh: text.zh, en: text.en }) ?? text.zh);
+  });
   const loadUnitManifests = createUnitManifestLoader();
   const units = createClientUnitRegistry({
     onUnknownUnit: () => loadUnitManifests(units),
     viewOf: (view, manifest) => (props) =>
       createElement(SchemaCard, { ...props, unit: manifest.id, view }),
   });
-  ctx.provide(UNITS_SERVICE, {
-    registerUnit: (face: UnitClientFace) => units.register(face),
-    manifests: () => units.manifests(),
-  } satisfies UnitClientApi);
-  assembleClientUnits(units);
-  loadUnitManifests(units);
+  attemptEntry('units', () => {
+    ctx.provide(UNITS_SERVICE, {
+      registerUnit: (face: UnitClientFace) => units.register(face),
+      manifests: () => units.manifests(),
+    } satisfies UnitClientApi);
+    assembleClientUnits(units);
+  });
+  attemptEntry('units-manifests', () => loadUnitManifests(units));
   const store = rightbarStore;
   const observable: RightbarObservable = {
     getSnapshot: () => store.getSnapshot(),
@@ -168,8 +174,8 @@ function mount(ctx: DshClientContext): void {
     return snapshot === undefined ? undefined : currentSessionId(snapshot, false);
   };
   setWriteSessionSource(sessionNow);
-  installContextChips(ctx, { currentSessionId: sessionNow });
-  ctx.effect(() => {
+  attemptEntry('context-chips', () => installContextChips(ctx, { currentSessionId: sessionNow }));
+  ctx.effect(() => guardedEffect('dictionaries', () => {
     let disposeDictionary: (() => void) | undefined;
     const publish = (): void => {
       disposeDictionary?.();
@@ -188,7 +194,7 @@ function mount(ctx: DshClientContext): void {
       unsubscribe();
       disposeDictionary?.();
     };
-  }, 'dsh-workbench: dictionaries');
+  }), 'dsh-workbench: dictionaries');
 
   const workshopWorkspace = () =>
     ctx.workspaces.list.getSnapshot().items.find((item) => isWorkshopPath(item.path));
@@ -210,7 +216,7 @@ function mount(ctx: DshClientContext): void {
   };
 
   const layoutPanels = (ctx.layout as typeof ctx.layout & { readonly panels?: DshLayoutPanels }).panels;
-  restoreRightbarWidth(layoutPanels);
+  attemptEntry('rightbar-width', () => restoreRightbarWidth(layoutPanels));
   let rightbarWidthSeeded = false;
   const seedWidthOnce = (): void => {
     if (rightbarWidthSeeded) return;
@@ -255,7 +261,7 @@ function mount(ctx: DshClientContext): void {
     disposeWorkbenchColumn = ctx.slots.inject('rightbar', () =>
       ctx.slots.register(
         { name: 'rightbar', priority: -1, locale: LOCALE_NS, inject: () => ({ ...rightbarActions, ...rightbarHooks, units }) },
-        Rightbar,
+        boundaryOf('rightbar', Rightbar),
       ),
     );
   };
@@ -300,7 +306,7 @@ function mount(ctx: DshClientContext): void {
 
   ctx.effect(() => () => borrow.dispose(), 'dsh-workbench: 官方椅面订阅与借道');
 
-  borrow.start();
+  attemptEntry('rightbar-column', () => borrow.start());
 
   if (store.getSnapshot().column === 'workbench') armWorkbenchColumn();
 
@@ -352,12 +358,12 @@ function mount(ctx: DshClientContext): void {
             searchSessions,
           }),
         },
-        Sidebar,
+        boundaryOf('sidebar', Sidebar),
       ),
     );
   };
-  bootSidebarEdition(ctx, registerOwnSidebar);
-  ctx.slots.inject('sidebar.session.row.leading', () =>
+  attemptEntry('sidebar', () => bootSidebarEdition(ctx, registerOwnSidebar));
+  attemptEntry('sidebar.session.row.leading', () => ctx.slots.inject('sidebar.session.row.leading', () =>
     ctx.slots.register(
       {
         name: 'sidebar.session.row.leading',
@@ -366,10 +372,10 @@ function mount(ctx: DshClientContext): void {
         locale: LOCALE_NS,
         inject: () => ({ t: ctx.locale.bind(LOCALE_NS) }),
       },
-      LongTaskDot,
+      boundaryOf('sidebar.session.row.leading', LongTaskDot),
     ),
-  );
-  ctx.slots.inject('sidebar.session.row.hover', () =>
+  ));
+  attemptEntry('sidebar.session.row.hover', () => ctx.slots.inject('sidebar.session.row.hover', () =>
     ctx.slots.register(
       {
         name: 'sidebar.session.row.hover',
@@ -378,9 +384,9 @@ function mount(ctx: DshClientContext): void {
         locale: LOCALE_NS,
         inject: () => ({ t: ctx.locale.bind(LOCALE_NS) }),
       },
-      LongTaskHover,
+      boundaryOf('sidebar.session.row.hover', LongTaskHover),
     ),
-  );
+  ));
   ctx.effect(() => {
     const mirror = (): void => {
       if (runtimeSidebarEdition() !== 'official') return;
@@ -402,9 +408,9 @@ function mount(ctx: DshClientContext): void {
     };
   }, 'dsh-workbench: 官方左栏选中的项目就是右栏的项目');
 
-  registerMarketPanel(ctx, units);
-  if (clientSurface().capabilities.debugFooter) registerDebugFooter(ctx);
-  registerWorkbenchSettings(ctx);
+  attemptEntry('market-panel', () => registerMarketPanel(ctx, units));
+  if (clientSurface().capabilities.debugFooter) attemptEntry('debug-footer', () => registerDebugFooter(ctx));
+  attemptEntry('workbench-settings', () => registerWorkbenchSettings(ctx));
   ctx.effect(() => {
     const workshop = workshopWorkspace();
     if (workshop === undefined) return () => undefined;
@@ -420,12 +426,14 @@ function mount(ctx: DshClientContext): void {
   }, 'dsh-workbench: 工坊那一行的旧名字换成新名字');
 
   ctx.effect(
-    () => installWorkshopPreset(ctx),
+    () => guardedEffect('workshop-preset', () => installWorkshopPreset(ctx)),
     'dsh-workbench: dsh 自己起的工坊空白会话补上 DIY 模式',
   );
 
-  const gate = createBootGate(ctx);
-  ctx.effect(() => () => gate.close(), 'dsh-workbench: env gate');
+  attemptEntry('env-gate', () => {
+    const gate = createBootGate(ctx);
+    ctx.effect(() => () => gate.close(), 'dsh-workbench: env gate');
+  });
 
   const sessionWorkspacePath = (): string | null => {
     const sessions = ctx.get('sessions');
@@ -434,7 +442,7 @@ function mount(ctx: DshClientContext): void {
     return workspaceOfSession(ctx.workspaces.list.getSnapshot().items, current)?.path ?? null;
   };
 
-  ctx.slots.inject('conversation.approval.detail', () =>
+  attemptEntry('conversation.approval.detail', () => ctx.slots.inject('conversation.approval.detail', () =>
     ctx.slots.register(
       {
         name: 'conversation.approval.detail',
@@ -446,11 +454,11 @@ function mount(ctx: DshClientContext): void {
           renderShell: shellApprovalRenderer(units.declared, sessionWorkspacePath),
         }),
       },
-      ApprovalDetail,
+      boundaryOf('conversation.approval.detail', ApprovalDetail),
     ),
-  );
+  ));
 
-  ctx.slots.inject('conversation.input.dock', () =>
+  attemptEntry('conversation.input.dock', () => ctx.slots.inject('conversation.input.dock', () =>
     ctx.slots.register(
       {
         name: 'conversation.input.dock',
@@ -462,11 +470,11 @@ function mount(ctx: DshClientContext): void {
           flowSessionId: dockSessionId(session),
         }),
       },
-      FlowProgress,
+      boundaryOf('conversation.input.dock', FlowProgress),
     ),
-  );
+  ));
 
-  ctx.slots.inject('conversation.session.header.corner', () =>
+  attemptEntry('conversation.session.header.corner', () => ctx.slots.inject('conversation.session.header.corner', () =>
     ctx.slots.register(
       {
         name: 'conversation.session.header.corner',
@@ -474,9 +482,9 @@ function mount(ctx: DshClientContext): void {
         locale: LOCALE_NS,
         inject: () => ({ selectColumn, dshColumn, ...rightbarHooks }),
       },
-      ColumnSwitch,
+      boundaryOf('conversation.session.header.corner', ColumnSwitch),
     ),
-  );
+  ));
 }
 
 function sidebarChildren(): ChildrenDecl {

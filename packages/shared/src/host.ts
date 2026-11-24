@@ -112,6 +112,7 @@ export * from './host/runtime/process-alive.js';
 export * from './host/runtime/read-json.js';
 export * from './host/runtime/time.js';
 export * from './host/runtime/version-range.js';
+export * from './host/runtime/verified-dsh.js';
 export * from './host/runtime/version.js';
 export * from './host/runtime/workspace-store.js';
 export * from './host/runtime/write-result.js';

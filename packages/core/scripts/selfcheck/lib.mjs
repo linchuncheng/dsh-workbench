@@ -349,6 +349,12 @@ export function makeFakeDom(injectedStyles, isSeatOnScreen) {
       replaceChildren(...kids) {
         this.children = [...kids];
       },
+      insertBefore(kid, ref) {
+        const at = this.children.indexOf(ref);
+        if (at < 0) this.children.push(kid);
+        else this.children.splice(at, 0, kid);
+        return kid;
+      },
     };
     created.push(element);
     return element;

@@ -81,7 +81,7 @@ export const checks = [
     },
   },
   {
-    title: 'factory 注入 slots / locale / layout / uiWorkspace / workspaces / shortcuts',
+    title: 'factory 注入跑起来必需的那几个服务（可选的走 ctx.get 探测）',
     run(ctx, report) {
       ctx.registrations = [];
       ctx.provided = new Map();
@@ -195,10 +195,7 @@ export const checks = [
           },
         },
 
-        get: (name) => {
-          if (!injectedServices.has(name)) throw new Error(`cannot get property "${name}" without inject`);
-          return name === 'sidebarRight' ? ctx.officialRightbar : undefined;
-        },
+        get: (name) => (name === 'sidebarRight' ? ctx.officialRightbar : undefined),
 
         remote: {
           sessions: { create: async () => ({ sessionId: 'session-diy-stub' }) },
@@ -295,10 +292,12 @@ export const checks = [
       });
 
       report(
-        'factory 注入 slots / locale / layout / uiWorkspace / workspaces / shortcuts',
-        ['slots', 'locale', 'layout', 'uiWorkspace', 'workspaces', 'shortcuts'].every((name) =>
+        'factory 注入跑起来必需的那几个服务（可选的走 ctx.get 探测）',
+        ['slots', 'locale', 'layout', 'uiWorkspace', 'workspaces'].every((name) =>
           ctx.factoryResult.inject.includes(name),
-        ),
+        ) &&
+          !ctx.factoryResult.inject.includes('shortcuts') &&
+          !ctx.factoryResult.inject.includes('sidebarRight'),
         ctx.factoryResult.inject.join(','),
       );
     },

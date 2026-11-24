@@ -229,10 +229,20 @@ export const checks = [
       const launcher = read(pkg('bin/dsh-workbench'));
       const gateReadsManifest = launcher.includes('engines');
       const noSecondCopy = floorVersion === undefined || !launcher.includes(floorVersion);
+      const verifiedText = read(pkg('../shared/src/host/runtime/verified-dsh.ts'));
+      const declared = /VERIFIED_DSH = '([^']+)'/.exec(verifiedText)?.[1];
+      const sameVerified = declared !== undefined && declared === floorVersion;
+      const recover = /'env\.hostVersion\.recover': '([^']+)'/.exec(read(pkg('../shared/src/i18n/zh.ts')))?.[1];
+      const readmeRecover = recover !== undefined && read(pkg('README.md')).includes(recover.replace('{host}', 'dsh'));
       report(
         '★ 声明了验过的 dsh 下限（旧一代没有现场派生的注册口，DIY 整个不显示）',
-        floorVersion !== undefined && floorVersion === pinned && gateReadsManifest && noSecondCopy,
-        `engines.dsh ${JSON.stringify(floor)} · 验过的 dsh（primitives pin）${String(pinned)} · 启动器读清单 ${gateReadsManifest} · 启动器没另写版本号 ${noSecondCopy}`,
+        floorVersion !== undefined &&
+          floorVersion === pinned &&
+          gateReadsManifest &&
+          noSecondCopy &&
+          sameVerified &&
+          readmeRecover,
+        `engines.dsh ${JSON.stringify(floor)} · 验过的 dsh（primitives pin）${String(pinned)} · 启动器读清单 ${gateReadsManifest} · 启动器没另写版本号 ${noSecondCopy} · 启动检查读的那一版 ${String(declared)} 与下限一致 ${sameVerified} · 打不开时的恢复说明与 README 同句 ${readmeRecover}`,
       );
     },
   },

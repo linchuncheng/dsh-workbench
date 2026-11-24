@@ -1,4 +1,4 @@
-export type PreflightStepId = 'toolchain' | 'cli' | 'bridge' | 'runtime' | 'diy' | 'warm';
+export type PreflightStepId = 'toolchain' | 'cli' | 'bridge' | 'runtime' | 'host' | 'diy' | 'warm';
 export type PreflightStepStatus = 'pending' | 'running' | 'ok' | 'warn' | 'failed';
 export type PreflightFailure = 'permission' | 'network' | 'missing' | 'host' | 'unknown';
 export type PreflightGuidance = 'install' | 'path' | 'shell' | 'host';
@@ -20,6 +20,20 @@ export interface PreflightDiyGap {
   readonly command: string;
 }
 
+export type PreflightHostTier = 'newer' | 'older';
+
+export type PreflightHostStanding =
+  | { readonly tier: 'ok'; readonly log?: readonly string[] }
+  | PreflightHostGap;
+
+export interface PreflightHostGap {
+  readonly tier: PreflightHostTier;
+  readonly runtime: string;
+  readonly verified: string;
+  readonly command?: string;
+  readonly log?: readonly string[];
+}
+
 export interface PreflightSnapshot {
   readonly phase: 'idle' | 'checking' | 'installing' | 'ready' | 'failed';
   readonly steps: readonly PreflightStep[];
@@ -28,6 +42,7 @@ export interface PreflightSnapshot {
   readonly failure?: PreflightFailure;
   readonly guidance?: PreflightGuidance;
   readonly bridgeIssues?: readonly PreflightBridgeIssue[];
+  readonly hostGap?: PreflightHostGap;
   readonly diyGap?: PreflightDiyGap;
   readonly canWakeBrowser?: boolean;
   readonly extensionDir?: string;

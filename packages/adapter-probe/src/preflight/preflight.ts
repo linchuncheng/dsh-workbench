@@ -3,8 +3,8 @@ import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIME
 import { opencliCommandLine, OPENCLI_SITE_SESSION_ENV, OPENCLI_WINDOW_ENV } from '@dsh-workbench/adapter-runtime';
 import { notePreflightFailed } from './preflight-note.js';
 import { persistPreflightSnapshot } from './preflight-snapshot.js';
-import { DIY_UPGRADE_COMMAND } from './diy-preset-health.js';
 import type { DiyPresetVerdict } from './diy-preset-health.js';
+import { pendingStep, settleDiyStep, settleHostStep } from './preflight-steps.js';
 import { opencliInstallCommand } from '../install/install.js';
 import { LOCAL_PNPM_VERSION, type LocalNpmProvision, type LocalPnpmProvision } from '../toolchain/toolchain.js';
 import type { ToolchainReport } from '../toolchain/toolchain-probe.js';
@@ -32,12 +32,12 @@ export function classifyFailure(text: string): PreflightFailure {
 
 export type PreflightGuidance = 'install' | 'path' | 'shell' | 'host';
 
-export type PreflightStepId = 'toolchain' | 'runtime' | 'cli' | 'bridge' | 'diy' | 'warm';
+export type PreflightStepId = 'toolchain' | 'runtime' | 'host' | 'cli' | 'bridge' | 'diy' | 'warm';
 
 export type PreflightStepStatus = 'pending' | 'running' | 'ok' | 'warn' | 'failed';
 
 import type {
-  PreflightDiyGap,
+  PreflightHostStanding,
   PreflightSnapshot,
   PreflightStep,
 } from '@dsh-workbench/shared/host';
@@ -45,7 +45,7 @@ import { readBridgeReport, type PreflightBridgeIssue } from '../runtime/bridge-r
 import { rememberBridgeFacts } from '../runtime/bridge-facts.js';
 export { BRIDGE_ISSUE_ORDER, readBridgeReport } from '../runtime/bridge-report.js';
 export type { PreflightBridgeIssue } from '../runtime/bridge-report.js';
-export type { PreflightDiyGap, PreflightSnapshot, PreflightStep } from '@dsh-workbench/shared/host';
+export type { PreflightDiyGap, PreflightHostGap, PreflightHostStanding, PreflightSnapshot, PreflightStep } from '@dsh-workbench/shared/host';
 
 export interface Preflight {
   run(options?: { hard?: boolean; only?: PreflightStepId }): Promise<PreflightSnapshot>;
@@ -70,10 +70,6 @@ export function canWarm(bridge: { ok: boolean; issues: readonly PreflightBridgeI
   return bridge.ok || bridge.issues.every((issue) => WARMABLE_BRIDGE_ISSUES.includes(issue));
 }
 
-function step(id: PreflightStepId, label?: string): PreflightStep {
-  return { id, status: 'pending', ...(label === undefined || label === '' ? {} : { label }) };
-}
-
 export function createPreflight(options: {
   seam: Seam;
   command?: string;
@@ -87,6 +83,7 @@ export function createPreflight(options: {
   withToolchainLock?: (<T>(run: () => Promise<T>) => Promise<T>) | undefined;
   warmReads?: (() => readonly (readonly string[])[]) | undefined;
   probeDiy?: (() => Promise<DiyPresetVerdict | undefined>) | undefined;
+  probeHost?: (() => PreflightHostStanding | undefined) | undefined;
   probeToolchain?: (() => Promise<ToolchainReport>) | undefined;
   provisionNpm?: (() => Promise<LocalNpmProvision>) | undefined;
   provisionPnpm?: (() => Promise<LocalPnpmProvision>) | undefined;
@@ -109,12 +106,13 @@ export function createPreflight(options: {
   const installCommand = options.installCommand ?? opencliInstallCommandDefault();
   const warmReads = (): readonly (readonly string[])[] => options.warmReads?.() ?? [];
   const steps = (): PreflightStep[] => [
-    ...(options.probeToolchain === undefined ? [] : [step('toolchain')]),
-    ...(options.runtimeCheck === undefined ? [] : [step('runtime', options.runtimeLabel)]),
-    ...(withConsole ? [step('cli')] : []),
-    ...(withBridge ? [step('bridge')] : []),
-    ...(options.probeDiy === undefined ? [] : [step('diy')]),
-    ...(warmReads().length === 0 ? [] : [step('warm')]),
+    ...(options.probeToolchain === undefined ? [] : [pendingStep('toolchain')]),
+    ...(options.runtimeCheck === undefined ? [] : [pendingStep('runtime', options.runtimeLabel)]),
+    ...(options.probeHost === undefined ? [] : [pendingStep('host')]),
+    ...(withConsole ? [pendingStep('cli')] : []),
+    ...(withBridge ? [pendingStep('bridge')] : []),
+    ...(options.probeDiy === undefined ? [] : [pendingStep('diy')]),
+    ...(warmReads().length === 0 ? [] : [pendingStep('warm')]),
   ];
   let logLines: string[] = [];
   const stepLogs = new Map<PreflightStepId, string[]>();
@@ -301,25 +299,20 @@ export function createPreflight(options: {
     return again;
   }
 
-  async function settleDiy(
-    started: Promise<DiyPresetVerdict | undefined> | undefined,
-  ): Promise<PreflightDiyGap | undefined> {
-    if (started === undefined) return undefined;
-    const verdict = await started.catch(() => undefined);
-    if (verdict === undefined) {
-      set({ steps: current.steps.filter((item) => item.id !== 'diy') });
-      return undefined;
-    }
-    if (verdict.ok) {
-      patchStep('diy', { status: 'ok', detail: verdict.detail });
-      return undefined;
-    }
-    patchStep('diy', { status: 'warn', detail: verdict.detail, command: DIY_UPGRADE_COMMAND });
-    return { rows: verdict.rows, detail: verdict.detail, command: DIY_UPGRADE_COMMAND };
-  }
+  const stepSink = {
+    get steps() {
+      return current.steps;
+    },
+    patch: (id: PreflightStepId, patch: Partial<PreflightStep>) => {
+      patchStep(id, patch);
+    },
+    drop: (id: PreflightStepId) => {
+      set({ steps: current.steps.filter((item) => item.id !== id) });
+    },
+  };
 
   async function doRun(from?: PreflightStepId): Promise<PreflightSnapshot> {
-    const order: readonly PreflightStepId[] = ['toolchain', 'runtime', 'cli', 'bridge', 'diy', 'warm'];
+    const order: readonly PreflightStepId[] = ['toolchain', 'runtime', 'host', 'cli', 'bridge', 'diy', 'warm'];
     const skip = (id: PreflightStepId): boolean =>
       from !== undefined && order.indexOf(id) >= 0 && order.indexOf(id) < order.indexOf(from);
     const previous = new Map(current.steps.map((item) => [item.id, item]));
@@ -332,6 +325,7 @@ export function createPreflight(options: {
       failure: undefined,
       guidance: undefined,
       bridgeIssues: undefined,
+      hostGap: undefined,
       diyGap: undefined,
       steps: steps().map((item) => {
         const kept = skip(item.id) ? previous.get(item.id) : undefined;
@@ -398,6 +392,8 @@ export function createPreflight(options: {
       patchStep('runtime', { status: verdict.ok ? 'ok' : 'failed', detail: verdict.detail, action: undefined });
       if (!verdict.ok) return set({ phase: 'failed', error: verdict.detail, failure: 'missing', guidance: 'install' });
     }
+
+    const hostGap = settleHostStep(options.probeHost?.(), stepSink);
 
     const diyStarted = skip('diy') ? undefined : options.probeDiy?.();
     if (withConsole && !skip('cli')) {
@@ -496,7 +492,7 @@ export function createPreflight(options: {
     }
 
     const settled = withBridge ? await warmSites(bridge) : bridge;
-    const diyGap = await settleDiy(diyStarted);
+    const diyGap = await settleDiyStep(diyStarted, stepSink, logger);
 
     logger?.warn?.(
       `[dsh-workbench] 环境体检：${current.steps.map((item) => `${item.id}=${item.status}`).join(' ')}`,
@@ -504,6 +500,7 @@ export function createPreflight(options: {
     return set({
       phase: 'ready',
       ...(settled.ok ? {} : { bridgeIssues: settled.issues }),
+      ...(hostGap === undefined ? {} : { hostGap }),
       ...(diyGap === undefined ? {} : { diyGap }),
     });
   }

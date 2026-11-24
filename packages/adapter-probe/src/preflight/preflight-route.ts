@@ -3,11 +3,11 @@ import { basename, join } from 'node:path';
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { RouteTable } from '@dsh-workbench/shared/host';
-import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, hostOsOf, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
+import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, dshHostGapOf, dshTierOf, dshVersionFrom, hostOsOf, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
 import { isOpencliReady, isOpencliReadyAt, opencliBuiltAt, opencliPackageDir, opencliReadinessAt, storeDirFor, toolchainDir } from '@dsh-workbench/adapter-runtime';
 import { WAKE_BROWSER_ROUTE } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 import { runBootstrapCommand } from '../runtime/bootstrap-run.js';
-import { createDiyPresetProbe } from './diy-preset-health.js';
+import { createDiyPresetProbe, DIY_UPGRADE_COMMAND } from './diy-preset-health.js';
 import { installIsolatedRuntime } from '../install/isolated-install.js';
 import { describeInstallRecord, installRecordFile, readInstallRecord } from '../install/install-record.js';
 import { smokeInstalledCli } from '../install/install-smoke.js';
@@ -131,6 +131,13 @@ export function registerPreflight(input: {
   const installLogger = input.ctx.logger;
   const installLog =
     installLogger === undefined ? undefined : (message: string) => installLogger.warn?.(message);
+  const runtimeDsh = (): { version?: string; log: string[] } => {
+    const dir = profileDirOf(input.ctx);
+    if (dir === null) return { log: ['profile: 取不到这份工作台的配置目录'] };
+    const found = dshVersionFrom(dir);
+    const log = [`profile: ${dir}`, ...(found === undefined ? ['dsh: 读不到版本'] : [`dsh: ${found.version}`, `from: ${found.from}`])];
+    return found === undefined ? { log } : { version: found.version, log };
+  };
   const preflight = createPreflight({
     seam: input.seam,
     snapshotRoot: workbenchRoot(),
@@ -180,6 +187,15 @@ export function registerPreflight(input: {
     ...(input.runtimeCheck === undefined ? {} : { runtimeCheck: input.runtimeCheck }),
     ...(input.runtimeLabel === undefined ? {} : { runtimeLabel: input.runtimeLabel }),
     probeDiy: createDiyPresetProbe(input.ctx),
+    probeHost: () => {
+      const runtime = runtimeDsh();
+      const gap = dshHostGapOf(runtime.version);
+      if (gap === undefined) {
+        return dshTierOf(runtime.version) === 'ok' ? { tier: 'ok', log: runtime.log } : undefined;
+      }
+      const command = gap.tier === 'older' ? { command: DIY_UPGRADE_COMMAND } : {};
+      return { ...gap, ...command, log: runtime.log };
+    },
     probeToolchain: () => probeDesktopToolchain(input.seam),
     provisionPnpm: async () => {
       const root = runtimeSeedRootOf(input.ctx);

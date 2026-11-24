@@ -184,6 +184,30 @@ export const GATE_MOCKS: readonly GateMock[] = [
     { hint: 'hold', command: false, bridgeIssues: ['profile'] },
   ),
   mock(
+    'warn-host',
+    'dsh 升到了没验过的一代',
+    '运行中的 dsh 比这份工作台验过的那一代新（跨代）。门停在这一帧：行尾说「未验证」，下面说清是哪一版、验的是哪一版，并给「先进入工作台」；再往下是打不开时的恢复步骤（界面句 + 一行原样的键路径）。',
+    {
+      phase: 'ready',
+      steps: [
+        cliOkStep(),
+        {
+          id: 'host',
+          status: 'warn',
+          detail: '0.3.0-rc.1',
+          log: [
+            'profile: /Users/you/.dsh/profiles/workbench',
+            'dsh: 0.3.0-rc.1',
+            'from: /Users/you/.dsh/profiles/workbench/node_modules/@deepseek-ai/dsh/package.json',
+          ],
+        },
+        { id: 'bridge', status: 'ok', detail: 'Everything looks good!', log: ['> opencli doctor', 'Everything looks good!'] },
+      ],
+      hostGap: { tier: 'newer', runtime: '0.3.0-rc.1', verified: '0.2.3-alpha.2' },
+    },
+    { hint: 'hold', command: false },
+  ),
+  mock(
     'warn-diy',
     'DIY 模式：挂不起来',
     'dsh 太旧（比这份外壳验过的那一代旧）：preset 里几行 dsh 根本没有 ⇒ 那一行挂不起来，而 dsh 的模式选择器只列挂得起来的。门**停在这一帧**：行尾说"挂不起来"，下面说清"缺哪几行" + 升级命令 + 一颗「先进入工作台」。',

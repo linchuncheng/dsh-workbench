@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dshCompatibilityOf, dshRequirementsOf, dshVersionIn } from '../dsh-compat.js';
+import { dshCompatibilityOf, dshRequirementsOf, dshVersionFrom, dshVersionIn } from '../dsh-compat.js';
 
 const ROOT = mkdtempSync(join(tmpdir(), 'dsh-wb-dsh-compat-'));
 
@@ -109,6 +109,24 @@ describe('dsh 版本从 profile 的安装锚点读', () => {
       },
     });
     expect(dshVersionIn(anchored)).toBe('0.2.2-rc.2');
+  });
+
+  it('★ 顺带说清这个版本是从哪读到的（排障要看得出原文）', () => {
+    const dir = profileWith({
+      'node_modules/@deepseek-ai/dsh/package.json': { name: '@deepseek-ai/dsh', version: '0.2.2-rc.5' },
+    });
+    const found = dshVersionFrom(dir);
+    expect(found?.version).toBe('0.2.2-rc.5');
+    expect(found?.from).toBe(join(dir, 'node_modules/@deepseek-ai/dsh/package.json'));
+
+    const anchored = profileWith({
+      'node_modules/@deepseek-ai/dsh-app-boot/package.json': {
+        name: '@deepseek-ai/dsh-app-boot',
+        version: '0.2.2-rc.2',
+        dependencies: { '@deepseek-ai/dsh': '0.2.2-rc.2' },
+      },
+    });
+    expect(dshVersionFrom(anchored)?.from).toContain('@deepseek-ai/dsh-app-boot');
   });
 
   it('只有 dsh 清单时读它自己的版本；都读不到就是 undefined', () => {

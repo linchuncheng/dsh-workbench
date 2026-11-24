@@ -3,5 +3,10 @@
     "file": "packages/module-tools/src/contract/design.mjs",
     "term": "底稿",
     "contains": "## 需求底稿"
+  },
+  {
+    "file": "packages/shared/src/i18n/zh.ts",
+    "term": "profile",
+    "contains": "dsh.profile.bundles"
   }
 ]

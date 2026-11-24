@@ -1,7 +1,8 @@
 import type { Translate } from '@dsh-workbench/shared';
-import type { PreflightBridgeIssue, PreflightGuidance, PreflightSnapshot, PreflightStep } from '@dsh-workbench/shared/host';
+import type { PreflightBridgeIssue, PreflightGuidance, PreflightHostGap, PreflightSnapshot, PreflightStep } from '@dsh-workbench/shared/host';
 import type { RuntimeProfile } from '@dsh-workbench/shared';
 import { runtimeText } from '@/shared/hooks/locale-text';
+import { hostLabel } from '@/app/layouts/host-requirement';
 
 export function failedStepText(guidance: PreflightGuidance | undefined, t: Translate): string {
   if (guidance === 'path') return t('env.stepFailed.path');
@@ -26,6 +27,11 @@ export function guidanceTextOf(
   return { why: t('env.fix.why'), step: hasCommand ? t('env.fix.step') : t('env.fix.stepRetry') };
 }
 
+export function hostVersionWhyText(gap: PreflightHostGap, t: Translate): string {
+  const params = { host: hostLabel(), runtime: gap.runtime, verified: gap.verified };
+  return gap.tier === 'older' ? t('env.hostVersion.older.why', params) : t('env.hostVersion.newer.why', params);
+}
+
 export function stepDetailText(step: PreflightStep, snapshot: PreflightSnapshot, t: Translate): string {
   if (step.status === 'failed') return failedStepText(snapshot.guidance, t);
   if (step.status === 'pending') return '';
@@ -34,6 +40,10 @@ export function stepDetailText(step: PreflightStep, snapshot: PreflightSnapshot,
   if (step.id === 'cli') return step.status === 'ok' ? t('env.runtime.ok') : '';
   if (step.id === 'bridge') return step.status === 'ok' ? t('env.bridge.ok') : t('env.bridge.short');
   if (step.id === 'diy') return step.status === 'ok' ? t('env.diy.ok') : t('env.diy.short');
+  if (step.id === 'host') {
+    if (step.status === 'ok') return t('env.runtime.ok');
+    return snapshot.hostGap?.tier === 'older' ? t('env.hostVersion.older') : t('env.hostVersion.newer');
+  }
   if (step.id === 'warm') {
     return step.status === 'ok' ? t('env.warm.done', { n: step.detail ?? '0' }) : t('env.warm.short');
   }
@@ -48,6 +58,7 @@ export function gateHintOf(snapshot: PreflightSnapshot, t: Translate): string {
   }
   if (snapshot.phase === 'ready') {
     if ((snapshot.bridgeIssues?.length ?? 0) > 0) return t('env.bridge.hold');
+    if (snapshot.hostGap !== undefined) return hostVersionWhyText(snapshot.hostGap, t);
     if (snapshot.diyGap !== undefined) return t('env.diy.hold');
   }
   return t('env.checking');

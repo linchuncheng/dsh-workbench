@@ -70,18 +70,42 @@ export function dshCompatibilityOf(input: {
 }
 
 export function dshVersionIn(profileDir: string): string | undefined {
-  const fromClient = process.env['DSH_CLIENT_VERSION'];
-  if (typeof fromClient === 'string' && semver.valid(fromClient.trim()) !== null) return fromClient.trim();
-  for (const dir of searchDirsOf(profileDir)) {
-    const own = readManifest(join(dir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'))?.['version'];
-    if (typeof own === 'string' && semver.valid(own) !== null) return own;
-  }
-  const fromEnv = process.env['DSH_VERSION'];
-  if (typeof fromEnv === 'string' && semver.valid(fromEnv.trim()) !== null) return fromEnv.trim();
-  for (const dir of searchDirsOf(profileDir)) {
-    const anchor = readManifest(join(dir, 'node_modules', '@deepseek-ai', 'dsh-app-boot', 'package.json'));
-    const version = dependencyVersionOf(anchor, '@deepseek-ai/dsh');
-    if (version !== undefined) return version;
+  return dshVersionFrom(profileDir)?.version;
+}
+
+export function dshVersionFrom(
+  profileDir: string,
+): { readonly version: string; readonly from: string } | undefined {
+  const fromClient = envVersionOf('DSH_CLIENT_VERSION');
+  if (fromClient !== undefined) return { version: fromClient, from: 'DSH_CLIENT_VERSION' };
+
+  const dirs = searchDirsOf(profileDir);
+  const installed = firstOver(dirs, (dir) => {
+    const file = join(dir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json');
+    const own = readManifest(file)?.['version'];
+    return typeof own === 'string' && semver.valid(own) !== null ? { version: own, from: file } : undefined;
+  });
+  if (installed !== undefined) return installed;
+
+  const fromEnv = envVersionOf('DSH_VERSION');
+  if (fromEnv !== undefined) return { version: fromEnv, from: 'DSH_VERSION' };
+
+  return firstOver(dirs, (dir) => {
+    const file = join(dir, 'node_modules', '@deepseek-ai', 'dsh-app-boot', 'package.json');
+    const version = dependencyVersionOf(readManifest(file), '@deepseek-ai/dsh');
+    return version === undefined ? undefined : { version, from: `${file} → @deepseek-ai/dsh` };
+  });
+}
+
+function envVersionOf(name: string): string | undefined {
+  const raw = process.env[name];
+  return typeof raw === 'string' && semver.valid(raw.trim()) !== null ? raw.trim() : undefined;
+}
+
+function firstOver<T>(dirs: readonly string[], read: (dir: string) => T | undefined): T | undefined {
+  for (const dir of dirs) {
+    const got = read(dir);
+    if (got !== undefined) return got;
   }
   return undefined;
 }

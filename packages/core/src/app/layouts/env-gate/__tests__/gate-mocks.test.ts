@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { en, zh } from '@dsh-workbench/shared';
 import { gateActionOf } from '../boot-gate';
-import { bridgeAdvice, bridgeAdviceLines, failedStepText, gateHintOf, guidanceTextOf, stepDetailText } from '../gate-text';
+import { bridgeAdvice, bridgeAdviceLines, failedStepText, gateHintOf, guidanceTextOf, hostVersionWhyText, stepDetailText } from '../gate-text';
 import { GATE_MOCKS } from '../gate-mock';
 
 const t = ((key: string) => (zh as Record<string, string>)[key] ?? key) as never;
@@ -28,14 +28,17 @@ describe('GATE_MOCKS', () => {
     for (const item of GATE_MOCKS) {
       const holding = item.snapshot.phase === 'ready' && gateActionOf(item.snapshot) === 'hold';
       expect(item.expect.hint === 'hold', item.id).toBe(holding);
+      const gap = item.snapshot.hostGap;
       const expected =
         item.expect.hint === 'hold'
           ? (item.snapshot.bridgeIssues?.length ?? 0) > 0
-            ? 'env.bridge.hold'
-            : 'env.diy.hold'
-          : HINT_KEY[item.expect.hint];
+            ? zhText('env.bridge.hold')
+            : gap === undefined
+              ? zhText('env.diy.hold')
+              : hostVersionWhyText(gap, t)
+          : zhText(HINT_KEY[item.expect.hint]);
 
-      expect(gateHintOf(item.snapshot, t), item.id).toBe(zhText(expected));
+      expect(gateHintOf(item.snapshot, t), item.id).toBe(expected);
     }
   });
 
@@ -43,7 +46,7 @@ describe('GATE_MOCKS', () => {
     for (const item of GATE_MOCKS) {
       if (item.snapshot.phase !== 'ready') continue;
       const issues = item.snapshot.bridgeIssues ?? [];
-      const stuck = issues.length > 0 || item.snapshot.diyGap !== undefined;
+      const stuck = issues.length > 0 || item.snapshot.diyGap !== undefined || item.snapshot.hostGap !== undefined;
 
       expect(gateActionOf(item.snapshot), item.id).toBe(stuck ? 'hold' : 'close');
     }

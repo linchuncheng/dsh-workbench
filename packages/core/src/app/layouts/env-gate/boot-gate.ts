@@ -7,12 +7,13 @@ import { apiGet } from '@dsh-workbench/shared';
 import { LOCALE_NS } from '@dsh-workbench/shared';
 import { devSurface } from '@/shared/dev-surface';
 import { runtimeProfileValue } from '@/shared/hooks/use-runtime-capabilities';
-import { bridgeAdviceLines, guidanceTextOf, stepDetailText } from './gate-text';
+import { bridgeAdviceLines, guidanceTextOf, hostVersionWhyText, stepDetailText } from './gate-text';
 import type { RuntimeProfile } from '@dsh-workbench/shared';
 import { readRuntimeCapabilities } from '@/shared/hooks/runtime-queries';
 import { brandMarkIcon, el, spinnerIcon, svgIcon } from './gate-dom';
 import { createForcePlan, retryTargetOf } from './force-plan';
 import { logAtBottom } from './log-follow';
+import { hostLabel } from '@/app/layouts/host-requirement';
 
 const POLL_MS = 400;
 
@@ -23,6 +24,7 @@ function stepLabel(step: PreflightStep, t: Translate): string {
   if (id === 'cli') return t('env.step.runtime');
   if (id === 'warm') return t('env.step.warm');
   if (id === 'diy') return t('env.step.diy');
+  if (id === 'host') return t('env.step.hostVersion', { host: hostLabel() });
   return t('env.step.bridge');
 }
 
@@ -42,6 +44,7 @@ export function gateActionOf(snapshot: PreflightSnapshot): 'close' | 'hold' | 'w
   if (snapshot.phase === 'failed') return 'hold';
   if (snapshot.phase !== 'ready') return 'wait';
   if ((snapshot.bridgeIssues?.length ?? 0) > 0) return 'hold';
+  if (snapshot.hostGap !== undefined) return 'hold';
   return snapshot.diyGap === undefined ? 'close' : 'hold';
 }
 
@@ -78,6 +81,29 @@ function commandRow(t: Translate): { row: HTMLElement; set(text: string | undefi
       row.hidden = next === undefined;
     },
   };
+}
+
+interface AdviceSection {
+  readonly root: HTMLElement;
+  readonly why: HTMLElement;
+  readonly step: HTMLElement;
+  readonly command: ReturnType<typeof commandRow>;
+  readonly buttons: HTMLElement;
+}
+
+function adviceSectionOf(
+  t: Translate,
+  parts: { whyText?: string; beforeStep?: readonly HTMLElement[]; afterStep?: readonly HTMLElement[] } = {},
+): AdviceSection {
+  const root = el('div', styles.bridge);
+  root.hidden = true;
+  const title = el('h2', styles.fixTitle, t('env.fix.title'));
+  const why = el('p', styles.hint, parts.whyText ?? '');
+  const step = el('p', styles.hint);
+  const command = commandRow(t);
+  const buttons = el('div', styles.buttons);
+  root.append(title, why, ...(parts.beforeStep ?? []), step, ...(parts.afterStep ?? []), command.row, buttons);
+  return { root, why, step, command, buttons };
 }
 
 export function createBootGate(
@@ -135,22 +161,26 @@ export function createBootGate(
   bridgeButtons.append(bridgeWake, bridgeRetry, bridgeSkip);
 bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, bridgeButtons);
 
-  const diy = el('div', styles.bridge);
-  diy.hidden = true;
-  const diyTitle = el('h2', styles.fixTitle, t('env.fix.title'));
-  const diyWhy = el('p', styles.hint, t('env.diy.why'));
   const diyLines = el('ul', styles.bridgeLines);
-  const diyStep = el('p', styles.hint, t('env.diy.step'));
-  const diyCommand = commandRow(t);
+  const diySection = adviceSectionOf(t, { whyText: t('env.diy.why'), beforeStep: [diyLines] });
+  const diy = diySection.root;
+  diySection.step.textContent = t('env.diy.step');
+  const diyCommand = diySection.command;
   const diyRetry = el('button', styles.button, t('env.retry'));
   diyRetry.setAttribute('type', 'button');
   const diySkip = el('button', styles.button, t('env.diy.continue'));
   diySkip.setAttribute('type', 'button');
-  const diyButtons = el('div', styles.buttons);
-  diyButtons.append(diyRetry, diySkip);
-diy.append(diyTitle, diyWhy, diyLines, diyStep, diyCommand.row, diyButtons);
+  diySection.buttons.append(diyRetry, diySkip);
 
-  card.append(brandHead, bootHint, list, actions, bridge, diy);
+  const hostRecover = el('p', styles.hint);
+  const hostRecoverDetail = el('p', styles.hint);
+  const hostSection = adviceSectionOf(t, { afterStep: [hostRecover, hostRecoverDetail] });
+  const host = hostSection.root;
+  const hostSkip = el('button', styles.button, t('env.failed.continue'));
+  hostSkip.setAttribute('type', 'button');
+  hostSection.buttons.append(hostSkip);
+
+  card.append(brandHead, bootHint, list, actions, bridge, diy, host);
   overlay.append(card);
   document.body.append(overlay);
 
@@ -361,6 +391,18 @@ diy.append(diyTitle, diyWhy, diyLines, diyStep, diyCommand.row, diyButtons);
       diyCommand.set(gap.command);
     }
 
+    const hostGap = snapshot.hostGap;
+    host.hidden = hostGap === undefined;
+    if (hostGap !== undefined) {
+      hostSection.why.textContent = hostVersionWhyText(hostGap, t);
+      hostRecover.textContent = t('env.hostVersion.recover', { host: hostLabel() });
+      hostRecoverDetail.textContent = t('env.hostVersion.recover.detail');
+      hostSection.step.textContent =
+        hostGap.tier === 'older' ? t('env.hostVersion.older.step', { host: hostLabel() }) : '';
+      hostSection.step.hidden = hostGap.tier !== 'older';
+      hostSection.command.set(hostGap.tier === 'older' ? hostGap.command : undefined);
+    }
+
   }
 
   async function poll(): Promise<void> {
@@ -392,6 +434,7 @@ diy.append(diyTitle, diyWhy, diyLines, diyStep, diyCommand.row, diyButtons);
     bridge.hidden = true;
     wakeNote.hidden = true;
     diy.hidden = true;
+    host.hidden = true;
     retry.setAttribute('disabled', '');
     bridgeRetry.setAttribute('disabled', '');
     diyRetry.setAttribute('disabled', '');
@@ -437,6 +480,7 @@ diy.append(diyTitle, diyWhy, diyLines, diyStep, diyCommand.row, diyButtons);
   bridgeSkip.addEventListener('click', close);
   diyRetry.addEventListener('click', retryNow);
   diySkip.addEventListener('click', close);
+  hostSkip.addEventListener('click', close);
 
   const search = typeof window === 'undefined' ? '' : (window.location?.search ?? '');
   if (devSurface.on(search)) {
