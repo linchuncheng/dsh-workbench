@@ -230,6 +230,7 @@ describe('marketRows', () => {
     )[0];
 
     expect(row?.note).toEqual({ key: 'panels.market.needBuiltinMissing' });
+    expect(row?.canInstall).toBe(false);
   });
 
   it('已装时不给"点不动"的理由（那是未装才有的问题）', () => {

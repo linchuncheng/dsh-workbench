@@ -456,6 +456,17 @@ export function marketRows(
     const shown: MarketState =
       moduleUpdate === undefined ? (depsOnly ? 'installed' : state) : 'outdated';
     const note = noteOf(shown, capability, manifest);
+    const builtinBroken = (capability?.needs ?? []).some((need) => {
+      if (need.status !== 'missing') return false;
+      const declared = manifest.needs?.find(
+        (item) => item.kind === need.kind && item.name === need.name,
+      );
+      return (
+        declared !== undefined &&
+        (declared.kind === 'extension' || declared.kind === 'lib') &&
+        (declared.sources ?? []).some((source) => source.kind === 'builtin')
+      );
+    });
     const hint: MarketHint | undefined =
       moduleUpdate?.blocked !== undefined
         ? updateBlockHintOf(moduleUpdate.blocked)
@@ -468,7 +479,7 @@ export function marketRows(
       id: manifest.id,
       titleKey: manifest.titleKey,
       state: shown,
-      canInstall: !depsOnly && state !== 'installed' && (install || reAdopt),
+      canInstall: !depsOnly && !builtinBroken && state !== 'installed' && (install || reAdopt),
       canUpdate: onMachine && isOutdated(capability),
       canUninstall: entry !== undefined || isOnMachine(state),
       ...(staleDeps.length === 0 ? {} : { staleDeps: staleDeps.length }),
