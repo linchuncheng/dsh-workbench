@@ -4,6 +4,7 @@ import { dshHome, hostSurface, readTokens, seamOf, supplyPortOf } from '@dsh-wor
 import {
   filesOf,
   findFileOf,
+  kitTypeHintOf,
   refusesEvery,
   renderNameText,
   renderSurfaceText,
@@ -174,7 +175,15 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
           });
         }
       }
-      const text = name === '' ? renderSurfaceText(query, { scope, all, bucket }) : renderNameText(name, found, query);
+      const kitFiles = Object.values(filesOf(kit ?? {}));
+      const hint =
+        found !== null && found.from === 'kit'
+          ? kitTypeHintOf(found.file, name, surfaceCoreRoot(), kitFiles)
+          : '';
+      const text =
+        name === ''
+          ? renderSurfaceText(query, { scope, all, bucket })
+          : renderNameText(name, found, query, hint);
       return plainJson({
         workspace: root,
         scope,

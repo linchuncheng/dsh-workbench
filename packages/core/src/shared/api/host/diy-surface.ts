@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { editDistance, noWrite, quoteShellArg, type Seam } from '@dsh-workbench/shared/host';
+import { declaredTypeIn, publicTypeOf } from './diy-types';
 
 export const SURFACE_TIMEOUT_MS = 30000;
 export const EXCERPT_LINES = 60;
@@ -403,10 +404,26 @@ function installSnippetOf(query: SurfaceQuery): string {
   return `devDependencies 加 "${name}": "${version === '' ? '<外壳钉的那版>' : version}" 再 pnpm install`;
 }
 
+export function kitTypeHintOf(
+  file: string,
+  name: string,
+  coreRoot: string | null,
+  kitFiles: readonly string[],
+): string {
+  if (!existsSync(file)) return '';
+  const typeName = declaredTypeIn(readFileSync(file, 'utf8'), name);
+  if (typeName === null) return '';
+  const fact = publicTypeOf(typeName, coreRoot, kitFiles);
+  return fact === null
+    ? ''
+    : `类型：${typeName} → ${fact.path}:${String(fact.line)}（字段与默认值见 name=${typeName}）`;
+}
+
 export function renderNameText(
   name: string,
   found: { readonly file: string; readonly from: 'kit' | 'primitives' } | null,
   query: SurfaceQuery,
+  hint = '',
 ): string {
   if (found === null) {
     const every = listedNamesOf(query);
@@ -444,7 +461,7 @@ export function renderNameText(
       found.from === 'kit'
         ? '（上面就是它的声明与 JSDoc —— 用法、默认值、边界都在里面。跨件的口径与最小写法看 KIT.md）'
         : '（上面就是它的声明与 JSDoc —— 用法与默认值都在里面。原语件要先在 dsh.client.external 里声明它）';
-    return [head, '', body, '', note].join('\n');
+    return [head, '', body, ...(hint === '' ? [] : ['', hint]), '', note].join('\n');
   }
   const skillDir = skillDirOf(dirname(fileURLToPath(import.meta.url)));
   const docs = 'KIT.md（组件怎么拼）· LINKAGE.md / PANEL.md / TOOLS.md（取数 / 写 / 长任务）';
@@ -456,5 +473,5 @@ export function renderNameText(
     found.from === 'kit'
       ? `（声明没说明文字（没有 JSDoc）—— kit 的每个成员都该有，selfcheck 里有一条自检钉着；多半是你手上这份外壳比工具旧，升级外壳与工坊工具链再看。${second}）`
       : `（声明没说明文字（没有 JSDoc）—— 装机那份原语本该自带；升级它再看。${second}）`;
-  return [head, '', body, '', missing].join('\n');
+  return [head, '', body, ...(hint === '' ? [] : ['', hint]), '', missing].join('\n');
 }

@@ -98,6 +98,14 @@ export function typeNameIn(text: string): string | null {
   return match === null ? null : match[1];
 }
 
+export function declaredTypeIn(text: string, name: string): string | null {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(
+    `\\b(?:function|const|let|var)\\s+${escaped}\\b[\\s\\S]{0,600}?(?:\\bprops\\??\\s*:|\\boptions\\??\\s*:|\\}\\s*:)\\s*([A-Z][A-Za-z0-9_]*)`,
+  );
+  return pattern.exec(text)?.[1] ?? null;
+}
+
 export function renderTypeText(fact: PublicTypeFact): string {
   return [`${fact.name} → ${fact.path}:${String(fact.line)}`, fact.text].join('\n');
 }
