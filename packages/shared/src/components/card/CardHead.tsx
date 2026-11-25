@@ -14,27 +14,32 @@ import './CardHead.css';
  * `CardHead` 的契约：标题、补充、刷新，外加齿轮与平台跳转两格。
  */
 export interface CardHeadProps {
+  /** 刷新那两句文案（刷新 / 刷新中）的翻译函数。 */
   readonly t: Translate;
+  /** 卡标题；`props.meta` 是它右侧那一小段补充，不给不占位。 */
   readonly title: string;
+  /** 标题右侧那一小段补充（条数、时间）；不给不占位。 */
   readonly meta?: ReactNode | undefined;
+  /** 正在刷新：刷新钮禁用并转圈。 */
   readonly refreshing: boolean;
+  /** 点刷新钮做什么。 */
   readonly onRefresh: () => void;
+  /** 齿轮钮的读屏名；`gearOpen` 控制它高亮、`onToggleGear` 是点击回调，三者一起给才画。 */
   readonly gear?: string | undefined;
+  /** 齿轮钮是不是打开状态；和 `gear` / `onToggleGear` 一起给才画。 */
   readonly gearOpen?: boolean | undefined;
+  /** 点齿轮钮的回调。 */
   readonly onToggleGear?: (() => void) | undefined;
+  /** 整张卡对应系统的地址：给了就画那颗 ↗（新窗口），tooltip 用 `platformTitle`，缺了退化用 `platform`。 */
   readonly platformHref?: string | undefined;
+  /** 整张卡对应系统的名字；`platformTitle` 不给时当 tooltip。 */
   readonly platform?: string | undefined;
+  /** ↗ 那颗钮的 tooltip；不给退化成 `platform`。 */
   readonly platformTitle?: string | undefined;
 }
 
 /**
  * 卡头：标题 + 补充 + 刷新钮（`Card` 内部就是它），要自己拼卡头或加齿轮 / 平台跳转时直接用。
- * @param props.t - 刷新那两句文案（刷新 / 刷新中）的翻译函数。
- * @param props.title - 卡标题；`props.meta` 是它右侧那一小段补充，不给不占位。
- * @param props.refreshing - 正在刷新：刷新钮禁用并转圈。
- * @param props.onRefresh - 点刷新钮做什么。
- * @param props.gear - 齿轮钮的读屏名；`gearOpen` 控制它高亮、`onToggleGear` 是点击回调，三者一起给才画。
- * @param props.platformHref - 整张卡对应系统的地址：给了就画那颗 ↗（新窗口），tooltip 用 `platformTitle`，缺了退化用 `platform`。
  * @returns 一个 `<header>`。
  */
 export function CardHead({

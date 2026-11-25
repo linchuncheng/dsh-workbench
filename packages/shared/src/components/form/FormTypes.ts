@@ -85,12 +85,20 @@ export interface FormCancel {
  * 可选键让"它可能不在表里"这件事在类型上也成立；永远可见的键照常必填。
  */
 export interface FormProps<Values extends object = FormValues> {
+  /** 每格的键 / 标签 / 值 / 值怎么改（`onChange`）/ 校验 / 控件；`visible: false` 的那格当它不存在（不渲染、不校验、不进 `values`）。 */
   readonly fields: readonly FormFieldOf<Values>[];
+  /** 校验全过的那一拍，回的是从 `fields` 现取的键值表（按 `visibleFieldsOf` 过滤过，不可见那格不在里面）；被挡住时不会被调。 */
   readonly onSubmit: (values: Readonly<Values>) => void;
+  /** 提交钮文案；`busyLabel` 是提交中换的那句，不给就沿用 `label`。 */
   readonly submit: FormSubmit;
+  /** 取消钮；给了就排在提交钮左边，`busy` 时一起禁用。 */
   readonly cancel?: FormCancel | undefined;
+  /** 其余动作（default / danger），排在最左，`busy` 时一起禁用。 */
   readonly extra?: readonly FormAction[] | undefined;
+  /** 提交中（默认 false）：整表控件的绑定 `disabled` 为真，所有动作一起禁用，回车也不提交。 */
   readonly busy?: boolean | undefined;
+  /** 只再禁提交钮（如没改动可存），各格控件与其余动作不受影响，回车也不提交。 */
   readonly disabled?: boolean | undefined;
+  /** 整表级那句错（提交失败），落在行与操作区之间；不给就不画。 */
   readonly problem?: ReactNode | undefined;
 }

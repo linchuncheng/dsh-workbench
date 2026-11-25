@@ -5,11 +5,17 @@ import type { InstallFailure } from '../contract/command.js';
  * 宿主读口 / 写口回的错误：code 给判据分档，message 给人看，helpUrl 有就去点。
  */
 export interface ApiError {
+  /** 错误码；判据按它分档。 */
   readonly code: string;
+  /** 给人看的那句。 */
   readonly message: string;
+  /** 更细的现场；可折叠。 */
   readonly detail?: string;
+  /** 一句怎么改的提示；没有不画。 */
   readonly hint?: string;
+  /** 文档 / 帮助页地址；有就去点。 */
   readonly helpUrl?: string;
+  /** 安装类失败的结构化现场；界面据此给修法。 */
   readonly failure?: InstallFailure;
 }
 
@@ -27,6 +33,7 @@ export type Query = Record<string, string | number | boolean | undefined>;
  * GET 的可选项；目前只有中止信号。
  */
 export interface ApiGetOptions {
+  /** 中止这次读。 */
   readonly signal?: AbortSignal | undefined;
 }
 

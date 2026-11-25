@@ -14,18 +14,18 @@ export interface ApprovalPlanRow {
  * `ApprovalPlan` 的契约：详情行，外加附注与警告两格。
  */
 export interface ApprovalPlanProps {
+  /** 详情行，按给的顺序渲染；空数组时只剩附注与警告。 */
   readonly rows: readonly ApprovalPlanRow[];
+  /** 表上面那句说明；不给不画。 */
   readonly hint?: ReactNode | undefined;
+  /** 表下面那句警告；不给不画。 */
   readonly warn?: ReactNode | undefined;
+  /** 插在表与 `warn` 之间的补充内容。 */
   readonly children?: ReactNode | undefined;
 }
 
 /**
  * 审批屏那张"这次要做什么"的表：一行一项，上面可给一句附注、下面可给一句警告。
- * @param props.rows - 详情行，按给的顺序渲染；空数组时只剩附注与警告。
- * @param props.hint - 表上面那句说明；不给不画。
- * @param props.warn - 表下面那句警告；不给不画。
- * @param props.children - 插在表与 `warn` 之间的补充内容。
  * @returns 一个 div。
  */
 export function ApprovalPlan({ rows, hint, warn, children }: ApprovalPlanProps) {

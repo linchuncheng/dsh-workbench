@@ -8,9 +8,13 @@ import { useCapabilities, useCapabilityProbe, type CapabilityMap } from './use-c
  * 一格的能力门：`capability` 是这一格声明的能力（没读到是 `null`）、`gated` 放行没（为真 = 这一格能画）、
  * `forceProbe()` 现在就去探一次。
  */
+/** 这个单元的能力门：读数、是否放行、现在去探测一次。 */
 export interface CapabilityGate {
+  /** 这个单元的能力读数；还没探到是 null。 */
   readonly capability: CapabilityPayload | null;
+  /** 按 mode 算出的门：没读数先放行（让它去读），明确不通过才拦。 */
   readonly gated: boolean;
+  /** 现在就去探一次。 */
   forceProbe(): void;
 }
 
@@ -35,11 +39,17 @@ export function useCapabilityGate(
 /**
  * 整张能力表的视图：表本体加探针的 `checkedAt` / `checking`，以及 `forceProbe()` 与 `reload()`。
  */
+/** 整张能力表的读与重探。 */
 export interface CapabilityMapView {
+  /** 整张能力表；没探过是 null。 */
   readonly capabilities: CapabilityMap | null;
+  /** 上次探到的时刻；没探过是 null。 */
   readonly checkedAt: number | null;
+  /** 探测正在运行。 */
   readonly checking: boolean;
+  /** 立刻探一次。 */
   forceProbe(): void;
+  /** 重取整张表。 */
   reload(): void;
 }
 

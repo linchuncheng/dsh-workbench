@@ -2,8 +2,11 @@
  * 模块拿得到的上下文：只承诺 `get` / `effect` / `logger`，不把 dsh 的 cordis Context 整棵交出去。
  */
 export interface HostContext {
+  /** 按名字取注入的服务；名字要写在清单的 host.inject 里，没注入时 undefined。 */
   get<T = unknown>(name: string): T | undefined;
+  /** 登记一个随本单元卸载的副作用；回调返回的函数在卸载时跑，label 只用于日志。 */
   effect(effect: () => void | (() => void), label?: string): unknown;
+  /** 工作台日志口；没有就不记。 */
   readonly logger?: { info?(message: string): void; warn?(message: string): void } | undefined;
 }
 

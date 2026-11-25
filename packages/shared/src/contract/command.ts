@@ -22,7 +22,9 @@ export interface CommandResult {
   readonly error?: string | undefined;
 }
 
+/** 运行一条 argv 命令，不经过 shell。 */
 export interface CommandReader {
+  /** files 先写成临时文件，按 appendFileArgs 追加到 argv，运行完清掉。 */
   run(request: CommandRequest): Promise<CommandResult>;
 }
 

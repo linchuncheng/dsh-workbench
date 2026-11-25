@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
+import { memberJsDocOf } from '../public-types.mjs';
 import {
   allSourceCss,
   allowsJsDoc,
@@ -345,6 +346,7 @@ export const checks = [
         for (const line of commentViolationsOf(read(file), {
           css: file.endsWith('.css'),
           allowJsDoc: allowsJsDoc(rel),
+          memberJsDoc: memberJsDocOf(rel),
         })) {
           bad.push(`${rel}:${line}`);
         }
@@ -366,6 +368,7 @@ export const checks = [
         'packages/shared/src/testing/declaration.ts',
         'packages/core/src/shared/hooks/use-api-resource.ts',
         'packages/core/src/shared/components/Tip.tsx',
+        'packages/core/src/shared/hooks/resource-view.ts',
         'packages/core/src/shared/api/context-chips.ts',
       ];
       const mustDeny = [
@@ -397,7 +400,10 @@ export const checks = [
         ['公开面贴导出的 JSDoc', '/** x */\nexport const a = 1;\n', { allowJsDoc: true }, 0],
         ['公开面 JSDoc 没贴导出', '/** x */\n\nconst a = 1;\n', { allowJsDoc: true }, 1],
         ['公开面 JSDoc 在函数体内', 'export function f() {\n  /** x */\n  const a = 1;\n}\n', { allowJsDoc: true }, 1],
-        ['公开面 JSDoc 在 interface 成员上', 'export interface I {\n  /** x */\n  a: string;\n}\n', { allowJsDoc: true }, 1],
+        ['公开面 JSDoc 在 interface 成员上（未枚举）', 'export interface I {\n  /** x */\n  a: string;\n}\n', { allowJsDoc: true }, 1],
+        ['非公开面 JSDoc 在 interface 成员上', 'export interface I {\n  /** x */\n  a: string;\n}\n', {}, 1],
+        ['枚举内的 interface 成员 JSDoc', 'export interface I {\n  /** x */\n  a: string;\n}\n', { allowJsDoc: true, memberJsDoc: ['I'] }, 0],
+        ['枚举外的 interface 成员 JSDoc', 'export interface I {\n  /** x */\n  a: string;\n}\n', { allowJsDoc: true, memberJsDoc: ['Other'] }, 1],
         ['多行公开面 JSDoc', '/** a\n * b\n */\nexport interface I {}\n', { allowJsDoc: true }, 0],
         ['行尾注释', 'foo(); // x\nexport const a = 1;\n', {}, 1],
         ['字符串里的斜杠', 'const s = "// x";\nexport const a = 1;\n', {}, 0],

@@ -18,18 +18,30 @@ export type ImageLike =
 export type AttachmentLike = never;
 
 /** 一次调用要的东西；除 `prompt` 外都可选，所以加字段永远不算破坏性变更。 */
+/** 一次模型调用：除 prompt 外全部可选。 */
 export interface AiRequest {
+  /** 要模型做什么。 */
   readonly prompt: string;
+  /** 图片：绝对路径 / data URL / Uint8Array；不要自己拼内容块。 */
   readonly images?: readonly ImageLike[] | undefined;
   readonly attachments?: readonly AttachmentLike[] | undefined;
+  /** 给 askJson 用；会附在提示词后并校验。 */
   readonly schema?: JsonSchema | undefined;
+  /** 取消信号；长任务停止时 abort。 */
   readonly signal?: AbortSignal | undefined;
+  /** 进度回调：结构化输出不合格、准备重试时给一句。 */
   readonly onStep?: ((text: string) => void) | undefined;
+  /** 流式增量回调；只有适配器支持时才有。 */
   readonly onDelta?: ((chunk: string) => void) | undefined;
+  /** 覆盖默认模型：provider / model 都可只给一个。 */
   readonly model?: { readonly provider?: string; readonly model?: string } | undefined;
+  /** 采样温度；不给用模型默认。 */
   readonly temperature?: number | undefined;
+  /** 结构化输出不合格时最多再试几次；默认 1（共两次）。 */
   readonly retry?: number | undefined;
+  /** 本次调用超时；到点中止。 */
   readonly timeoutMs?: number | undefined;
+  /** schema 校验时把不认识的关键字也算问题。 */
   readonly strict?: boolean | undefined;
 }
 

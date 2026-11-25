@@ -1,20 +1,12 @@
 # AI：要模型就用 `deps.ai`
 
 模块需要模型给出判断时，只有这一个入口。不要直接使用 `ctx.get('llm')`，也不要自己拼内容块或保存图片——
-这些工作由宿主完成（`ctx.get('llm')` 仍然可用，属于应急入口，不是推荐路径）。
+这些工作由工作台完成（`ctx.get('llm')` 仍然可用，属于应急入口，不是推荐路径）。
 
-## 1 三个动词
+## 1 怎么选
 
-```ts
-const text = await deps.ai.ask({ prompt: '说一句' });
-
-const verdict = await deps.ai.askJson({
-  prompt: reviewPrompt,
-  schema: { type: 'object', required: ['ok'], properties: { ok: { type: 'boolean' } } },
-});
-
-const rich = await deps.ai.askRich({ prompt: 'x' });   // + usage / model / elapsedMs
-```
+四个入口：`ask` 回文本、`askJson` 回结构化对象、`askRich` 回文本加用量、`agent` 起子 agent。
+签名、字段与默认值见 `name=AiPort` / `name=AiRequest`；这一节只讲怎么选。
 
 - 除 `prompt` 外**全部可选**：新增字段不会破坏调用方。
 - `askJson` 保证返回对象：schema 的紧凑描述会附在提示词末尾，先解析、再校验，不合格**自动重试一次**，
@@ -23,15 +15,7 @@ const rich = await deps.ai.askRich({ prompt: 'x' });   // + usage / model / elap
 
 ## 2 图片：直接传入，不要自行编码
 
-```ts
-await deps.ai.askJson({
-  prompt,
-  images: ['/tmp/page1.jpg', 'data:image/jpeg;base64,...', bytes],
-  schema,
-});
-```
-
-三种写法都可以：绝对路径、data URL、`Uint8Array`。宿主会通过 `saveImage` 将其保存为持久附件，再送入模型；
+`images` 直接给绝对路径、data URL 或 `Uint8Array`。工作台会通过 `saveImage` 将它保存为持久附件，再送入模型；
 模块**不会接触**附件引用这类内核类型。
 
 ⚠️ 不要按 OpenAI 的 `image_url` 自行组合内容块——dsh 的适配器只认 `{ type: 'image', attachment }`，

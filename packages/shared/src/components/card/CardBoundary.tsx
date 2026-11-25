@@ -14,11 +14,17 @@ const COPIED_MS = 1500;
  * `CardBoundary` 的契约：被守的 unit、重来键与失败回调。
  */
 export interface CardBoundaryProps {
+  /** 出事的 unit id，写进报错文案并作为上报标识。 */
   readonly unit: string;
+  /** 重来键：它一变（如切了工作区）就自动清掉报错，把卡片重新渲染一遍。 */
   readonly resetKey: string;
+  /** 报错那句、重试钮与「复制给 agent」的翻译函数。 */
   readonly t: Translate;
+  /** 失败时把原因报给工作台（面板状态要用）；不给就只打一条 console。 */
   readonly onFailure?: ((reason: string) => void) | undefined;
+  /** 出错时改画这一份；不给就画卡片失败提示、可折叠的原文与两颗按钮。 */
   readonly fallback?: ReactNode | undefined;
+  /** 正常时要渲染的卡片内容。 */
   readonly children?: ReactNode | undefined;
 }
 
@@ -68,12 +74,6 @@ function stateOf(reason: string | null): CardBoundaryState {
 
 /**
  * 卡片级错误边界：一张卡渲染炸了只画一条报错 + 重试，不让整块面板跟着塌。
- * @param props.unit - 出事的 unit id，写进报错文案并作为上报标识。
- * @param props.resetKey - 重来键：它一变（如切了工作区）就自动清掉报错，把卡片重新渲染一遍。
- * @param props.t - 报错那句、重试钮与「复制给 agent」的翻译函数。
- * @param props.onFailure - 失败时把原因报给宿主（面板状态要用）；不给就只打一条 console。
- * @param props.fallback - 出错时改画这一份；不给就画卡片失败提示、可折叠的原文与两颗按钮。
- * @param props.children - 正常时要渲染的卡片内容。
  * @returns 正常时是 `children`，炸过且还没重来之前是一条报错。
  */
 export class CardBoundary extends Component<CardBoundaryProps, CardBoundaryState> {

@@ -161,8 +161,8 @@
 
 耗时几十秒以上的操作做成长任务：`mount` deps 的 `longTasks` 并挂回：
 
-`longTasks.create({ key, run, view, recheck?, answer? })`；`run({ payload, onStep, signal })` 里用
-`onStep({ kind: 'start', text })` 报步骤、return 结果。
+`deps.longTasks.create(...)` 建注册表、`start` 起一趟；方法、字段见
+`name=LongTaskHost` / `name=LongTaskDeps` / `name=LongTaskRegistry`；`run` 里用 `onStep` 报步骤。
 
 - 来源：工具里 `runs.start({ …, session: deps.sessionIdOf(exec) ?? undefined })`。未记录 = 用户手动启动的 → 停止需审批。
 - 流程事件默认用 `longTaskStepOf(event)`。
@@ -193,7 +193,7 @@
   `label: 停止任务 {label}`、`askLabel: '确认停止'`）；失败文案画行下；两步确认归组件。
 - 工作台自带 `workbench_long_tasks_list`（读）与 `workbench_long_tasks_stop`（写）。自己发起的长任务无需审批；
   他人的 / 用户手动启动的 / 未记录来源的需要审批；跨工作区直接拒绝。
-- `contracts` 查形状：注册表九个方法（含 `stop` / `live` / `answer`）、`create` 的 `key` / `run` / `view`、
+- `contracts` 查形状：注册表方法见 `name=LongTaskRegistry`，`create` 的字段见 `name=LongTaskDeps`；
   产物含 `useLongTask` / `LongTaskRow` 之一。是否实际响应 signal 不在检查范围内。
 - 左栏的状态点由工作台按 `live()` 驱动；等待人工处理时升级为「等你处理」的 warning，模块不做。
 - 用 `stop` / `session` / 长任务工具需把 `@dsh-workbench/core` peer 下限抬到含它们的版本（`check --only kit` 查）。

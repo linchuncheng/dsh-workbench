@@ -60,7 +60,9 @@ export interface LongTaskChange<S extends LongTaskBase> {
   readonly by?: string | undefined;
 }
 
+/** 长任务怎么跑、怎么投影成面板那一行。 */
 export interface LongTaskDeps<S extends LongTaskBase> {
+  /** 真正执行任务：payload 来自 start，onStep 报步骤，signal 被 abort 时尽快退出。 */
   readonly run: (options: {
     readonly payload: unknown;
     readonly onStep: (step: LongTaskStep) => void;
@@ -69,8 +71,11 @@ export interface LongTaskDeps<S extends LongTaskBase> {
   readonly step?: ((step: LongTaskStep, current: S) => Partial<S>) | undefined;
   readonly outcome?: ((result: unknown, current: S) => Partial<S>) | undefined;
   readonly stopped?: ((current: S) => Partial<S>) | undefined;
+  /** 用户点「我处理完了」时调；不给行上就没这颗钮。 */
   readonly recheck?: ((current: S) => void) | undefined;
+  /** 用户交回执时调；不给行上就没表单。 */
   readonly answer?: ((current: S, values: Readonly<Record<string, string>>) => void) | undefined;
+  /** 把快照投影成面板那一行要的字段。 */
   readonly view: (snapshot: S) => Readonly<Record<string, unknown>>;
   readonly now?: (() => string) | undefined;
   readonly nextId?: (() => string) | undefined;
@@ -83,15 +88,24 @@ export interface LongTaskDeps<S extends LongTaskBase> {
  * loading 点要的（**不分工作区、不分目标**，把现在活着的每一趟交出来），`stop` 只把中断信号转给生产方。
  */
 export interface LongTaskRegistry<S extends LongTaskBase> {
+  /** 行上有没有「我处理完了」；建注册表时给了 recheck 才 true。 */
   readonly resumable: boolean;
+  /** 行上有没有结构化回执表单；建注册表时给了 answer 才 true。 */
   readonly answerable: boolean;
+  /** 起一趟；同 workspace + target 已有活的就直接返回它，不重复起。 */
   start(options: LongTaskStart): S;
+  /** 按 id 取快照；不在或已清掉回 null。 */
   snapshot(id: string): S | null;
+  /** 找同 workspace + target 的活任务；没有回 null。 */
   active(workspace: string, target: string): S | null;
+  /** 一个工作区里每个 target 最新一趟的投影；活的加最近 recentMs 内的。 */
   current(workspace: string): readonly Readonly<Record<string, unknown>>[];
+  /** 现在活着的每一趟，不分工作区 / 目标；给侧栏状态点用。 */
   live(): readonly S[];
+  /** 请求停止：把中断信号转给生产方；没有这趟或已经结束回 false。 */
   stop(id: string, by?: string): boolean;
   recheck(id: string): boolean;
+  /** 交回执：只认 intervention.fields 里的 key，必填缺失回 false。 */
   answer(id: string, values: Readonly<Record<string, string>>): boolean;
   onChange(listener: (change: LongTaskChange<S>) => void): () => void;
   rebind?(deps: LongTaskDeps<S>): void;
@@ -485,7 +499,9 @@ export function sharedLongTaskRegistry<S extends LongTaskBase>(
   return created;
 }
 
+/** 一个单元的长任务入口：按 key 建注册表。 */
 export interface LongTaskHost {
+  /** key 是模块内稳定的标识；run / view 必给，recheck / answer 决定行上有没有恢复与回执。 */
   create<S extends LongTaskBase>(options: { readonly key: string } & LongTaskDeps<S>): LongTaskRegistry<S>;
 }
 

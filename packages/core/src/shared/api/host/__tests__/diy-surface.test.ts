@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   byLocationOf,
-  DEPS_SURFACE,
   excerptOf,
   filesOf,
   findFileOf,
@@ -15,6 +14,16 @@ import {
   wantsKit,
   wantsPrimitives,
 } from '../diy-surface';
+import {
+  DEPS_NAMES,
+  depDeclarationFiles,
+  depDeclarationOf,
+  depDeclarationsOf,
+  isDepName,
+  renderDepText,
+  renderDepsText,
+  surfaceCoreRoot,
+} from '../diy-deps';
 import { kit, primitives } from './diy-surface-samples';
 
 describe('workbench_diy_surface · 解析与落点', () => {
@@ -31,11 +40,52 @@ describe('workbench_diy_surface · 解析与落点', () => {
     expect([wantsPrimitives('deps'), wantsKit('deps')]).toEqual([false, false]);
   });
 
-  it('deps 面覆盖宿主 kit 与单元挂载口', () => {
-    const names = Object.keys(DEPS_SURFACE);
-    for (const name of ['surface', 'flow', 'commands', 'seam', 'data', 'store', 'longTasks']) {
-      expect(names).toContain(name);
+  it('deps 面覆盖工作台 kit 与单元挂载口：24 个成员，含 drafts', () => {
+    expect(DEPS_NAMES).toHaveLength(24);
+    expect(new Set(DEPS_NAMES).size).toBe(24);
+    for (const name of ['surface', 'flow', 'commands', 'seam', 'data', 'store', 'longTasks', 'drafts']) {
+      expect(DEPS_NAMES).toContain(name);
     }
+    expect(isDepName('drafts')).toBe(true);
+    expect(isDepName('nope')).toBe(false);
+  });
+
+  it('★ deps 每个成员都在声明里带 JSDoc（路径:行 + JSDoc + 声明；drafts 在 host-kit，probe 跨行）', () => {
+    const root = surfaceCoreRoot();
+    const files = depDeclarationFiles(root);
+    expect(files).toHaveLength(2);
+
+    const facts = depDeclarationsOf(root);
+    expect(facts).toHaveLength(24);
+    for (const fact of facts) expect(fact.text.trimStart().startsWith('/**'), fact.name).toBe(true);
+
+    const drafts = facts.find((one) => one.name === 'drafts');
+    expect(drafts?.path).toMatch(/host-kit\.(?:d\.ts|ts)$/);
+    expect(drafts?.line).toBeGreaterThan(0);
+    expect(drafts?.text).toContain('会话草稿库');
+    expect(drafts?.text).toContain('readonly drafts');
+
+    const probe = facts.find((one) => one.name === 'probe');
+    expect(probe?.text.split('\n').length).toBeGreaterThan(1);
+    expect(probe?.text).toContain('Promise<UnitCapability');
+    expect(probe?.text.trimEnd().endsWith(';')).toBe(true);
+    expect(depDeclarationOf('nope', root)).toBeNull();
+  });
+
+  it('deps 列表：先给声明文件，每项首句来自 JSDoc；单点给 路径:行 + JSDoc + 声明', () => {
+    const root = surfaceCoreRoot();
+    const text = renderDepsText(root);
+    expect(text.startsWith('工作台 deps（UnitMountDeps，24 项）：')).toBe(true);
+    expect(text).toContain('声明：');
+    expect(text).toContain('drafts: 会话草稿库');
+
+    const one = renderDepText('seam', root);
+    expect(one.split('\n')[0]).toMatch(/^seam → .+host-kit\.(?:d\.ts|ts):\d+$/);
+    expect(one).toContain('/**');
+    expect(one).toContain('受控执行缝');
+    expect(one).toContain('readonly seam');
+    expect(one).toContain('类型：UnitSeam → ');
+    expect(renderDepText('nope', root)).toContain('「nope」不在工作台 deps 里');
   });
 
   it('files / roots / 装机版本从工具链的 JSON 里取出来（形状不对就是空表，不抛）', () => {

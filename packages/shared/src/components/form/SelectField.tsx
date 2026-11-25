@@ -10,11 +10,17 @@ import './SelectField.css';
 
 /** 一个候选项：值、人看的标签，可带搜索词、图标、分组与禁用标记。 */
 export interface SelectFieldOption {
+  /** 给 `onChange` 的值。 */
   readonly value: string;
+  /** 人看的标签。 */
   readonly label: ReactNode;
+  /** 搜它时用的文本（标签之外的可搜词）；不给搜 `label`。 */
   readonly searchText?: string | undefined;
+  /** 触发器左侧那枚图标。 */
   readonly icon?: ReactNode | undefined;
+  /** 分组标题；同组连续排（怎么排归菜单）。 */
   readonly group?: string | undefined;
+  /** 禁用整颗；默认 false。 */
   readonly disabled?: boolean | undefined;
 }
 
@@ -26,45 +32,81 @@ export interface SelectFieldFallback {
 
 /** 列表底部固定那一条（如"添加工作区"）：文案 + 可选图标。 */
 export interface SelectFieldFooter {
+  /** 底部那一条的文案。 */
   readonly label: ReactNode;
+  /** 底部那一条左侧的图标。 */
   readonly icon?: ReactNode | undefined;
 }
 
 /** `SelectField` 的契约：值、候选、变更回调，外加搜索 / 分组 / 加载 / 空态 / 页脚那一整套开关。 */
 export interface SelectFieldProps {
+  /** 当前值；在 `options` 里找不到就按"没选"画 `placeholder`。 */
   readonly value: string;
+  /** 全量候选；空数组且给了 `fallback` 时改画手填输入框。 */
   readonly options: readonly SelectFieldOption[];
+  /** 选中一项后的回调，回的是那一项的 `value`。 */
   readonly onChange: (value: string) => void;
+  /** 没进 `FormRow` 时的标签回退；进了那一行就别再给它和 `hint`，否则会多一个标签。 */
   readonly label?: ReactNode | undefined;
+  /** 控件下面那行说明；进了 `FormRow` 就别再给，否则会多一行。 */
   readonly hint?: ReactNode | undefined;
+  /** 触发器左侧那枚图标。 */
   readonly icon?: ReactNode | undefined;
+  /** 自己渲染触发器上那份当前值；不给就用候选项的 `label`。 */
   readonly renderValue?: ((current: SelectFieldOption | undefined) => ReactNode) | undefined;
+  /** 没选中时那句话；不给是 `—`。 */
   readonly placeholder?: ReactNode | undefined;
+  /** 是否可搜（默认 true）；`false` 时不画搜索框、也不自动聚焦。 */
   readonly search?: boolean | undefined;
+  /** 搜索框的读屏名；不给用默认。 */
   readonly searchLabel?: string | undefined;
+  /** 搜索框的占位文案；不给用默认。 */
   readonly searchPlaceholder?: string | undefined;
+  /** 自定义匹配；不给用 `defaultSelectFilter`（空白查询一律命中）。 */
   readonly filter?: ((option: SelectFieldOption, query: string) => boolean) | undefined;
+  /** 无匹配时的文案，或按查询生成文案的函数（能说"没有匹配 X 的项"）。 */
   readonly emptyText?: string | ((query: string) => string) | undefined;
+  /** 受控打开状态；不给就内部自己管。 */
   readonly open?: boolean | undefined;
+  /** 打开 / 关闭时通知；和 `open` 一起用才是受控。 */
   readonly onOpenChange?: ((open: boolean) => void) | undefined;
+  /** 禁用整颗；默认 false。 */
   readonly disabled?: boolean | undefined;
+  /** 置真标红并写 `aria-invalid`；默认 false。 */
   readonly invalid?: boolean | undefined;
+  /** 正在读候选：触发器换成转圈；默认 false。 */
   readonly loading?: boolean | undefined;
+  /** 正在读时那句文案；不给是 `…`。 */
   readonly loadingText?: string | undefined;
+  /** 退路：`options` 为空时改成手填（`value` + `onChange`）。 */
   readonly fallback?: SelectFieldFallback | undefined;
+  /** 菜单底部那一条（如「新建」）；不给不画。 */
   readonly footer?: SelectFieldFooter | undefined;
+  /** 点菜单底部那一条做什么。 */
   readonly onFooter?: (() => void) | undefined;
+  /** 选中行标记：`fill`（整行底色，默认）或 `check`（行尾勾）。 */
   readonly selection?: 'check' | 'fill' | undefined;
+  /** 游标还没动时默认高亮哪一项（不给就回退到当前值）；回车也选它，方向键从它那行走。给 `null` 表示明确没有默认目标：不画默认高亮、回车不动作。 */
   readonly initialSelectedId?: string | null | undefined;
+  /** 打开时把选中的那一项滚进列表可视区；默认开，给 `false` 关掉。 */
   readonly scrollToSelected?: boolean | undefined;
+  /** `boxed`（默认，带边框）或 `ghost`（无边框）。 */
   readonly variant?: 'ghost' | 'boxed' | undefined;
+  /** 只画图标、不画当前值；默认 false。 */
   readonly iconOnly?: boolean | undefined;
+  /** 箭头留着位置但不画：调用方在那个位置叠自己的操作钮。 */
   readonly chevronHidden?: boolean | undefined;
+  /** 没有可见 label 时的读屏名。 */
   readonly ariaLabel?: string | undefined;
+  /** 触发器的 `title` 属性。 */
   readonly title?: string | undefined;
+  /** 触发器 id；`FormRow` 的 `htmlFor` 用它。 */
   readonly id?: string | undefined;
+  /** 隐藏 input 的 name；表单提交用。 */
   readonly name?: string | undefined;
+  /** 触发器额外类名。 */
   readonly className?: string | undefined;
+  /** 菜单额外类名。 */
   readonly menuClassName?: string | undefined;
 }
 
@@ -356,19 +398,6 @@ function selectStepFrom(
  * 下拉选择：默认是跟 `TextField` 一套的常规下拉框（不是原生 `<select>`），无边框那种给 `variant: 'ghost'`。
  * `open` 不给就内部自己管（两种接法下 `onOpenChange` 都会通知），`loading` 把触发器换成转圈 + `loadingText`（默认 `…`），
  * `selection` 选选中行标记（`fill` 整行底色 / `check` 行尾勾），`footer` 是列表底部那一条（点它走 `onFooter`，不改当前值）。
- * @param props.value - 当前值；在 `options` 里找不到就按"没选"画 `placeholder`。
- * @param props.options - 全量候选；空数组且给了 `fallback` 时改画手填输入框。
- * @param props.onChange - 选中一项后的回调，回的是那一项的 `value`。
- * @param props.label - 没进 `FormRow` 时的标签兜底；进了那一行就别再给它和 `hint`，否则会多一个标签。
- * @param props.renderValue - 自己渲染触发器上那份当前值；不给就用候选项的 `label`。
- * @param props.placeholder - 没选中时那句话；不给是 `—`。
- * @param props.chevronHidden - 箭头留着位置但不画：调用方在那个位置叠自己的操作钮。
- * @param props.initialSelectedId - 游标还没动时默认高亮哪一项（不给就回退到当前值）；回车也选它，方向键从它那行走。给 `null` 表示明确没有默认目标：不画默认高亮、回车不动作。
- * @param props.scrollToSelected - 打开时把选中的那一项滚进列表可视区；默认开，给 `false` 关掉。
- * @param props.search - 是否可搜（默认 true）；`false` 时不画搜索框、也不自动聚焦。
- * @param props.filter - 自定义匹配；不给用 `defaultSelectFilter`（空白查询一律命中）。
- * @param props.emptyText - 无匹配时的文案，或按查询生成文案的函数（能说"没有匹配 X 的项"）。
- * @param props.fallback - 退路：`options` 为空时改成手填（`value` + `onChange`）。
  * @returns 触发器，以及打开时的搜索框与列表。
  */
 export function SelectField(props: SelectFieldProps) {

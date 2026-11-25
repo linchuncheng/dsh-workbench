@@ -127,6 +127,8 @@ export const apply = plugin.apply;
 | `unit` | `<运行时根>/units/<unit>/`（模块自己的数据目录；`HOME`、npm/pnpm 缓存与日志也注入到这里） | 声明了就常开、不用审批 |
 | `workspace` | 当前会话的工作区 | 声明了才给；调用时还要带上会话对象 |
 
+字段、默认值与错误码见 `name=UnitSeamRequest`；这一节只留必须遵守的约束。
+
 不写 `writes`（或写 `[]`）= 不拿门面：`deps.seam` 是 `undefined`，代码里按可选处理。
 
 读站点数据的模块声明 `host.sites`（短名 → 站点事实），`host.origins` 由它推导；显式 `origins` 仍可写：
@@ -176,10 +178,8 @@ if (result === undefined || result.exitCode !== 0) {
 }
 ```
 
-- `workspace` 档的 `session` 从工具运行上下文拿（`execute(raw, exec)` 的 `exec.agent?.session`）；
-  路由 / 动作这些没有会话的调用点不要请求这一档。
+- `workspace` 档只给有会话的调用点（工具）；路由 / 动作没有会话，不要请求这一档。
 - 一条命令只声明一个写入域；要写两棵树就在步骤边界拆成两次调用。
-- `retry: 'safe'` 只给幂等 / 只读命令（查询、列清单）；写命令用默认的 `'never'`。
 - 请求没声明的档在启动进程前就失败（`SeamError` 的 `scope-not-declared` / `workspace-unknown`），不要吞掉。
 - 这层门面是**约定 + 门禁 + 归因**，不是进程隔离：模块宿主代码与工作台同进程。真正的安全边界仍是
   「是否安装模块 + 审批」。

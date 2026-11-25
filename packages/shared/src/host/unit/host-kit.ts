@@ -11,13 +11,21 @@ import { sessionIdOf, sessionWorkspace } from './tool-kit.js';
  * 宿主 kit 的公共部分：flow、工具侧 session 读法、外部供给装法、宿主平台事实、按 unit 绑定的执行缝门面。
  */
 export interface HostKit {
+  /** 流程入口：createActions / check / run。 */
   readonly flow: FlowHost;
+  /** 从工具执行上下文读会话 id；没有会话时 null。 */
   readonly sessionIdOf: typeof sessionIdOf;
+  /** 从工具执行上下文读当前工作区；没有会话时 null。 */
   readonly sessionWorkspace: typeof sessionWorkspace;
+  /** 拼共用依赖的安装提示；只展示、不执行。 */
   readonly libInstallCommand: EnvSupplyPort['libInstallCommand'];
+  /** 工作台平台信息：deployment / capabilities / toolchain。 */
   readonly surface: HostSurface;
+  /** 按 unit 绑定的受控执行缝；清单没声明 host.writes 时是 undefined。 */
   readonly seam?: UnitSeam | undefined;
+  /** 模块用的模型入口；这份运行时没有模型时是 undefined。 */
   readonly ai?: AiPort | undefined;
+  /** 会话草稿库；没有它就不能把远端文件挂到本地再提交。 */
   readonly drafts?: DraftStore | undefined;
 }
 

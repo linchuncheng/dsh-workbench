@@ -1,0 +1,113 @@
+export const PUBLIC_TYPES = {
+  'packages/shared/src/host/unit/unit-face.ts': { UnitMountDeps: 'all' },
+  'packages/shared/src/host/unit/host-kit.ts': { HostKit: 'all' },
+  'packages/shared/src/host/seam/unit-seam.ts': { UnitSeam: ['run'] },
+  'packages/shared/src/host/seam/intent.ts': { UnitSeamRequest: 'all' },
+  'packages/shared/src/contract/module-context.ts': { HostContext: 'all' },
+  'packages/shared/src/contract/protocol/platform.ts': { HostSurface: 'all', ClientSurface: 'all' },
+  'packages/shared/src/contract/command.ts': { CommandReader: ['run'] },
+  'packages/shared/src/contract/git.ts': { GitReader: 'all' },
+  'packages/shared/src/contract/lib.ts': { LibReader: 'all' },
+  'packages/shared/src/host/unit/value-handoff.ts': { ValueHandoff: 'all' },
+  'packages/shared/src/host/drafts/draft-store.ts': { DraftStore: 'all' },
+  'packages/shared/src/host/runtime/workspace-store.ts': { WorkspaceStore: ['for'] },
+  'packages/shared/src/host/unit/long-task.ts': {
+    LongTaskHost: ['create'],
+    LongTaskDeps: ['run', 'view', 'recheck', 'answer'],
+    LongTaskRegistry: ['resumable', 'answerable', 'start', 'snapshot', 'active', 'current', 'live', 'stop', 'answer'],
+  },
+  'packages/shared/src/host/ai/port.ts': { AiPort: ['ask', 'askJson', 'askRich', 'agent'] },
+  'packages/shared/src/contract/data.ts': {
+    DataReader: ['read', 'request', 'requestMany', 'plan', 'submitPlan', 'submit'],
+    DataCallOptions: 'all',
+  },
+  'packages/shared/src/host/ai/types.ts': {
+    AiRequest: ['prompt', 'images', 'schema', 'signal', 'onStep', 'onDelta', 'model', 'temperature', 'retry', 'timeoutMs', 'strict'],
+  },
+  'packages/shared/src/components/card/board-module.ts': { BoardModuleProps: 'all', CardViewCustomProps: 'all' },
+  'packages/shared/src/components/card/Activity.tsx': {
+    ActivityBlockProps: 'all',
+    ActivityLineProps: 'all',
+    ActivityActionProps: 'all',
+  },
+  'packages/shared/src/components/card/ApprovalDetail.tsx': { ApprovalDetailProps: 'all' },
+  'packages/shared/src/components/card/ApprovalPlan.tsx': { ApprovalPlanProps: 'all' },
+  'packages/shared/src/components/card/Card.tsx': { CardProps: 'all' },
+  'packages/shared/src/components/card/CardAnchor.tsx': { CardAnchorProps: 'all' },
+  'packages/shared/src/components/card/CardBoundary.tsx': { CardBoundaryProps: 'all' },
+  'packages/shared/src/components/card/CardHead.tsx': { CardHeadProps: 'all' },
+  'packages/shared/src/components/card/LongTaskRow.tsx': { LongTaskRowProps: 'all' },
+  'packages/shared/src/components/form/ChoiceGroup.tsx': {
+    ChoiceGroupOption: 'all',
+    ChoiceGroupCommon: 'all',
+    ChoiceGroupSingleProps: 'all',
+    ChoiceGroupMultiProps: 'all',
+  },
+  'packages/shared/src/components/form/ConfirmBar.tsx': { ConfirmBarProps: 'all' },
+  'packages/shared/src/components/form/Field.tsx': { FieldProps: 'all' },
+  'packages/shared/src/components/form/FormTypes.ts': { FormProps: 'all' },
+  'packages/shared/src/components/form/FormActions.tsx': { FormActionsProps: 'all' },
+  'packages/shared/src/components/form/FormRows.tsx': { FormRowsProps: 'all', FormRowProps: 'all' },
+  'packages/shared/src/components/form/SaveBar.tsx': { SaveBarProps: 'all' },
+  'packages/shared/src/components/form/SelectField.tsx': {
+    SelectFieldProps: 'all',
+    SelectFieldOption: 'all',
+    SelectFieldFooter: 'all',
+  },
+  'packages/shared/src/components/form/TextField.tsx': { TextFieldProps: 'all' },
+  'packages/shared/src/components/feedback/EmptyIllustration.tsx': { EmptyIllustrationProps: 'all' },
+  'packages/shared/src/components/feedback/Note.tsx': { NoteProps: 'all' },
+  'packages/shared/src/components/feedback/ResourceStates.tsx': {
+    SkeletonRowsProps: 'all',
+    CenteredStateProps: 'all',
+    EmptyStateProps: 'all',
+  },
+  'packages/shared/src/components/feedback/Spinner.tsx': { SpinnerProps: 'all' },
+  'packages/shared/src/components/feedback/StateBlock.tsx': { StateBlockProps: 'all' },
+  'packages/shared/src/components/layout/Link.tsx': { LinkProps: 'all' },
+  'packages/shared/src/components/layout/Rows.tsx': { RowsProps: 'all', RowProps: 'all' },
+  'packages/shared/src/components/layout/SettingsSection.tsx': { SettingsSectionProps: 'all' },
+  'packages/shared/src/components/layout/Stack.tsx': { StackProps: 'all' },
+  'packages/shared/src/components/layout/icons.tsx': { IconProps: 'all' },
+  'packages/core/src/shared/components/BlockerState.tsx': { BlockerStateProps: 'all' },
+  'packages/core/src/shared/components/UnitBlocker.tsx': { UnitBlockerProps: 'all' },
+  'packages/core/src/shared/components/long-task/LongTaskRun.tsx': { LongTaskRunProps: 'all' },
+  'packages/core/src/shared/components/long-task/LongTaskSection.tsx': { LongTaskSectionProps: 'all' },
+  'packages/core/src/shared/hooks/resource-view.ts': { ResourceState: 'all' },
+  'packages/core/src/shared/hooks/use-platform.ts': { PlatformView: 'all' },
+  'packages/core/src/shared/hooks/use-visible-busy.ts': { BusyView: 'all' },
+  'packages/core/src/shared/hooks/use-card-summary.ts': { CardSummary: 'all' },
+  'packages/core/src/shared/hooks/use-long-task.ts': {
+    LongTaskFeed: 'all',
+    LongTaskOptions: 'all',
+    LongTaskWiring: 'all',
+  },
+  'packages/core/src/shared/hooks/use-capability-gate.ts': { CapabilityGate: 'all', CapabilityMapView: 'all' },
+  'packages/core/src/shared/hooks/use-host-write.ts': { HostWrite: 'all', HostWriteOptions: 'all' },
+  'packages/core/src/shared/hooks/use-unit-board.ts': {
+    CardFeed: 'all',
+    UnitBoardOptions: 'all',
+    UnitBoard: 'all',
+  },
+  'packages/core/src/shared/hooks/use-unit-setup.ts': { UseUnitSetupOptions: 'all' },
+  'packages/shared/src/components/layout/SetupShell.tsx': {
+    SetupShellProps: 'all',
+    SetupStep: 'all',
+    SetupStepContext: 'all',
+    SetupSnapshot: 'all',
+    UnitSetup: 'all',
+    SetupShellLabels: 'all',
+  },
+  'packages/core/src/shared/hooks/use-api-resource.ts': { ApiResourceOptions: 'all' },
+  'packages/shared/src/api/workbench-client.ts': { ApiError: 'all', ApiGetOptions: 'all' },
+};
+
+export function memberJsDocOf(rel) {
+  return Object.keys(PUBLIC_TYPES[rel] ?? {});
+}
+
+export function documentedInterfaces() {
+  return Object.entries(PUBLIC_TYPES).flatMap(([file, interfaces]) =>
+    Object.entries(interfaces).map(([name, members]) => ({ file, name, members })),
+  );
+}

@@ -25,6 +25,7 @@ export interface FormAction {
  * `FormActions` 的契约：一组动作。
  */
 export interface FormActionsProps {
+  /** 动作清单；调用点给的顺序只在同语气内部生效，空数组时整块不渲染。 */
   readonly actions: readonly FormAction[];
 }
 
@@ -58,7 +59,6 @@ function variantOf(kind: FormActionKind): 'ghost' | 'outline' | 'primary' {
 
 /**
  * 操作区：把一组动作按"primary 永远在右、danger 紧挨它左侧"排好，窄了自动折行。
- * @param props.actions - 动作清单；调用点给的顺序只在同语气内部生效，空数组时整块不渲染。
  * @returns 一排按钮，或 `null`（没有动作时）。
  */
 export function FormActions({ actions }: FormActionsProps) {

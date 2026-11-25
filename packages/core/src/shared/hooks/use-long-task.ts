@@ -216,18 +216,44 @@ function storeOf<T extends { readonly status: LongTaskStatus }>(
  * `refresh()` 让这一格**立刻**重读一次（不必等下一拍轮询）—— 自己写完/发起完之后用它，
  * 别去拼读口路由、也别为一个读数去碰事实通道。
  */
+/** 一张卡的长任务读与写；同一个 `(unit, workspace)` 只有一个轮询与一套写状态。 */
 export interface LongTaskFeed<T> {
+  /** 当前要画的那几趟。 */
   readonly runs: readonly T[];
+  /** 请求停止；成功后立刻重读一次，不抛错。 */
   stop(id: string): Promise<WriteOutcome<unknown>>;
+  /** 正在停的那趟 id；没有是 null。 */
   readonly stopping: string | null;
+  /** 上一次停止失败的原文；没有是 null。 */
   readonly stopFailed: string | null;
+  /** 「我处理完了」；不抛错。 */
   recheck(id: string): Promise<WriteOutcome<unknown>>;
+  /** 正在 recheck 的那趟 id；没有是 null。 */
   readonly rechecking: string | null;
+  /** 上一次 recheck 失败的原文；没有是 null。 */
   readonly recheckFailed: string | null;
+  /** 交回执；不抛错。 */
   answer(id: string, values: Readonly<Record<string, string>>): Promise<WriteOutcome<unknown>>;
+  /** 正在回答的那趟 id；没有是 null。 */
   readonly answering: string | null;
+  /** 上一次回执失败的原文；没有是 null。 */
   readonly answerFailed: string | null;
+  /** 立刻重读一次。 */
   refresh(): void;
+}
+
+/** `useLongTask` 的入参：哪一格、哪个工作区、要不要轮。 */
+export interface LongTaskOptions {
+  /** 这个单元的 id。 */
+  readonly unit: string;
+  /** 当前工作区；null 时不轮。 */
+  readonly workspace: string | null;
+  /** 夹具模式：不轮、不写。 */
+  readonly mocked?: boolean | undefined;
+  /** false 时不轮。 */
+  readonly enabled?: boolean | undefined;
+  /** 轮询间隔；按第一个订阅者算。 */
+  readonly pollMs?: number | undefined;
 }
 
 /**
@@ -240,13 +266,9 @@ export interface LongTaskFeed<T> {
  * `pollMs` 按第一个订阅者算。`stop(id)` / `recheck(id)` / `answer(id, values)` 走 actions 通道；
  * 成功后立刻重读一次；都不抛错。
  */
-export function useLongTask<T extends { readonly id: string; readonly status: LongTaskStatus }>(options: {
-  readonly unit: string;
-  readonly workspace: string | null;
-  readonly mocked?: boolean | undefined;
-  readonly enabled?: boolean | undefined;
-  readonly pollMs?: number | undefined;
-}): LongTaskFeed<T> {
+export function useLongTask<T extends { readonly id: string; readonly status: LongTaskStatus }>(
+  options: LongTaskOptions,
+): LongTaskFeed<T> {
   const enabled = options.enabled !== false && options.mocked !== true && options.workspace !== null;
   const store = useMemo(
     () => (enabled ? storeOf<T>(options.unit, options.workspace ?? '', options.pollMs) : null),
@@ -295,13 +317,19 @@ export function useLongTask<T extends { readonly id: string; readonly status: Lo
 
 const WIRING_URL_PATTERN = /^https?:\/\//i;
 
+/** 卡片侧把长任务行接起来的整组。 */
 export interface LongTaskWiring {
+  /** 长任务读与写。 */
   readonly feed: LongTaskFeed<ShellLongTaskRow>;
+  /** 打开一个链接。 */
   readonly open: (url: string) => void;
+  /** 复制一段文本。 */
   readonly copy: (text: string) => void;
+  /** 刚复制的那段；没有是 null。 */
   readonly copied: string | null;
 }
 
+/** 卡片要一行长任务时用它：读 feed、接打开与复制。 */
 export function useLongTaskWiring(options: {
   readonly unit: string;
   readonly workspace: string | null;

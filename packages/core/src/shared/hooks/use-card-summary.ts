@@ -3,8 +3,11 @@ import { useEffect } from 'react';
 /**
  * 卡片报给面板那一格的两个数：`refreshing` 还在不在忙、`at` 最近一次读到值的时间（没有是 `null`）。
  */
+/** 卡片报给面板的摘要。 */
 export interface CardSummary {
+  /** 正在刷新。 */
   readonly refreshing: boolean;
+  /** 上次读到的时刻；没读到是 null。 */
   readonly at: number | null;
 }
 

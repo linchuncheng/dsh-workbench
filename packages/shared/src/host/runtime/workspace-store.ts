@@ -13,7 +13,9 @@ export interface ModuleStore {
   list(): string[];
 }
 
+/** 按工作区隔离的模块存储。 */
 export interface WorkspaceStore {
+  /** 取单元 + 工作区的存储；workspace 为 null 或空串时是进程内存储（重启就丢）。 */
   for(unitId: string, workspace: string | null): ModuleStore;
   machine(unitId: string): ModuleStore;
   scan(unitId: string): ModuleStore[];

@@ -12,7 +12,9 @@ export interface UnitSeamPorts {
   readonly realHome?: string | undefined;
 }
 
+/** 一次受控执行：能写哪里由清单声明，每次调用还要带 scope。 */
 export interface UnitSeam {
+  /** 运行一条命令。scope=workspace 要先在清单声明写入域并带会话；retry 默认 'never'。 */
   run(request: UnitSeamRequest): Promise<SeamOutcome>;
 }
 

@@ -1,7 +1,9 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+import ts from 'typescript';
 
-import { PKG, pkg, read } from '../lib.mjs';
+import { PKG, pkg, read, REPO } from '../lib.mjs';
+import { documentedInterfaces } from '../public-types.mjs';
 
 const skillFile = (name) => read(pkg(`skills/workbench-module-diy/${name}`));
 const diyConstants = () => read(pkg('../shared/src/contract/protocol/diy.ts'));
@@ -160,6 +162,40 @@ export const checks = [
         '★ 入口（SKILL.md）指向那一节，并且它排在"从模板改"之前',
         skillMd.includes('DATASOURCE.md') && skillMd.indexOf('DATASOURCE.md') < skillMd.indexOf('BUILD.md'),
         'SKILL.md 的索引与步骤',
+      );
+    },
+  },
+  {
+    title: '★ 登记的公开类型成员都有 JSDoc（surface name=<类型> 才答得出用法）',
+    run(_ctx, report) {
+      const missing = [];
+      let total = 0;
+      for (const { file, name: wanted, members } of documentedInterfaces()) {
+        const text = read(join(REPO, file));
+        const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+        let found = false;
+        source.forEachChild((node) => {
+          if (!ts.isInterfaceDeclaration(node) || node.name.text !== wanted) return;
+          found = true;
+          if (members !== 'all') {
+            const present = node.members.map((member) => member.name.getText(source));
+            for (const one of members) if (!present.includes(one)) missing.push(`${wanted}.${one}（不在接口里）`);
+          }
+          const listed =
+            members === 'all'
+              ? node.members
+              : node.members.filter((member) => members.includes(member.name.getText(source)));
+          for (const member of listed) {
+            total += 1;
+            if (ts.getJSDocCommentsAndTags(member).length === 0) missing.push(`${wanted}.${member.name.getText(source)}`);
+          }
+        });
+        if (!found) missing.push(`${wanted}（在 ${file} 里没找到）`);
+      }
+      report(
+        '★ 登记的公开类型成员都有 JSDoc（surface name=<类型> 才答得出用法）',
+        missing.length === 0 && total > 0,
+        `${String(total)} 个成员${missing.length === 0 ? '都有 JSDoc' : `，缺 ${missing.join('、')}`}`,
       );
     },
   },

@@ -11,14 +11,21 @@ import type {
  * `useUnitSetup` 的入参：步骤、读配置、写配置与两个回调。
  */
 export interface UseUnitSetupOptions {
+  /** 步骤；每步给 `render`，可选的 `canLeave` / `next` / `submit`。 */
   readonly steps: readonly SetupStep[];
+  /** 读一次配置；`configured` 为真表示已配置（相位直接到 `ready`）；不给就直接进 `needs-setup`。 */
   readonly read?: (() => Promise<SetupSnapshot>) | undefined;
+  /** 没有 `read` 时的初始值（编辑当前配置的常见接法）。 */
   readonly initialValues?: Readonly<Record<string, unknown>> | undefined;
+  /** `edit` 模式存全量时用；不给则 `saveAll` 无效。 */
   readonly write?:
     | ((values: Readonly<Record<string, unknown>>) => Promise<SetupWriteResult>)
     | undefined;
+  /** 未配置时从哪一步开始；不给用第一步。 */
   readonly initialStep?: ((snapshot: SetupSnapshot) => string) | undefined;
+  /** 相位到 `ready` 时回调（含配置已存在的那次读）。 */
   readonly onReady?: ((snapshot: SetupSnapshot) => void) | undefined;
+  /** `saveAll` 写成功时回调。 */
   readonly onSaved?: (() => void) | undefined;
 }
 

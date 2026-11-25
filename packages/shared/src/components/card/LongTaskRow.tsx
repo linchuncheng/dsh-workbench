@@ -89,25 +89,45 @@ export interface LongTaskRowIntervention {
  * `LongTaskRow` 的契约：状态、标题、问题、链接、登录钮，两处可展开的原始输出，与最右边那颗可选的停止钮。
  */
 export interface LongTaskRowProps {
+  /** 六态之一，决定默认的点与「失败」那一块。 */
   readonly status: LongTaskStatus;
+  /** 这一行在干什么（一句话）。 */
   readonly headline: string;
+  /** 当前步骤；运行中 / 停止后给，不给不画。 */
   readonly step?: string | undefined;
+  /** 状态词 · 耗时那一行；不给不画。 */
   readonly meta?: string | undefined;
+  /** 点的档位覆盖；不给就用 `longTaskDot(status)`。 */
   readonly dot?: 'done' | 'ongoing' | 'error' | 'idle' | 'warning' | undefined;
+  /** 点的读屏文案；不给就不挂 `aria-label`。 */
   readonly dotLabel?: string | undefined;
+  /** 第几次重试那行的文案；只在 `attempt > 1` 时用，不给不画。 */
   readonly attemptLabel?: ((attempt: number) => string) | undefined;
+  /** 紧凑档（默认 false）。 */
   readonly dense?: boolean | undefined;
+  /** 失败原因；不给不画。 */
   readonly problem?: string | undefined;
+  /** 行尾的链接，通常指向产物或日志。 */
   readonly links?: readonly LongTaskRowLink[] | undefined;
+  /** 旧的纯文本步骤；只在没有 `history` 时作为回退画。 */
   readonly steps?: readonly string[] | undefined;
+  /** 结构化步骤；有它就一行一步，每步的链接挂在行尾。 */
   readonly history?: readonly LongTaskStepRow[] | undefined;
+  /** 原始输出；给了 `rawTitle` 才成一块可展开。 */
   readonly raw?: string | undefined;
+  /** 步骤那块展开行的标题；`rawTitle` 同理是原始输出那块。 */
   readonly stepsTitle?: string | undefined;
+  /** 原始输出那块展开行的标题；不给就不展开原始输出。 */
   readonly rawTitle?: string | undefined;
+  /** 复制钮文案：给了才画复制钮；`copiedLabel` 是复制成功后那句。 */
   readonly copyLabel?: string | undefined;
+  /** 复制成功后的文案；不给用默认。 */
   readonly copiedLabel?: string | undefined;
+  /** `needs-login` 时那颗「去登录」；不给不画。 */
   readonly login?: LongTaskRowLogin | undefined;
+  /** `needs-human` 时的「要人做什么」那一行与动作；不给不画。 */
   readonly intervention?: LongTaskRowIntervention | undefined;
+  /** 给了才在最右边画那颗两按停止钮；**不给就一个像素都不变**。`pending` 是「已请求停止，等模块确认」那句。 */
   readonly stop?: LongTaskRowStop | undefined;
 }
 
@@ -320,22 +340,6 @@ function InterventionNeed({ intervention }: { intervention: LongTaskRowIntervent
 /**
  * 长任务那一行：点 + 标题 + 链接，可选一行当前步骤与一行状态 · 耗时；步骤收在可展开里。
  * 发布、扫描、迁移这类跑得久的事都用它，别自己画进度。
- * @param props.status - 六态之一，决定默认的点与「失败」那一块。
- * @param props.headline - 这一行在干什么（一句话）。
- * @param props.step - 当前步骤；运行中 / 停止后给，不给不画。
- * @param props.meta - 状态词 · 耗时那一行；不给不画。
- * @param props.dot - 点的档位覆盖；不给就用 `longTaskDot(status)`。
- * @param props.dotLabel - 点的读屏文案；不给就不挂 `aria-label`。
- * @param props.problem - 失败原因；不给不画。
- * @param props.links - 行尾的链接，通常指向产物或日志。
- * @param props.steps - 旧的纯文本步骤；只在没有 `history` 时作为回退画。
- * @param props.history - 结构化步骤；有它就一行一步，每步的链接挂在行尾。
- * @param props.raw - 原始输出；给了 `rawTitle` 才成一块可展开。
- * @param props.stepsTitle - 步骤那块展开行的标题；`rawTitle` 同理是原始输出那块。
- * @param props.copyLabel - 复制钮文案：给了才画复制钮；`copiedLabel` 是复制成功后那句。
- * @param props.login - `needs-login` 时那颗「去登录」；不给不画。
- * @param props.intervention - `needs-human` 时的「要人做什么」那一行与动作；不给不画。
- * @param props.stop - 给了才在最右边画那颗两按停止钮；**不给就一个像素都不变**。`pending` 是「已请求停止，等模块确认」那句。
  * @returns 一行长任务。
  */
 export function LongTaskRow(props: LongTaskRowProps) {

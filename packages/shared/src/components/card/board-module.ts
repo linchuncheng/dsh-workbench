@@ -13,7 +13,7 @@ export interface PanelStep {
 }
 
 /**
- * 交给面板渲染的宿主世界：工作区与会话快照、装着的 unit、面板开关、能力表与当前选中。
+ * 交给面板渲染的工作台全局信息：工作区与会话快照、装着的 unit、面板开关、能力表与当前选中。
  */
 export interface SuiteWorld {
   readonly workspaces: WorkspaceSnapshot;
@@ -31,17 +31,24 @@ export interface SuiteWorld {
  * 面板视图的统一 prop：一份世界快照 + 刷新令牌 + 四个通知回调 + 翻译函数。
  */
 export interface BoardModuleProps {
+  /** 工作台全局信息：工作区、会话、已装单元、面板开关、能力与当前选中。 */
   readonly world: SuiteWorld;
+  /** 刷新令牌；它一变就重读。 */
   readonly refreshToken: number;
+  /** 请求刷新。 */
   readonly onRefresh: () => void;
+  /** 跳去面板上的一格；`kind` 由各 unit 约定。 */
   readonly onNavigate: (step: PanelStep) => void;
+  /** 打开模块市场。 */
   readonly onOpenMarket: () => void;
+  /** 把这张卡的刷新状态与上次读到时间报给工作台。 */
   readonly onSummary: (summary: ModuleSummary) => void;
+  /** 翻译函数。 */
   readonly t: Translate;
 }
 
 /**
- * 一张卡报给宿主的摘要：此刻在不在刷新、上次读到是哪个时刻。
+ * 一张卡报给工作台的摘要：此刻在不在刷新、上次读到是哪个时刻。
  */
 export interface ModuleSummary {
   readonly refreshing: boolean;
@@ -110,7 +117,9 @@ export type CardViewAction =
  * `custom` 槽拿到的现场：与卡片同样的世界，加上外壳归一化后的模型。
  */
 export interface CardViewCustomProps<Model> extends BoardModuleProps {
+  /** 当前单元 id。 */
   readonly unit: string;
+  /** 这张卡自己的数据模型（custom view 的返回值）。 */
   readonly model: Model;
 }
 

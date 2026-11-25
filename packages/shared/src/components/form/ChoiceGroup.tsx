@@ -8,19 +8,31 @@ import './ChoiceGroup.css';
  * 一个候选项：值、人看的标签，可带一行说明。
  */
 export interface ChoiceGroupOption {
+  /** 给 `onChange` 的值。 */
   readonly value: string;
+  /** 人看的标签。 */
   readonly label: ReactNode;
+  /** 候选下面那行说明；不给不画。 */
   readonly description?: ReactNode | undefined;
 }
 
-interface ChoiceGroupCommon {
+/** 单选 / 多选共用的字段：组名、候选、禁用、样式、加载与空态。 */
+export interface ChoiceGroupCommon {
+  /** 只给读屏的组名（`aria-label`）。 */
   readonly label: string;
+  /** 这一组 `input` 的共用 name。 */
   readonly name: string;
+  /** 候选项，按给的顺序排；空数组时画 `emptyText`（没给就什么都不画）。 */
   readonly options: readonly ChoiceGroupOption[];
+  /** 禁掉整组（默认 false），不是单颗。 */
   readonly disabled?: boolean | undefined;
+  /** `boxed`（默认，带边框的选项格）或 `ghost`（无边框，跟着父容器走）。 */
   readonly variant?: 'boxed' | 'ghost' | undefined;
+  /** 正在读候选：整组换成转圈，文案取 `loadingText`；默认 false。 */
   readonly loading?: boolean | undefined;
+  /** 转圈时那句文案；不给是 `…`。 */
   readonly loadingText?: ReactNode | undefined;
+  /** 读到了但一个候选都没有时那句话；不给不画。 */
   readonly emptyText?: ReactNode | undefined;
 }
 
@@ -28,8 +40,11 @@ interface ChoiceGroupCommon {
  * 单选那一支的契约：`value` + `onChange(next)`；`multi` 不给或给 false。
  */
 export interface ChoiceGroupSingleProps extends ChoiceGroupCommon {
+  /** 单选这一支：不给或 false。 */
   readonly multi?: false | undefined;
+  /** 当前选中的值。 */
   readonly value: string;
+  /** 选了某一项：回它的 `value`。 */
   readonly onChange: (next: string) => void;
 }
 
@@ -37,8 +52,11 @@ export interface ChoiceGroupSingleProps extends ChoiceGroupCommon {
  * 多选那一支的契约：`multi: true` + `values` + `onChange(next[])`。
  */
 export interface ChoiceGroupMultiProps extends ChoiceGroupCommon {
+  /** true 走多选那支。 */
   readonly multi: true;
+  /** 当前选中的一组 value。 */
   readonly values: readonly string[];
+  /** 选了一组：回一组 value。 */
   readonly onChange: (next: readonly string[]) => void;
 }
 
@@ -124,14 +142,6 @@ function ChoiceMenu(input: {
 
 /**
  * 一组单选或多选：候选少、要一眼看全时用它；候选多或要搜索就用 `SelectField`。
- * @param props.multi - true 走多选那支（`values` / `onChange(string[])`）；默认单选（`value` / `onChange(string)`）。
- * @param props.label - 只给读屏的组名（`aria-label`）。
- * @param props.name - 这一组 `input` 的共用 name。
- * @param props.options - 候选项，按给的顺序排；空数组时画 `emptyText`（没给就什么都不画）。
- * @param props.disabled - 禁掉整组（默认 false），不是单颗。
- * @param props.variant - `boxed`（默认，带边框的选项格）或 `ghost`（无边框，跟着父容器走）。
- * @param props.loading - 正在读候选：整组换成转圈，文案取 `loadingText`（不给是 `…`）；默认 false。
- * @param props.emptyText - 读到了但一个候选都没有时那句话；不给不画。
  * @returns 一组 `radio` / `checkbox` 选项。
  */
 export function ChoiceGroup(props: ChoiceGroupProps) {

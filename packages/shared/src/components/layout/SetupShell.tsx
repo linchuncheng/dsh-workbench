@@ -9,12 +9,19 @@ import styles from './SetupShell.module.css';
 /**
  * 初始化的一步：渲染什么、能不能走、走去哪、走之前存什么。
  */
+/** 初始化的一步。 */
 export interface SetupStep {
+  /** 步骤 id；`initialStep` / `next` 用它。 */
   readonly id: string;
+  /** 步骤标题。 */
   readonly title: string;
+  /** 画这一步。 */
   readonly render: (ctx: SetupStepContext) => ReactNode;
+  /** 能不能走下一步；不给默认 true。 */
   readonly canLeave?: ((values: Readonly<Record<string, unknown>>) => boolean) | undefined;
+  /** 下一步 id；返回 null 表示没有下一步（走完成）。 */
   readonly next?: ((values: Readonly<Record<string, unknown>>) => string | null) | undefined;
+  /** 这一步单独保存；不给则没有这一步的保存钮。 */
   readonly submit?:
     | ((values: Readonly<Record<string, unknown>>) => Promise<SetupWriteResult>)
     | undefined;
@@ -24,9 +31,13 @@ export interface SetupStep {
  * 每步的渲染上下文：当前值、改值、忙碌与错误。
  */
 export interface SetupStepContext {
+  /** 当前值。 */
   readonly values: Readonly<Record<string, unknown>>;
+  /** 改值。 */
   readonly setValues: (next: Record<string, unknown>) => void;
+  /** 正在保存。 */
   readonly busy: boolean;
+  /** 上一条错误；没有是 null。 */
   readonly error: string | null;
 }
 
@@ -34,7 +45,9 @@ export interface SetupStepContext {
  * 一次配置读取的结果：`configured` 为真表示已经不用再初始化，`values` 是已存的值。
  */
 export interface SetupSnapshot {
+  /** 已经配置好，不用再初始化。 */
   readonly configured: boolean;
+  /** 已存的值。 */
   readonly values?: Readonly<Record<string, unknown>> | undefined;
 }
 
@@ -53,19 +66,33 @@ export type SetupPhase = 'checking' | 'needs-setup' | 'ready' | 'blocked';
 /**
  * `useUnitSetup` 交出来的那台机器；`SetupShell` 只认这一个形状。
  */
+/** `useUnitSetup` 交出来的状态机。 */
 export interface UnitSetup {
+  /** 现在在哪一相。 */
   readonly phase: SetupPhase;
+  /** 全部步骤。 */
   readonly steps: readonly SetupStep[];
+  /** 当前步骤；相位不是 `needs-setup` 时可能没有。 */
   readonly step: SetupStep | undefined;
+  /** 当前值。 */
   readonly values: Readonly<Record<string, unknown>>;
+  /** 改值。 */
   readonly setValues: (next: Record<string, unknown>) => void;
+  /** 正在保存。 */
   readonly busy: boolean;
+  /** 上一条错误；没有是 null。 */
   readonly error: string | null;
+  /** 当前步能不能走。 */
   readonly canLeave: boolean;
+  /** 能不能回上一步。 */
   readonly canBack: boolean;
+  /** 下一步（先运行当前步的 `submit`）。 */
   readonly next: () => void;
+  /** 回上一步。 */
   readonly back: () => void;
+  /** 重读配置。 */
   readonly retry: () => void;
+  /** `edit` 模式一次存全量；没给 `write` 时无效。 */
   readonly saveAll: () => void;
 }
 
@@ -73,13 +100,21 @@ export interface UnitSetup {
  * `SetupShell` 自己那几句文案；模块按自己的词表给。
  */
 export interface SetupShellLabels {
+  /** 上一步。 */
   readonly back: string;
+  /** 下一步。 */
   readonly next: string;
+  /** 完成。 */
   readonly finish: string;
+  /** 保存。 */
   readonly save: string;
+  /** 保存中。 */
   readonly saving: string;
+  /** 取消。 */
   readonly cancel: string;
+  /** 正在读。 */
   readonly reading: string;
+  /** 读不到。 */
   readonly failed: string;
 }
 
@@ -87,20 +122,20 @@ export interface SetupShellLabels {
  * `<SetupShell>` 的 prop：一台 `useUnitSetup` 的机器、文案、以及完成后的主页。
  */
 export interface SetupShellProps {
+  /** `useUnitSetup` 的返回值；壳不自己取数、不自己写配置。 */
   readonly setup: UnitSetup;
+  /** 八句文案：上一步 / 下一步 / 完成 / 保存 / 保存中 / 取消 / 正在读 / 读不到。 */
   readonly labels: SetupShellLabels;
+  /** `setup`（默认，分步）或 `edit`（同一步骤集合摊成一页，底部 `SaveBar`）。 */
   readonly mode?: 'setup' | 'edit' | undefined;
+  /** 相位到 `ready` 时渲染什么；不给就只留空。 */
   readonly renderHome?: (() => ReactNode) | undefined;
+  /** `edit` 模式点取消做什么；不给钮就什么都不做。 */
   readonly onCancel?: (() => void) | undefined;
 }
 
 /**
  * 初始化 / 配置的外壳：分步、上一步 / 下一步 / 完成、阻断与错误，完成之后把主页换进来。
- * @param props.setup - `useUnitSetup` 的返回值；壳不自己取数、不自己写配置。
- * @param props.labels - 八句文案：上一步 / 下一步 / 完成 / 保存 / 保存中 / 取消 / 正在读 / 读不到。
- * @param props.mode - `setup`（默认，分步）或 `edit`（同一步骤集合摊成一页，底部 `SaveBar`）。
- * @param props.renderHome - 相位到 `ready` 时渲染什么；不给就只留空。
- * @param props.onCancel - `edit` 模式点取消做什么；不给钮就什么都不做。
  * @returns 一块初始化或配置界面。
  */
 export function SetupShell({

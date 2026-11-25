@@ -8,12 +8,19 @@ import { sessionForWrite, writeBodyWithSession } from './write-session';
  * 一个写通道的句柄：`busy` 在发、`failed` / `detail` 上一条人话失败（没有是 `null`）、
  * `send(body, { silent })` 回 `WriteOutcome`、`fail(message, detail?)` 本地就知道不行时自己塞一条、`clear()` 清掉。
  */
+/** 一个写通道的句柄。 */
 export interface HostWrite<T> {
+  /** 这一路写有没有在飞。 */
   readonly busy: boolean;
+  /** 上一条失败的提示；没有是 null。 */
   readonly failed: string | null;
+  /** 失败详情（原文 / 诊断）；没有是 null。 */
   readonly detail: string | null;
+  /** 发一次写；`silent` 不打扰（不动 `busy` / `failed`，结果只看返回值）。 */
   send(body: Record<string, unknown>, options?: { readonly silent?: boolean }): Promise<WriteOutcome<T>>;
+  /** 本地就知道不行时自己塞一条失败文案。 */
   fail(message: string, detail?: string): void;
+  /** 清掉失败。 */
   clear(): void;
 }
 
@@ -21,8 +28,11 @@ export interface HostWrite<T> {
  * 写通道的配置：`channel` 用哪个前缀、`resource` 挂在它的哪一格（多数通道留空）、`networkText` 网络不通时那句人话。
  */
 export interface HostWriteOptions {
+  /** 用哪个写通道前缀。 */
   readonly channel: WriteChannel;
+  /** 挂在该通道的哪一格；多数通道留空。 */
   readonly resource?: string | undefined;
+  /** 网络不通时那句提示。 */
   readonly networkText: string;
 }
 

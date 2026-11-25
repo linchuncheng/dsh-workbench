@@ -15,14 +15,14 @@ export function cardIdOf(unit: string | null): string | undefined {
  * `CardAnchor` 的契约：unit id 与它锚住的内容。
  */
 export interface CardAnchorProps {
+  /** 卡的 unit id，用来算锚点 id。 */
   readonly unit: string;
+  /** 被锚住的卡片本体；锚点自己 `display: contents`，不占布局。 */
   readonly children?: ReactNode | undefined;
 }
 
 /**
  * 外壳自己盖的卡片锚点：套在卡外面给出 `id="wb-card-<unit>"`；模块别自己写，也别删。
- * @param props.unit - 卡的 unit id，用来算锚点 id。
- * @param props.children - 被锚住的卡片本体；锚点自己 `display: contents`，不占布局。
  * @returns 带 id 的占位 div。
  */
 export function CardAnchor({ unit, children }: CardAnchorProps) {

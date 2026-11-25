@@ -26,10 +26,15 @@ type UseChat = <T>(selector: (snapshot: ChatSnapshot) => T) => T | undefined;
  * `ApprovalDetail` 的契约：调用 id、读会话快照的钩子、已装模块与兜底渲染。
  */
 export interface ApprovalDetailProps {
+  /** 这次工具调用的 id；不给就直接回退（连调用都找不到）。 */
   readonly callId?: string;
+  /** 读会话快照的钩子（dsh 注入）；不给就当作读不到调用。 */
   readonly useChat?: UseChat;
+  /** 已装模块的面，按各自的 `approval.tools` 认领这次调用。 */
   readonly units?: readonly UnitClientFace[];
+  /** 翻译函数；不给就用返回 key 的直通实现。 */
   readonly t?: Translate;
+  /** 没有模块认领时工作台自己的渲染（那张表）；不给且这次调用没带 `command` 时整个单元返回 `null`。 */
   readonly renderShell?: ((input: ApprovalInput, t: Translate) => ReactNode) | undefined;
 }
 
@@ -103,11 +108,6 @@ function planOf(
 
 /**
  * 审批屏的详情格：先画模块交的四行事实或它自己的渲染器，再退回外壳那张表或一段原始命令。
- * @param props.callId - 这次工具调用的 id；不给就直接走兜底（连调用都找不到）。
- * @param props.useChat - 读会话快照的钩子（dsh 注入）；不给就当作读不到调用。
- * @param props.units - 已装模块的面，按各自的 `approval.tools` 认领这次调用。
- * @param props.t - 翻译函数；不给就用返回 key 的直通实现。
- * @param props.renderShell - 没有模块认领时外壳自己的渲染（那张表）；不给且这次调用没带 `command` 时整格返回 `null`。
  * @returns 认领方的四行表 / 自定义渲染、外壳那张表，或一段可复制的命令。
  */
 export function ApprovalDetail(props: ApprovalDetailProps) {

@@ -20,37 +20,54 @@ import { useVisibleBusy } from './use-visible-busy';
  * 与 `settling`（挂过最短可见时长的那截收尾）。
  */
 export interface CardFeed extends CardSummary {
+  /** `useApiResource` 那一格。 */
   readonly state: ResourceState<unknown>;
+  /** 刚结束、还在最短可见时长里。 */
   readonly settling?: boolean | undefined;
 }
 
 /**
- * 起步一张卡片要交的东西：这一格的 `unit`、能力门 `gate`、`refreshToken`、`onRefresh` / `onSummary` 两个回调、
- * 自己的读数函数 `read(gated)`（收到的是“放行没”，为真才去读）、翻译 `t`（`enabled: false` 时整格不读）；
+ * 起步一张卡片要交的东西：这个单元的 `unit`、能力门 `gate`、`refreshToken`、`onRefresh` / `onSummary` 两个回调、
+ * 自己的读数函数 `read(gated)`（收到的是「是否放行」，为真才去读）、翻译 `t`（`enabled: false` 时整个单元不读）；
  * `platformBlocker(error, t)` 把平台错误翻成 blocker。
  */
 export interface UnitBoardOptions<TFeed extends CardFeed> {
+  /** 这个单元的 id。 */
   readonly unit: string;
+  /** 能力门。 */
   readonly gate: CapabilityGate;
+  /** 刷新令牌；一变就重读。 */
   readonly refreshToken: number;
+  /** 请求刷新。 */
   readonly onRefresh: () => void;
+  /** 把这张卡的刷新状态与上次读到时间报给工作台。 */
   readonly onSummary: (summary: CardSummary) => void;
+  /** 自己的读数函数；收到「是否放行」，为真才去读。 */
   readonly read: (gated: boolean) => TFeed;
+  /** 翻译函数。 */
   readonly t: Translate;
+  /** false 时整个单元不读。 */
   readonly enabled?: boolean | undefined;
+  /** 把平台错误翻成 blocker。 */
   readonly platformBlocker?: ((error: ApiError, t: Translate) => ModuleBlocker | undefined) | undefined;
 }
 
 /**
- * `useUnitBoard` 叠出来的整组：`feed`（含 `state`）、`capability`、`gated`（放行没）、`refresh`、`forceProbe`、`summary`，
+ * `useUnitBoard` 叠出来的整组：`feed`（含 `state`）、`capability`、`gated`（是否放行）、`refresh`、`forceProbe`、`summary`，
  * 外加拆好的那几个 blocker 字段。
  */
 export interface UnitBoard<TFeed extends CardFeed> extends UnitBlockers {
+  /** 读数那一格（含 `state`）。 */
   readonly feed: TFeed;
+  /** 能力读数；还没探到是 null。 */
   readonly capability: CapabilityPayload | null;
+  /** 是否放行。 */
   readonly gated: boolean;
+  /** 请求刷新。 */
   readonly refresh: () => void;
+  /** 现在就去探测一次。 */
   readonly forceProbe: () => void;
+  /** 报给面板的摘要。 */
   readonly summary: CardSummary;
 }
 

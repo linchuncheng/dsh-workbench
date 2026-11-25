@@ -18,22 +18,22 @@ import { IconBrandMark } from '@dsh-workbench/shared';
  * `<BlockerState>` 的 prop：一份 blocker 加几个回调。
  */
 export interface BlockerStateProps {
+  /** 要显示的那份 blocker：`title` / `hint` / `detail` / `actions` / `severity`。 */
   readonly blocker: ModuleBlocker;
+  /** 翻译函数，这里出现的每句话都从它来。 */
   readonly t: Translate;
+  /** `retry` 动作与修复成功后的重试回调。 */
   readonly onRetry: () => void;
+  /** 外层是不是在忙（默认 `false`）；为真时动作一并禁用。 */
   readonly busy?: boolean;
+  /** 是否贴着容器边（默认 `false`）：去掉图标、收窄留白，给卡片内嵌用。 */
   readonly flush?: boolean;
+  /** `open-market` 动作；没给就退回 `onRetry`。 */
   readonly onOpenMarket?: () => void;
 }
 
 /**
  * 卡片被挡住（或要给一句 notice）时渲染的那一块：按 `blocker.severity` 出块状或一行提示，动作接重试 / 跑修复 / 复制。
- * @param props.blocker - 要显示的那份 blocker：`title` / `hint` / `detail` / `actions` / `severity`。
- * @param props.t - 翻译函数，这里出现的每句话都从它来。
- * @param props.onRetry - `retry` 动作与修复成功后的重试回调。
- * @param props.onOpenMarket - `open-market` 动作；没给就退回 `onRetry`。
- * @param props.busy - 外层是不是在忙（默认 `false`）；为真时动作一并禁用。
- * @param props.flush - 是否贴着容器边（默认 `false`）：去掉图标、收窄留白，给卡片内嵌用。
  */
 export function BlockerState({
   blocker,

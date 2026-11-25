@@ -81,6 +81,18 @@ function release(key: string, entry: Flight): void {
   entry.controller.abort();
 }
 
+/** `useApiResource` 的开关。 */
+export interface ApiResourceOptions {
+  /** false 时不发请求，相位恒为 `idle`。 */
+  readonly enabled?: boolean | undefined;
+  /** 覆盖读数身份；同 key 合流。 */
+  readonly key?: string | undefined;
+  /** 订阅哪条事实；默认 `factOfRoute(route)`。 */
+  readonly fact?: string | undefined;
+  /** false 不上报面板（夹具与后台探针用）。 */
+  readonly report?: boolean | undefined;
+}
+
 /**
  * 卡片里所有的读都走它：按身份发一次 `apiGet`，同 key 合流、订阅事实通道（这条变了自动重取）、
  * 并把读数上报面板（`workbench_diy_panel` 看的就是它）；身份或版本号一变就换一条读，旧的当场取消。
@@ -92,7 +104,7 @@ export function useApiResource<T>(
   route: string,
   query: Query,
   refreshToken: number,
-  options: { enabled?: boolean; key?: string; fact?: string; report?: boolean } = {},
+  options: ApiResourceOptions = {},
 ): ResourceState<T> {
   const enabled = options.enabled !== false;
   const identity = resourceIdentity(route, query, options.key);

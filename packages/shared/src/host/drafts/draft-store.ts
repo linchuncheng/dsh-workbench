@@ -63,10 +63,15 @@ export interface DraftLookup {
   readonly session?: string | undefined;
 }
 
+/** 会话草稿库：正文落在临时目录，按会话隔离，只认自己发出的 id。 */
 export interface DraftStore {
+  /** 存一份草稿，返回 id / 路径 / 字节数 / sha256；超过上限或不是文本会回 ok:false。 */
   put(input: DraftPutInput): DraftPutResult;
+  /** 按 id 读回正文；带了 session 就还要对得上。 */
   content(input: DraftLookup): DraftContentResult;
+  /** 按 id + session 取写入路径。 */
   pathOf(input: { readonly id: string; readonly session: string }): DraftPathResult;
+  /** 关掉草稿库；之后的 put / content / pathOf 都失效。 */
   dispose(): void;
 }
 

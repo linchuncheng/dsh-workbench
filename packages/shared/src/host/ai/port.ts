@@ -14,11 +14,16 @@ import {
 /** 这层的版本号：只增。 */
 export const AI_VERSION = 1;
 
+/** 模块用的模型入口：ask / askJson / askRich / agent。 */
 export interface AiPort {
   readonly version: number;
+  /** 只回文本；除 prompt 外全部可选。 */
   ask(request: AiRequest): Promise<string>;
+  /** 保证返回对象：schema 附在提示词后，不合格自动重试一次，仍不合格抛 schema-mismatch。 */
   askJson<T>(request: AiRequest & { readonly schema: JsonSchema }): Promise<T>;
+  /** 同 ask，另回 usage / model / elapsedMs。 */
   askRich(request: AiRequest): Promise<AiResult>;
+  /** 起子 agent（可带工具）；比 ask 贵，能用 ask 就不用。 */
   agent(request: AiRequest & { readonly agent?: AgentOptions }): Promise<string>;
   supports(capability: AiCapability): boolean;
   registerAdapter(adapter: AiAdapter): () => void;

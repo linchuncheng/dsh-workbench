@@ -4,6 +4,7 @@ import { h, type ReactNode } from '../../lib/react.js';
  * 自绘图标的契约：只给边长像素。
  */
 export interface IconProps {
+  /** 边长像素，同时给 `width` 与 `height`。 */
   size?: number;
 }
 
@@ -36,7 +37,6 @@ function Shell({
 
 /**
  * 会话图标：一枚对话气泡，dsh 的图标表里没有，留给我们自己用；默认 16px。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconConversation({ size = 16 }: IconProps) {
@@ -79,7 +79,6 @@ export const BRAND_MARK_COLORS = {
 
 /**
  * 品牌标：一台显示器，屏幕里放着 dsh 官方的鲸鱼标；默认 24px（它是品牌物，别拿它当通用图标）。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconBrandMark({ size = 24 }: IconProps) {
@@ -95,7 +94,6 @@ export function IconBrandMark({ size = 24 }: IconProps) {
 
 /**
  * 品牌标的彩色版：市场里工作台那一行用；颜色写死，不跟主题走。默认 24px。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconBrandMarkColor({ size = 24 }: IconProps) {
@@ -111,7 +109,6 @@ export function IconBrandMarkColor({ size = 24 }: IconProps) {
 
 /**
  * opencli 的标：包类型那一格用它；颜色写死的品牌物，不跟主题走。默认 16px。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconOpencli({ size = 16 }: IconProps) {
@@ -143,7 +140,6 @@ export function IconOpencli({ size = 16 }: IconProps) {
 
 /**
  * npm 的标：包类型那一格用它；保留品牌红，不跟主题走。默认 16px。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconNpm({ size = 16 }: IconProps) {
@@ -159,7 +155,6 @@ export function IconNpm({ size = 16 }: IconProps) {
 
 /**
  * 模块类型标：渐变方块 + 白四宫格，用在"这是个模块"的行首；品牌物，颜色不跟主题走。默认 16px。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconModuleMark({ size = 16 }: IconProps) {
@@ -183,7 +178,6 @@ export function IconModuleMark({ size = 16 }: IconProps) {
 
 /**
  * 面板 / 卡片那类的图标：整屏与柱状那种形状，给"面板"这一档用；默认 16px。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconPanelScreen({ size = 16 }: IconProps) {
@@ -204,7 +198,6 @@ export function IconPanelScreen({ size = 16 }: IconProps) {
 
 /**
  * 命令类型标：一枚终端窗口（第三方图标，配色固定、不跟主题走，出处见 THIRD-PARTY-NOTICES）。默认 16px。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconCommand({ size = 16 }: IconProps) {
@@ -235,7 +228,6 @@ export function IconCommand({ size = 16 }: IconProps) {
 
 /**
  * 环境变量类型标：一个 ENV 字样的方框；颜色用品牌蓝，不跟主题走。默认 16px。
- * @param props.size - 边长像素，同时给 `width` 与 `height`。
  * @returns 一枚 `aria-hidden` 的 svg。
  */
 export function IconEnv({ size = 16 }: IconProps) {

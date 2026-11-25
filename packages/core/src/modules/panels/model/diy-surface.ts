@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { dshHome, hostSurface, readTokens, seamOf, supplyPortOf } from '@dsh-workbench/shared/host';
 import {
-  DEPS_SURFACE,
+  filesOf,
   findFileOf,
   refusesEvery,
   renderNameText,
@@ -15,6 +15,15 @@ import {
   wantsPrimitives,
   type SurfaceQuery,
 } from '@/shared/api/host/diy-surface';
+import {
+  DEPS_NAMES,
+  depDeclarationFiles,
+  isDepName,
+  renderDepText,
+  renderDepsText,
+  surfaceCoreRoot,
+} from '@/shared/api/host/diy-deps';
+import { publicTypeOf, renderTypeText } from '@/shared/api/host/diy-types';
 import { renderTokensText } from '@/shared/api/host/diy-tokens';
 import { asRecord, asText, moduleDirsOf, OUTPUT, plainJson, workspaceOf } from './diy-context';
 import { DIY_SURFACE_TOOL } from '../unit';
@@ -27,8 +36,8 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
     parameters: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: '要查询的名称（如 Card；以 --dsw- 开头时连同取值返回）。' },
-        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform', 'deps'], description: 'kit=组件 / primitives=原语 / tokens=令牌 / platform=dsh 进程能力 / deps=依赖；默认 kit 与 primitives。' },
+        name: { type: 'string', description: '要查询的名称（如 Card，或公开类型名 UnitSeam / CardProps；scope=deps 时是 deps 成员名；以 --dsw- 开头时连同取值返回）。' },
+        scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform', 'deps'], description: 'kit=组件 / primitives=原语 / tokens=令牌 / platform=dsh 进程能力 / deps=工作台依赖（可配 name 单点查）；默认 kit 与 primitives。' },
         bucket: { type: 'string', description: '只列某一分组并展开全部（例 components）。' },
         all: { type: 'boolean', description: '列出全表；默认每组前 12 个。' },
       },
@@ -43,8 +52,24 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
       const bucket = asText(args['bucket']);
       const all = args['all'] === true;
       if (scope === 'deps') {
-        const text = ['宿主 deps（UnitMountDeps）：', ...Object.entries(DEPS_SURFACE).map(([name, detail]) => `${name}: ${detail}`)].join('\n');
-        return plainJson({ workspace: root, scope, name, bucket, all, deps: DEPS_SURFACE, text });
+        const coreRoot = surfaceCoreRoot();
+        const type = name === '' || isDepName(name) ? null : publicTypeOf(name, coreRoot, []);
+        const text =
+          name === ''
+            ? renderDepsText(coreRoot)
+            : type !== null
+              ? renderTypeText(type)
+              : renderDepText(name, coreRoot);
+        return plainJson({
+          workspace: root,
+          scope,
+          name,
+          bucket,
+          all,
+          deps: DEPS_NAMES,
+          files: depDeclarationFiles(coreRoot),
+          text,
+        });
       }
       if (scope === 'platform') {
         const capabilities = hostSurface().capabilities;
@@ -115,6 +140,40 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
         ...(kit === undefined ? {} : { kit }),
       };
       const found = name === '' ? null : findFileOf(name, query);
+      if (scope === 'all' && name !== '' && found === null && isDepName(name)) {
+        const coreRoot = surfaceCoreRoot();
+        return plainJson({
+          workspace: root,
+          scope,
+          name,
+          bucket,
+          all,
+          file: null,
+          from: null,
+          primitives: primitives ?? null,
+          kit: kit ?? null,
+          deps: DEPS_NAMES,
+          files: depDeclarationFiles(coreRoot),
+          text: renderDepText(name, coreRoot),
+        });
+      }
+      if ((scope === 'all' || scope === 'kit') && name !== '' && found === null) {
+        const fact = publicTypeOf(name, surfaceCoreRoot(), Object.values(filesOf(kit ?? {})));
+        if (fact !== null) {
+          return plainJson({
+            workspace: root,
+            scope,
+            name,
+            bucket,
+            all,
+            file: fact.path,
+            from: 'type',
+            primitives: primitives ?? null,
+            kit: kit ?? null,
+            text: renderTypeText(fact),
+          });
+        }
+      }
       const text = name === '' ? renderSurfaceText(query, { scope, all, bucket }) : renderNameText(name, found, query);
       return plainJson({
         workspace: root,

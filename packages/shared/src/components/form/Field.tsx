@@ -6,16 +6,16 @@ import './Field.css';
  * `Field` 的契约：一行"标签 + 控件 + 说明"的排布。
  */
 export interface FieldProps {
+  /** 左侧标签，必给。 */
   readonly label: ReactNode;
+  /** 控件下面那行说明；不给不画。 */
   readonly hint?: ReactNode | undefined;
+  /** 控件本体，落在标签与说明之间。 */
   readonly children?: ReactNode | undefined;
 }
 
 /**
  * 标签 + 控件的排布：没进 `FormRow` 时用它兜住一个字段的标签与说明。
- * @param props.label - 左侧标签，必给。
- * @param props.hint - 控件下面那行说明；不给不画。
- * @param props.children - 控件本体，落在标签与说明之间。
  * @returns 一个 `<label>`，点标签会聚焦里面的控件。
  */
 export function Field({ label, hint, children }: FieldProps) {

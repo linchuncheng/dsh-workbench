@@ -73,14 +73,23 @@ export class SeamError extends Error {
 
 export type UnitWriteScope = 'unit' | 'workspace';
 
+/** 一次 run 的参数：命令、写到哪、失败怎么办。 */
 export interface UnitSeamRequest {
+  /** 要执行的 shell 命令。 */
   readonly command: string;
+  /** 'unit' 写单元自己的数据根（不用审批）；'workspace' 写当前工作区，要声明并带会话。 */
   readonly scope: UnitWriteScope;
+  /** 命令在哪个目录跑；不给用执行缝的默认目录。 */
   readonly workdir?: string | undefined;
+  /** 超时毫秒；不给就不加额外超时。 */
   readonly timeoutMs?: number | undefined;
+  /** 额外环境变量；会盖在工作台注入的 HOME / 缓存之上。 */
   readonly env?: Readonly<Record<string, string>> | undefined;
+  /** 写工作区时必须给：工具里传 exec；路由/动作没有会话，不能请求 workspace。 */
   readonly session?: unknown;
+  /** 取消信号；有人按停时 abort。 */
   readonly signal?: AbortSignal | undefined;
+  /** 'safe' 只给幂等 / 只读命令，失败时可安全重试；默认 'never'。 */
   readonly retry?: 'safe' | 'never' | undefined;
 }
 

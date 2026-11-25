@@ -4,12 +4,12 @@ import { h } from '../../lib/react.js';
  * `EmptyIllustration` 的 prop：边长。
  */
 export interface EmptyIllustrationProps {
+  /** 边长，默认 110；色值全部走 `--dsw-alias-illustration-*`。 */
   readonly size?: number;
 }
 
 /**
  * 空态插画：dsh 那枚 170×170 的空态图（右下角是四宫格，不是时钟）。
- * @param props.size - 边长，默认 110；色值全部走 `--dsw-alias-illustration-*`。
  * @returns 一个 `aria-hidden` 的 SVG。
  */
 export function EmptyIllustration({ size = 110 }: EmptyIllustrationProps) {

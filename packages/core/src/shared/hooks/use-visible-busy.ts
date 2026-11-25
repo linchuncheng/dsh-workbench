@@ -9,8 +9,11 @@ export type HeldPhase = 'idle' | 'loading' | 'ready' | 'error';
 /**
  * “在忙，还是只是收尾”的投影：`settling` 为真时读数已经回来、界面还挂着。
  */
+/** 忙与安定：最短可见时长那套折出来的两个值。 */
 export interface BusyView {
+  /** 现在算忙（含最短可见时长的尾巴）。 */
   readonly busy: boolean;
+  /** 忙完了但还在最短可见时长里。 */
   readonly settling: boolean;
 }
 

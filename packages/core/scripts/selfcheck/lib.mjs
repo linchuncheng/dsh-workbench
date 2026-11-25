@@ -182,7 +182,18 @@ export function publicSurfaceFiles() {
   if (publicSurfaceCache.files !== undefined) return publicSurfaceCache.files;
   const files = new Set();
   const contractFiles = walkCode(join(REPO, 'packages/core/src/kernel/contract')).filter((file) => file.endsWith('.ts'));
-  for (const file of [...sharedEntryFiles(), ...kitSourceFiles(), ...contractFiles]) {
+  const kitFiles = kitSourceFiles();
+  const expanded = new Set(kitFiles);
+  const follow = (file) => {
+    for (const match of read(file).matchAll(/export\s+(?:type\s+)?(?:\*|\{[^}]*\})\s+from\s+'(\.[^']+)'/g)) {
+      const resolved = resolveLocalModule(file, match[1]);
+      if (resolved === undefined || expanded.has(resolved)) continue;
+      expanded.add(resolved);
+      follow(resolved);
+    }
+  };
+  for (const file of kitFiles) follow(file);
+  for (const file of [...sharedEntryFiles(), ...expanded, ...contractFiles]) {
     files.add(relative(REPO, file).split('\\').join('/'));
   }
   publicSurfaceCache.files = files;
@@ -257,22 +268,43 @@ function cssCommentRanges(text) {
   return found;
 }
 
-function followedByExport(text, end) {
-  return /^\s*export\b/u.test(text.slice(end));
+function hasExportModifier(node) {
+  return (
+    ts.canHaveModifiers(node) &&
+    (ts.getModifiers(node)?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false)
+  );
 }
 
-export function commentViolationsOf(text, { css = false, allowJsDoc = false } = {}) {
+function allowedJsDocEnds(text, memberInterfaces) {
+  const source = ts.createSourceFile('doc-policy.tsx', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const ends = new Set();
+  const add = (node) => {
+    for (const range of ts.getLeadingCommentRanges(text, node.getFullStart()) ?? []) {
+      const raw = text.slice(range.pos, range.end);
+      if (raw.startsWith('/**') && raw !== '/**/') ends.add(range.end);
+    }
+  };
+  const visit = (node) => {
+    if (hasExportModifier(node) || ts.isExportDeclaration(node) || ts.isExportAssignment(node)) add(node);
+    if (ts.isInterfaceDeclaration(node) && memberInterfaces.has(node.name.text)) {
+      for (const member of node.members) add(member);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return ends;
+}
+
+export function commentViolationsOf(text, { css = false, allowJsDoc = false, memberJsDoc = [] } = {}) {
   const ranges = css
     ? cssCommentRanges(text)
     : tsCommentRanges(text).map((range) => ({ pos: range.pos, end: range.end }));
+  const allowed = !css && allowJsDoc ? allowedJsDocEnds(text, new Set(memberJsDoc)) : null;
   const bad = [];
   for (const range of ranges) {
     const raw = text.slice(range.pos, range.end);
     if (!css && DIRECTIVE.test(raw)) continue;
-    if (!css) {
-      const jsdoc = raw.startsWith('/**') && raw !== '/**/';
-      if (allowJsDoc && jsdoc && followedByExport(text, range.end)) continue;
-    }
+    if (allowed !== null && allowed.has(range.end)) continue;
     bad.push(text.slice(0, range.pos).split('\n').length);
   }
   return bad;

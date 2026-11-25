@@ -2,8 +2,11 @@ export interface DataRequestBase {
   readonly timeoutMs?: number;
 }
 
+/** 每次读 / 写调用的通用选项。 */
 export interface DataCallOptions {
+  /** 取消这次调用。 */
   readonly signal?: AbortSignal | undefined;
+  /** 浏览器读时是否打开窗口；不给沿用请求里的 open。 */
   readonly open?: boolean | undefined;
 }
 
@@ -232,20 +235,27 @@ export interface SubmitPlanOptions extends DataCallOptions {
   readonly onStep?: ((step: PlanStep, index: number, result: PlanStepResult<unknown>) => void) | undefined;
 }
 
+/** 站点数据读取：按请求 / 配方 / 计划读，写只走 submit / submitPlan。 */
 export interface DataReader {
+  /** 直接执行一条 DataRequest。 */
   read<T = unknown>(request: DataRequest, options?: DataCallOptions): Promise<DataResult<T>>;
+  /** 按配方读一条；overrides 盖配方里的变量。 */
   request<T = unknown>(
     recipe: RequestRecipe,
     overrides?: CallOverrides,
     options?: DataCallOptions,
   ): Promise<DataResult<T>>;
+  /** 同一配方多条调用一起读；只读 GET，写仍走 submit。 */
   requestMany<T = unknown>(
     recipe: RequestRecipe,
     calls: RecipeCalls,
     options?: DataCallOptions,
   ): Promise<RecipeResults<T>>;
+  /** 跑一个只读计划。 */
   plan(plan: RequestPlan, options?: DataCallOptions): Promise<PlanResults>;
+  /** 跑写计划；confirm 返回 false 就停，idempotencyKey 防重复。 */
   submitPlan(plan: RequestPlan, options: SubmitPlanOptions): Promise<PlanResults>;
+  /** 按配方写一条。 */
   submit<T = unknown>(
     recipe: RequestRecipe,
     overrides?: CallOverrides,

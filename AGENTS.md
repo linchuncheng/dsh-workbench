@@ -91,12 +91,14 @@ pnpm run check                        # 门禁：整仓那一套（= `pnpm -w ru
    `@dsh-workbench/shared` 的宿主侧只许从 `@dsh-workbench/shared/host` 取运行值。
 4. **令牌用 `--dsw-*`。** 颜色、圆角、字号、间距引用 dsh 主题令牌，不写字面值。
    要正圆或胶囊时必须显式写 `corner-shape: round`。
-5. **全仓代码零注释；只有公开入口的成员允许贴导出的 JSDoc。** 所有 `.ts` / `.tsx` / `.js` /
+5. **全仓代码零注释；只有公开入口的成员允许贴 JSDoc。** 所有 `.ts` / `.tsx` / `.js` /
    `.mjs` / `.cjs` / `.css` 不留 `//`、块注释或实现里的解释。公开入口 = 模块作者拿得到的
    kit（`@dsh-workbench/core/client`）、协议（`@dsh-workbench/core/contract`，仅类型）
    与 `@dsh-workbench/shared` 的 `.` / `/host` / `/testing`；
    判据按“公开入口可达的文件”算（shared 三个 barrel + `src/app/client.tsx` 里 kit 对象的来源），
-   内部工具文件不放行。这些成员（要进 `.d.ts` 的导出）可保留紧贴 `export` 的 JSDoc；
+   内部工具文件不放行。这些成员（要进 `.d.ts` 的导出，以及登记在 `public-types` 里的公开契约
+   接口字段——deps 的 `UnitMountDeps` / `HostKit`、kit 的 Props 等）可保留 JSDoc：
+   导出的紧贴 `export`，接口字段的紧贴成员声明；
    eslint / ts / vitest 等指令注释例外。`.css` 一格注释都不许。
    为什么写进 `私有 ADR`、`CONTEXT.md` 或对应的设计文档。
 6. **界面按组件写，样式跟组件走。** 一段界面 = 一个组件；调用点只给数据与语义 prop，
