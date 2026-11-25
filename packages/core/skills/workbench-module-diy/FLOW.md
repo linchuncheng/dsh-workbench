@@ -132,6 +132,8 @@ export const face: UnitModuleFace = {
 | 子流程 | `{ id, flow: subFlow, with: { ... } }`；结果在 `steps.<id>` |
 | 多跳读 | `{ id, data: RequestPlan }`；结果在 `steps.<id>.<步骤名>`，默认先打开 origin（`open: false` 可关） |
 | 提前结束 | `flow.stopWhen` |
+| 步骤链接 | `ctx.log('已创建分支', [{ href, text: '打开分支' }])`；每步 ≤3、只认 `http(s)`，画在步骤行尾 |
+| 行尾链接 | 长任务快照 `links`（`{ href, text }`，≤3）；与卡片覆盖按 `href` 合并去重 |
 | 人工干预 | 动作里调 `ctx.need(intervention)`（`title` 说清要人做什么，可选 `hint` / `actions`），长任务进 `needs-human`；报告后继续自行轮询，条件满足再发下一步；需要「我处理完了」这个按钮，就在 `longTasks.create` 里给可选 `recheck`（点击后只请模块重新检查一次，工作台不承诺恢复；要自动重试就用 `withInterventionRetry(check, { attempts, delayMs })` 当 handler，check 回 `true` 即停）；要行上出回执表单，就给 `intervention.fields`（`{key,label,kind?:'text'|'secret',placeholder?,required?}`）与 `submitLabel`，并在 `longTasks.create` 里给 `answer?(current, values)` —— values 只回给模块，不进快照 / agent 可读处 |
 | 登录 | 动作用 `withLoginRetry(action)`：认证失败自动 `ctx.login(url)` 并在原地重试；长任务进 `needs-login`。data 步骤换了新路：`auth` 且计划给了 `loginUrl` 进 `needs-human` + 登录链接；没给就当场失败 |
 

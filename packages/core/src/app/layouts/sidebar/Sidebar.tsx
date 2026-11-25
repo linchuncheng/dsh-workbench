@@ -26,6 +26,7 @@ import { workspaceRecencyOf } from './workspace-recency';
 import { cx } from '@dsh-workbench/shared';
 
 import { PanelList } from './PanelNav';
+import { LongTaskFooterAction } from './LongTaskFooterAction';
 import { usePlatform } from '@/shared/hooks/use-platform';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { SessionList } from './SessionList';
@@ -222,7 +223,10 @@ export function Sidebar(props: SidebarProps) {
       </div>
 
       <div className="wb-footArea">
-        <div className="wb-footerActions">{renderSlot('sidebar.footer.action', { wide })}</div>
+        <div className="wb-footerActions">
+          {h(LongTaskFooterAction, { wide, t })}
+          {renderSlot('sidebar.footer.action', { wide })}
+        </div>
         <div className="wb-settingsArea">{renderSlot('sidebar.settings', { wide })}</div>
       </div>
     </div>

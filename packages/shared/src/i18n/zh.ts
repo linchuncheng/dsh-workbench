@@ -1025,6 +1025,18 @@ export const zh = {
   'longTask.stop': '停止任务 {label}',
   'longTask.stopConfirm': '确认停止',
   'longTask.stopArmed': '再次点击确认停止',
+  'longTask.stopPending': '已请求停止，等模块确认',
+  'longTask.list.entry': '长任务 {n}',
+  'longTask.list.title': '全部长任务',
+  'longTask.state.running': '运行中',
+  'longTask.state.needsHuman': '等你处理',
+  'longTask.state.needsLogin': '需要登录',
+  'longTask.state.stopped': '已停止',
+  'longTask.state.ok': '已完成',
+  'longTask.state.failed': '失败',
+  'longTask.duration.sec': '{s} 秒',
+  'longTask.duration.minSec': '{m} 分 {s} 秒',
+  'longTask.duration.hourMin': '{h} 小时 {m} 分',
   ...zhNeedText,
 } as const;
 

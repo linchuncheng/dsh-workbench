@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import {
   answerRouteOf,
   longTaskIsLive,
   longTaskPollMs,
-  longTaskRunsOf,
   recheckRouteOf,
   runsRouteOf,
   stopRouteOf,
@@ -12,8 +11,201 @@ import {
   type WriteOutcome,
 } from '@dsh-workbench/shared';
 
-import { useApiResource } from './use-api-resource';
-import { useHostWrite } from './use-host-write';
+import type { ShellLongTaskRow } from '@/kernel/contract/long-tasks';
+import { requestResource } from './use-api-resource';
+import { useExternalActions } from './use-external-actions';
+import { subscribeFactRevision } from './use-facts';
+import { postWrite } from './use-host-write';
+
+interface RunsState<T> {
+  runs: readonly T[];
+  at: number | null;
+  stopping: string | null;
+  stopFailed: string | null;
+  rechecking: string | null;
+  recheckFailed: string | null;
+  answering: string | null;
+  answerFailed: string | null;
+}
+
+interface RunsStore<T> {
+  subscribe(listener: () => void): () => void;
+  snapshot(): RunsState<T>;
+  refresh(): void;
+  stop(id: string): Promise<WriteOutcome<unknown>>;
+  recheck(id: string): Promise<WriteOutcome<unknown>>;
+  answer(id: string, values: Readonly<Record<string, string>>): Promise<WriteOutcome<unknown>>;
+}
+
+const IDLE_STATE: RunsState<never> = {
+  runs: [],
+  at: null,
+  stopping: null,
+  stopFailed: null,
+  rechecking: null,
+  recheckFailed: null,
+  answering: null,
+  answerFailed: null,
+};
+
+const NO_ACTION = async (): Promise<WriteOutcome<unknown>> => ({
+  ok: false,
+  message: '当前没有工作区',
+});
+
+const STORES = new Map<string, RunsStore<unknown>>();
+
+function createRunsStore<T extends { readonly status: LongTaskStatus }>(
+  unit: string,
+  workspace: string,
+  pollMs: number | undefined,
+): RunsStore<T> {
+  let state: RunsState<T> = IDLE_STATE as RunsState<T>;
+  const listeners = new Set<() => void>();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let seq = 0;
+  let offFact: (() => void) | null = null;
+  let offVisibility: (() => void) | null = null;
+
+  const notify = (): void => {
+    for (const listener of [...listeners]) listener();
+  };
+
+  const update = (patch: Partial<RunsState<T>>): void => {
+    state = { ...state, ...patch };
+    notify();
+  };
+
+  const read = (): void => {
+    const mine = (seq += 1);
+    const flight = requestResource<LongTasksPayload>(
+      runsRouteOf(unit),
+      { path: workspace },
+      runsRouteOf(unit),
+    );
+    void flight.task
+      .then(
+        (response) => {
+          if (mine !== seq) return;
+          if (response.ok) update({ runs: (response.runs ?? []) as readonly T[], at: Date.now() });
+        },
+        () => undefined,
+      )
+      .finally(flight.release);
+  };
+
+  const live = (): boolean => state.runs.some((row) => longTaskIsLive(row.status));
+
+  const hidden = (): boolean => typeof document !== 'undefined' && document.hidden;
+
+  const clearTimer = (): void => {
+    if (timer === null) return;
+    clearTimeout(timer);
+    timer = null;
+  };
+
+  const schedule = (): void => {
+    clearTimer();
+    if (listeners.size === 0 || hidden()) return;
+    timer = setTimeout(() => {
+      timer = null;
+      if (listeners.size === 0 || hidden()) return;
+      read();
+      schedule();
+    }, longTaskPollMs(live(), pollMs));
+  };
+
+  const onVisible = (): void => {
+    if (document.hidden) {
+      clearTimer();
+      return;
+    }
+    read();
+    schedule();
+  };
+
+  const start = (): void => {
+    read();
+    schedule();
+    offFact = subscribeFactRevision(runsRouteOf(unit), read);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisible);
+      offVisibility = () => document.removeEventListener('visibilitychange', onVisible);
+    }
+  };
+
+  const stop = (): void => {
+    clearTimer();
+    offFact?.();
+    offVisibility?.();
+    offFact = null;
+    offVisibility = null;
+  };
+
+  const runWrite = async (
+    busyKey: 'stopping' | 'rechecking' | 'answering',
+    failedKey: 'stopFailed' | 'recheckFailed' | 'answerFailed',
+    id: string,
+    resource: string,
+    body: Record<string, unknown>,
+    networkText: string,
+  ): Promise<WriteOutcome<unknown>> => {
+    const busy = { [busyKey]: id, [failedKey]: null } as Partial<RunsState<T>>;
+    update(busy);
+    const outcome = await postWrite('actions', resource, body, networkText);
+    const settled: Partial<RunsState<T>> = { [busyKey]: null } as Partial<RunsState<T>>;
+    if (!outcome.ok) settled[failedKey] = outcome.message;
+    update(settled);
+    if (outcome.ok) read();
+    return outcome;
+  };
+
+  return {
+    subscribe(listener) {
+      listeners.add(listener);
+      if (listeners.size === 1) start();
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) stop();
+      };
+    },
+    snapshot: () => state,
+    refresh: () => read(),
+    stop: (id) =>
+      runWrite('stopping', 'stopFailed', id, stopRouteOf(unit), { id }, '网络不通，停止请求没发出去'),
+    recheck: (id) =>
+      runWrite(
+        'rechecking',
+        'recheckFailed',
+        id,
+        recheckRouteOf(unit),
+        { id },
+        '网络不通，重查请求没发出去',
+      ),
+    answer: (id, values) =>
+      runWrite(
+        'answering',
+        'answerFailed',
+        id,
+        answerRouteOf(unit),
+        { id, values },
+        '网络不通，回执没交出去',
+      ),
+  };
+}
+
+function storeOf<T extends { readonly status: LongTaskStatus }>(
+  unit: string,
+  workspace: string,
+  pollMs: number | undefined,
+): RunsStore<T> {
+  const key = JSON.stringify([unit, workspace]);
+  const existing = STORES.get(key);
+  if (existing !== undefined) return existing as RunsStore<T>;
+  const created = createRunsStore<T>(unit, workspace, pollMs);
+  STORES.set(key, created as RunsStore<unknown>);
+  return created;
+}
 
 /**
  * 这一单元的长任务清单与三个写口：`runs` 是这次读交回的那一批（读数还没回来时是空数组）；
@@ -42,9 +234,11 @@ export interface LongTaskFeed<T> {
  * 卡片要轮询长任务那一行时调用：有在跑的（`running` / `needs-human` / `needs-login`）按 `longTaskPollMs` 走快档、空闲走慢档；
  * `workspace` 为 `null`、`mocked: true` 或 `enabled: false` 时不轮。换单元 / 换工作区就是换读数身份，
  * 旧那批立刻清空、读数回来前 `runs` 是空数组。
- * `stop(id)` 走 actions 通道的 `<单元>/runs/stop`；不在跑的那一趟会带回一句人话，不抛错。
- * `recheck(id)` 走 actions 通道的 `<单元>/runs/recheck`（「我处理完了」）：同样不抛错。
- * `answer(id, values)` 走 actions 通道的 `<单元>/runs/answer`：回执值只进请求体、不进事实。
+ *
+ * **读与写都是单飞的**：同一个 `(unit, workspace)` 的多个消费者共用一份数据、一个定时器与一套写状态
+ * （引用计数），所以卡片、模块自己的 hook、`LongTaskRun` 一起用也只有一条轮询、一处「正在停」。
+ * `pollMs` 按第一个订阅者算。`stop(id)` / `recheck(id)` / `answer(id, values)` 走 actions 通道；
+ * 成功后立刻重读一次；都不抛错。
  */
 export function useLongTask<T extends { readonly id: string; readonly status: LongTaskStatus }>(options: {
   readonly unit: string;
@@ -54,106 +248,78 @@ export function useLongTask<T extends { readonly id: string; readonly status: Lo
   readonly pollMs?: number | undefined;
 }): LongTaskFeed<T> {
   const enabled = options.enabled !== false && options.mocked !== true && options.workspace !== null;
-  const [tick, setTick] = useState(0);
-  const state = useApiResource<LongTasksPayload>(
-    runsRouteOf(options.unit),
-    { path: options.workspace ?? undefined },
-    tick,
-    { enabled },
+  const store = useMemo(
+    () => (enabled ? storeOf<T>(options.unit, options.workspace ?? '', options.pollMs) : null),
+    [enabled, options.unit, options.workspace, options.pollMs],
   );
-  const runs = longTaskRunsOf<T>(state);
-  const write = useHostWrite<unknown>({
-    channel: 'actions',
-    resource: stopRouteOf(options.unit),
-    networkText: '网络不通，停止请求没发出去',
-  });
-  const recheckWrite = useHostWrite<unknown>({
-    channel: 'actions',
-    resource: recheckRouteOf(options.unit),
-    networkText: '网络不通，重查请求没发出去',
-  });
-  const answerWrite = useHostWrite<unknown>({
-    channel: 'actions',
-    resource: answerRouteOf(options.unit),
-    networkText: '网络不通，回执没交出去',
-  });
-  const [stopping, setStopping] = useState<string | null>(null);
-  const [rechecking, setRechecking] = useState<string | null>(null);
-  const [answering, setAnswering] = useState<string | null>(null);
-  const send = write.send;
-  const sendRecheck = recheckWrite.send;
-  const sendAnswer = answerWrite.send;
-
-  const stop = useCallback(
-    async (id: string): Promise<WriteOutcome<unknown>> => {
-      setStopping(id);
-      try {
-        return await send({ id });
-      } finally {
-        setStopping((current) => (current === id ? null : current));
-      }
-    },
-    [send],
+  const subscribe = useCallback(
+    (listener: () => void) => (store === null ? () => undefined : store.subscribe(listener)),
+    [store],
   );
-
-  const recheck = useCallback(
-    async (id: string): Promise<WriteOutcome<unknown>> => {
-      setRechecking(id);
-      try {
-        const outcome = await sendRecheck({ id });
-        setTick((count) => count + 1);
-        return outcome;
-      } finally {
-        setRechecking((current) => (current === id ? null : current));
-      }
-    },
-    [sendRecheck],
+  const snapshot = useCallback(
+    () => (store === null ? IDLE_STATE : store.snapshot()) as RunsState<T>,
+    [store],
   );
+  const state = useSyncExternalStore(subscribe, snapshot, snapshot);
 
-  const answer = useCallback(
-    async (id: string, values: Readonly<Record<string, string>>): Promise<WriteOutcome<unknown>> => {
-      setAnswering(id);
-      try {
-        const outcome = await sendAnswer({ id, values });
-        setTick((count) => count + 1);
-        return outcome;
-      } finally {
-        setAnswering((current) => (current === id ? null : current));
-      }
-    },
-    [sendAnswer],
-  );
-
-  const live = runs.some((run) => longTaskIsLive(run.status));
-  const every = longTaskPollMs(live, options.pollMs);
-  useEffect(() => {
-    if (!enabled) return undefined;
-    const timer = setInterval(() => setTick((count) => count + 1), every);
-    return () => clearInterval(timer);
-  }, [enabled, every]);
-
-  useEffect(() => {
-    if (!enabled || !live || typeof document === 'undefined') return undefined;
-    const onVisible = (): void => {
-      if (!document.hidden) setTick((count) => count + 1);
+  if (store === null) {
+    return {
+      runs: state.runs,
+      stop: NO_ACTION,
+      stopping: null,
+      stopFailed: null,
+      recheck: NO_ACTION,
+      rechecking: null,
+      recheckFailed: null,
+      answer: NO_ACTION,
+      answering: null,
+      answerFailed: null,
+      refresh: () => undefined,
     };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [enabled, live]);
-
-  const refresh = useCallback(() => setTick((count) => count + 1), []);
+  }
 
   return {
-    runs,
-    stop,
-    stopping,
-    stopFailed: write.failed,
-    recheck,
-    rechecking,
-    recheckFailed: recheckWrite.failed,
-    answer,
-    answering,
-    answerFailed: answerWrite.failed,
-    refresh,
+    runs: state.runs,
+    stop: store.stop,
+    stopping: state.stopping,
+    stopFailed: state.stopFailed,
+    recheck: store.recheck,
+    rechecking: state.rechecking,
+    recheckFailed: state.recheckFailed,
+    answer: store.answer,
+    answering: state.answering,
+    answerFailed: state.answerFailed,
+    refresh: store.refresh,
   };
+}
+
+const WIRING_URL_PATTERN = /^https?:\/\//i;
+
+export interface LongTaskWiring {
+  readonly feed: LongTaskFeed<ShellLongTaskRow>;
+  readonly open: (url: string) => void;
+  readonly copy: (text: string) => void;
+  readonly copied: string | null;
+}
+
+export function useLongTaskWiring(options: {
+  readonly unit: string;
+  readonly workspace: string | null;
+  readonly enabled?: boolean | undefined;
+}): LongTaskWiring {
+  const feed = useLongTask<ShellLongTaskRow>({
+    unit: options.unit,
+    workspace: options.workspace,
+    ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
+  });
+  const external = useExternalActions(feed.refresh);
+  const openExternal = external.open;
+  const open = useCallback(
+    (url: string): void => {
+      if (!WIRING_URL_PATTERN.test(url)) return;
+      openExternal(url);
+    },
+    [openExternal],
+  );
+  return { feed, open, copy: external.copy, copied: external.copied };
 }

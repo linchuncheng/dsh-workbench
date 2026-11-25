@@ -1,14 +1,66 @@
 import { createElement as h, Fragment } from 'react';
+import dayjs from 'dayjs';
 import type {
   CardViewLongTask,
   LongTaskRowIntervention,
   LongTaskRowInterventionAction,
+  LongTaskStatus,
   ShellLongTaskRow,
   Translate,
 } from '@dsh-workbench/shared';
-import { LongTaskRow, longTaskIsLive } from '@dsh-workbench/shared';
+import { LONG_TASK_LINK_MAX, LongTaskRow, longTaskIsLive } from '@dsh-workbench/shared';
 
 const URL_PATTERN = /^https?:\/\//i;
+
+const STATE_KEYS: Readonly<Record<LongTaskStatus, string>> = {
+  running: 'longTask.state.running',
+  'needs-human': 'longTask.state.needsHuman',
+  'needs-login': 'longTask.state.needsLogin',
+  stopped: 'longTask.state.stopped',
+  ok: 'longTask.state.ok',
+  failed: 'longTask.state.failed',
+};
+
+function durationText(t: Translate, ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (hours > 0) return t('longTask.duration.hourMin', { h: hours, m: minutes });
+  if (minutes > 0) return t('longTask.duration.minSec', { m: minutes, s: seconds });
+  return t('longTask.duration.sec', { s: seconds });
+}
+
+function linksOf(
+  row: ShellLongTaskRow,
+  override: CardViewLongTask | undefined,
+  t: Translate,
+): readonly { readonly href: string; readonly text: string }[] | undefined {
+  const links: { href: string; text: string }[] = [];
+  const seen = new Set<string>();
+  for (const link of row.links ?? []) {
+    if (!URL_PATTERN.test(link.href) || seen.has(link.href)) continue;
+    seen.add(link.href);
+    links.push({ href: link.href, text: link.text });
+  }
+  for (const link of override?.links ?? []) {
+    if (!URL_PATTERN.test(link.href) || seen.has(link.href)) continue;
+    seen.add(link.href);
+    links.push({ href: link.href, text: t(link.labelKey) });
+  }
+  return links.length === 0 ? undefined : links.slice(0, LONG_TASK_LINK_MAX);
+}
+
+function metaOf(row: ShellLongTaskRow, t: Translate, now: number): string {
+  const state = t(STATE_KEYS[row.status]);
+  const started = row.startedAt === undefined ? Number.NaN : dayjs(row.startedAt).valueOf();
+  const ended = longTaskIsLive(row.status) ? now : dayjs(row.at).valueOf();
+  const elapsed =
+    Number.isFinite(started) && Number.isFinite(ended) && ended >= started
+      ? ended - started
+      : null;
+  return elapsed === null ? state : `${state} · ${durationText(t, elapsed)}`;
+}
 
 export interface SchemaLongTaskViewProps {
   readonly rows: readonly ShellLongTaskRow[];
@@ -115,6 +167,7 @@ export function SchemaLongTaskView({
     overrides === undefined ? undefined : new Map(overrides.map((override) => [override.id, override]));
   const shown = byId === undefined ? rows : rows.filter((row) => byId.has(row.id));
   if (shown.length === 0) return null;
+  const now = dayjs().valueOf();
 
   return h(
     Fragment,
@@ -146,21 +199,29 @@ export function SchemaLongTaskView({
             label: t('longTask.stop', { label: headline }),
             askLabel: t('longTask.stopConfirm'),
             armedLabel: t('longTask.stopArmed'),
+            pending: t('longTask.stopPending'),
             busy: stopping === row.id,
             ...(stopFailed === null ? {} : { failed: stopFailed }),
           }
         : undefined;
+      const step =
+        row.status === 'running' || row.status === 'stopped' ? row.step : undefined;
+      const dot =
+        row.status === 'needs-human' || row.status === 'needs-login' ? 'warning' : undefined;
+      const links = linksOf(row, override, t);
       return h(LongTaskRow, {
         key: row.id,
         status: row.status,
         headline,
+        ...(step === undefined || step === '' ? {} : { step }),
+        meta: metaOf(row, t, now),
+        ...(dot === undefined ? {} : { dot }),
+        dotLabel: t(STATE_KEYS[row.status]),
         ...(row.status === 'failed' && row.why !== undefined ? { problem: row.why } : {}),
-        ...(override?.links === undefined
-          ? {}
-          : { links: override.links.map((link) => ({ href: link.href, text: t(link.labelKey) })) }),
-        ...(row.status === 'failed' && row.steps !== undefined && row.steps.length > 0
-          ? { steps: row.steps, stepsTitle: t('longTask.steps') }
-          : {}),
+        ...(links === undefined ? {} : { links }),
+        stepsTitle: t('longTask.steps'),
+        ...(row.steps === undefined ? {} : { steps: row.steps }),
+        ...(row.history === undefined ? {} : { history: row.history }),
         ...(login === undefined ? {} : { login }),
         ...(intervention === undefined ? {} : { intervention }),
         ...(stop === undefined ? {} : { stop }),

@@ -146,6 +146,7 @@ export interface CardViewRow {
   readonly atTitle?: string | undefined;
   readonly tone?: CardViewTone | undefined;
   readonly href?: string | undefined;
+  readonly longTaskTarget?: string | undefined;
   readonly action?:
     | {
         readonly labelKey: string;

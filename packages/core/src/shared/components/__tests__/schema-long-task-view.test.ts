@@ -4,10 +4,12 @@ import { describe, expect, it } from 'vitest';
 const HERE = new URL('../', import.meta.url);
 const read = (name: string): string => readFileSync(new URL(name, HERE), 'utf8').replaceAll('\r\n', '\n');
 
-const VIEW = read('SchemaLongTaskView.tsx');
+const VIEW = read('long-task/SchemaLongTaskView.tsx');
 const CARD = read('SchemaCard.tsx');
 const CARD_VIEW = read('SchemaCardView.tsx');
 const EXTERNAL = read('../hooks/use-external-actions.ts');
+const WIRING = read('../hooks/use-long-task.ts');
+const HANDLERS = read('long-task/long-task-handlers.ts');
 const PREVIEW = read('../../app/layouts/rightbar/kit-preview-rows.tsx');
 
 describe('SchemaLongTaskView：needs-human 投影成人待那一行（接线，node 环境读源码断言）', () => {
@@ -142,38 +144,38 @@ describe('open-url / copy 只有一份实现：useExternalActions 供 BlockerSta
 
   it('★★ BlockerState 那条路行为不变：copy 走 copy，open-url 走 open，run-fix/retry 原样', () => {
     expect(EXTERNAL).toContain('export function useExternalActions(');
-    expect(CARD).toContain("import { useExternalActions } from '@/shared/hooks/use-external-actions';");
+    expect(WIRING).toContain("import { useExternalActions } from './use-external-actions';");
     expect(read('../hooks/use-blocker-actions.ts')).toContain('const external = useExternalActions(() => retryRef.current());');
   });
 });
 
 describe('SchemaCard / SchemaCardView：两条卡片路径都接上 openExternal 与 copyText', () => {
-  it('★★ useCardLongTasks 除 openLogin 外补 openExternal / copyText / copiedText', () => {
-    expect(CARD).toContain('const external = useExternalActions(longTasks.refresh);');
-    expect(CARD).toContain('readonly openExternal: (url: string) => void;');
-    expect(CARD).toContain('readonly copyText: (text: string) => void;');
-    expect(CARD).toContain('readonly copiedText: string | null;');
-    expect(CARD).toContain('copyText: external.copy,');
-    expect(CARD).toContain('copiedText: external.copied,');
+  it('★★ 读写接线收到一份共用实现里：SchemaCard 只拿 wiring.feed / open / copy', () => {
+    expect(WIRING).toContain('const external = useExternalActions(feed.refresh);');
+    expect(WIRING).toContain('return { feed, open, copy: external.copy, copied: external.copied };');
+    expect(CARD).toContain('return useLongTaskWiring({');
+    expect(CARD).toContain('const longTasks = wiring.feed;');
   });
 
   it('★★ 开 URL 前仍然只放行 ^https?://（旧的 openLogin 守卫没丢）', () => {
-    expect(CARD).toContain('if (!/^https?:\\/\\//i.test(url)) return;');
-    expect(CARD).toContain('openLogin: openExternal,');
+    expect(WIRING).toContain('if (!WIRING_URL_PATTERN.test(url)) return;');
+    expect(WIRING).toContain('const WIRING_URL_PATTERN = /^https?:');
   });
 
-  it('★★ FrameCard 直连 SchemaLongTaskView：四个回调一起给', () => {
-    expect(CARD).toContain('onLogin: openLogin,');
-    expect(CARD).toContain('onOpenUrl: openExternal,');
-    expect(CARD).toContain('onCopy: copyText,');
-    expect(CARD).toContain('copied: copiedText,');
+  it('★★ FrameCard 直连 SchemaLongTaskView：回调由共用的那支一次给全', () => {
+    expect(CARD).toContain('...longTaskHandlers(wiring, props.t),');
+    expect(HANDLERS).toContain('onLogin: wiring.open,');
+    expect(HANDLERS).toContain('onOpenUrl: wiring.open,');
+    expect(HANDLERS).toContain('onCopy: wiring.copy,');
+    expect(HANDLERS).toContain('copied: wiring.copied,');
   });
 
   it('★★ ReadCard 经 SchemaCardView：props 只做加法', () => {
-    expect(CARD).toContain('onLongTaskLogin: openLogin,');
-    expect(CARD).toContain('onLongTaskOpenUrl: openExternal,');
-    expect(CARD).toContain('onLongTaskCopy: copyText,');
-    expect(CARD).toContain('longTaskCopied: copiedText,');
+    expect(CARD).toContain('const handlers = longTaskHandlers(wiring, props.t);');
+    expect(CARD).toContain('onLongTaskLogin: handlers.onLogin,');
+    expect(CARD).toContain('onLongTaskOpenUrl: handlers.onOpenUrl,');
+    expect(CARD).toContain('onLongTaskCopy: handlers.onCopy,');
+    expect(CARD).toContain('longTaskCopied: handlers.copied,');
   });
 
   it('★★ SchemaCardView 新 prop 可选，缺省给空回调（老调用点不炸）', () => {
@@ -186,11 +188,10 @@ describe('SchemaCard / SchemaCardView：两条卡片路径都接上 openExternal
   });
 
   it('★★ 两条路径都接上 recheck：FrameCard 直给，ReadCard 经 SchemaCardView（props 只加法、缺省空回调）', () => {
-    expect(CARD).toContain('rechecking: longTasks.rechecking,');
-    expect(CARD).toContain('recheckFailed: longTasks.recheckFailed,');
-    expect(CARD).toContain('void longTasks.recheck(id);');
-    expect(CARD).toContain('longTaskRechecking: longTasks.rechecking,');
-    expect(CARD).toContain('longTaskRecheckFailed: longTasks.recheckFailed,');
+    expect(HANDLERS).toContain('rechecking: feed.rechecking,');
+    expect(HANDLERS).toContain('recheckFailed: feed.recheckFailed,');
+    expect(CARD).toContain('longTaskRechecking: handlers.rechecking,');
+    expect(CARD).toContain('longTaskRecheckFailed: handlers.recheckFailed,');
     expect(CARD_VIEW).toContain('readonly longTaskRechecking?: string | null | undefined;');
     expect(CARD_VIEW).toContain('readonly longTaskRecheckFailed?: string | null | undefined;');
     expect(CARD_VIEW).toContain('readonly onLongTaskRecheck?: ((id: string) => void) | undefined;');
@@ -200,11 +201,10 @@ describe('SchemaCard / SchemaCardView：两条卡片路径都接上 openExternal
   });
 
   it('★★ 两条路径都接上 answer：FrameCard 直给，ReadCard 经 SchemaCardView（props 只加法、缺省空回调）', () => {
-    expect(CARD).toContain('answering: longTasks.answering,');
-    expect(CARD).toContain('answerFailed: longTasks.answerFailed,');
-    expect(CARD).toContain('void longTasks.answer(id, values);');
-    expect(CARD).toContain('longTaskAnswering: longTasks.answering,');
-    expect(CARD).toContain('longTaskAnswerFailed: longTasks.answerFailed,');
+    expect(HANDLERS).toContain('answering: feed.answering,');
+    expect(HANDLERS).toContain('answerFailed: feed.answerFailed,');
+    expect(CARD).toContain('longTaskAnswering: handlers.answering,');
+    expect(CARD).toContain('longTaskAnswerFailed: handlers.answerFailed,');
     expect(CARD_VIEW).toContain('readonly longTaskAnswering?: string | null | undefined;');
     expect(CARD_VIEW).toContain('readonly longTaskAnswerFailed?: string | null | undefined;');
     expect(CARD_VIEW).toContain('readonly onLongTaskAnswer?:');
@@ -243,5 +243,78 @@ describe('kit 预览画廊：六态都摆得出来，needs-human 那条带两个
 
   it('★ 说明从「五种状态」改成覆盖新态', () => {
     expect(PREVIEW).toContain('六种状态：跑着 / 要登录（旧路）/ 等你处理（人工干预节点）');
+  });
+});
+
+describe('行内可读：状态词 · 耗时 · 当前步骤 · 结构化步骤', () => {
+  it('★★ 六态都有状态词，耗时按时 / 分 / 秒三档', () => {
+    expect(VIEW).toContain("running: 'longTask.state.running',");
+    expect(VIEW).toContain("'needs-human': 'longTask.state.needsHuman',");
+    expect(VIEW).toContain("'needs-login': 'longTask.state.needsLogin',");
+    expect(VIEW).toContain("stopped: 'longTask.state.stopped',");
+    expect(VIEW).toContain("ok: 'longTask.state.ok',");
+    expect(VIEW).toContain("failed: 'longTask.state.failed',");
+    expect(VIEW).toContain("t('longTask.duration.hourMin', { h: hours, m: minutes })");
+    expect(VIEW).toContain("t('longTask.duration.minSec', { m: minutes, s: seconds })");
+    expect(VIEW).toContain("t('longTask.duration.sec', { s: seconds })");
+  });
+
+  it('★★ meta = 状态词 · 耗时；行的时间从 startedAt 起算，结束态算到 at', () => {
+    expect(VIEW).toContain('const ended = longTaskIsLive(row.status) ? now : dayjs(row.at).valueOf();');
+    expect(VIEW).toContain('meta: metaOf(row, t, now),');
+  });
+
+  it('★★ 当前步骤只在 running / stopped 传（人待已有干预行，不重复）', () => {
+    expect(VIEW).toContain(
+      "row.status === 'running' || row.status === 'stopped' ? row.step : undefined",
+    );
+    expect(VIEW).toContain("...(step === undefined || step === '' ? {} : { step }),");
+  });
+
+  it('★★ 人待的点抬到 warning（与左栏一致），读屏词也跟着给', () => {
+    expect(VIEW).toContain(
+      "row.status === 'needs-human' || row.status === 'needs-login' ? 'warning' : undefined",
+    );
+    expect(VIEW).toContain('dotLabel: t(STATE_KEYS[row.status]),');
+  });
+
+  it('★★ history 原样透传，steps 也照旧给（没有 history 的旧模块回退）', () => {
+    expect(VIEW).toContain('...(row.history === undefined ? {} : { history: row.history }),');
+    expect(VIEW).toContain('...(row.steps === undefined ? {} : { steps: row.steps }),');
+    expect(VIEW).toContain("stepsTitle: t('longTask.steps'),");
+  });
+
+  it('★ 停止请求有话说：这一趟还活着就显示「等模块确认」', () => {
+    expect(VIEW).toContain("pending: t('longTask.stopPending'),");
+  });
+});
+
+describe('行尾链接：run 自带 + 卡片覆盖按 href 合并去重，最多三条', () => {
+  it('★★ 先 run 后覆盖，同一个 href 只画一次，超过三条截断', () => {
+    expect(VIEW).toContain('function linksOf(');
+    expect(VIEW).toContain('for (const link of row.links ?? [])');
+    expect(VIEW).toContain('for (const link of override?.links ?? [])');
+    expect(VIEW).toContain('if (!URL_PATTERN.test(link.href) || seen.has(link.href)) continue;');
+    expect(VIEW).toContain('links.slice(0, LONG_TASK_LINK_MAX)');
+    expect(VIEW).toContain('...(links === undefined ? {} : { links }),');
+  });
+});
+
+describe('行内落位：rows 上的 longTaskTarget 把那一趟长任务拴在它自己那一行下面', () => {
+  const ROW_CONTRACT = readFileSync(
+    new URL('../../../../../shared/src/components/card/board-module.ts', import.meta.url),
+    'utf8',
+  );
+
+  it('★★ 行契约多一个可选 longTaskTarget（旧行不写就不变）', () => {
+    expect(ROW_CONTRACT).toContain('readonly longTaskTarget?: string | undefined;');
+  });
+
+  it('★★ 同一 target 只画一次：行内拿走，底部就不再重复', () => {
+    expect(CARD_VIEW).toContain('const target = item.longTaskTarget;');
+    expect(CARD_VIEW).toContain('const placed = target === undefined ? undefined : longTaskOf?.(target);');
+    expect(CARD_VIEW).toContain("return placed === undefined ? row : h(Fragment, { key: item.key }, row, placed);");
+    expect(CARD_VIEW).toContain('.map((row) => row.longTaskTarget)');
+    expect(CARD_VIEW).toContain('runs.filter((row) => !placedTargets.has(row.target))');
   });
 });

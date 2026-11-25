@@ -5,19 +5,22 @@ import type { FlowStepEvent } from './types.js';
  * 把流程的一步事件翻成长任务步骤流的默认一行。
  * `running` → `start`、`ok` → `succeed`、`skipped` → `info`、`failed` → `fail`、
  * `needs-login` → `info`（带 `loginUrl`）、`needs-human` → `info`（带 `intervention`）；
- * 文字取 `message ?? title`（人工干预节点取 `intervention.title`）。
+ * 文字取 `message ?? title`（人工干预节点取 `intervention.title`）；事件带 `links` 时每一行都跟着带。
  * 要改文案或过滤步骤，就在模块里自己映射 —— 这只是默认值。
  * @param event `flow.run({ onStep })` 收到的那条事件。
  * @returns 能直接交给长任务 `run({ onStep })` 的一行。
  */
 export function longTaskStepOf(event: FlowStepEvent): LongTaskStep {
   const text = event.message ?? event.title;
-  if (event.status === 'failed') return { kind: 'fail', text };
+  const links =
+    event.links === undefined || event.links.length === 0 ? {} : { links: event.links };
+  if (event.status === 'failed') return { kind: 'fail', text, ...links };
   if (event.status === 'needs-human') {
     return {
       kind: 'info',
       text: event.intervention?.title ?? text,
       ...(event.intervention === undefined ? {} : { intervention: event.intervention }),
+      ...links,
     };
   }
   if (event.status === 'needs-login') {
@@ -27,9 +30,10 @@ export function longTaskStepOf(event: FlowStepEvent): LongTaskStep {
       ...(event.loginUrl === undefined || event.loginUrl === ''
         ? {}
         : { loginUrl: event.loginUrl }),
+      ...links,
     };
   }
-  if (event.status === 'ok') return { kind: 'succeed', text };
-  if (event.status === 'skipped') return { kind: 'info', text };
-  return { kind: 'start', text };
+  if (event.status === 'ok') return { kind: 'succeed', text, ...links };
+  if (event.status === 'skipped') return { kind: 'info', text, ...links };
+  return { kind: 'start', text, ...links };
 }

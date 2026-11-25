@@ -1,9 +1,13 @@
 import { epochOf, now as clockNow, nowIso } from '../runtime/time.js';
 import {
+  LONG_TASK_HISTORY_MAX,
+  LONG_TASK_LINK_MAX,
   runsRouteOf,
   type LongTaskIntervention,
+  type LongTaskLink,
   type LongTaskStatus,
   type LongTaskStep,
+  type LongTaskStepRow,
 } from '../../contract/long-task.js';
 
 function isLiveStatus(status: LongTaskStatus): boolean {
@@ -20,6 +24,8 @@ export interface LongTaskBase {
   readonly status: LongTaskStatus;
   readonly step: string;
   readonly steps: readonly string[];
+  readonly history?: readonly LongTaskStepRow[] | undefined;
+  readonly links?: readonly LongTaskLink[] | undefined;
   readonly intervention?: LongTaskIntervention | undefined;
   readonly loginUrl?: string | undefined;
   readonly why?: string | undefined;
@@ -77,6 +83,47 @@ export interface LongTaskRegistry<S extends LongTaskBase> {
   answer(id: string, values: Readonly<Record<string, string>>): boolean;
   onChange(listener: (change: LongTaskChange<S>) => void): () => void;
   rebind?(deps: LongTaskDeps<S>): void;
+}
+
+/**
+ * 长任务行里那一层通用字段：去掉身份（`id` / `workspace`）之后的全套快照。
+ */
+export type LongTaskRowBase = Omit<LongTaskBase, 'id' | 'workspace'>;
+
+function pickDefined<T extends object, K extends keyof T>(
+  source: T,
+  keys: readonly K[],
+): Partial<Pick<T, K>> {
+  const out: Partial<Pick<T, K>> = {};
+  for (const key of keys) {
+    if (source[key] !== undefined) out[key] = source[key];
+  }
+  return out;
+}
+
+/**
+ * 长任务快照的通用字段：外壳先铺这一层，模块的 `view()` 只覆盖、不遗漏。
+ * @param snapshot 这一趟的快照。
+ * @returns `target` / `status` / `step` / `steps` / `startedAt` / `at` 与快照里存在的可选字段。
+ */
+export function longTaskRowBase(snapshot: LongTaskBase): LongTaskRowBase {
+  return {
+    target: snapshot.target,
+    status: snapshot.status,
+    step: snapshot.step,
+    steps: snapshot.steps,
+    startedAt: snapshot.startedAt,
+    at: snapshot.at,
+    ...pickDefined(snapshot, [
+      'headline',
+      'history',
+      'links',
+      'intervention',
+      'loginUrl',
+      'why',
+      'session',
+    ]),
+  };
 }
 
 export function createLongTaskRegistry<S extends LongTaskBase>(deps: LongTaskDeps<S>): LongTaskRegistry<S> {
@@ -143,6 +190,7 @@ export function createLongTaskRegistry<S extends LongTaskBase>(deps: LongTaskDep
         )
         .reverse()
         .map((snapshot) => ({
+          ...longTaskRowBase(snapshot),
           ...bound.view(snapshot as S),
           id: snapshot.id,
           ...(bound.recheck === undefined ? {} : { resumable: true }),
@@ -166,6 +214,7 @@ export function createLongTaskRegistry<S extends LongTaskBase>(deps: LongTaskDep
         status: 'running',
         step: '',
         steps: [],
+        history: [],
         startedAt,
         at: startedAt,
         ...(options.session === undefined ? {} : { session: options.session }),
@@ -180,7 +229,17 @@ export function createLongTaskRegistry<S extends LongTaskBase>(deps: LongTaskDep
           current.step === step.text &&
           step.intervention !== undefined &&
           current.intervention?.title === step.intervention.title;
-        const steps = repeated ? current.steps : [...current.steps, line].slice(-20);
+        const steps = repeated ? current.steps : [...current.steps, line].slice(-LONG_TASK_HISTORY_MAX);
+        const historyRow: LongTaskStepRow = {
+          kind: step.kind,
+          text: step.text,
+          ...(step.links === undefined
+            ? {}
+            : { links: step.links.slice(0, LONG_TASK_LINK_MAX) }),
+        };
+        const history = repeated
+          ? current.history ?? []
+          : [...(current.history ?? []), historyRow].slice(-LONG_TASK_HISTORY_MAX);
         const extra = bound.step?.(step, current) ?? {};
         if (step.intervention !== undefined) {
           patch(
@@ -190,6 +249,7 @@ export function createLongTaskRegistry<S extends LongTaskBase>(deps: LongTaskDep
               status: 'needs-human',
               step: step.text,
               steps,
+              history,
               intervention: step.intervention,
               loginUrl: undefined,
             },
@@ -200,7 +260,14 @@ export function createLongTaskRegistry<S extends LongTaskBase>(deps: LongTaskDep
         if (step.loginUrl !== undefined && step.loginUrl !== '') {
           patch(
             id,
-            { ...extra, status: 'needs-login', step: step.text, steps, loginUrl: step.loginUrl },
+            {
+              ...extra,
+              status: 'needs-login',
+              step: step.text,
+              steps,
+              history,
+              loginUrl: step.loginUrl,
+            },
             { kind: 'step', step },
           );
           return;
@@ -212,6 +279,7 @@ export function createLongTaskRegistry<S extends LongTaskBase>(deps: LongTaskDep
             status: 'running',
             step: step.text,
             steps,
+            history,
             intervention: undefined,
             loginUrl: undefined,
           },

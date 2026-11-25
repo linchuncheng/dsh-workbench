@@ -133,7 +133,7 @@ describe('createLongTaskRegistry', () => {
     expect(shots[0]).toBe('第 6 步');
   });
 
-  it('★ 套件只交四件：`step`/`outcome` 加进来的格子跟着走，`view` 决定给浏览器哪几格', async () => {
+  it('★ base 永远在，`view` 只能覆盖或加：`step`/`outcome` 的格子跟着走', async () => {
     const h = deps({
       step: (step, current) => (current.note === undefined ? { note: step.text } : {}),
       outcome: () => ({ note: '跑完了' }),
@@ -143,7 +143,17 @@ describe('createLongTaskRegistry', () => {
 
     h.step({ kind: 'info', text: '这一步认出了一格' });
     expect(runs.snapshot(started.id)?.note).toBe('这一步认出了一格');
-    expect(Object.keys(runs.current('/w/a')[0] ?? {})).toEqual(['id', 'target', 'status', 'step', 'note']);
+    expect(Object.keys(runs.current('/w/a')[0] ?? {})).toEqual([
+      'target',
+      'status',
+      'step',
+      'steps',
+      'startedAt',
+      'at',
+      'history',
+      'id',
+      'note',
+    ]);
     h.step({ kind: 'info', text: '第二步' });
     expect(runs.snapshot(started.id)?.note).toBe('这一步认出了一格');
 

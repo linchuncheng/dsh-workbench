@@ -1,5 +1,5 @@
 import type { DataCallOptions, PlanResults, RequestPlan } from '../../contract/data.js';
-import type { LongTaskIntervention } from '../../contract/long-task.js';
+import type { LongTaskIntervention, LongTaskLink } from '../../contract/long-task.js';
 import type { ImageLike } from '../ai/types.js';
 import type { AiPort } from '../ai/port.js';
 
@@ -208,7 +208,7 @@ export interface FlowActionContext {
   readonly runId: string;
   readonly workspace: string;
   readonly stepId: string;
-  log(text: string): void;
+  log(text: string, links?: readonly LongTaskLink[]): void;
   login(url: string): void;
   need(intervention: LongTaskIntervention): void;
 }
@@ -259,6 +259,7 @@ export interface FlowStepEvent {
   readonly message?: string | undefined;
   readonly loginUrl?: string | undefined;
   readonly intervention?: LongTaskIntervention | undefined;
+  readonly links?: readonly LongTaskLink[] | undefined;
 }
 
 /**

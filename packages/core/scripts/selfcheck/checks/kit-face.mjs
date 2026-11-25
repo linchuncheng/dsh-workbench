@@ -36,6 +36,8 @@ const FROZEN = {
 
 const ADDITIONS = [
   { key: 'components.ConfirmBar', why: 'named' },
+  { key: 'components.LongTaskRun', why: 'named' },
+  { key: 'components.LongTaskSection', why: 'named' },
   { key: 'lib.longTaskIsLive', why: 'named' },
 
   { key: 'api.factOfRoute', why: 'named' },

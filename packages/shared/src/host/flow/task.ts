@@ -33,19 +33,23 @@ function payloadOf(value: unknown): FlowPayload | null {
 }
 
 function longStepOf(event: FlowStepEvent): LongTaskStep {
+  const links =
+    event.links === undefined || event.links.length === 0 ? {} : { links: event.links };
   if (event.status === 'failed') {
     return {
       kind: 'fail',
       text: event.message === undefined ? event.title : `${event.title}：${event.message}`,
+      ...links,
     };
   }
-  if (event.status === 'skipped') return { kind: 'info', text: `${event.title}（跳过）` };
-  if (event.status === 'ok') return { kind: 'succeed', text: event.title };
+  if (event.status === 'skipped') return { kind: 'info', text: `${event.title}（跳过）`, ...links };
+  if (event.status === 'ok') return { kind: 'succeed', text: event.title, ...links };
   if (event.status === 'needs-human') {
     return {
       kind: 'info',
       text: event.intervention?.title ?? event.message ?? event.title,
       ...(event.intervention === undefined ? {} : { intervention: event.intervention }),
+      ...links,
     };
   }
   if (event.status === 'needs-login') {
@@ -55,13 +59,16 @@ function longStepOf(event: FlowStepEvent): LongTaskStep {
       ...(event.loginUrl === undefined || event.loginUrl === ''
         ? {}
         : { loginUrl: event.loginUrl }),
+      ...links,
     };
   }
-  if (event.message !== undefined) return { kind: 'info', text: `${event.title}：${event.message}` };
-  if (event.attempt !== undefined && event.attempt > 1) {
-    return { kind: 'info', text: `${event.title}（第 ${event.attempt} 次）` };
+  if (event.message !== undefined) {
+    return { kind: 'info', text: `${event.title}：${event.message}`, ...links };
   }
-  return { kind: 'start', text: event.title };
+  if (event.attempt !== undefined && event.attempt > 1) {
+    return { kind: 'info', text: `${event.title}（第 ${event.attempt} 次）`, ...links };
+  }
+  return { kind: 'start', text: event.title, ...links };
 }
 
 function targetOf(flow: FlowDefinition, input: unknown): string {
@@ -112,6 +119,7 @@ export function flowTaskDeps(
       status: snapshot.status,
       step: snapshot.step,
       steps: snapshot.steps,
+      ...(snapshot.links === undefined ? {} : { links: snapshot.links }),
       intervention: snapshot.intervention,
       loginUrl: snapshot.loginUrl,
       why: snapshot.why,

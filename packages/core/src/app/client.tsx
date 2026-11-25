@@ -53,14 +53,16 @@ import {
 } from '@/app/layouts/sidebar/edition';
 import { bootSidebarEdition } from '@/app/layouts/sidebar/edition-boot';
 import { LongTaskDot } from '@/app/layouts/sidebar/LongTaskDot';
+import { LongTaskRun } from '@/shared/components/long-task/LongTaskRun';
+import { LongTaskSection } from '@/shared/components/long-task/LongTaskSection';
 import { LongTaskHover } from '@/app/layouts/sidebar/LongTaskHover';
 import * as chipsModule from '@/shared/api/context-chips';
 import * as apiResourceModule from '@/shared/hooks/use-api-resource';
 import * as cardSummaryModule from '@/shared/hooks/use-card-summary';
 import * as factsModule from '@/shared/hooks/use-facts';
-import * as hostWriteModule from '@/shared/hooks/use-host-write';
+import { useHostWrite } from '@/shared/hooks/use-host-write';
 import { setWriteSessionSource } from '@/shared/hooks/write-session';
-import * as longTaskModule from '@/shared/hooks/use-long-task';
+import { useLongTask } from '@/shared/hooks/use-long-task';
 import * as capabilityGateModule from '@/shared/hooks/use-capability-gate';
 import * as unitBoardModule from '@/shared/hooks/use-unit-board';
 import * as visibleBusyModule from '@/shared/hooks/use-visible-busy';
@@ -90,8 +92,8 @@ export const kit = {
     ...apiResourceModule,
     ...cardSummaryModule,
     ...factsModule,
-    ...hostWriteModule,
-    ...longTaskModule,
+    useHostWrite,
+    useLongTask,
     ...capabilityGateModule,
     ...unitBoardModule,
     ...visibleBusyModule,
@@ -103,7 +105,8 @@ export const kit = {
     ActivityAction, ActivityBlock, ActivityLine, ApprovalDetail, ApprovalPlan, Card, CardAnchor,
     CardBoundary, CardHead, CenteredState, ChoiceGroup, ConfirmBar, EmptyState, Field, Form, FormActions, FormRow,
     FormRows, IconBrandMark, IconConversation, IconModuleMark, IconNpm, IconOpencli, IconPanelScreen, Link,
-    LongTaskRow, Note, Row, Rows, SaveBar, SelectField, SettingsSection, SkeletonRows, Spinner, Stack,
+    LongTaskRow, LongTaskRun, LongTaskSection, Note, Row, Rows, SaveBar, SelectField, SettingsSection,
+    SkeletonRows, Spinner, Stack,
     StateBlock, TextField, Tip, UnitBlocker, SetupShell, },
 
   api: { apiGet, apiPost, factOfRoute, ...chipsModule },

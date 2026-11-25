@@ -27,7 +27,7 @@ import { StateDot, type StateDotState } from '@deepseek-ai/dsh-client-ui-primiti
 import type { ResourceState } from '@/shared/hooks/use-api-resource';
 import { BlockerState } from './BlockerState';
 import { SchemaActions } from './SchemaActions';
-import { SchemaLongTaskView } from './SchemaLongTaskView';
+import { SchemaLongTaskView } from './long-task/SchemaLongTaskView';
 import { SchemaMetric } from './SchemaMetric';
 import { SchemaRow } from './SchemaRow';
 import { SchemaSettings } from './SchemaSettings';
@@ -126,7 +126,12 @@ function metricsOf(items: readonly CardViewMetric[], t: Translate, onRefresh: ()
   );
 }
 
-function rowsOf(items: readonly CardViewRow[], t: Translate, onRefresh: () => void) {
+function rowsOf(
+  items: readonly CardViewRow[],
+  t: Translate,
+  onRefresh: () => void,
+  longTaskOf?: ((target: string) => ReactNode) | undefined,
+) {
   const atClass = (tone: CardViewTone | undefined): string | undefined => {
     if (tone === undefined) return undefined;
     return tone === 'warn'
@@ -181,7 +186,7 @@ function rowsOf(items: readonly CardViewRow[], t: Translate, onRefresh: () => vo
           ),
         });
       }
-      return h(SchemaRow, {
+      const row = h(SchemaRow, {
         key: item.key,
         title,
         meta: item.meta,
@@ -195,6 +200,9 @@ function rowsOf(items: readonly CardViewRow[], t: Translate, onRefresh: () => vo
           : { action: h(Link, { href: item.action.href }, t(item.action.labelKey)) }),
         ...(actions === undefined ? {} : { actions }),
       });
+      const target = item.longTaskTarget;
+      const placed = target === undefined ? undefined : longTaskOf?.(target);
+      return placed === undefined ? row : h(Fragment, { key: item.key }, row, placed);
     }),
   );
 }
@@ -214,29 +222,32 @@ function activityOf(items: readonly CardViewActivity[], t: Translate) {
   );
 }
 
-function sectionsOf(view: CardView, model: unknown, t: Translate, onRefresh: () => void) {
+function sectionsOf(
+  view: CardView,
+  model: unknown,
+  t: Translate,
+  onRefresh: () => void,
+  longTaskOf?: ((target: string) => ReactNode) | undefined,
+) {
   const sections = view.sections;
   if (sections === undefined) return [];
 
   const nodes: ReactNode[] = [];
+  const push = (key: string, node: ReactNode | undefined): void => {
+    if (node !== undefined) nodes.push(h(Fragment, { key }, node));
+  };
   for (const key of sections.order ?? ['metrics', 'rows', 'activity']) {
     if (key === 'metrics') {
       const metrics = sections.metrics?.(model, t);
-      if (metrics !== undefined && metrics.length > 0) {
-        nodes.push(h(Fragment, { key: 'metrics' }, metricsOf(metrics, t, onRefresh)));
-      }
+      if (metrics !== undefined && metrics.length > 0) push('metrics', metricsOf(metrics, t, onRefresh));
     }
     if (key === 'rows') {
       const rows = sections.rows?.(model, t);
-      if (rows !== undefined && rows.length > 0) {
-        nodes.push(h(Fragment, { key: 'rows' }, rowsOf(rows, t, onRefresh)));
-      }
+      if (rows !== undefined && rows.length > 0) push('rows', rowsOf(rows, t, onRefresh, longTaskOf));
     }
     if (key === 'activity') {
       const activity = sections.activity?.(model, t);
-      if (activity !== undefined && activity.length > 0) {
-        nodes.push(h(Fragment, { key: 'activity' }, activityOf(activity, t)));
-      }
+      if (activity !== undefined && activity.length > 0) push('activity', activityOf(activity, t));
     }
   }
   return nodes;
@@ -251,6 +262,7 @@ function contentOf(
   settingsOpen: boolean,
   onSettingsClose: () => void,
   longTask: ReactNode | undefined,
+  longTaskOf?: ((target: string) => ReactNode) | undefined,
 ) {
   if (state.phase === 'error') {
     return h(Fragment, null, h(StateBlock, { hint: state.error?.message }), longTask);
@@ -300,7 +312,7 @@ function contentOf(
           ...props,
           model: mapped.model,
         });
-  const sections = sectionsOf(view, mapped.model, props.t, props.onRefresh);
+  const sections = sectionsOf(view, mapped.model, props.t, props.onRefresh, longTaskOf);
   return h(
     Fragment,
     null,
@@ -353,12 +365,17 @@ export function SchemaCardView({
     setGearOpen(false);
     if (autoOpen) setAutoDismissed(true);
   };
-  const longTask =
+  const runs = longTasks ?? [];
+  const overrides =
+    view.sections?.longTask === undefined || model === undefined
+      ? undefined
+      : view.sections.longTask(model, t);
+  const longTaskNode = (rows: readonly ShellLongTaskRow[]): ReactNode =>
     view.sections?.longTask === undefined
       ? undefined
       : h(SchemaLongTaskView, {
-          rows: longTasks ?? [],
-          ...(model === undefined ? {} : { overrides: view.sections.longTask(model, t) }),
+          rows,
+          ...(overrides === undefined ? {} : { overrides }),
           stopping: longTaskStopping ?? null,
           stopFailed: longTaskStopFailed ?? null,
           rechecking: longTaskRechecking ?? null,
@@ -374,6 +391,17 @@ export function SchemaCardView({
           onCopy: onLongTaskCopy ?? (() => {}),
           copied: longTaskCopied ?? null,
         });
+  const placedTargets = new Set(
+    (model === undefined ? [] : view.sections?.rows?.(model, t) ?? [])
+      .map((row) => row.longTaskTarget)
+      .filter((target): target is string => target !== undefined),
+  );
+  const longTaskOf =
+    view.sections?.longTask === undefined
+      ? undefined
+      : (target: string): ReactNode =>
+          longTaskNode(runs.filter((row) => row.target === target));
+  const longTask = longTaskNode(runs.filter((row) => !placedTargets.has(row.target)));
   const actions = actionNodes(view, t, onRefresh);
   const settings = view.settings;
   const platform = model === undefined
@@ -410,6 +438,7 @@ export function SchemaCardView({
           settingsOpen,
           closeSettings,
           longTask,
+          longTaskOf,
         )
       : h(
           Fragment,

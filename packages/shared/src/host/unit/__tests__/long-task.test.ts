@@ -3,6 +3,7 @@ import type { LongTaskIntervention, LongTaskStep } from '../../../contract/long-
 import {
   createLongTaskHost,
   createLongTaskRegistry,
+  longTaskRowBase,
   sharedLongTaskRegistry,
   withInterventionRetry,
   type LongTaskBase,
@@ -127,6 +128,55 @@ describe('createLongTaskRegistry.stop（停止只是转发给生产方，认不�
 
     expect(runs.snapshot(started.id)?.steps).toEqual([]);
     expect(runs.snapshot(started.id)?.status).toBe('stopped');
+  });
+
+  it('★★ 步骤另攒一份结构化的 history：kind / text / links，与 steps 同源', () => {
+    const h = harness();
+    const runs = createLongTaskRegistry(h.deps);
+    const started = runs.start({ workspace: '/w/a', target: 'release' });
+
+    h.step({ kind: 'start', text: '拉取 main' });
+    h.step({
+      kind: 'fail',
+      text: '推送 tag 失败',
+      links: [{ href: 'https://example.test/pipeline/1', text: '打开流水线' }],
+    });
+
+    expect(runs.snapshot(started.id)?.history).toEqual([
+      { kind: 'start', text: '拉取 main' },
+      {
+        kind: 'fail',
+        text: '推送 tag 失败',
+        links: [{ href: 'https://example.test/pipeline/1', text: '打开流水线' }],
+      },
+    ]);
+    expect(runs.snapshot(started.id)?.steps).toEqual(['拉取 main', '✗ 推送 tag 失败']);
+  });
+
+  it('★ history 与 steps 一起只留最近 20 条；每一步最多留 3 条链接', () => {
+    const h = harness();
+    const runs = createLongTaskRegistry(h.deps);
+    const started = runs.start({ workspace: '/w/a', target: 'release' });
+
+    for (let index = 0; index < 25; index += 1) {
+      h.step({ kind: 'info', text: '第 ' + String(index) + ' 步' });
+    }
+    h.step({
+      kind: 'info',
+      text: '四颗链接',
+      links: [
+        { href: 'https://a.test/1', text: '一' },
+        { href: 'https://a.test/2', text: '二' },
+        { href: 'https://a.test/3', text: '三' },
+        { href: 'https://a.test/4', text: '四' },
+      ],
+    });
+
+    const history = runs.snapshot(started.id)?.history ?? [];
+    expect(history).toHaveLength(20);
+    expect(history[history.length - 1]?.text).toBe('四颗链接');
+    expect(history[history.length - 1]?.links).toHaveLength(3);
+    expect(runs.snapshot(started.id)?.steps).toHaveLength(20);
   });
 
   it('★★ current() 每条都带 id（浏览器按 id 点那颗钮），view 覆盖不了', () => {
@@ -778,5 +828,34 @@ describe('热重载换实现（槽里那份认回来，但跑新代码）', () =
     next.start({ workspace: '/w/a', target: 'batch' });
     await new Promise((done) => setTimeout(done, 20));
     expect(ran).toEqual(['old', 'new']);
+  });
+});
+
+describe('longTaskRowBase（外壳先铺这一层，view 只覆盖不遗漏）', () => {
+  const base: LongTaskBase = {
+    id: 'run-1',
+    workspace: '/w/a',
+    target: 'release',
+    status: 'running',
+    step: '发布中',
+    steps: ['开始'],
+    startedAt: '2026-10-21T02:00:00.000Z',
+    at: '2026-10-21T02:00:01.000Z',
+  };
+
+  it('★★ 没有 links 就不落这个键（旧快照不多一个空键）', () => {
+    expect('links' in longTaskRowBase(base)).toBe(false);
+  });
+
+  it('★★ 有 links 就原样带上（逐条是 { href, text }）', () => {
+    const links = [{ href: 'https://ci.example/42', text: '看流水线' }];
+    expect(longTaskRowBase({ ...base, links }).links).toEqual(links);
+  });
+
+  it('★★ history 与 steps 一起给（旧视图读 steps，新视图读结构化那批）', () => {
+    const history = [{ kind: 'start' as const, text: '开始' }];
+    const row = longTaskRowBase({ ...base, history });
+    expect(row.history).toEqual(history);
+    expect(row.steps).toEqual(['开始']);
   });
 });

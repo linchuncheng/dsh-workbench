@@ -49,6 +49,7 @@ describe('liveLongTaskRows：左栏那颗 loading 点读的那份清单', () => 
       status: 'needs-login',
       step: '未登录',
       steps: ['未登录'],
+      history: [{ kind: 'start', text: '未登录' }],
       loginUrl: 'https://example.test/login',
     });
   });

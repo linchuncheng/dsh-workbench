@@ -60,4 +60,24 @@ describe('longTaskStepOf：流程事件 → 长任务步骤的默认映射', () 
     expect(step).toEqual({ kind: 'start', text: '正在读' });
     expect('loginUrl' in step).toBe(false);
   });
+
+  it('★★ 事件带 links 时每一行都跟着带；空数组不落键（旧事件一个字段都不多）', () => {
+    const links = [{ href: 'https://example.test/x', text: '打开' }];
+    expect(longTaskStepOf(eventOf('running', { links }))).toEqual({
+      kind: 'start',
+      text: '读目录',
+      links,
+    });
+    expect(longTaskStepOf(eventOf('ok', { links }))).toEqual({
+      kind: 'succeed',
+      text: '读目录',
+      links,
+    });
+    expect(longTaskStepOf(eventOf('failed', { links }))).toEqual({
+      kind: 'fail',
+      text: '读目录',
+      links,
+    });
+    expect('links' in longTaskStepOf(eventOf('running', { links: [] }))).toBe(false);
+  });
 });

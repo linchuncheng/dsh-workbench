@@ -257,8 +257,14 @@ async function runOneInner(options: RunOneOptions): Promise<unknown> {
     runId,
     workspace,
     stepId,
-    log: (text) => {
-      emit({ stepId, title, status: 'running', message: text });
+    log: (text, links) => {
+      emit({
+        stepId,
+        title,
+        status: 'running',
+        message: text,
+        ...(links === undefined || links.length === 0 ? {} : { links }),
+      });
     },
     login: (url) => {
       emit({ stepId, title, status: 'needs-login', loginUrl: url });

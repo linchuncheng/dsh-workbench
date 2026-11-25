@@ -13,6 +13,19 @@ export type LongTaskInterventionAction =
   | { readonly kind: 'copy'; readonly text: string; readonly label?: string | undefined };
 
 /**
+ * 一条「去哪看」的链接：步骤行尾或行进尾部。
+ * `text` 是模块写好的字（宿主侧没有 `t`），外壳只放行 `http(s)`。
+ */
+export interface LongTaskLink {
+  readonly href: string;
+  readonly text: string;
+}
+
+export const LONG_TASK_LINK_MAX = 3;
+
+export const LONG_TASK_HISTORY_MAX = 20;
+
+/**
  * 回执字段的输入类型：`text` 明文，`secret` 密码框（值同样只回给模块）。
  */
 export type LongTaskInterventionFieldKind = 'text' | 'secret';
@@ -49,8 +62,19 @@ export interface LongTaskIntervention {
 export interface LongTaskStep {
   readonly kind: 'start' | 'succeed' | 'fail' | 'info' | 'warn';
   readonly text: string;
+  readonly links?: readonly LongTaskLink[] | undefined;
   readonly intervention?: LongTaskIntervention | undefined;
   readonly loginUrl?: string | undefined;
+}
+
+/**
+ * 快照里的结构化步骤行：`kind` 定颜色、`text` 是文案、`links` 是这条记录的去处。
+ * 与 `steps: string[]` 同源、同去重、同上限；旧消费者照旧读 `steps`。
+ */
+export interface LongTaskStepRow {
+  readonly kind: LongTaskStep['kind'];
+  readonly text: string;
+  readonly links?: readonly LongTaskLink[] | undefined;
 }
 
 /**

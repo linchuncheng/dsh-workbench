@@ -166,18 +166,19 @@
 
 - 来源：工具里 `runs.start({ …, session: deps.sessionIdOf(exec) ?? undefined })`。未记录 = 用户手动启动的 → 停止需审批。
 - 流程事件默认用 `longTaskStepOf(event)`。
+- **步骤链接**：步骤可带 `links`（`{ href, text }`，≤3、只认 `http(s)`），flow 用 `ctx.log(text, links?)`；
+  快照另攒结构化 `history`（与 `steps` 同源同上限），旧视图照旧读 `steps`。
 - **要人处理的节点**：给这一步带 `intervention`（类型从 `@dsh-workbench/shared` 取）：
   `{ title, hint?, actions?: ({kind:'open-url',url,label?} | {kind:'copy',text,label?})[], fields?, submitLabel? }`；
   `title` / `hint` 是字面量（宿主侧没有 `t`），`label` 缺省用工作台的词；带它的步骤停在 `needs-human`，下一条不带回 `running`。
 - **结构化回执**：`fields` 行上出表单，`submitLabel` 是提交钮；接住回执给 `longTasks.create({ answer?(current, values) })`，
   `<单元>/runs/answer` 交回模块；values 不进快照。
 - **恢复**：默认靠模块自己轮询。给了 `recheck?(current)` 行上才有「我处理完了」（只发 `<单元>/runs/recheck`，工作台不承诺恢复）；
-  要重试恢复就用 `withInterventionRetry(check, { attempts, delayMs })`（`@dsh-workbench/shared/host`）当 `recheck` handler：有界重试，check 回 `true` 即停。
+  要自动重试就用 `withInterventionRetry(check)`（`@dsh-workbench/shared/host`）当 `recheck`。
 - 进入 `needs-human` 时工作台自动向起它的会话发「在等你处理」notice（hold、按 run 去重），模块不做。
 - 流程侧对应 `ctx.need(intervention)`；`ctx.login(url)` 是旧路（仍产 `needs-login` + `loginUrl`，标 deprecated）。
-- 浏览器侧：`useLongTask` → `feed.runs` / `feed.stop(id)` / `feed.recheck(id)` / `feed.answer(id, values)` /
-  `feed.stopping` / `feed.stopFailed`；画 `LongTaskRow`（六态：`running` / `needs-human` / `needs-login` /
-  `stopped` / `ok` / `failed`）。
+- 浏览器侧：`useLongTask` 读 `feed.runs`，`stop` / `recheck` / `answer` 各自带 `stopping` / `failed`；
+  画 `LongTaskRow`（六态；`step` / `meta` / `history` 给了才画）。
 
 ```
 ● 正在发布（2/3） [⏹]
@@ -185,7 +186,7 @@
 ● 要登录腾讯云 [登录 →] / 完成 [日志 →] / 失败 [步骤 · 原文] / 已停止
 ```
 
-- 行尾是链接；失败才展开「步骤」「原文」。
+- 行尾是链接；有步骤就能展开，失败默认开。
 
 - 停止：`run` 收到 `signal` 被 abort = 有人点击停止；在循环点与每条子命令前后查 `signal.aborted`。
   不响应 signal 就不要画停止按钮。画钮传 `stop`（`onStop: () => feed.stop(run.id)`、`busy`、`failed`、
