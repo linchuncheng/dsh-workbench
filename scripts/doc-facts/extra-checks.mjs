@@ -242,6 +242,29 @@ export function skillsSchema() {
   return findings;
 }
 
+export function copyGlossary() {
+  const terms = readText('.agents/skills/wording/TERMS.md');
+  const file = `${SKILL_DIR}/COPY.md`;
+  const lines = readText(file).split('\n');
+  const start = lines.findIndex((line) => line.trim() === '| 内部 / 口语 | 界面词 |');
+  if (start === -1) return [finding(file, 1, '找不到 COPY.md 的词表标题行', '恢复「| 内部 / 口语 | 界面词 |」与它下面那张表')];
+  const findings = [];
+  for (let index = start + 2; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (line === '') break;
+    if (!line.startsWith('|')) continue;
+    const first = line.split('|')[1] ?? '';
+    for (const raw of first.replace(/（[^）]*）/g, '').split('/')) {
+      const term = raw.trim();
+      if (term === '' || terms.includes(term)) continue;
+      findings.push(
+        finding(file, index + 1, `词表里的「${term}」不在文案词表 TERMS.md 里`, '先在 .agents/skills/wording/TERMS.md 登记，再回填这一行'),
+      );
+    }
+  }
+  return findings;
+}
+
 export function needsKinds() {
   const file = 'packages/shared/src/contract/needs.ts';
   const text = readText(file);

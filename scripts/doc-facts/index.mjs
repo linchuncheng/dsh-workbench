@@ -1,7 +1,7 @@
 import { readText, writeText, parseBlocks, replaceBlock, normalizeBody } from './lib.mjs';
 import { adapterSet, archRules, dataContract, gateChain, gateChainInline, gateChainLabels } from './blocks.mjs';
 import { depEdges, packageTable, sharedExportsCheck } from './checks.mjs';
-import { contractPorts, counts, mountContract, needsKinds, privateSymlink, skillsDesign, skillsSchema, skillsTools, templateScripts } from './extra-checks.mjs';
+import { contractPorts, copyGlossary, counts, mountContract, needsKinds, privateSymlink, skillsDesign, skillsSchema, skillsTools, templateScripts } from './extra-checks.mjs';
 import { selfTest } from './selftest.mjs';
 
 const BLOCK_FACTS = {
@@ -29,6 +29,7 @@ const ASSERT_FACTS = {
   'needs-kinds': needsKinds,
   'mount-contract': mountContract,
   'template-scripts': templateScripts,
+  'copy-glossary': copyGlossary,
 };
 
 function option(args, name) {
