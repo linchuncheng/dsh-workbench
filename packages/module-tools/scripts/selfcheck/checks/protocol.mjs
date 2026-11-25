@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { BIN, FACES, declaration } from '../lib.mjs';
+import { scaffoldModule, BIN, FACES, declaration } from '../lib.mjs';
 
 export const checks = [
   {
@@ -61,11 +61,7 @@ export const checks = [
         }
       };
       try {
-        mkdirSync(join(protoDir, 'src'), { recursive: true });
-        mkdirSync(join(protoDir, 'dist'), { recursive: true });
-        writeFileSync(join(protoDir, 'src/host.ts'), '');
-        writeFileSync(join(protoDir, 'src/client.tsx'), '');
-        writeFileSync(join(protoDir, 'cordis.patch.yml'), '[]\n');
+        scaffoldModule(protoDir, { host: '', client: '', patch: '[]\n' });
 
         writeFileSync(
           join(protoDir, 'dist/host.js'),

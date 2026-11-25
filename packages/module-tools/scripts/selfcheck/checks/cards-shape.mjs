@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { fillPendingDesign, BIN, FACES, PACKAGES_DIR } from '../lib.mjs';
+import { fillPendingDesign, scaffoldModule, withCleanup, BIN, FACES, PACKAGES_DIR } from '../lib.mjs';
 
 const DESIGN_SHAPE =
   'design：填好的绿 / 挖空一格红（点名叫哪一格）/ README 落后也红 / accept 逐条打勾 / ' +
@@ -33,15 +33,21 @@ function designProbe(prefix) {
   }
 }
 
+function failureOf(work) {
+  try {
+    work();
+    return '';
+  } catch (error) {
+    return `${error.stdout ?? ''}${error.stderr ?? ''}`;
+  }
+}
+
 export const checks = [
   {
     title: DESIGN_SHAPE,
     run(_ctx, report) {
-
-      const problems = [];
       const { probe, design, run } = designProbe('.design-');
-      try {
-
+      return withCleanup(DESIGN_SHAPE, report, [probe], () => {
         run('render');
         run('check');
 
@@ -49,12 +55,7 @@ export const checks = [
         parsed.panel[0].conclusion = '';
         writeFileSync(design, JSON.stringify(parsed, null, 2));
 
-        let message = '';
-        try {
-          run('check');
-        } catch (error) {
-          message = `${error.stdout ?? ''}${error.stderr ?? ''}`;
-        }
+        const message = failureOf(() => run('check'));
         if (message === '') throw new Error('挖空一格之后 design check 还是绿的');
         if (!message.includes('panel[0].conclusion')) {
           throw new Error(`报错里没点名那一格：${message.trim().split('\n').slice(-3).join(' | ')}`);
@@ -85,27 +86,16 @@ export const checks = [
         const blank = JSON.parse(readFileSync(design, 'utf8'));
         blank.states[1] = { key: 'loading' };
         writeFileSync(design, JSON.stringify(blank, null, 2));
-        let blankMessage = '';
-        try {
-          run('check');
-        } catch (error) {
-          blankMessage = `${error.stdout ?? ''}${error.stderr ?? ''}`;
-        }
+        const blankMessage = failureOf(() => run('check'));
         if (!blankMessage.includes('states.loading.sees')) {
           throw new Error(`既不写 na 又不填的态没被点出来：${blankMessage.trim().split('\n').slice(-3).join(' | ')}`);
         }
-      } catch (error) {
-        problems.push(String(error?.message ?? error).split('\n')[0]);
-      } finally {
-        rmSync(probe, { recursive: true, force: true });
-      }
-      report(DESIGN_SHAPE, problems.length === 0, problems.join(' · '));
+      });
     },
   },
   {
     title: RECONCILE,
     run(_ctx, report) {
-      const problems = [];
       const probe = mkdtempSync(join(PACKAGES_DIR, '.reconcile-'));
       const designFile = join(probe, 'design.json');
       const manifestFile = join(probe, 'package.json');
@@ -171,12 +161,8 @@ export function apply(ctx) {
         writeFileSync(hostFile, face(declarationNames));
       };
       const tail = (out) => out.trim().split('\n').slice(-6).join(' | ');
-      try {
-        mkdirSync(join(probe, 'dist'), { recursive: true });
-        mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
-        writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
+      return withCleanup(RECONCILE, report, [probe], () => {
+        scaffoldModule(probe);
 
         state(['demo_tool'], ['demo_tool']);
         const aligned = run(['check', '--only', 'contracts']);
@@ -199,32 +185,19 @@ export function apply(ctx) {
         state(null, ['demo_tool']);
         const noDesign = run(['check', '--only', 'contracts']);
         if (noDesign.failed) throw new Error(`没有 design.json 的模块不该因为这条判据变红：${tail(noDesign.out)}`);
-      } catch (error) {
-        problems.push(String(error?.message ?? error).split('\n')[0]);
-      } finally {
-        rmSync(probe, { recursive: true, force: true });
-      }
-      report(RECONCILE, problems.length === 0, problems.join(' · '));
+      });
     },
   },
   {
     title: WRITES_SHAPE,
     run(_ctx, report) {
-      const problems = [];
       const { probe, design } = designProbe('.writes-');
       const developingFile = join(probe, 'DEVELOPING.md');
       const run = (action) => execFileSync(process.execPath, [BIN, 'design', action, '--cwd', probe], { stdio: 'pipe' });
-      try {
+      return withCleanup(WRITES_SHAPE, report, [probe], () => {
         const parsed = () => JSON.parse(readFileSync(design, 'utf8'));
         const save = (value) => writeFileSync(design, JSON.stringify(value, null, 2));
-        const fails = (action) => {
-          try {
-            run(action);
-            return '';
-          } catch (error) {
-            return `${error.stdout ?? ''}${error.stderr ?? ''}`;
-          }
-        };
+        const fails = (action) => failureOf(() => run(action));
 
         const write = (over = {}) => ({
           command: 'POST /api/x（一次就是真的）',
@@ -352,12 +325,7 @@ export function apply(ctx) {
         if (!writeMessage.includes('write.credentials')) {
           throw new Error(`单条写（write{}）没被认 / 没点名：${writeMessage.trim().split('\n').slice(-3).join(' | ')}`);
         }
-      } catch (error) {
-        problems.push(String(error?.message ?? error).split('\n')[0]);
-      } finally {
-        rmSync(probe, { recursive: true, force: true });
-      }
-      report(WRITES_SHAPE, problems.length === 0, problems.join(' · '));
+      });
     },
   },
 ];

@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } fr
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { declaration, manifestOf, read, runCheck, BIN, PACKAGES_DIR, PKG_ROOT } from '../lib.mjs';
+import { declaration, manifestOf, read, runCheck, scaffoldModule, BIN, PACKAGES_DIR, PKG_ROOT } from '../lib.mjs';
 
 export const checks = [
   {
@@ -99,10 +99,7 @@ export const checks = [
       const run = () => runCheck(probe, 'contracts');
       const tail = (out) => out.trim().split('\n').slice(-4).join(' | ');
       try {
-        mkdirSync(join(probe, 'dist'), { recursive: true });
-        mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
+        scaffoldModule(probe);
         writeFileSync(
           join(probe, 'dist/host.js'),
           `export const name = '@dsh-workbench/module-demo-pluginname';
@@ -177,10 +174,7 @@ export function apply(ctx) {
       const check = () => run('check', '--only', 'contracts').out;
       const tail = (out) => out.trim().split('\n').slice(-4).join(' | ');
       try {
-        mkdirSync(join(probe, 'dist'), { recursive: true });
-        mkdirSync(join(probe, 'src'), { recursive: true });
-        writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
+        scaffoldModule(probe);
         writeFileSync(
           join(probe, 'dist/host.js'),
           `export const name = '@dsh-workbench/module-demo-declared';

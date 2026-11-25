@@ -3,21 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { BIN, linkToolchain } from '../lib.mjs';
-
-function runCheck(probe, workspace, only) {
-  try {
-    const out = execFileSync(process.execPath, [BIN, 'check', '--only', only], {
-      cwd: probe,
-      env: { ...process.env, DSH_WB_ROOT: workspace },
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-    return { failed: false, out: String(out) };
-  } catch (error) {
-    return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-  }
-}
+import { runCheck, BIN, linkToolchain } from '../lib.mjs';
 
 export const checks = [
   {
@@ -33,12 +19,12 @@ export const checks = [
         linkToolchain(ctx.toolchain, join(probe, 'node_modules'));
 
         const expectGreen = (what) => {
-          const result = runCheck(probe, workspace, 'arch');
+          const result = runCheck(probe, 'arch', workspace);
           if (result.failed) throw new Error(`${what}：该绿却红了\n${result.out}`);
           if (!result.out.includes('✔ 模块架构')) throw new Error(`${what}：没有 ✔ 那一行\n${result.out}`);
         };
         const expectRed = (what, needles) => {
-          const result = runCheck(probe, workspace, 'arch');
+          const result = runCheck(probe, 'arch', workspace);
           if (!result.failed) throw new Error(`${what}：该红却绿了\n${result.out}`);
           for (const needle of needles) {
             if (!result.out.includes(needle)) throw new Error(`${what}：判红了但没说清「${needle}」\n${result.out}`);
@@ -135,7 +121,7 @@ export const checks = [
         rmSync(join(probe, 'src', 'model', 'probe.ts'), { force: true });
 
         rmSync(join(probe, 'arch.config.mjs'), { force: true });
-        const skipped = runCheck(probe, workspace, 'arch');
+        const skipped = runCheck(probe, 'arch', workspace);
         if (skipped.failed) throw new Error(`没有配置的模块不该红：\n${skipped.out}`);
         for (const needle of ['○ 模块架构', '不适用', 'moduleArch']) {
           if (!skipped.out.includes(needle)) {

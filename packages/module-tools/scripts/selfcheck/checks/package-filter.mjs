@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execaSync } from 'execa';
 
-import { BIN } from '../lib.mjs';
+import { runProbe, BIN } from '../lib.mjs';
 
 const TITLE = '--package 按模块 scope：兄弟模块的单模块红不挡，工作区级不变量仍挡';
 
@@ -48,20 +48,13 @@ function writeModule(root, name, unit, { built }) {
 }
 
 function run(root, args, env = {}) {
-  try {
-    const out = execFileSync(process.execPath, [BIN, 'check', ...args, '--cwd', root], {
-      cwd: root,
-      env: { ...process.env, ...env },
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-    return { code: 0, out: String(out) };
-  } catch (error) {
-    return {
-      code: typeof error.status === 'number' ? error.status : 1,
-      out: `${error.stdout ?? ''}${error.stderr ?? ''}`,
-    };
-  }
+  const result = execaSync(process.execPath, [BIN, 'check', ...args, '--cwd', root], {
+    cwd: root,
+    env: { ...process.env, ...env },
+    encoding: 'utf8',
+    reject: false,
+  });
+  return { code: result.exitCode ?? 1, out: `${result.stdout ?? ''}${result.stderr ?? ''}` };
 }
 
 export const checks = [
@@ -70,7 +63,7 @@ export const checks = [
     run(_ctx, report) {
       const workspace = mkdtempSync(join(tmpdir(), 'dsh-wb-scope-'));
       const problems = [];
-      try {
+      runProbe(workspace, problems, () => {
         writeFileSync(join(workspace, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n');
         writeModule(workspace, 'one', 'one', { built: true });
         writeModule(workspace, 'two', 'two', { built: false });
@@ -104,11 +97,7 @@ export const checks = [
         if (!invariant.out.includes('单元 id') || !invariant.out.includes('重复')) {
           problems.push(`工作区级不变量没有报出来：${invariant.out.slice(0, 300)}`);
         }
-      } catch (error) {
-        problems.push(String(error?.message ?? error).split('\n')[0]);
-      } finally {
-        rmSync(workspace, { recursive: true, force: true });
-      }
+      });
       report(TITLE, problems.length === 0, problems.join(' · '));
     },
   },

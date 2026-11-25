@@ -1,8 +1,8 @@
 import { existsSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { execaSync } from 'execa';
-import { discoverModulePackages, discoverPackages } from '../support/discover.mjs';
-import { scopedPackages } from '../support/scope.mjs';
+import { discoverPackages } from '../support/discover.mjs';
+import { modulePackagesOf, skipReport } from '../support/scope.mjs';
 
 const SHELL = '@dsh-workbench/core';
 
@@ -24,14 +24,8 @@ export async function run(options = {}) {
     };
   }
 
-  const modules = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
-  if (modules.length === 0) {
-    return {
-      status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有可独立构建的对象'],
-      problems: [],
-    };
-  }
+  const modules = modulePackagesOf(options);
+  if (modules.length === 0) return skipReport('没有模块包（没有声明 dsh.workbench 的包）—— 没有可独立构建的对象');
 
   const hidden = join(shell.dir, 'src.hidden');
   if (existsSync(hidden)) {

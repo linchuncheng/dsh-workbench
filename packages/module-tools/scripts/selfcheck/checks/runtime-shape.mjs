@@ -1,9 +1,19 @@
-import { execFileSync } from 'node:child_process';
+import { execaSync } from 'execa';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { declaration, manifestOf, BIN, PACKAGES_DIR } from '../lib.mjs';
+import { declaration, manifestOf, scaffoldModule, BIN, PACKAGES_DIR } from '../lib.mjs';
+
+function contractsOf(probe, env = process.env) {
+  const result = execaSync(process.execPath, [BIN, 'check', '--only', 'contracts'], {
+    cwd: probe,
+    env,
+    encoding: 'utf8',
+    reject: false,
+  });
+  return { failed: result.exitCode !== 0, out: `${result.stdout ?? ''}${result.stderr ?? ''}` };
+}
 
 export const checks = [
   {
@@ -38,24 +48,9 @@ export function apply(ctx) {
 `;
       const writePkg = (libs) =>
         writeFileSync(join(probe, 'package.json'), manifestOf('demo-env', declaration('demo-env', { needs: libs })));
-      const runContracts = () => {
-        try {
-          const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'contracts'], {
-            cwd: probe,
-            encoding: 'utf8',
-            stdio: 'pipe',
-          });
-          return { failed: false, out: String(out) };
-        } catch (error) {
-          return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-        }
-      };
+      const runContracts = () => contractsOf(probe);
       try {
-        mkdirSync(join(probe, 'src'), { recursive: true });
-        mkdirSync(join(probe, 'dist'), { recursive: true });
-        writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
-        writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
+        scaffoldModule(probe);
 
         writePkg([badLib]);
         writeFileSync(join(probe, 'dist/host.js'), faceSource(false));
@@ -112,25 +107,10 @@ export function apply(ctx) {
   ctx.effect(() => units.register(face), 'demo-longtask');
 }
 `;
-      const runContracts = () => {
-        try {
-          const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'contracts'], {
-            cwd: probe,
-            encoding: 'utf8',
-            stdio: 'pipe',
-          });
-          return { failed: false, out: String(out) };
-        } catch (error) {
-          return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-        }
-      };
+      const runContracts = () => contractsOf(probe);
       try {
-        mkdirSync(join(probe, 'src'), { recursive: true });
-        mkdirSync(join(probe, 'dist'), { recursive: true });
+        scaffoldModule(probe);
         writeFileSync(join(probe, 'package.json'), manifestOf('demo-longtask'));
-        writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
-        writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
 
         writeFileSync(join(probe, 'dist/host.js'), faceSource('runs'));
         const noRenderer = runContracts();
@@ -202,25 +182,10 @@ export function apply(ctx) {
   ctx.effect(() => units.register(face), 'demo-linkage');
 }
 `;
-      const runContracts = () => {
-        try {
-          const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'contracts'], {
-            cwd: probe,
-            encoding: 'utf8',
-            stdio: 'pipe',
-          });
-          return { failed: false, out: String(out) };
-        } catch (error) {
-          return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-        }
-      };
+      const runContracts = () => contractsOf(probe);
       try {
-        mkdirSync(join(probe, 'src'), { recursive: true });
-        mkdirSync(join(probe, 'dist'), { recursive: true });
+        scaffoldModule(probe);
         writeFileSync(join(probe, 'package.json'), manifestOf('demo-linkage'));
-        writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
-        writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
 
         writeFileSync(
           join(probe, 'dist/host.js'),
@@ -281,29 +246,13 @@ export function apply(ctx) {
                     ...(plugin.sources === undefined ? {} : { sources: plugin.sources }),
                   })),
                 })));
-      const runContracts = () => {
-        try {
-          const out = execFileSync(process.execPath, [BIN, 'check', '--only', 'contracts'], {
-            cwd: probe,
-            env: { ...process.env, DSH_HOME: fakeHome, DSH_WB_OPENCLI_CATALOG: catalog },
-            encoding: 'utf8',
-            stdio: 'pipe',
-          });
-          return { failed: false, out: String(out) };
-        } catch (error) {
-          return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-        }
-      };
+      const runContracts = () => contractsOf(probe, { ...process.env, DSH_HOME: fakeHome, DSH_WB_OPENCLI_CATALOG: catalog });
       try {
-        mkdirSync(join(probe, 'src'), { recursive: true });
-        mkdirSync(join(probe, 'dist'), { recursive: true });
+        scaffoldModule(probe);
         mkdirSync(extDir, { recursive: true });
         writeFileSync(catalog, JSON.stringify([{ command: 'demo/good', site: 'demo', name: 'good', aliases: ['g'] }]));
         writeFileSync(join(extDir, 'ok.js'), '');
         writeFileSync(join(extDir, 'index.js'), '');
-        writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
-        writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
 
         const writeDemoPkg = (commands) =>
           writePkg([

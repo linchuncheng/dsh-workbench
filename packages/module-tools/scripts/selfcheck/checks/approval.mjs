@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { declaration, manifestOf, BIN, PACKAGES_DIR } from '../lib.mjs';
+import { declaration, manifestOf, scaffoldModule, BIN, PACKAGES_DIR } from '../lib.mjs';
 
 export const checks = [
   {
@@ -129,14 +129,10 @@ export function apply(ctx) {
         return result.out;
       };
       try {
-        mkdirSync(join(probe, 'src'), { recursive: true });
-        mkdirSync(join(probe, 'dist'), { recursive: true });
+        scaffoldModule(probe);
         writeFileSync(join(probe, 'package.json'), manifestOf('demo-approval', declaration('demo-approval', {
                   tools: [{ name: 'demo_write', writes: true }],
                 })));
-        writeFileSync(join(probe, 'cordis.patch.yml'), '- id: workbench\n');
-        writeFileSync(join(probe, 'src/host.ts'), 'export const manifest = {};\n');
-        writeFileSync(join(probe, 'src/client.tsx'), 'export const card = null;\n');
         writeFileSync(join(probe, 'client.js'), clientSource(goodPlan));
 
         writeFileSync(join(probe, 'dist/host.js'), faceSource('', ''));

@@ -1,10 +1,8 @@
-import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { ESLint } from 'eslint';
-import { discoverModulePackages } from '../support/discover.mjs';
-import { scopedPackages } from '../support/scope.mjs';
+import { moduleTargets } from '../support/scope.mjs';
 import { DIALECT_BLOCKS, DIALECT_IGNORES, FINGERPRINT, dialectShapeOf, isGlobalIgnoresBlock } from '../lint.mjs';
 
 export const title = '模块代码卫生（eslint）';
@@ -12,6 +10,10 @@ export const title = '模块代码卫生（eslint）';
 export const CONFIG_FILE = 'eslint.config.mjs';
 
 const MAX_PROBLEMS = 40;
+
+const EMPTY_REASON = '没有模块包（没有声明 dsh.workbench 的包）—— 没有源码需要判定代码卫生';
+
+const MISSING_REASON = '没有这份配置就没有规则可运行';
 
 const HOW_TO_JOIN =
   `在模块包里放一份 ${CONFIG_FILE}，内容两行即可（与模板中的那份逐字一致）：\n` +
@@ -210,32 +212,15 @@ export async function lintPackage(pkg, { fix = false } = {}) {
 }
 
 export async function run(options = {}) {
-  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
-  if (modulePackages.length === 0) {
-    return {
-      status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码需要判定代码卫生'],
-      problems: [],
-    };
-  }
-
-  const declared = modulePackages.filter((pkg) => existsSync(join(pkg.dir, CONFIG_FILE)));
-  if (declared.length === 0) {
-    return {
-      status: 'skip',
-      notes: [
-        `${modulePackages.length} 个模块包都没有 ${CONFIG_FILE} —— 没有这份配置就没有规则可运行（不代表没有问题）。` +
-          `\n  ${HOW_TO_JOIN}`,
-      ],
-      problems: [],
-    };
-  }
-
   const problems = [];
   const warnLines = [];
   let files = 0;
   let errors = 0;
   let warnings = 0;
+
+  const targets = moduleTargets(options, CONFIG_FILE, HOW_TO_JOIN, EMPTY_REASON, MISSING_REASON);
+  if (targets.skip !== undefined) return targets.skip;
+  const { modulePackages, declared } = targets;
 
   for (const pkg of declared) {
     const result = await lintPackage(pkg);

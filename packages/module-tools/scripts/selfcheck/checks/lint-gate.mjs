@@ -5,21 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 
 import { CHECKS } from '../../../src/check.mjs';
-import { BIN, REPO_ROOT, linkToolchain, read } from '../lib.mjs';
-
-function runCheck(probe, workspace, only) {
-  try {
-    const out = execFileSync(process.execPath, [BIN, 'check', '--only', only], {
-      cwd: probe,
-      env: { ...process.env, DSH_WB_ROOT: workspace },
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-    return { failed: false, out: String(out) };
-  } catch (error) {
-    return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
-  }
-}
+import { runCheck, BIN, REPO_ROOT, linkToolchain, read } from '../lib.mjs';
 
 function initTemplate(workspace, unit, template) {
   const dir = join(workspace, 'packages', `module-${unit}`);
@@ -121,7 +107,7 @@ export const checks = [
         const diyConfig = readFileSync(configPath, 'utf8');
 
         const expectGreen = (what, needles = []) => {
-          const result = runCheck(diyDir, workspace, 'lint');
+          const result = runCheck(diyDir, 'lint', workspace);
           if (result.failed) throw new Error(`${what}：该绿却红了\n${result.out}`);
           if (!result.out.includes('✔ 模块代码卫生')) throw new Error(`${what}：没有 ✔ 那一行\n${result.out}`);
           for (const needle of needles) {
@@ -129,7 +115,7 @@ export const checks = [
           }
         };
         const expectRed = (what, needs) => {
-          const result = runCheck(diyDir, workspace, 'lint');
+          const result = runCheck(diyDir, 'lint', workspace);
           if (!result.failed) throw new Error(`${what}：该红却绿了\n${result.out}`);
           for (const need of needs) {
             const said = need instanceof RegExp ? need.test(result.out) : result.out.includes(need);
@@ -246,7 +232,7 @@ export const checks = [
         writeFileSync(configPath, diyConfig);
 
         rmSync(configPath, { force: true });
-        const skipped = runCheck(diyDir, workspace, 'lint');
+        const skipped = runCheck(diyDir, 'lint', workspace);
         if (skipped.failed) throw new Error(`没有配置的模块不该红：\n${skipped.out}`);
         for (const needle of ['○ 模块代码卫生', '不适用', 'eslint.config.mjs', 'moduleLint']) {
           if (!skipped.out.includes(needle)) {

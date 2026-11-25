@@ -20,6 +20,17 @@ export function read(path) {
 
 export const FACES = { host: 'src/host.ts', client: 'src/client.tsx' };
 
+export function scaffoldModule(
+  dir,
+  { host = 'export const manifest = {};\n', client = 'export const card = null;\n', patch = '- id: workbench\n' } = {},
+) {
+  mkdirSync(join(dir, 'dist'), { recursive: true });
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'cordis.patch.yml'), patch);
+  writeFileSync(join(dir, 'src/host.ts'), host);
+  writeFileSync(join(dir, 'src/client.tsx'), client);
+}
+
 export function runCheck(probe, only, workspace) {
   try {
     const out = execFileSync(process.execPath, [BIN, 'check', '--only', only], {
@@ -31,6 +42,16 @@ export function runCheck(probe, only, workspace) {
     return { failed: false, out: String(out) };
   } catch (error) {
     return { failed: true, out: `${error.stdout ?? ''}${error.stderr ?? ''}` };
+  }
+}
+
+export function runProbe(dir, problems, body) {
+  try {
+    body();
+  } catch (error) {
+    problems.push(String(error?.message ?? error).split('\n')[0]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 }
 

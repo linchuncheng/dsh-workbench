@@ -1,8 +1,5 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { builtinSourceForms, runGuard } from '@arch-guard/core';
-import { discoverModulePackages } from '../support/discover.mjs';
-import { scopedPackages } from '../support/scope.mjs';
+import { moduleTargets } from '../support/scope.mjs';
 
 export const title = '模块架构（分层 / 边界 / 设计系统）';
 
@@ -15,6 +12,10 @@ const HOW_TO_JOIN =
   '  形状（层序表 / 两个运行时 / 阈值）见 @dsh-workbench/module-tools/arch 的文档与 README；' +
   '需要添加例外时，通过 moduleArch() 的参数配置（deps / layers / roles / exceptions）。';
 
+const EMPTY_REASON = '没有模块包（没有声明 dsh.workbench 的包）—— 没有源码需要判定结构';
+
+const MISSING_REASON = '没有架构声明就无法判定';
+
 const severityIndex = (rules) => new Map(rules.map((rule) => [rule.id, rule.severity]));
 
 const severityOf = (finding, index) => finding.severity ?? index.get(finding.rule) ?? 'error';
@@ -26,26 +27,9 @@ function lineOf(name, finding) {
 }
 
 export async function run(options = {}) {
-  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
-  if (modulePackages.length === 0) {
-    return {
-      status: 'skip',
-      notes: ['没有模块包（没有声明 dsh.workbench 的包）—— 没有源码需要判定结构'],
-      problems: [],
-    };
-  }
-
-  const declared = modulePackages.filter((pkg) => existsSync(join(pkg.dir, CONFIG_FILE)));
-  if (declared.length === 0) {
-    return {
-      status: 'skip',
-      notes: [
-        `${modulePackages.length} 个模块包都没有 ${CONFIG_FILE} —— 没有架构声明就无法判定（不代表没有问题）。` +
-          `\n  ${HOW_TO_JOIN}`,
-      ],
-      problems: [],
-    };
-  }
+  const targets = moduleTargets(options, CONFIG_FILE, HOW_TO_JOIN, EMPTY_REASON, MISSING_REASON);
+  if (targets.skip !== undefined) return targets.skip;
+  const { modulePackages, declared } = targets;
 
   const problems = [];
   let files = 0;
