@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import ts from 'typescript';
 import { dirname, join, relative, resolve } from 'node:path';
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 import { isSeedSpecifier } from '../build/seed.mjs';
 import { LIB_CAPABILITIES, importsPreferred } from '@dsh-workbench/shared/host';
 
@@ -200,8 +201,8 @@ function hasPlatformPackage(manifest) {
 
 export const title = '模块源码边界与零注释';
 
-export async function run() {
-  const modulePackages = discoverModulePackages({ root: process.cwd() });
+export async function run(options = {}) {
+  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   const problems = [];
   let scanned = 0;
   let seedUsers = 0;

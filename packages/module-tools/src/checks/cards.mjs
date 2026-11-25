@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 import { clientContextOf, fakeDshPackage, fakeKit, fakeReact, loadFace } from '../support/client-face.mjs';
 import { shellClientPathOf, shellKitOf, shellSchemaCardOf } from './shell-artifact.mjs';
 
@@ -501,8 +502,8 @@ function shellClientsOf(modulePackages) {
   return [...found];
 }
 
-export async function run() {
-  const modulePackages = discoverModulePackages({ root: process.cwd() });
+export async function run(options = {}) {
+  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   const problems = [];
   const rows = [];
   const footnotes = [];

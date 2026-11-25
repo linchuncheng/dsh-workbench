@@ -140,7 +140,10 @@ function runGate(exec, root, options) {
 }
 
 function runChecks(exec, root, options) {
-  runCliStage(exec, root, ['check'], options);
+  const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+  const name = typeof manifest.name === 'string' ? manifest.name : '';
+  const isModule = typeof manifest.dsh?.workbench?.unit === 'string' && manifest.dsh.workbench.unit !== '';
+  runCliStage(exec, root, isModule && name !== '' ? ['check', '--package', name] : ['check'], options);
   if (existsSync(join(root, DESIGN_FILE))) runCliStage(exec, root, ['design', 'check'], options);
 }
 

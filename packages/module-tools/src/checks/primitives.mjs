@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { join, relative } from 'node:path';
 import { flagValue, flagsOf } from '../support/check-flags.mjs';
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 import {
   PRIMITIVES_SPECIFIER,
   installedPrimitives,
@@ -231,8 +232,8 @@ function versionOf(manifestPath) {
   }
 }
 
-export async function run() {
-  const modulePackages = discoverModulePackages({ root: process.cwd() });
+export async function run(options = {}) {
+  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   const face = process.env.DSH_WB_ONLY === 'primitives'
     ? faceOf(modulePackages)
     : { notes: ['（查看 dsh 原语内容：dsh-wb-module check --only primitives）'], payload: undefined };

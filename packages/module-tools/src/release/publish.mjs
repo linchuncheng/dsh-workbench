@@ -49,7 +49,8 @@ export async function publish({ root }) {
   if (isModule) {
 
     runCli(root, ['build']);
-    runCli(root, ['check']);
+    const name = typeof manifest.name === 'string' ? manifest.name : '';
+    runCli(root, name === '' ? ['check'] : ['check', '--package', name]);
     if (existsSync(join(root, DESIGN_FILE))) runCli(root, ['design', 'check']);
     else console.log('○ 没有 design.json（三张表尚未生成）—— 建议先运行 dsh-wb-module design init');
   } else {

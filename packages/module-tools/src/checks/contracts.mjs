@@ -20,6 +20,7 @@ import {
   declaredToolsApplies,
 } from '../contract/declared-tools.mjs';
 import { discoverPackages, workspaceRootOf } from '../support/discover.mjs';
+import { scopedPackages, scopeNote } from '../support/scope.mjs';
 import {
   HEAD_BUDGETS,
   LONG_SCALE,
@@ -531,14 +532,16 @@ function reconcileTools(name, manifest, toolNames) {
   ];
 }
 
-export async function run() {
+export async function run(options = {}) {
   const packages = discoverPackages({ root: process.cwd() });
+  const targets = scopedPackages(packages, options.scope);
   const known = new Set(packages.map((pkg) => pkg.manifest.name));
   const problems = [];
   const warnings = [];
   const unresolvedIn = new Set();
-  const units = new Map();
+  const unitOwners = new Map();
   const supplyDeclarations = [];
+  const readOf = new Map();
 
   const probeNotes = [];
   const headlineNotes = [];
@@ -546,6 +549,30 @@ export async function run() {
   let modules = 0;
 
   for (const pkg of packages) {
+    if (pkg.manifest.dsh?.workbench === undefined) continue;
+    const unit = pkg.manifest.dsh.workbench.unit;
+    if (typeof unit === 'string' && UNIT_ID.test(unit)) {
+      const owners = unitOwners.get(unit) ?? [];
+      owners.push(pkg.manifest.name);
+      unitOwners.set(unit, owners);
+    }
+    const read = readDeclaration(pkg.manifest.name, pkg.manifest.dsh.workbench);
+    readOf.set(pkg.manifest.name, read);
+    if (read.manifest !== undefined) {
+      supplyDeclarations.push({ id: read.manifest.id, needs: read.manifest.needs ?? [] });
+    }
+  }
+
+  for (const [unit, owners] of unitOwners) {
+    if (owners.length < 2) continue;
+    if (options.scope !== undefined && !owners.some((one) => options.scope.has(one))) continue;
+    problems.push(
+      `${owners.join(' / ')}: 单元 id ${JSON.stringify(unit)} 重复 —— ` +
+        `多个包声明了同一个单元；安装后注册表会立即抛出错误（id 会写入持久化配置）`,
+    );
+  }
+
+  for (const pkg of targets) {
     const name = pkg.manifest.name;
     const dsh = pkg.manifest.dsh;
     if (dsh === undefined) continue;
@@ -586,13 +613,7 @@ export async function run() {
     const unit = dsh.workbench.unit;
     if (typeof unit !== 'string' || !UNIT_ID.test(unit)) {
       problems.push(`${name}: dsh.workbench.unit 形状不对 —— ${JSON.stringify(unit)}（应为小写连字符）`);
-    } else if (units.has(unit)) {
-      problems.push(
-        `${name}: 单元 id ${JSON.stringify(unit)} 与 ${units.get(unit)} 重复 —— ` +
-          `两个包声明了同一个单元；安装后注册表会立即抛出错误（id 会写入持久化配置）`,
-      );
     } else {
-      units.set(unit, name);
       const shellPkg = packages.find((item) => item.manifest.name === SHELL);
       if (shellPkg !== undefined && existsSync(join(shellPkg.dir, 'src/modules', unit, 'unit.ts'))) {
         problems.push(
@@ -670,7 +691,7 @@ export async function run() {
       }
     }
 
-    const read = readDeclaration(name, dsh.workbench);
+    const read = readOf.get(name) ?? readDeclaration(name, dsh.workbench);
     const manifest = read.manifest;
     const created = [];
 
@@ -683,9 +704,6 @@ export async function run() {
     warnings.push(...read.warnings);
     if (manifest === undefined) {
       for (const one of read.problems) problems.push(one);
-    }
-    if (manifest !== undefined) {
-      supplyDeclarations.push({ id: manifest.id, needs: needs ?? [] });
     }
 
     if (manifest !== undefined) {
@@ -1234,7 +1252,11 @@ export async function run() {
     }
   }
 
-  const unitList = [...units.entries()].map(([unit, name]) => `${unit} ← ${name}`).join(' · ');
+  const scoped = scopeNote(options.scope);
+  const unitList = [...unitOwners]
+    .filter(([, owners]) => options.scope === undefined || owners.some((one) => options.scope.has(one)))
+    .map(([unit, owners]) => `${unit} ← ${owners.join(' / ')}`)
+    .join(' · ');
 
   const shellPkg = packages.find((pkg) => pkg.manifest.name === SHELL);
   if (shellPkg !== undefined) {
@@ -1265,7 +1287,12 @@ export async function run() {
   problems.push(...buildSupplyIndex(supplyDeclarations).problems);
 
   if (problems.length > 0) {
-    const notes = [`${declared} 个带 dsh 声明的包，其中 ${modules} 个模块`, ...probeNotes, ...headlineNotes];
+    const notes = [
+      `${declared} 个带 dsh 声明的包，其中 ${modules} 个模块`,
+      ...(scoped === '' ? [] : [scoped]),
+      ...probeNotes,
+      ...headlineNotes,
+    ];
 
     const bare = [...unresolvedIn].filter(barePackage);
     if (bare.length > 0) {
@@ -1282,6 +1309,7 @@ export async function run() {
     notes: [
       `${declared} 个带 dsh 声明的包（${modules} 个模块）· bundle 落点存在 · ` +
         `inject/external 都能解析到依赖图 · 单元 id 唯一 · 面文件与 peer 均存在 · 各自带有接线自检`,
+      ...(scoped === '' ? [] : [scoped]),
       '（测试不在此处运行：状态级内容在模块自己的 vitest 中 —— 请自行运行四个脚本）',
       `单元：${unitList}`,
       ...probeNotes,

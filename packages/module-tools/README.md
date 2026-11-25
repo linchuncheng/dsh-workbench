@@ -53,7 +53,7 @@ pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 /
 | `dsh-wb-module init <unit> [--dir <目录>] [--template diy] [--description "一句话"]` | 创建模块骨架（只有 `diy` 一个模板，也是默认） |
 | `dsh-wb-module market-init <git 地址\|目录> [--ref <分支>] [--path <索引路径>]` | 初始化市场索引仓库：写 `market/` + README，推首个 commit |
 | `dsh-wb-module build` | 生成 `dist/host.js`（单文件 ESM）与 `client.js`（带加载器包装） |
-| `dsh-wb-module check [--only <判据>] [--package <包名或 unit>]` | 十五条检查项（判据）；`--only` 单独运行，也作为查询入口；`--package` 只报告这个模块的问题（见下）；`--list [--json\|--markdown]` 只列判据元数据 |
+| `dsh-wb-module check [--only <判据>] [--package <包名或 unit>]` | 十五条检查项（判据）；`--only` 单独运行，也作为查询入口；`--package` 只检查这个模块 + 工作区级不变量（见下）；`--list [--json\|--markdown]` 只列判据元数据 |
 | `dsh-wb-module lint [--fix]` | 使用模块自己的 `eslint.config.mjs`；`--fix` 直接修改文件 |
 | `dsh-wb-module sync` | 按清单生成 `src/declared-tools.ts` 与 `src/sites.ts`（清单有站点表时），按 `design.json` 的 `key + recipe` 生成 `src/datasource.ts` |
 | `dsh-wb-module design <init\|migrate\|check\|render\|accept>` | 设计底稿：填写、拆分旧 README、检查空白、生成 README 与 DEVELOPING、验收勾选 |
@@ -67,9 +67,11 @@ pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 /
 （`packages/**`、`apps/*`、多层目录都行；没有声明时退回 `packages/*`）——`--cwd` 不会把检查范围缩小到一个模块。
 只查看某个模块时使用 `check --package <包名或 unit>`。
 
-`--package` 是**开发期便利**，不是门禁：它仍扫描全部模块，只过滤报告与退出码，因此
-「本模块通过」不等于「工作区通过」。门禁、发布与 release 不要带它。要让判据只检查一个包，
-用环境变量 `DSH_WB_ROOT=<包目录>`（工具链自己的自检就是这么隔离的）。
+`--package` 是**单模块门禁**：单模块判据只在它上面运行；单元 id 重复、供应来源冲突、
+工作台源码点名模块这三类**工作区级不变量**仍按全工作区校验。`release` / `publish` 用的就是这一档，
+所以兄弟模块自己的问题（文案、审批、卡片、lint）不会挡住本模块发布。
+要列整仓状态（CI、批量发版前）在仓库根跑不带 `--package` 的 `check`。
+要让判据只检查一个包、且不跑工作区级不变量，用环境变量 `DSH_WB_ROOT=<包目录>`（工具链自己的自检就是这么隔离的）。
 
 ## 十五条判据
 

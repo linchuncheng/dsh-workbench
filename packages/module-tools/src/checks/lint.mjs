@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { ESLint } from 'eslint';
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 import { DIALECT_BLOCKS, DIALECT_IGNORES, FINGERPRINT, dialectShapeOf, isGlobalIgnoresBlock } from '../lint.mjs';
 
 export const title = '模块代码卫生（eslint）';
@@ -208,8 +209,8 @@ export async function lintPackage(pkg, { fix = false } = {}) {
   };
 }
 
-export async function run() {
-  const modulePackages = discoverModulePackages({ root: process.cwd() });
+export async function run(options = {}) {
+  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   if (modulePackages.length === 0) {
     return {
       status: 'skip',
@@ -251,7 +252,7 @@ export async function run() {
 
   if (problems.length > 0) {
 
-    const only = process.env.DSH_WB_ONLY === 'lint' || process.env.DSH_WB_PACKAGE_FILTER !== '';
+    const only = process.env.DSH_WB_ONLY === 'lint' || options.scope !== undefined;
     const shown = only ? problems : problems.slice(0, MAX_PROBLEMS);
     const notes = [
       '未通过时如何修复：先看位置与规则名，再决定"修改代码"还是"就地 eslint-disable-next-line"；' +

@@ -58,8 +58,8 @@ const CHECK_HELP = `
   check --list [--json|--markdown]                      只列判据元数据
 
 范围：
-  check --package <包名|unit>                           只报告这个模块的问题（开发期便利，不是门禁）
-                                                        全量扫描、只过滤报告与退出码`;
+  check --package <包名|unit>                           只检查这个模块 + 工作区级不变量（release / publish 用这一档）
+                                                        整仓状态与 CI 不要带 --package`;
 
 const MIGRATE_HELP = `
 用法：

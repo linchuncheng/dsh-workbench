@@ -152,7 +152,6 @@ export async function check({ only, args = [] } = {}) {
   const packageAt = args.indexOf('--package');
   const wanted = packageAt === -1 ? undefined : args[packageAt + 1];
   let filter;
-  let moduleNames = [];
   if (wanted !== undefined) {
     const packages = discoverPackages({ root: process.cwd() }).filter(
       (pkg) => pkg.manifest.dsh?.workbench !== undefined,
@@ -168,10 +167,10 @@ export async function check({ only, args = [] } = {}) {
       process.exit(2);
     }
     filter = new Set(matched.map((pkg) => pkg.manifest.name));
-    moduleNames = packages.map((pkg) => pkg.manifest.name).filter((name) => !filter.has(name));
-    console.log(`（仅检查 ${[...filter].join(' / ')}：问题按包名过滤；完整门禁不要带 --package）`);
+    console.log(
+      `（仅检查 ${[...filter].join(' / ')}：单模块判据按此范围，工作区级不变量仍按全工作区校验；全量检查请不带 --package）`,
+    );
   }
-  process.env.DSH_WB_PACKAGE_FILTER = filter === undefined ? '' : '' + [...filter].length;
   const tally = { pass: 0, skip: 0, fail: 0 };
   const skipped = [];
   let ran = 0;
@@ -186,26 +185,7 @@ export async function check({ only, args = [] } = {}) {
 
       process.env.DSH_WB_ONLY = only === undefined ? '' : name;
       const module = await entry.load();
-      let result = await module.run();
-      if (filter !== undefined && result.status === 'fail') {
-        const kept = result.problems.filter((problem) => {
-          const own = [...filter].some(
-            (pkgName) => problem.startsWith(`${pkgName}:`) || problem.startsWith(`${pkgName} `),
-          );
-          if (own) return true;
-          return !moduleNames.some(
-            (pkgName) => problem.startsWith(`${pkgName}:`) || problem.startsWith(`${pkgName} `),
-          );
-        });
-        const notes = [
-          ...result.notes,
-          `（--package：仅列出 ${[...filter].join(' / ')} 的问题，其余模块的问题本次不计入）`,
-        ];
-        result =
-          kept.length === 0
-            ? { ...result, status: 'pass', problems: [], notes }
-            : { ...result, problems: kept, notes };
-      }
+      const result = await module.run({ scope: filter });
 
       const title = typeof module.title === 'string' && module.title !== '' ? module.title : entry.title;
       ran += 1;
@@ -235,7 +215,10 @@ export async function check({ only, args = [] } = {}) {
 
   console.log(`${ran} 条判据：${tally.pass} 通过 · ${tally.skip} 不适用 · ${tally.fail} 未通过`);
   if (filter !== undefined) {
-    console.log(`  本次仅报告 ${[...filter].join(' / ')}；其余模块的未通过项已被过滤 —— 门禁或发布请不带 --package 重新运行。`);
+    console.log(
+      `  本次只检查 ${[...filter].join(' / ')}；其余模块没有检查（工作区级不变量仍然全查）。` +
+        '列整仓状态请在仓库根运行不带 --package 的 check。',
+    );
   }
 
   if (skipped.length > 0) {

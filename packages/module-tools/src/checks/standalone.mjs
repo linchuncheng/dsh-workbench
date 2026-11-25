@@ -2,6 +2,7 @@ import { existsSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { execaSync } from 'execa';
 import { discoverModulePackages, discoverPackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 
 const SHELL = '@dsh-workbench/core';
 
@@ -11,7 +12,7 @@ export function signalsOf(platform) {
   return platform === 'win32' ? ['SIGINT'] : ['SIGINT', 'SIGTERM', 'SIGHUP'];
 }
 
-export async function run() {
+export async function run(options = {}) {
   const shell = discoverPackages({ root: process.cwd() }).find((pkg) => pkg.manifest.name === SHELL);
   const visible = shell === undefined ? undefined : join(shell.dir, 'src');
 
@@ -23,7 +24,7 @@ export async function run() {
     };
   }
 
-  const modules = discoverModulePackages({ root: process.cwd() });
+  const modules = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   if (modules.length === 0) {
     return {
       status: 'skip',

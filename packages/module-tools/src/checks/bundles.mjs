@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inlinedShellRules } from '../build/css-shell.mjs';
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 
 const CLIENT_FORBIDDEN = [
   ['node 内置', /\bnode:[a-z]/],
@@ -34,8 +35,8 @@ function fixtureMarkersIn(source) {
   return FIXTURE_MARKERS.filter((one) => source.includes(one));
 }
 
-export async function run() {
-  const modulePackages = discoverModulePackages({ root: process.cwd() });
+export async function run(options = {}) {
+  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   const problems = [];
   let checked = 0;
 

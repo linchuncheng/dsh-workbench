@@ -1,9 +1,10 @@
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 
 export const title = '工作台模块不声明 dsh.bundle';
 
-function publishableModules() {
-  return discoverModulePackages({ root: process.cwd() }).filter(
+function publishableModules(options) {
+  return scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope).filter(
     (pkg) => pkg.manifest.dsh?.workbench?.unit !== undefined && pkg.manifest.private !== true,
   );
 }
@@ -15,8 +16,8 @@ function problemOf(pkg) {
   );
 }
 
-export async function run() {
-  const modules = publishableModules();
+export async function run(options = {}) {
+  const modules = publishableModules(options);
   const problems = modules.filter((pkg) => pkg.manifest.dsh?.bundle !== undefined).map(problemOf);
 
   if (problems.length > 0) return { status: 'fail', notes: [], problems };

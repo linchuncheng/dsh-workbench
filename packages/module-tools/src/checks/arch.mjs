@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { builtinSourceForms, runGuard } from '@arch-guard/core';
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 
 export const title = '模块架构（分层 / 边界 / 设计系统）';
 
@@ -24,8 +25,8 @@ function lineOf(name, finding) {
   return `${where} ${finding.text}（${finding.rule}）${hint}`;
 }
 
-export async function run() {
-  const modulePackages = discoverModulePackages({ root: process.cwd() });
+export async function run(options = {}) {
+  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   if (modulePackages.length === 0) {
     return {
       status: 'skip',

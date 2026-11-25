@@ -2,9 +2,10 @@ import { declarationProblemsOf } from '@dsh-workbench/shared/host';
 
 export const title = '模块声明协议';
 
-export async function run() {
+export async function run(options = {}) {
   const { discoverPackages } = await import('../support/discover.mjs');
-  const packages = discoverPackages({ root: process.cwd() });
+  const { scopedPackages } = await import('../support/scope.mjs');
+  const packages = scopedPackages(discoverPackages({ root: process.cwd() }), options.scope);
   const problems = [];
   const versions = new Set();
   let declared = 0;

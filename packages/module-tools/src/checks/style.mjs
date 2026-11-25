@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { DSW_PREFIX, dshHome, nearestTokens, readTokens } from '@dsh-workbench/shared/host';
 import { shellRulesIn } from '../build/css-shell.mjs';
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 import { auditFontSizes, fontScaleNotes, fontScaleOf } from '../build/font-scale.mjs';
 
 const BARE_ANCHOR = /(?<![\w$])(?:h\(\s*['"]a['"]|jsx\(\s*['"]a['"]|<a(?=[\s>/]))/g;
@@ -295,7 +296,7 @@ function isTestSource(file) {
   return /(^|[\\/])__tests__[\\/]/.test(file) || /\.test\.[cm]?tsx?$/.test(file);
 }
 
-export async function run() {
+export async function run(options = {}) {
   const problems = [];
   let tokenNote = null;
   const borrowed = [];
@@ -309,7 +310,7 @@ export async function run() {
   const actionAreaHits = new Set();
   const formHits = new Set();
   const anchorHits = new Set();
-  const modules = discoverModulePackages({ root: process.cwd() });
+  const modules = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   const parseProblems = [];
   const onBroken = (message) => {
     if (!parseProblems.includes(message)) parseProblems.push(message);

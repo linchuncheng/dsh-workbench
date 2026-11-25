@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { discoverPackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 
 const MARKERS_ENV = 'DSH_WB_INTERNAL_MARKERS';
 
@@ -58,7 +59,7 @@ function walk(dir, acc = []) {
 
 export const title = '公开包无内部标识';
 
-export async function run() {
+export async function run(options = {}) {
   const { markers: extra, problems: configProblems } = configured();
   if (configProblems.length > 0) {
     return {
@@ -68,8 +69,11 @@ export async function run() {
     };
   }
   const markers = [...BUILT_IN, ...extra];
-  const publicPackages = discoverPackages({ root: process.cwd() }).filter(
-    (pkg) => isOurs(pkg) && pkg.manifest.publishConfig?.access === 'public',
+  const publicPackages = scopedPackages(
+    discoverPackages({ root: process.cwd() }).filter(
+      (pkg) => isOurs(pkg) && pkg.manifest.publishConfig?.access === 'public',
+    ),
+    options.scope,
   );
   const problems = [];
   for (const pkg of publicPackages) {

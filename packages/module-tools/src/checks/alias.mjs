@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 
 const SPECIFIER = /(?:from|import)\s*\(?\s*['"](@\/[^'"]+)['"]/g;
 
@@ -16,8 +17,8 @@ function walk(dir, acc = []) {
 
 export const title = '模块不指向工作台';
 
-export async function run() {
-  const modules = discoverModulePackages({ root: process.cwd() });
+export async function run(options = {}) {
+  const modules = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   const problems = [];
   for (const pkg of modules) {
     const unit = pkg.manifest.dsh?.workbench?.unit;

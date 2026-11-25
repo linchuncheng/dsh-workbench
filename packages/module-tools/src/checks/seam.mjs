@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 import { reachableFrom } from './source.mjs';
 
 export const title = '模块执行缝（写入域）';
@@ -88,8 +89,8 @@ export function writesUseProblemsOf(name, rel, text, declared) {
   return problems;
 }
 
-export async function run() {
-  const modulePackages = discoverModulePackages({ root: process.cwd() });
+export async function run(options = {}) {
+  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
   const problems = [];
   let scanned = 0;
   let scannedUnits = 0;

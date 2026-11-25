@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { flagValue, flagsOf } from '../support/check-flags.mjs';
 import { discoverModulePackages } from '../support/discover.mjs';
+import { scopedPackages } from '../support/scope.mjs';
 import { memberFilesOf } from '../contract/shell-type-files.mjs';
 import { shellClientPathOf, shellKitOf } from './shell-artifact.mjs';
 
@@ -123,14 +124,14 @@ function faceNotes(asked, shells) {
   }
 }
 
-export async function run() {
+export async function run(options = {}) {
   const problems = [];
   let inspected = 0;
   let noArtifact = 0;
   let noShell = 0;
   const override = process.env.DSH_WB_CORE_CLIENT;
   const shells = [];
-  const modulePackages = discoverModulePackages({ root: process.cwd() });
+  const modulePackages = scopedPackages(discoverModulePackages({ root: process.cwd() }), options.scope);
 
   for (const pkg of modulePackages) {
     const name = pkg.manifest.name;
