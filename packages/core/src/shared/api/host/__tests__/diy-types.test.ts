@@ -9,7 +9,7 @@ describe('公开类型索引', () => {
   it('shared barrel 里的类型能按名字取到，带 JSDoc 与声明；未知回 null', () => {
     const root = surfaceCoreRoot();
     const seam = publicTypeOf('UnitSeam', root, []);
-    expect(seam?.path).toMatch(/host\/seam\/unit-seam\.ts$/);
+    expect(seam?.path).toMatch(/host[\\/]seam[\\/]unit-seam\.ts$/);
     expect(seam?.text).toContain('run(request');
     expect(seam?.text).toContain('受控执行');
     expect(publicTypeOf('UnitSeamRequest', root, [])?.text).toContain('retry');
