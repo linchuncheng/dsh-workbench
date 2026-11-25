@@ -13,6 +13,7 @@ import type {
 import { LOCALE_NS, UNITS_SERVICE } from '@dsh-workbench/shared';
 import { readPanels, sessionMenuSeat, workspaceWrites } from '@/app/layouts/sidebar/sidebar-inject';
 import { MARKET_PANEL_ID, registerMarketPanel } from '@/app/layouts/market/panel';
+import { startMarketAutoCheck } from '@/app/layouts/market/market-auto-check';
 import { registerDebugFooter } from '@/app/layouts/sidebar/debug-footer';
 import { clientSurface } from '@/shared/api/platform/client';
 import { registerWorkbenchSettings } from '@/app/layouts/workbench-settings/register';
@@ -412,6 +413,9 @@ function mount(ctx: DshClientContext): void {
   }, 'dsh-workbench: 官方左栏选中的项目就是右栏的项目');
 
   attemptEntry('market-panel', () => registerMarketPanel(ctx, units));
+  attemptEntry('market-auto-check', () => {
+    ctx.effect(() => startMarketAutoCheck(), 'dsh-workbench: market auto check');
+  });
   if (clientSurface().capabilities.debugFooter) attemptEntry('debug-footer', () => registerDebugFooter(ctx));
   attemptEntry('workbench-settings', () => registerWorkbenchSettings(ctx));
   ctx.effect(() => {
