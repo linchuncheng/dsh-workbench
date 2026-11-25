@@ -50,6 +50,9 @@
 update-dependency / update-plugin / uninstall-plugin / update-workbench，调试 start / resume
 都从空详情改成四行；市场 / 发布保留自定义详情。
 
+**2026-11-25 子调用的审批也认得出这次调用**：agent 在程序里调工具（PTC）时，审批的 `callId` 是那次
+子调用（`…:ptc:N`）；详情座钻 `subCalls` 认领，不再只在顶层找而整格空白。
+
 ## workbench_panels_show
 
 ┌─ 添加 issues 面板 ────────────────────────────────────────┐

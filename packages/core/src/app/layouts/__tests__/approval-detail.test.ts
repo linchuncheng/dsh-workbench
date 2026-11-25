@@ -265,17 +265,24 @@ interface SeatNode {
   } | null;
 }
 
+function seatFrom(
+  snapshot: unknown,
+  callId: string,
+  renderShell = shellApprovalDetail,
+): SeatNode | null {
+  const useChat = ((selector: (value: unknown) => unknown) => selector(snapshot)) as never;
+  const node = ApprovalDetail({ callId, useChat, renderShell, t }) as SeatNode | null;
+  const child = node?.props?.children;
+  return typeof child === 'object' && child !== null && !Array.isArray(child) ? (child as SeatNode) : node;
+}
+
 function seatOf(
   tool: string,
   args: Record<string, unknown>,
   renderShell = shellApprovalDetail,
 ): SeatNode | null {
   const root = { callId: 'c1', name: tool, phase: 'start', argsRaw: JSON.stringify(args) };
-  const snapshot = { nodes: { values: () => [{ kind: 'tool-call', data: { root } }] } };
-  const useChat = ((selector: (value: unknown) => unknown) => selector(snapshot)) as never;
-  const node = ApprovalDetail({ callId: 'c1', useChat, renderShell, t }) as SeatNode | null;
-  const child = node?.props?.children;
-  return typeof child === 'object' && child !== null && !Array.isArray(child) ? (child as SeatNode) : node;
+  return seatFrom({ nodes: { values: () => [{ kind: 'tool-call', data: { root } }] } }, 'c1', renderShell);
 }
 
 describe('详情座的最后一档（参数里的 command）：外壳认领过的工具，agent 塞的那句话进不来', () => {
@@ -298,6 +305,26 @@ describe('详情座的最后一档（参数里的 command）：外壳认领过�
     expect(seatOf('inventory_build', { command: 'opencli inventory build --enterprise=tencent' })?.props?.code).toBe(
       'opencli inventory build --enterprise=tencent',
     );
+  });
+
+  it('★★ 程序调用里的子调用：审批的 callId 带 :ptc: 时钻到 subCalls 里认出这次调用（修前整格是空的）', () => {
+    const args = { unit: 'demo', url: SITE, doing: '发布' };
+    const sub = { callId: 'call_p:ptc:1', name: DIY_RECORD_PREPARE_TOOL, phase: 'start', argsRaw: JSON.stringify(args) };
+    const root = { callId: 'call_p', name: 'run_code', phase: 'start', argsRaw: '{}', subCalls: [{ ...sub, subCalls: [] }] };
+
+    const seat = seatFrom({ nodes: { values: () => [{ kind: 'tool-call', data: { root } }] } }, 'call_p:ptc:1');
+
+    expect(seat?.props?.rows).toHaveLength(3);
+    expect(seat?.props?.code).toBeUndefined();
+  });
+
+  it('★ 顶层那次调用自己也要认得出（没有 subCalls 时不改老行为）', () => {
+    const seat = seatFrom(
+      { nodes: { values: () => [{ kind: 'tool-call', data: { root: { callId: 'c9', name: 'bash', phase: 'start', argsRaw: '{"command":"ls"}' } } }] } },
+      'c9',
+    );
+
+    expect(seat?.props?.code).toBe('ls');
   });
 });
 

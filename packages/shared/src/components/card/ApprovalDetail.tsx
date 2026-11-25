@@ -11,7 +11,10 @@ interface ToolCallRoot {
   readonly name?: string;
   readonly phase?: string;
   readonly argsRaw?: string;
+  readonly subCalls?: readonly ToolCallRoot[];
 }
+
+const MAX_CALL_DEPTH = 64;
 
 interface ChatSnapshot {
   readonly nodes?: { values(): Iterable<{ readonly kind?: string; readonly data?: { readonly root?: ToolCallRoot } }> };
@@ -30,12 +33,23 @@ export interface ApprovalDetailProps {
   readonly renderShell?: ((input: ApprovalInput, t: Translate) => ReactNode) | undefined;
 }
 
+function findCall(root: ToolCallRoot | undefined, callId: string, depth: number): ToolCallRoot | undefined {
+  if (root === undefined || depth > MAX_CALL_DEPTH) return undefined;
+  if (root.callId === callId && root.phase === 'start') return root;
+  for (const child of root.subCalls ?? []) {
+    const found = findCall(child, callId, depth + 1);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+}
+
 function callOf(snapshot: ChatSnapshot, callId: string | undefined): { name?: string; argsRaw: string } | undefined {
   if (callId === undefined) return undefined;
   for (const node of snapshot.nodes?.values() ?? []) {
     const root = node.kind === 'tool-call' ? node.data?.root : undefined;
-    if (root?.callId !== callId || root.phase !== 'start') continue;
-    return { ...(root.name === undefined ? {} : { name: root.name }), argsRaw: root.argsRaw ?? '' };
+    const call = findCall(root, callId, 0);
+    if (call === undefined) continue;
+    return { ...(call.name === undefined ? {} : { name: call.name }), argsRaw: call.argsRaw ?? '' };
   }
   return undefined;
 }
