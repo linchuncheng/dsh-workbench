@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDiagRecorder, type DiagRecord } from '../diag-records.js';
+import { createDiagRecorder, type DiagHost, type DiagRecord } from '../diag-records.js';
 
 function fixedClock(): () => number {
   let now = 1_000;
@@ -144,6 +144,38 @@ describe('诊断记录器', () => {
     const recorder = recorderOf({ level: 'error' });
     expect(recorder.once('k', { code: 'READ_FAILED', level: 'info' })).toBeNull();
     expect(recorder.once('k', { code: 'READ_FAILED', level: 'error' })).not.toBeNull();
+  });
+
+  it('★ 记录带宿主来源：写入时盖章，once 与 sink 失败记录同样带', () => {
+    const host: DiagHost = { profile: 'web', deployment: 'web', pid: 42 };
+    const recorder = recorderOf({
+      host,
+      sinks: [
+        () => {
+          throw new Error('boom');
+        },
+      ],
+    });
+
+    const record = recorder.record({ code: 'READ_FAILED' });
+    expect(record?.host).toEqual(host);
+    expect(recorder.once('k', { code: 'READ_FAILED' })?.host).toEqual(host);
+    expect(recorder.recent({ code: 'DIAG_SINK_FAILED' })[0]?.host).toEqual(host);
+  });
+
+  it('★ 按宿主过滤：指定 profile、*、旧记录归 unknown', () => {
+    const host: DiagHost = { profile: 'web', deployment: 'web', pid: 42 };
+    const recorder = recorderOf({ host });
+    recorder.record({ code: 'READ_FAILED' });
+
+    expect(recorder.recent({ host: 'web' })).toHaveLength(1);
+    expect(recorder.recent({ host: 'desktop' })).toHaveLength(0);
+    expect(recorder.recent({ host: '*' })).toHaveLength(1);
+
+    const legacy = recorderOf();
+    legacy.record({ code: 'READ_FAILED' });
+    expect(legacy.recent({ host: 'unknown' })).toHaveLength(1);
+    expect(legacy.recent({ host: 'web' })).toHaveLength(0);
   });
 
   it('级别过滤：低于阈值的记录不落内存、不进 sink', () => {

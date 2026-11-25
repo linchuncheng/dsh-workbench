@@ -11,7 +11,7 @@ import {
   moduleVersionsHandler,
 } from '@/shared/api/host/bundle-routes';
 import { gitProbeHandler } from '@/shared/api/host/git-routes';
-import { DIAG_RECORDS_ROUTE, diagRecordsHandler } from '@/shared/api/host/diag-routes';
+import { DIAG_RECORDS_ROUTE, diagRecordsHandler, type DiagRoutesDeps } from '@/shared/api/host/diag-routes';
 import {
   BUNDLE_INSPECT_ROUTE,
   BUNDLE_REGISTRIES_ROUTE,
@@ -24,7 +24,7 @@ export function createHostRoutes(input: {
   readonly runtimes: Readonly<Record<string, RuntimeStatus>>;
   readonly running: string | undefined;
   readonly profile: ProfilePort;
-  readonly diag?: Pick<Parameters<typeof diagRecordsHandler>[0], 'recorder' | 'readDisk' | 'clock'> | undefined;
+  readonly diag?: DiagRoutesDeps | undefined;
 }): RouteTable {
   const { ctx, facts, runtimes, running, profile, diag } = input;
   const prereleaseChannels = (): readonly string[] =>
@@ -36,7 +36,9 @@ export function createHostRoutes(input: {
     [BUNDLE_REGISTRIES_ROUTE]: bundleRegistriesHandler(ctx),
     [BUNDLE_INSPECT_ROUTE]: bundleInspectHandler(ctx),
     [MARKET_GIT_PROBE_ROUTE]: gitProbeHandler(),
-    ...(diag === undefined ? {} : { [DIAG_RECORDS_ROUTE]: diagRecordsHandler(diag) }),
+    ...(diag === undefined
+      ? {}
+      : { [DIAG_RECORDS_ROUTE]: diagRecordsHandler({ ...diag, dirOf: () => profile.dirOf(ctx) }) }),
     [MODULE_VERSIONS_ROUTE]: moduleVersionsHandler(
       ctx,
       seamOf(ctx),

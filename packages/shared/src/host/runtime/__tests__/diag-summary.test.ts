@@ -1,13 +1,41 @@
 import { describe, expect, it } from 'vitest';
 import { createDiagRecorder } from '../diag-records.js';
-import { diagSummary } from '../diag-summary.js';
+import type { DiagHost, DiagRecord } from '../diag-records.js';
+import { diagSummary, originsOf } from '../diag-summary.js';
 
 function recorderOf() {
   let at = 1_000;
   return createDiagRecorder({ clock: () => (at += 10), nextCorrId: () => 'c-1', level: 'info' });
 }
 
+function recordOf(ts: number, host?: DiagHost): DiagRecord {
+  return {
+    ts,
+    level: 'warn',
+    code: 'READ_FAILED',
+    class: 'env',
+    area: 'panels',
+    corrId: `c-${String(ts)}`,
+    ...(host === undefined ? {} : { host }),
+  };
+}
+
 describe('诊断摘要（给 agent 读的那份）', () => {
+  it('★ 来源摘要：按 profile 计数与最后时间，可排除当前来源', () => {
+    const web: DiagHost = { profile: 'web', deployment: 'web', pid: 1 };
+    const desktop: DiagHost = { profile: 'desktop', deployment: 'desktop', pid: 2 };
+    const records = [recordOf(10, web), recordOf(30, desktop), recordOf(20, web), recordOf(40)];
+
+    expect(originsOf(records)).toEqual([
+      { host: 'unknown', count: 1, lastAt: 40 },
+      { host: 'desktop', count: 1, lastAt: 30 },
+      { host: 'web', count: 2, lastAt: 20 },
+    ]);
+    expect(originsOf(records, 'web')).toEqual([
+      { host: 'unknown', count: 1, lastAt: 40 },
+      { host: 'desktop', count: 1, lastAt: 30 },
+    ]);
+  });
   it('★ 返回最近记录与按码计数，计数按最近时间倒序', () => {
     const diag = recorderOf();
     diag.record({ code: 'READ_FAILED' });

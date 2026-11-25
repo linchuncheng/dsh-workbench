@@ -4,7 +4,7 @@ import utc from 'dayjs/plugin/utc.js';
 import { join } from 'node:path';
 import { appendTextFile } from './fs-write.js';
 import { now } from './time.js';
-import type { DiagRecord, DiagSink } from './diag-records.js';
+import type { DiagHost, DiagRecord, DiagSink } from './diag-records.js';
 
 export const DIAG_RETENTION_DAYS = 7;
 export const DIAG_DAY_BYTES = 5 * 1024 * 1024;
@@ -12,7 +12,7 @@ export const DIAG_FILE_PREFIX = 'record-';
 
 dayjs.extend(utc);
 
-const SHARD = /^record-(\d{4}-\d{2}-\d{2})-(\d+)\.jsonl$/;
+const SHARD = /^record-(\d{4}-\d{2}-\d{2})-(\d+)(?:-([A-Za-z0-9._-]+))?\.jsonl$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface DiagFileSinkOptions {
@@ -21,6 +21,7 @@ export interface DiagFileSinkOptions {
   readonly dayBytes?: number | undefined;
   readonly clock?: (() => number) | undefined;
   readonly pid?: number | undefined;
+  readonly profile?: string | undefined;
 }
 
 export interface DiagReadResult {
@@ -40,6 +41,12 @@ function dayOf(ts: number): string {
   return dayjs(ts).utc().format('YYYY-MM-DD');
 }
 
+function profileOf(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined;
+  const safe = raw.replace(/[^A-Za-z0-9._-]/g, '_');
+  return safe === '' ? 'unknown' : safe;
+}
+
 function shardsIn(dir: string): string[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir).filter((name) => SHARD.test(name));
@@ -50,12 +57,17 @@ export function createDiagFileSink(options: DiagFileSinkOptions): DiagFileSink {
   const capBytes = options.dayBytes ?? DIAG_DAY_BYTES;
   const clock = options.clock ?? now;
   const pid = options.pid ?? process.pid;
+  const profile = profileOf(options.profile);
   let day = '';
   let path = '';
   let bytes = 0;
   let capped = false;
 
-  const pathOf = (at: string): string => join(options.dir, `${DIAG_FILE_PREFIX}${at}-${String(pid)}.jsonl`);
+  const pathOf = (at: string): string =>
+    join(
+      options.dir,
+      `${DIAG_FILE_PREFIX}${at}-${String(pid)}${profile === undefined ? '' : `-${profile}`}.jsonl`,
+    );
 
   const cleanup = (): number => {
     const cutoff = clock() - retained * DAY_MS;
@@ -89,12 +101,22 @@ export function createDiagFileSink(options: DiagFileSinkOptions): DiagFileSink {
       skipped += 1;
     };
     for (const name of names) {
+      const match = SHARD.exec(name);
+      const fileProfile = match?.[3];
+      const filePid = Number.parseInt(match?.[2] ?? '', 10);
+      const fallback: DiagHost | undefined =
+        fileProfile === undefined || !Number.isInteger(filePid)
+          ? undefined
+          : { profile: fileProfile, deployment: 'unknown', pid: filePid };
       const text = readFileSync(join(options.dir, name), 'utf8');
       for (const line of text.split('\n')) {
         if (line.trim() === '') continue;
         read += 1;
         try {
-          records.push(JSON.parse(line) as DiagRecord);
+          const record = JSON.parse(line) as DiagRecord;
+          records.push(
+            fallback === undefined || record.host !== undefined ? record : { ...record, host: fallback },
+          );
         } catch {
           noteBroken();
         }

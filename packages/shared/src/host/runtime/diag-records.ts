@@ -21,6 +21,12 @@ export interface DiagSubject {
   readonly pkg?: string;
 }
 
+export interface DiagHost {
+  readonly profile: string;
+  readonly deployment: 'web' | 'desktop' | 'unknown';
+  readonly pid: number;
+}
+
 export interface DiagCause {
   readonly code?: string;
   readonly message: string;
@@ -36,6 +42,7 @@ export interface DiagRecord {
   readonly class: DiagClass;
   readonly area: DiagArea;
   readonly subject?: DiagSubject;
+  readonly host?: DiagHost;
   readonly corrId: string;
   readonly cause?: DiagCause;
   readonly detail?: Readonly<Record<string, DiagDetailValue>>;
@@ -68,6 +75,7 @@ export interface DiagRecorderOptions {
   readonly cap?: number | undefined;
   readonly sinks?: readonly DiagSink[] | undefined;
   readonly level?: DiagLevel | undefined;
+  readonly host?: DiagHost | undefined;
 }
 
 export interface DiagRecorder {
@@ -124,6 +132,7 @@ export function createDiagRecorder(options: DiagRecorderOptions = {}): DiagRecor
   const countsByCode = new Map<string, DiagCount>();
   const ring: DiagRecord[] = [];
   const threshold = options.level ?? defaultLevel();
+  const host = options.host;
 
   const emit = (record: DiagRecord): void => {
     ring.push(record);
@@ -156,6 +165,7 @@ export function createDiagRecorder(options: DiagRecorderOptions = {}): DiagRecor
       class: spec.class,
       area: spec.area,
       ...(input.subject === undefined ? {} : { subject: input.subject }),
+      ...(host === undefined ? {} : { host }),
       corrId: input.corrId ?? nextCorrId(),
       cause: unknown
         ? { code: input.code, message: input.cause?.message ?? input.code }
@@ -170,6 +180,7 @@ export function createDiagRecorder(options: DiagRecorderOptions = {}): DiagRecor
       class: full.class,
       area: full.area,
       ...(full.subject === undefined ? {} : { subject: full.subject }),
+      ...(full.host === undefined ? {} : { host: full.host }),
       corrId: full.corrId,
       ...(full.cause === undefined ? {} : { cause: full.cause }),
       ...(full.detail === undefined ? {} : { detail: full.detail }),
@@ -189,6 +200,7 @@ export function createDiagRecorder(options: DiagRecorderOptions = {}): DiagRecor
           class: 'bug',
           area: 'diag',
           corrId: clean.corrId,
+          ...(host === undefined ? {} : { host }),
           cause: { message: error instanceof Error ? error.message : String(error) },
           detail: { sink: index },
         });

@@ -37,6 +37,14 @@ describe('诊断目录', () => {
     expect(bundle.truncated).toEqual([]);
   });
 
+  it('★ manifest 写明宿主，schema 已升到 2', () => {
+    const host = { profile: 'web', deployment: 'web', pid: 11 } as const;
+    const bundle = buildDiagBundle(inputOf({ host }));
+
+    expect(bundle.manifest['schema']).toBe(2);
+    expect(bundle.manifest['host']).toEqual(host);
+  });
+
   it('★ 脱敏：敏感键剔除、绝对路径换成片段+短哈希', () => {
     const bundle = buildDiagBundle(
       inputOf({
