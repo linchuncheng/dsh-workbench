@@ -58,7 +58,6 @@ import { registerDiyPlanTool } from './model/flow/plan-tool';
 import { registerDiyStepTool } from './model/flow/step-tool';
 import { createDiyFlowRuns } from './model/flow/runs';
 import { diyFlowRoutes } from './model/flow/routes';
-import { capabilityBriefOf } from './model/capability-brief';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
 import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedReason } from './model/closed-tool';
 import { registerToolboxTools } from './model/toolbox-tools';
@@ -145,7 +144,6 @@ export const panelsHost: UnitOwnedFace = {
     });
     const toolboxPort: ToolboxPort = {
       packsOf: (session, preset) => toolbox.packsOf(session, preset),
-      capabilityBrief: (workspace) => capabilityBriefOf(toolbox.catalog(workspace)),
     };
     ctx.provide(TOOLBOX_SERVICE, toolboxPort);
     const installRuns: LongTaskRegistry<LongTaskBase> = createLongTaskRegistry<LongTaskBase>({

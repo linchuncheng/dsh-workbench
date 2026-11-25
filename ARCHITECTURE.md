@@ -757,8 +757,9 @@ ctx.get('workbenchUnits').registerUnit({
   照样被拒；关闭不审批。
 - **发现性**（ADR-0108）：默认面就是模型能读到的全部索引，所以三把控制工具的文案里带一张最小能力地图
   （能力 → 包的字面量，含 `mcp:<server>`），且不抬 `tool-surface.test.ts` 的字数棘轮；
-  「这台机器上具体有哪几个 `unit:<id>` / 哪台 `mcp:<server>`」这份**活索引**在 agent 创建时注册成一把
-  运行期 skill（`workbench-capabilities`，走 dsh 已有的 skill 目录消息，一次性进上下文）。
+  「这台机器上具体有哪几个 `unit:<id>` / 哪台 `mcp:<server>`」不常驻，按需交给 `workbench_toolbox_list`，
+  猜错的名字由下面那条「失败转发现」接住。运行期 skill（`workbench-capabilities`）那条已撤：它只省一次
+  `list`，却要按 agent 重复注册、失败只留一行日志，包一多描述还会被 skill 目录的 500 字上限截断。
 - **失败转发现**：模型调一个当前被收起的工具时，`gate.denyReason` 把 `unknown tool` 换成"它属于哪个包、
   下一步调 `workbench_toolbox_open`"；同一道判断也让被收起的写工具不再弹一张点了也白点的审批屏
   （`shared/api/host/approval-gate.ts` 的 `deniedReasonOf`；从 agent 与挂载面取理由的是
