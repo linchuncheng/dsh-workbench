@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { PANEL_STATE_SERVICE, WORKBENCH_ADAPTERS, nowIso, profileManifestOf, unreadableModules, workbenchRoot } from '@dsh-workbench/shared/host';
 import type { AdapterSet } from '@dsh-workbench/shared/host';
 import { exportDiagBundle, type DiagExportResult } from './diag-export.js';
-import { diagRoutesOf } from './diag-routes.js';
+import { diagHostOf, diagRoutesOf } from './diag-routes.js';
 import { logTailOf, packageVersionOf } from './diag-export-logs.js';
-import { readPreflightSnapshot } from './diag-preflight.js';
+import { preflightHostOf, readPreflightSnapshot } from './diag-preflight.js';
 
 export function diagProfileDirOf(ctx: DshHostContext): string | null {
   return (ctx.get('profileContext') as { readonly dir?: string } | undefined)?.dir ?? null;
@@ -33,18 +33,24 @@ export function diagExportAction(ctx: DshHostContext): PostResource {
     unit: 'workbench',
     handle(): DiagExportResult {
       const root = workbenchRoot();
+      const host = diagHostOf(ctx);
+      const routes = diagRoutesOf(root, host);
       const dir = (ctx.get('profileContext') as { readonly dir?: string } | undefined)?.dir ?? null;
       const manifest = profileManifestOf(dir);
       const panels = (ctx.get(PANEL_STATE_SERVICE) as PanelStateStore | undefined)?.snapshot(null) ?? null;
+      const preflight = readPreflightSnapshot(root);
+      const preflightHost = preflightHostOf(preflight);
       return exportDiagBundle({
-        recorder: diagRoutesOf(root).recorder,
+        recorder: routes.recorder,
         root,
         at: nowIso(),
+        host,
         env: {
           node: process.versions.node,
           platform: platformOf(ctx),
           version: versionOf(ctx, import.meta.url),
           profileDir: dir,
+          host,
         },
         config: {
           name: manifest?.['name'] ?? null,
@@ -54,11 +60,13 @@ export function diagExportAction(ctx: DshHostContext): PostResource {
         runtime: {
           panels,
           logs: { selfUpdate: logTailOf(join(root, 'self-update.log')) },
-          preflight: readPreflightSnapshot(root),
+          preflight,
+          preflightFrom: preflightHost?.profile ?? null,
+          preflightAt: preflightHost?.at ?? null,
         },
         checks: {
-          codes: [...diagRoutesOf(root).recorder.counts().keys()].sort(),
-          total: diagRoutesOf(root).recorder.recent().length,
+          codes: [...routes.recorder.counts().keys()].sort(),
+          total: routes.recorder.recent().length,
         },
       });
     },

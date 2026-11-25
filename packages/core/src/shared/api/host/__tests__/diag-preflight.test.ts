@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { preflightEvidenceOf, readPreflightSnapshot } from '../diag-preflight.js';
+import { preflightEvidenceOf, preflightHostOf, readPreflightSnapshot } from '../diag-preflight.js';
 
 describe('读启动检查快照', () => {
   it('★ 没有文件给 null，不抛', () => {
@@ -17,6 +17,17 @@ describe('读启动检查快照', () => {
 
     expect(readPreflightSnapshot(dir)).toEqual({ phase: 'ready', at: 1 });
     fs.rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('启动检查的来源', () => {
+  it('★ 取 hostFacts.profileDir 的 basename 与 at；没有就给 unknown', () => {
+    expect(preflightHostOf({ at: 5, hostFacts: { profileDir: '/Users/me/.dsh/profiles/desktop' } })).toEqual({
+      profile: 'desktop',
+      at: 5,
+    });
+    expect(preflightHostOf({ at: 5 })).toEqual({ profile: 'unknown', at: 5 });
+    expect(preflightHostOf(null)).toBeNull();
   });
 });
 
@@ -49,6 +60,8 @@ describe('启动检查摘要（给 agent 的症状，不带日志）', () => {
     expect(evidence?.paths).toMatchObject({ workbenchRoot: '/tmp/wb' });
     expect(evidence?.bridgeIssues).toEqual(['extension']);
     expect(evidence?.evidence).toBe(path.join('/tmp/wb', 'preflight.json'));
+    expect(evidence?.from).toBe('unknown');
+    expect(evidence?.at).toBe(10);
     expect(JSON.stringify(evidence)).not.toContain('第一行');
   });
 

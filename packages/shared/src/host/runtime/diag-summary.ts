@@ -6,7 +6,29 @@ export interface DiagSummary {
   readonly total: number;
 }
 
+export interface DiagHostCount {
+  readonly host: string;
+  readonly count: number;
+  readonly lastAt: number;
+}
+
 export const DIAG_SUMMARY_LIMIT = 50;
+
+export function originsOf(records: readonly DiagRecord[], exclude?: string): readonly DiagHostCount[] {
+  const byHost = new Map<string, { count: number; lastAt: number }>();
+  for (const record of records) {
+    const host = record.host?.profile ?? 'unknown';
+    if (host === exclude) continue;
+    const seat = byHost.get(host);
+    byHost.set(host, {
+      count: (seat?.count ?? 0) + 1,
+      lastAt: Math.max(seat?.lastAt ?? 0, record.ts),
+    });
+  }
+  return [...byHost.entries()]
+    .map(([host, one]) => ({ host, count: one.count, lastAt: one.lastAt }))
+    .sort((left, right) => right.lastAt - left.lastAt || left.host.localeCompare(right.host));
+}
 
 export function diagSummary(recorder: DiagRecorder, limit = DIAG_SUMMARY_LIMIT): DiagSummary {
   const records = recorder.recent({ limit });

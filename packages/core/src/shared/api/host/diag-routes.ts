@@ -1,8 +1,8 @@
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
-import { join } from 'node:path';
-import type { DiagRecorder, DiagReadResult, RouteHandler } from '@dsh-workbench/shared/host';
-import { createDiagFileSink, createDiagRecorder, now } from '@dsh-workbench/shared/host';
+import { basename, join } from 'node:path';
+import type { DiagHost, DiagRecorder, DiagReadResult, DshHostContext, RouteHandler } from '@dsh-workbench/shared/host';
+import { createDiagFileSink, createDiagRecorder, hostSurface, now, originsOf } from '@dsh-workbench/shared/host';
 import { DIAG_AREAS, DIAG_CLASSES, diagMatches, param } from '@dsh-workbench/shared/host';
 import type { DiagArea, DiagClass } from '@dsh-workbench/shared/host';
 dayjs.extend(utc);
@@ -17,6 +17,13 @@ export interface DiagRoutesDeps {
   readonly dirOf?: (() => string | null) | undefined;
   readonly readDisk?: ((day: string) => DiagReadResult) | undefined;
   readonly clock?: (() => number) | undefined;
+  readonly host?: DiagHost | undefined;
+}
+
+export function diagHostOf(ctx: DshHostContext): DiagHost {
+  const dir = (ctx.get('profileContext') as { readonly dir?: string } | undefined)?.dir;
+  const profile = typeof dir === 'string' && dir.trim() !== '' ? basename(dir.trim()) : 'unknown';
+  return { profile, deployment: hostSurface().deployment, pid: process.pid };
 }
 
 interface DiagQuery {
@@ -25,6 +32,7 @@ interface DiagQuery {
   readonly area?: DiagArea;
   readonly class?: DiagClass;
   readonly code?: string;
+  readonly host?: string;
   readonly limit: number;
   readonly source: 'memory' | 'disk';
 }
@@ -58,12 +66,14 @@ function queryOf(search: URLSearchParams): DiagQuery | string {
   const source = param(search, 'source');
   if (source !== undefined && source !== 'memory' && source !== 'disk') return 'source 只能是 memory / disk';
   const code = param(search, 'code');
+  const host = param(search, 'host');
   return {
     ...(since === undefined ? {} : { since }),
     ...(until === undefined ? {} : { until }),
     ...(area === undefined ? {} : { area: area as DiagArea }),
     ...(kind === undefined ? {} : { class: kind as DiagClass }),
     ...(code === undefined ? {} : { code }),
+    ...(host === undefined ? {} : { host }),
     limit,
     source: source === 'disk' ? 'disk' : 'memory',
   };
@@ -72,28 +82,45 @@ function queryOf(search: URLSearchParams): DiagQuery | string {
 export function diagRecordsHandler(deps: DiagRoutesDeps): RouteHandler {
   const clock = deps.clock ?? now;
   const dirOf = deps.dirOf ?? (() => null);
+  const current = deps.host?.profile ?? 'unknown';
   return (search) => {
     const query = queryOf(search);
     if (typeof query === 'string') {
       deps.recorder.record({ code: 'DIAG_BAD_PARAM', cause: { message: query } });
       return badRequest(query);
     }
-    if (query.source === 'disk' && deps.readDisk === undefined) {
-      deps.recorder.record({ code: 'DIAG_BAD_PARAM', cause: { message: '这份宿主没有接落盘读回' } });
-      return badRequest('这份宿主没有接落盘读回，只能用 source=memory');
+    if (query.source === 'memory' && query.host !== undefined && query.host !== current) {
+      const message = '内存记录只包含当前工作台；读取其他工作台需使用 source=disk';
+      deps.recorder.record({ code: 'DIAG_BAD_PARAM', cause: { message } });
+      return badRequest(message);
     }
-    const all =
-      query.source === 'disk'
-        ? (deps.readDisk as (day: string) => DiagReadResult)(dayjs(clock()).utc().format('YYYY-MM-DD')).records
-        : deps.recorder.recent();
-    const hit = all.filter((one) => diagMatches(one, query));
+    if (query.source === 'disk' && deps.readDisk === undefined) {
+      const message = '这份工作台没有接通磁盘记录，只能使用 source=memory';
+      deps.recorder.record({ code: 'DIAG_BAD_PARAM', cause: { message } });
+      return badRequest(message);
+    }
+    const disk = query.source === 'disk'
+      ? (deps.readDisk as (day: string) => DiagReadResult)(dayjs(clock()).utc().format('YYYY-MM-DD')).records
+      : undefined;
+    const all = disk ?? deps.recorder.recent();
+    const hit = all.filter((one) => diagMatches(one, { ...query, host: query.host ?? current }));
     const records = hit.slice(Math.max(0, hit.length - query.limit));
+    const hosts = disk === undefined
+      ? [current]
+      : [...new Set([current, ...originsOf(disk).map((one) => one.host)])].sort();
     return {
       ok: true,
       records,
       total: hit.length,
       truncated: hit.length > records.length,
-      host: { node: process.versions.node, profileDir: dirOf() },
+      host: {
+        node: process.versions.node,
+        profile: current,
+        profileDir: dirOf(),
+        deployment: deps.host?.deployment ?? 'unknown',
+        pid: deps.host?.pid ?? process.pid,
+      },
+      hosts,
       counts: [...deps.recorder.counts().entries()].map(([code, one]) => ({ code, count: one.count, at: one.at })),
     };
   };
@@ -101,13 +128,15 @@ export function diagRecordsHandler(deps: DiagRoutesDeps): RouteHandler {
 
 const BY_ROOT = new Map<string, DiagRoutesDeps>();
 
-export function diagRoutesOf(root: string): DiagRoutesDeps {
+export function diagRoutesOf(root: string, host?: DiagHost): DiagRoutesDeps {
+  const effective: DiagHost = host ?? { profile: 'unknown', deployment: 'unknown', pid: process.pid };
   const hit = BY_ROOT.get(root);
   if (hit !== undefined) return hit;
-  const files = createDiagFileSink({ dir: join(root, 'diagnostics', 'records') });
+  const files = createDiagFileSink({ dir: join(root, 'diagnostics', 'records'), profile: effective.profile });
   const made: DiagRoutesDeps = {
-    recorder: createDiagRecorder({ sinks: [files.sink] }),
+    recorder: createDiagRecorder({ sinks: [files.sink], host: effective }),
     readDisk: (day) => files.readDay(day),
+    host: effective,
   };
   BY_ROOT.set(root, made);
   return made;

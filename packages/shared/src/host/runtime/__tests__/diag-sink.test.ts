@@ -130,6 +130,49 @@ describe('诊断记录的落盘 sink', () => {
     expect(read).toEqual(written);
   });
 
+  it('★ 分片名带宿主 profile；读回给缺 host 的记录补上', () => {
+    const clock = clockAt(Date.parse('2026-11-21T10:00:00.000Z'));
+    const sink = createDiagFileSink({ dir, clock, pid: 4242, profile: 'web' });
+
+    expect(sink.pathOf('2026-11-21')).toBe(path.join(dir, 'record-2026-11-21-4242-web.jsonl'));
+    sink.sink(recordAt(clock()));
+
+    expect(sink.readDay('2026-11-21').records[0]?.host).toEqual({
+      profile: 'web',
+      deployment: 'unknown',
+      pid: 4242,
+    });
+  });
+
+  it('旧三段分片仍能读，且不硬补宿主', () => {
+    const clock = clockAt(Date.parse('2026-11-21T10:00:00.000Z'));
+    const sink = createDiagFileSink({ dir, clock, pid: 7 });
+
+    sink.sink(recordAt(clock()));
+
+    expect(sink.pathOf('2026-11-21')).toBe(path.join(dir, 'record-2026-11-21-7.jsonl'));
+    expect(sink.readDay('2026-11-21').records[0]?.host).toBeUndefined();
+  });
+
+  it('清理同时认旧名与新名，profile 做安全字符替换', () => {
+    const old = path.join(dir, 'record-2026-11-01-9-web.jsonl');
+    const fresh = path.join(dir, 'record-2026-11-20-9-web.jsonl');
+    fs.writeFileSync(old, `${JSON.stringify(recordAt(1))}\n`, 'utf8');
+    fs.writeFileSync(fresh, `${JSON.stringify(recordAt(2))}\n`, 'utf8');
+    const sink = createDiagFileSink({
+      dir,
+      clock: clockAt(Date.parse('2026-11-21T12:00:00.000Z')),
+      pid: 9,
+      profile: 'a/b',
+      retentionDays: 7,
+    });
+
+    expect(sink.pathOf('2026-11-21')).toBe(path.join(dir, 'record-2026-11-21-9-a_b.jsonl'));
+    expect(sink.cleanup()).toBe(1);
+    expect(fs.existsSync(old)).toBe(false);
+    expect(fs.existsSync(fresh)).toBe(true);
+  });
+
   it('没有目录 / 没有分片时读回是空的，不抛', () => {
     const sink = createDiagFileSink({ dir: path.join(dir, 'missing'), pid: 1 });
     expect(sink.readDay('2026-11-21')).toEqual({ records: [], skipped: 0, read: 0 });

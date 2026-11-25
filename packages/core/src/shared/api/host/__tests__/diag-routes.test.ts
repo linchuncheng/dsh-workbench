@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDiagRecorder, type DiagRecord } from '@dsh-workbench/shared/host';
+import { createDiagRecorder, type DiagHost, type DiagRecord } from '@dsh-workbench/shared/host';
 import { diagRecordsHandler } from '../diag-routes.js';
 
 function recorderOf() {
@@ -100,6 +100,62 @@ describe('诊断读路由', () => {
     diagRecordsHandler({ recorder })(searchOf({ limit: '1' }));
 
     expect(recorder.recent().length).toBe(before);
+  });
+
+  it('★ 默认当前宿主；host=* 与指定宿主可读；host 字段带 profile/deployment/pid', () => {
+    const web: DiagHost = { profile: 'web', deployment: 'web', pid: 11 };
+    const desktop: DiagHost = { profile: 'desktop', deployment: 'desktop', pid: 22 };
+    const recorder = createDiagRecorder({
+      clock: () => 1_010,
+      nextCorrId: () => 'c-1',
+      level: 'info',
+      host: web,
+    });
+    recorder.record({ code: 'READ_FAILED' });
+    const disk = {
+      records: [
+        recordOf({ ts: 5, host: web }),
+        recordOf({ ts: 6, code: 'CONFIG_CORRUPT', class: 'user', area: 'settings', host: desktop }),
+        recordOf({ ts: 7 }),
+      ],
+      skipped: 0,
+      read: 3,
+    };
+    const handler = diagRecordsHandler({
+      recorder,
+      host: web,
+      dirOf: () => '/profiles/web',
+      clock: () => Date.parse('2026-11-21T10:00:00.000Z'),
+      readDisk: () => disk,
+    });
+
+    const current = handler(searchOf({ source: 'disk' })) as Record<string, unknown>;
+    expect((current['records'] as DiagRecord[]).map((one) => one.ts)).toEqual([5]);
+    expect(current['hosts']).toEqual(['desktop', 'unknown', 'web']);
+    expect(current['host']).toMatchObject({ profile: 'web', profileDir: '/profiles/web', deployment: 'web', pid: 11 });
+
+    const byDesktop = handler(searchOf({ source: 'disk', host: 'desktop' })) as { records: DiagRecord[] };
+    const byUnknown = handler(searchOf({ source: 'disk', host: 'unknown' })) as { records: DiagRecord[] };
+    const byAll = handler(searchOf({ source: 'disk', host: '*' })) as { records: DiagRecord[] };
+    expect(byDesktop.records).toHaveLength(1);
+    expect(byUnknown.records).toHaveLength(1);
+    expect(byAll.records).toHaveLength(3);
+  });
+
+  it('★ source=memory 只接受当前宿主；* 与其他宿主明确报错', () => {
+    const web: DiagHost = { profile: 'web', deployment: 'web', pid: 11 };
+    const recorder = createDiagRecorder({ clock: () => 1_010, nextCorrId: () => 'c-1', level: 'info', host: web });
+    recorder.record({ code: 'READ_FAILED' });
+    const handler = diagRecordsHandler({ recorder, host: web });
+
+    for (const host of ['desktop', '*']) {
+      const result = handler(searchOf({ host })) as Record<string, unknown>;
+      expect(result['ok'], host).toBe(false);
+      expect((result['error'] as { code: string }).code, host).toBe('bad-request');
+    }
+    expect(recorder.recent({ code: 'DIAG_BAD_PARAM' })).toHaveLength(2);
+    const current = handler(searchOf({ host: 'web' })) as { records: DiagRecord[] };
+    expect(current.records.filter((one) => one.code === 'READ_FAILED')).toHaveLength(1);
   });
 
   it('★ source=disk 与内存同形；没接落盘时给出明确错误而不是空表', () => {

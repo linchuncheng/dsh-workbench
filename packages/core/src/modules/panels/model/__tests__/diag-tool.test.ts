@@ -1,14 +1,27 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { DshHostContext, DshToolDefinition, DshToolRegistry } from '@dsh-workbench/shared/host';
 import { UNITS_SERVICE } from '@dsh-workbench/shared/host';
 import { diagHistoryOf, DIAG_HISTORY_LIMIT, registerDiagTools } from '../diag-tool';
-import type { DiagReadResult, DiagRecord } from '@dsh-workbench/shared/host';
+import type { DiagHost, DiagReadResult, DiagRecord } from '@dsh-workbench/shared/host';
 
 function recordOf(ts: number, code = 'MODULE_UNREADABLE', corrId = `c-${String(ts)}`): DiagRecord {
   return { ts, level: 'warn', code, class: 'user', area: 'market', corrId } as DiagRecord;
+}
+
+const DESKTOP: DiagHost = { profile: 'desktop', deployment: 'desktop', pid: 999 };
+
+function withHost(record: DiagRecord, host: DiagHost): DiagRecord {
+  return { ...record, host };
+}
+
+function writeShard(root: string, records: readonly DiagRecord[]): void {
+  const day = new Date().toISOString().slice(0, 10);
+  const dir = join(root, 'diagnostics', 'records');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `record-${day}-999-desktop.jsonl`), `${records.map((one) => JSON.stringify(one)).join('\n')}\n`);
 }
 
 describe('诊断工具：常驻且只读', () => {
@@ -32,6 +45,48 @@ describe('诊断工具：常驻且只读', () => {
     };
     expect(diagHistoryOf([], many)?.records).toHaveLength(DIAG_HISTORY_LIMIT);
     expect(diagHistoryOf([], undefined)).toBeUndefined();
+    const desktopDisk: DiagReadResult = {
+      records: [withHost(recordOf(1), DESKTOP), withHost(recordOf(2), DESKTOP)],
+      read: 2,
+      skipped: 0,
+    };
+    expect(diagHistoryOf([], desktopDisk, DIAG_HISTORY_LIMIT, 'desktop')?.records).toHaveLength(2);
+    expect(diagHistoryOf([], desktopDisk, DIAG_HISTORY_LIMIT, 'web')?.records).toHaveLength(0);
+    expect(diagHistoryOf([], desktopDisk, DIAG_HISTORY_LIMIT, '*')?.records).toHaveLength(2);
+  });
+
+  it('★ 默认当前工作台；host 指定另一份或 * 可读，others 报出别的来源', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wb-diag-host-'));
+    writeShard(root, [withHost(recordOf(1), DESKTOP), withHost(recordOf(2), DESKTOP)]);
+    const registered: DshToolDefinition[] = [];
+    const tools = {
+      register: (tool: DshToolDefinition) => {
+        registered.push(tool);
+        return () => undefined;
+      },
+    } as unknown as DshToolRegistry;
+    const ctx = { get: (name: string) => (name === 'tools' ? tools : undefined) } as unknown as DshHostContext;
+    vi.stubEnv('DSH_WORKBENCH_HOME', root);
+    registerDiagTools(ctx);
+
+    const current = (await registered[0]?.execute({}, {} as never)) as Record<string, unknown>;
+    expect(current['view']).toBe('current');
+    expect(current['hosts']).toEqual(['desktop', 'unknown']);
+    expect(current['others']).toEqual([{ host: 'desktop', count: 2, lastAt: 2 }]);
+    expect((current['history'] as { records: unknown[] }).records).toHaveLength(0);
+
+    const other = (await registered[0]?.execute({ host: 'desktop' }, {} as never)) as Record<string, unknown>;
+    expect(other['view']).toBe('other');
+    expect(other['records']).toBeUndefined();
+    expect((other['history'] as { records: unknown[] }).records).toHaveLength(2);
+
+    const all = (await registered[0]?.execute({ host: '*' }, {} as never)) as Record<string, unknown>;
+    expect(all['view']).toBe('all');
+    expect(all['countsByHost']).toEqual([{ host: 'desktop', count: 2, lastAt: 2 }]);
+    expect((all['history'] as { records: unknown[] }).records).toHaveLength(2);
+
+    vi.stubEnv('DSH_WORKBENCH_HOME', '');
+    rmSync(root, { recursive: true, force: true });
   });
 
   it('★ 注册出 workbench_diag，执行两次结果一致（不写记录）', async () => {
@@ -99,6 +154,24 @@ describe('诊断工具：带上启动检查快照', () => {
       { id: 'diy', status: 'warn', detail: 'tool-schedule: never started' },
     ]);
     expect(JSON.stringify(preflight)).not.toContain('opencli --version');
+  });
+
+  it('★ 快照里的来源不是当前工作台时标出来，不冒充当前', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wb-diag-preflight-host-'));
+    writeFileSync(
+      join(root, 'preflight.json'),
+      JSON.stringify({
+        phase: 'ready',
+        at: 5,
+        steps: [],
+        hostFacts: { profileDir: '/Users/me/.dsh/profiles/desktop' },
+      }),
+    );
+    const result = await executeWith(root);
+    vi.stubEnv('DSH_WORKBENCH_HOME', '');
+    rmSync(root, { recursive: true, force: true });
+
+    expect(result['preflight']).toMatchObject({ from: 'desktop', at: 5 });
   });
 
   it('★ 返回值能原样过一遍 JSON：没有 undefined 属性（线上工具面按这个判据收结果）', async () => {

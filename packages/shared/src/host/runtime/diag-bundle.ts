@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { basename } from 'node:path';
 import { writeTextFile } from './fs-write.js';
-import type { DiagRecord } from './diag-records.js';
+import type { DiagHost, DiagRecord } from './diag-records.js';
 
-export const DIAG_BUNDLE_SCHEMA = 1;
+export const DIAG_BUNDLE_SCHEMA = 2;
 export const DIAG_BUNDLE_MAX_BYTES = 8 * 1024 * 1024;
 const SECRET_KEY = /token|secret|password|passwd|auth|api[-_]?key|credential/i;
 const ABSOLUTE = /(^|["'\s])((?:\/|[A-Za-z]:\\)[^"'\s]*)/g;
@@ -16,6 +16,7 @@ export interface DiagBundleInput {
   readonly runtime: Readonly<Record<string, unknown>>;
   readonly records: readonly DiagRecord[];
   readonly checks: Readonly<Record<string, unknown>>;
+  readonly host?: DiagHost | undefined;
   readonly maxBytes?: number | undefined;
 }
 
@@ -87,6 +88,7 @@ export function buildDiagBundle(input: DiagBundleInput): DiagBundle {
     bytes: sizeOf(files),
     truncated,
     files: Object.keys({ ...files, 'manifest.json': '' }).sort(),
+    ...(input.host === undefined ? {} : { host: input.host }),
   };
   return {
     files: { ...files, 'manifest.json': JSON.stringify(manifest, null, 2) },

@@ -43,6 +43,34 @@ describe('导出诊断目录的动作', () => {
     fs.rmSync(profileDir, { recursive: true, force: true });
   });
 
+  it('★ 包里写明当前工作台；preflight 不是它写的就标来源与时间', async () => {
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-profile-parent-'));
+    const profileDir = path.join(parent, 'profiles', 'web');
+    fs.mkdirSync(profileDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'preflight.json'),
+      JSON.stringify({
+        phase: 'ready',
+        at: 7,
+        steps: [],
+        hostFacts: { profileDir: path.join(parent, 'profiles', 'desktop') },
+      }),
+      'utf8',
+    );
+    const ctxWithProfile = {
+      get: (name: string) => (name === 'profileContext' ? { dir: profileDir } : undefined),
+    } as unknown as DshHostContext;
+
+    const result = (await diagExportAction(ctxWithProfile).handle({})) as { ok: boolean; dir: string };
+    const env = JSON.parse(fs.readFileSync(path.join(result.dir, 'env.json'), 'utf8')) as Record<string, unknown>;
+    const runtime = JSON.parse(fs.readFileSync(path.join(result.dir, 'runtime.json'), 'utf8')) as Record<string, unknown>;
+
+    expect(env['host']).toMatchObject({ profile: 'web', deployment: 'web' });
+    expect(runtime['preflightFrom']).toBe('desktop');
+    expect(runtime['preflightAt']).toBe(7);
+    fs.rmSync(parent, { recursive: true, force: true });
+  });
+
   it('★ 有自更新日志时把尾巴带上', async () => {
     fs.writeFileSync(path.join(root, 'self-update.log'), 'update failed: boom\n', 'utf8');
     const result = (await diagExportAction(ctx).handle({})) as { ok: boolean; dir: string };

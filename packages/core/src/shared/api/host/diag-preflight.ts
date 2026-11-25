@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { PreflightSnapshot } from '@dsh-workbench/shared/host';
 
 export const PREFLIGHT_SNAPSHOT_FILE = 'preflight.json';
@@ -22,8 +22,24 @@ export interface PreflightEvidenceStep {
   readonly command?: string;
 }
 
+export interface PreflightHost {
+  readonly profile: string;
+  readonly at: number | null;
+}
+
+export function preflightHostOf(snapshot: unknown): PreflightHost | null {
+  if (typeof snapshot !== 'object' || snapshot === null) return null;
+  const raw = snapshot as Partial<PreflightSnapshot>;
+  const dir = raw.hostFacts?.profileDir;
+  const profile = typeof dir === 'string' && dir.trim() !== '' ? basename(dir.trim()) : 'unknown';
+  const at = typeof raw.at === 'number' && Number.isFinite(raw.at) ? raw.at : null;
+  return { profile, at };
+}
+
 export interface PreflightEvidence {
   readonly phase: string;
+  readonly from?: string;
+  readonly at?: number;
   readonly failure?: string;
   readonly guidance?: string;
   readonly error?: string;
@@ -55,8 +71,11 @@ export function preflightEvidenceOf(snapshot: unknown, root: string): PreflightE
   const raw = snapshot as Partial<PreflightSnapshot>;
   const phase = textOf(raw.phase);
   if (phase === undefined) return null;
+  const host = preflightHostOf(snapshot);
   const full: PreflightEvidence = {
     phase,
+    from: host?.profile ?? 'unknown',
+    ...(host?.at === null || host?.at === undefined ? {} : { at: host.at }),
     failure: textOf(raw.failure),
     guidance: textOf(raw.guidance),
     error: textOf(raw.error),

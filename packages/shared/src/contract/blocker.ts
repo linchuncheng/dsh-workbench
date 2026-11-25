@@ -168,10 +168,17 @@ export interface DiagFilter {
   readonly area?: DiagArea;
   readonly class?: DiagClass;
   readonly code?: string;
+  readonly host?: string;
 }
 
 export function diagMatches(
-  record: { readonly ts: number; readonly area: DiagArea; readonly class: DiagClass; readonly code: string },
+  record: {
+    readonly ts: number;
+    readonly area: DiagArea;
+    readonly class: DiagClass;
+    readonly code: string;
+    readonly host?: { readonly profile?: string } | undefined;
+  },
   filter: DiagFilter,
 ): boolean {
   return (
@@ -179,7 +186,8 @@ export function diagMatches(
     (filter.until === undefined || record.ts <= filter.until) &&
     (filter.area === undefined || record.area === filter.area) &&
     (filter.class === undefined || record.class === filter.class) &&
-    (filter.code === undefined || record.code === filter.code)
+    (filter.code === undefined || record.code === filter.code) &&
+    (filter.host === undefined || filter.host === '*' || (record.host?.profile ?? 'unknown') === filter.host)
   );
 }
 

@@ -1,4 +1,4 @@
-import { buildDiagBundle, writeDiagBundle, type DiagRecord, type DiagRecorder } from '@dsh-workbench/shared/host';
+import { buildDiagBundle, writeDiagBundle, type DiagHost, type DiagRecord, type DiagRecorder } from '@dsh-workbench/shared/host';
 
 export interface DiagExportInput {
   readonly recorder: DiagRecorder;
@@ -8,6 +8,7 @@ export interface DiagExportInput {
   readonly config: Readonly<Record<string, unknown>>;
   readonly runtime: Readonly<Record<string, unknown>>;
   readonly checks: Readonly<Record<string, unknown>>;
+  readonly host?: DiagHost | undefined;
 }
 
 export type DiagExportResult =
@@ -23,6 +24,7 @@ export function exportDiagBundle(input: DiagExportInput): DiagExportResult {
     runtime: input.runtime,
     records,
     checks: input.checks,
+    ...(input.host === undefined ? {} : { host: input.host }),
   });
   try {
     const dir = writeDiagBundle(input.root, input.at, bundle);

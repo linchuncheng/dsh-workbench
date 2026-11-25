@@ -8,7 +8,7 @@ import { bootOkAction } from '@/shared/api/host/boot-ok';
 import { provideGitProcessSeam } from '@/shared/api/host/git-process';
 import { browserExtensionDir, shippedAdapterSet } from '@/shared/api/host/shipped-adapter-set';
 import { createHostRoutes } from '@/shared/api/host/host-routes';
-import { diagRoutesOf } from '@/shared/api/host/diag-routes';
+import { diagHostOf, diagRoutesOf } from '@/shared/api/host/diag-routes';
 import { assembleHostUnits } from '@/app/units/host';
 import { createPostChannels } from '@/shared/api/host/post-channels';
 import { takeHeldNotices, type AgentsLookup } from '@/shared/api/host/diy-debug-act';
@@ -92,7 +92,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     runtimes: runtimeHealth,
     running: runningVersionOf(import.meta.url),
     profile: adapters.profile,
-    diag: diagRoutesOf(workbenchRoot()),
+    diag: diagRoutesOf(workbenchRoot(), diagHostOf(ctx)),
   });
   const baseHealth = routes.health;
   const adapterFailure = loaded.ok || loaded.failure === 'not-configured' ? null : loaded.failure;
@@ -177,7 +177,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     released: releasedOf,
     probe: (options) => adapters.probe.probeUnits(options),
   });
-  const store = createWorkspaceStore({ logger: ctx.logger, diag: diagRoutesOf(workbenchRoot()).recorder });
+  const store = createWorkspaceStore({ logger: ctx.logger, diag: diagRoutesOf(workbenchRoot(), diagHostOf(ctx)).recorder });
   const drafts = createDraftStore();
   ctx.effect(
     () => () => drafts.dispose(),
@@ -387,7 +387,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
       ...(runtimeCheck === undefined ? {} : { runtimeCheck: () => runtimeCheck(ctx) }),
       ...(runtimeProfile === null ? {} : { runtimeLabel: runtimeProfile.label }),
       warmReads: () => [...mounted.values()].flatMap((item) => item.plan.warmReads()),
-      diag: diagRoutesOf(workbenchRoot()).recorder,
+      diag: diagRoutesOf(workbenchRoot(), diagHostOf(ctx)).recorder,
     });
     routes.capability = capabilityHandler(async (unit, force) => {
       if (unit === undefined) {
