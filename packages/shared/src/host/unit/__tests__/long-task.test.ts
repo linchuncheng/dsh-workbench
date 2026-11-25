@@ -859,3 +859,61 @@ describe('longTaskRowBase（外壳先铺这一层，view 只覆盖不遗漏）',
     expect(row.steps).toEqual(['开始']);
   });
 });
+
+describe('history 按 stepId 归并（同一步的进行中与结果只留一行）', () => {
+  it('★★ 同一 stepId 覆盖成一行：位置不动，kind / 文本 / attempt / links 取最新', async () => {
+    const h = harness();
+    const runs = createLongTaskRegistry(h.deps);
+    runs.start({ workspace: '/w/a', target: 'release' });
+    h.step({ kind: 'start', text: '检查合并状态...', stepId: 'merge', attempt: 1 });
+    h.step({ kind: 'start', text: '仍在检查', stepId: 'merge', attempt: 2 });
+    h.step({
+      kind: 'succeed',
+      text: '源分支已合并到目标分支',
+      stepId: 'merge',
+      attempt: 2,
+      links: [{ href: 'https://example.test/x', text: '打开' }],
+    });
+    await flush();
+    const [row] = runs.current('/w/a');
+    expect(row?.['history']).toEqual([
+      {
+        kind: 'succeed',
+        text: '源分支已合并到目标分支',
+        stepId: 'merge',
+        attempt: 2,
+        links: [{ href: 'https://example.test/x', text: '打开' }],
+      },
+    ]);
+    expect(row?.['steps']).toEqual(['源分支已合并到目标分支']);
+  });
+
+  it('★★ 不带 stepId 的照旧逐条追加（旧模块一个字段都不多）', async () => {
+    const h = harness();
+    const runs = createLongTaskRegistry(h.deps);
+    runs.start({ workspace: '/w/a', target: 'release' });
+    h.step({ kind: 'start', text: '开始' });
+    h.step({ kind: 'succeed', text: '完成' });
+    await flush();
+    const [row] = runs.current('/w/a');
+    expect(row?.['history']).toEqual([
+      { kind: 'start', text: '开始' },
+      { kind: 'succeed', text: '完成' },
+    ]);
+  });
+
+  it('★★ 不同 stepId 各起一行，顺序按第一次出现', async () => {
+    const h = harness();
+    const runs = createLongTaskRegistry(h.deps);
+    runs.start({ workspace: '/w/a', target: 'release' });
+    h.step({ kind: 'start', text: 'A 开始', stepId: 'a' });
+    h.step({ kind: 'start', text: 'B 开始', stepId: 'b' });
+    h.step({ kind: 'succeed', text: 'A 完成', stepId: 'a' });
+    await flush();
+    const [row] = runs.current('/w/a');
+    expect((row?.['history'] as readonly { text: string }[]).map((one) => one.text)).toEqual([
+      'A 完成',
+      'B 开始',
+    ]);
+  });
+});

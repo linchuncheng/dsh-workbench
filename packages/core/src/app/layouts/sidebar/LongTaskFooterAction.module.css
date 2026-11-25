@@ -2,8 +2,13 @@
   display: inline-flex;
 }
 
-.entry,
-.entryWide {
+.anchorWide {
+  display: flex;
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+.entry {
   display: inline-flex;
   align-items: center;
   gap: var(--wb-len-6);
@@ -16,6 +21,26 @@
   cursor: pointer;
 }
 
+.entryWide {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--wb-len-36);
+  margin: 0 var(--wb-len-2);
+  padding: var(--wb-len-7) var(--wb-len-8);
+  border: 0;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  gap: var(--wb-len-4);
+  font-size: var(--dsw-font-xs-13-font-size);
+  line-height: var(--wb-line-18);
+  cursor: pointer;
+}
+
 .entry:hover,
 .entry:focus-visible,
 .entryWide:hover,
@@ -24,18 +49,13 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.entryWide {
-  flex: 0 0 100%;
-  justify-content: flex-start;
-}
-
 .dot {
   display: inline-flex;
   align-items: center;
 }
 
 .label {
-  font-size: var(--dsw-font-xxs-12-font-size);
+  font-size: var(--dsw-font-xs-13-font-size);
   line-height: var(--wb-line-18);
   white-space: nowrap;
 }
@@ -60,11 +80,55 @@
 }
 
 .group + .group {
-  margin-top: var(--wb-len-12);
+  margin-top: var(--wb-len-10);
+  padding-top: var(--wb-len-6);
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 .groupTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-len-6);
   margin-bottom: var(--wb-len-2);
+  font-size: var(--dsw-font-xxs-12-font-size);
+  line-height: var(--wb-line-18);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.groupIcon {
+  display: inline-flex;
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.groupName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupCount {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--dsw-font-xxxs-11-font-size);
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.units {
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--wb-len-4);
+  padding-left: var(--wb-len-10);
+  border-left: 1px solid var(--dsw-alias-border-l2);
+}
+
+.unit + .unit {
+  margin-top: var(--wb-len-6);
+}
+
+.unitTitle {
+  margin-bottom: 0;
   font-size: var(--dsw-font-xxxs-11-font-size);
   line-height: var(--wb-line-16);
   color: var(--dsw-alias-label-tertiary);

@@ -16,6 +16,18 @@ function isLiveStatus(status: LongTaskStatus): boolean {
 
 const RECENT_MS = 10 * 60 * 1000;
 
+function mergeStepRow(
+  rows: readonly LongTaskStepRow[],
+  row: LongTaskStepRow,
+): LongTaskStepRow[] {
+  if (row.stepId === undefined) return [...rows, row].slice(-LONG_TASK_HISTORY_MAX);
+  const at = rows.findIndex((one) => one.stepId === row.stepId);
+  if (at === -1) return [...rows, row].slice(-LONG_TASK_HISTORY_MAX);
+  const next = [...rows];
+  next[at] = row;
+  return next;
+}
+
 export interface LongTaskBase {
   readonly id: string;
   readonly workspace: string;
@@ -224,22 +236,28 @@ export function createLongTaskRegistry<S extends LongTaskBase>(deps: LongTaskDep
       const onStep = (step: LongTaskStep): void => {
         const current = live(id);
         if (current === null) return;
-        const line = `${step.kind === 'fail' ? '✗ ' : ''}${step.text}`;
         const repeated =
           current.step === step.text &&
           step.intervention !== undefined &&
           current.intervention?.title === step.intervention.title;
-        const steps = repeated ? current.steps : [...current.steps, line].slice(-LONG_TASK_HISTORY_MAX);
         const historyRow: LongTaskStepRow = {
           kind: step.kind,
           text: step.text,
-          ...(step.links === undefined
-            ? {}
-            : { links: step.links.slice(0, LONG_TASK_LINK_MAX) }),
+          ...pickDefined(
+            {
+              stepId: step.stepId,
+              attempt: step.attempt,
+              links: step.links?.slice(0, LONG_TASK_LINK_MAX),
+            },
+            ['stepId', 'attempt', 'links'],
+          ),
         };
         const history = repeated
           ? current.history ?? []
-          : [...(current.history ?? []), historyRow].slice(-LONG_TASK_HISTORY_MAX);
+          : mergeStepRow(current.history ?? [], historyRow);
+        const steps = history.map(
+          (row) => `${row.kind === 'fail' ? '✗ ' : ''}${row.text}`,
+        );
         const extra = bound.step?.(step, current) ?? {};
         if (step.intervention !== undefined) {
           patch(

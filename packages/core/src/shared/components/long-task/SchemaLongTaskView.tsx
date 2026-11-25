@@ -79,6 +79,7 @@ export interface SchemaLongTaskViewProps {
   readonly onOpenUrl: (url: string) => void;
   readonly onCopy: (text: string) => void;
   readonly copied?: string | null | undefined;
+  readonly dense?: boolean | undefined;
 }
 
 function interventionOf(
@@ -162,6 +163,7 @@ export function SchemaLongTaskView({
   onOpenUrl,
   onCopy,
   copied,
+  dense,
 }: SchemaLongTaskViewProps) {
   const byId =
     overrides === undefined ? undefined : new Map(overrides.map((override) => [override.id, override]));
@@ -174,7 +176,8 @@ export function SchemaLongTaskView({
     null,
     ...shown.map((row) => {
       const override = byId?.get(row.id);
-      const headline = override?.headline ?? row.headline ?? row.target;
+      const stepText = row.step ?? '';
+      const headline = override?.headline ?? row.headline ?? (stepText === '' ? row.target : stepText);
       const loginUrl = row.loginUrl;
       const login =
         row.status === 'needs-login' && loginUrl !== undefined
@@ -217,6 +220,7 @@ export function SchemaLongTaskView({
         meta: metaOf(row, t, now),
         ...(dot === undefined ? {} : { dot }),
         dotLabel: t(STATE_KEYS[row.status]),
+        attemptLabel: (attempt: number) => t('longTask.attempt', { attempt }),
         ...(row.status === 'failed' && row.why !== undefined ? { problem: row.why } : {}),
         ...(links === undefined ? {} : { links }),
         stepsTitle: t('longTask.steps'),
@@ -225,6 +229,7 @@ export function SchemaLongTaskView({
         ...(login === undefined ? {} : { login }),
         ...(intervention === undefined ? {} : { intervention }),
         ...(stop === undefined ? {} : { stop }),
+        ...(dense === true ? { dense: true } : {}),
       });
     }),
   );

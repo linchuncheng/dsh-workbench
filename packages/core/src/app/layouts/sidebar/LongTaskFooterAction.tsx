@@ -1,11 +1,12 @@
 import { createElement as h, useState } from 'react';
 import type { ShellLongTaskRow, Translate } from '@dsh-workbench/shared';
-import { answerRouteOf, recheckRouteOf, stopRouteOf } from '@dsh-workbench/shared';
-import { Menu, StateDot } from '@deepseek-ai/dsh-client-ui-primitives';
+import { answerRouteOf, pathBase, recheckRouteOf, stopRouteOf } from '@dsh-workbench/shared';
+import { IconFolderCloseRegular, Menu, StateDot } from '@deepseek-ai/dsh-client-ui-primitives';
 import { postWrite } from '@/shared/hooks/use-host-write';
 import { useExternalActions } from '@/shared/hooks/use-external-actions';
 import { useShellLongTasks } from '@/shared/hooks/use-shell-long-tasks';
 import { SchemaLongTaskView } from '@/shared/components/long-task/SchemaLongTaskView';
+import type { SchemaLongTaskViewProps } from '@/shared/components/long-task/SchemaLongTaskView';
 import styles from './LongTaskFooterAction.module.css';
 
 export interface LongTaskFooterActionProps {
@@ -52,12 +53,22 @@ export function LongTaskFooterAction({ wide, t }: LongTaskFooterActionProps) {
   if (rows.length === 0) return null;
 
   const waiting = rows.some((row) => row.status === 'needs-human' || row.status === 'needs-login');
-  const byUnit = new Map<string, ShellLongTaskRow[]>();
+  const byWorkspace = new Map<string, Map<string, ShellLongTaskRow[]>>();
   for (const row of rows) {
-    const list = byUnit.get(row.unit);
-    if (list === undefined) byUnit.set(row.unit, [row]);
-    else list.push(row);
+    const units = byWorkspace.get(row.workspace) ?? new Map<string, ShellLongTaskRow[]>();
+    const list = units.get(row.unit) ?? [];
+    list.push(row);
+    units.set(row.unit, list);
+    byWorkspace.set(row.workspace, units);
   }
+  const groups = [...byWorkspace].sort(([a], [b]) => a.localeCompare(b));
+  const orderOf = (status: ShellLongTaskRow['status']): number =>
+    status === 'needs-human' || status === 'needs-login' ? 0 : status === 'running' ? 1 : 2;
+  const orderedRows = (list: readonly ShellLongTaskRow[]): ShellLongTaskRow[] =>
+    [...list].sort((a, b) => {
+      const byStatus = orderOf(a.status) - orderOf(b.status);
+      return byStatus !== 0 ? byStatus : (b.startedAt ?? '').localeCompare(a.startedAt ?? '');
+    });
 
   const run = async (kind: DoneKind, row: ShellLongTaskRow, body: Record<string, unknown>): Promise<void> => {
     setBusy({ kind, id: row.id });
@@ -90,6 +101,42 @@ export function LongTaskFooterAction({ wide, t }: LongTaskFooterActionProps) {
     wide === true ? h('span', { className: styles.label }, t('longTask.list.entry', { n: rows.length })) : null,
   );
 
+  const wiringOf = (
+    row: ShellLongTaskRow,
+  ): Pick<
+    SchemaLongTaskViewProps,
+    'stopping' | 'stopFailed' | 'rechecking' | 'recheckFailed' | 'answering' | 'answerFailed'
+  > => ({
+    stopping: busyIdOf('stop', row.id),
+    stopFailed: failedTextOf(failed, 'stop', row.id),
+    rechecking: busyIdOf('recheck', row.id),
+    recheckFailed: failedTextOf(failed, 'recheck', row.id),
+    answering: busyIdOf('answer', row.id),
+    answerFailed: failedTextOf(failed, 'answer', row.id),
+  });
+
+  const rowOf = (row: ShellLongTaskRow): JSX.Element =>
+    h(SchemaLongTaskView, {
+      key: row.id,
+      rows: [row],
+      ...wiringOf(row),
+      t,
+      onStop: (id: string) => {
+        void run('stop', row, { id });
+      },
+      onRecheck: (id: string) => {
+        void run('recheck', row, { id });
+      },
+      onAnswer: (id: string, values: Readonly<Record<string, string>>) => {
+        void run('answer', row, { id, values });
+      },
+      onLogin: openSafe,
+      onOpenUrl: openSafe,
+      onCopy: external.copy,
+      copied: external.copied,
+      dense: true,
+    });
+
   return h(
     Menu,
     {
@@ -97,7 +144,7 @@ export function LongTaskFooterAction({ wide, t }: LongTaskFooterActionProps) {
       onClose: () => setOpen(false),
       portal: true,
       autoFocus: true,
-      className: styles.anchor,
+      className: wide === true ? styles.anchorWide : styles.anchor,
       listClassName: styles.menu,
       anchor: entry,
     },
@@ -105,36 +152,34 @@ export function LongTaskFooterAction({ wide, t }: LongTaskFooterActionProps) {
     h(
       'div',
       { className: styles.list },
-      ...[...byUnit].map(([unit, unitRows]) =>
+      ...groups.map(([workspace, units]) =>
         h(
           'section',
-          { key: unit, className: styles.group },
-          h('div', { className: styles.groupTitle }, unit),
-          ...unitRows.map((row) =>
-            h(SchemaLongTaskView, {
-              key: row.id,
-              rows: [row],
-              stopping: busyIdOf('stop', row.id),
-              stopFailed: failedTextOf(failed, 'stop', row.id),
-              rechecking: busyIdOf('recheck', row.id),
-              recheckFailed: failedTextOf(failed, 'recheck', row.id),
-              answering: busyIdOf('answer', row.id),
-              answerFailed: failedTextOf(failed, 'answer', row.id),
-              t,
-              onStop: (id: string) => {
-                void run('stop', row, { id });
-              },
-              onRecheck: (id: string) => {
-                void run('recheck', row, { id });
-              },
-              onAnswer: (id: string, values: Readonly<Record<string, string>>) => {
-                void run('answer', row, { id, values });
-              },
-              onLogin: openSafe,
-              onOpenUrl: openSafe,
-              onCopy: external.copy,
-              copied: external.copied,
-            }),
+          { key: workspace, className: styles.group },
+          h(
+            'div',
+            { className: styles.groupTitle, title: workspace },
+            h('span', { className: styles.groupIcon }, h(IconFolderCloseRegular, { size: 14 })),
+            h('span', { className: styles.groupName }, pathBase(workspace) || workspace),
+            h(
+              'span',
+              { className: styles.groupCount },
+              t('longTask.list.count', {
+                n: [...units.values()].reduce((sum, list) => sum + list.length, 0),
+              }),
+            ),
+          ),
+          h(
+            'div',
+            { className: styles.units },
+            ...[...units].map(([unit, unitRows]) =>
+              h(
+                'div',
+                { key: unit, className: styles.unit },
+                h('div', { className: styles.unitTitle }, unit),
+                ...orderedRows(unitRows).map((row) => rowOf(row)),
+              ),
+            ),
           ),
         ),
       ),

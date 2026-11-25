@@ -17,7 +17,6 @@ import {
   CodeBlock,
   DisclosureRow,
   IconCodeOutlineRegular,
-  IconFlatListOutlineRegular,
   IconStopFillRegular,
   StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives';
@@ -96,6 +95,8 @@ export interface LongTaskRowProps {
   readonly meta?: string | undefined;
   readonly dot?: 'done' | 'ongoing' | 'error' | 'idle' | 'warning' | undefined;
   readonly dotLabel?: string | undefined;
+  readonly attemptLabel?: ((attempt: number) => string) | undefined;
+  readonly dense?: boolean | undefined;
   readonly problem?: string | undefined;
   readonly links?: readonly LongTaskRowLink[] | undefined;
   readonly steps?: readonly string[] | undefined;
@@ -130,19 +131,47 @@ const STEP_DOT: Readonly<
 
 const HTTP_PATTERN = /^https?:\/\//i;
 
-function StepRow({ row }: { readonly row: LongTaskStepRow }) {
+function StepRow({
+  row,
+  live,
+  last,
+  attemptLabel,
+}: {
+  readonly row: LongTaskStepRow;
+  readonly live: boolean;
+  readonly last: boolean;
+  readonly attemptLabel?: ((attempt: number) => string) | undefined;
+}) {
   const links = (row.links ?? [])
     .filter((link) => HTTP_PATTERN.test(link.href))
     .slice(0, LONG_TASK_LINK_MAX);
-  return (
-    <li className="wb-longTaskStepRow" data-kind={row.kind}>
-      <StateDot state={STEP_DOT[row.kind]} size={8} />
+  const state = row.kind === 'start' ? (live && last ? 'ongoing' : 'idle') : STEP_DOT[row.kind];
+  const attempt =
+    row.attempt !== undefined && row.attempt > 1 && attemptLabel !== undefined
+      ? attemptLabel(row.attempt)
+      : undefined;
+  const content = (
+    <Fragment>
       <span className="wb-longTaskStepText">{row.text}</span>
       {links.map((link) => (
         <Link className="wb-longTaskStepLink" href={link.href} key={`${link.href}@${link.text}`}>
           {link.text}
         </Link>
       ))}
+      {attempt === undefined ? null : <span className="wb-longTaskStepAttempt">{attempt}</span>}
+    </Fragment>
+  );
+  if (row.kind === 'info') {
+    return (
+      <li className="wb-longTaskStepRow wb-longTaskStepDetail" data-kind="info">
+        {content}
+      </li>
+    );
+  }
+  return (
+    <li className="wb-longTaskStepRow" data-kind={row.kind}>
+      <StateDot state={state} size={8} />
+      {content}
     </li>
   );
 }
@@ -332,59 +361,74 @@ export function LongTaskRow(props: LongTaskRowProps) {
     if (failed) setStepsOpen(true);
   }, [failed]);
 
+  const expandable = props.stepsTitle !== undefined && (history.length > 0 || steps.length > 0);
+  const stepShown = step !== '' && !props.headline.includes(step);
+  const dotNode =
+    props.dotLabel === undefined ? (
+      <StateDot state={dot} size={10} />
+    ) : (
+      <span role="img" aria-label={props.dotLabel}>
+        <StateDot state={dot} size={10} />
+      </span>
+    );
+
   return (
-    <div className="wb-longTask">
-      <p className="wb-longTaskHead">
-        {props.dotLabel === undefined ? (
-          <StateDot state={dot} size={10} />
-        ) : (
-          <span role="img" aria-label={props.dotLabel}>
-            <StateDot state={dot} size={10} />
+    <div className={props.dense === true ? 'wb-longTask wb-longTaskDense' : 'wb-longTask'}>
+      <DisclosureRow
+        icon={dotNode}
+        title={props.headline}
+        open={expandable && stepsOpen}
+        expandable={expandable}
+        expandOnRowClick
+        previewChevron
+        titleClassName="wb-longTaskHeadline"
+        onToggle={() => setStepsOpen((value) => !value)}
+        headerAccessory={
+          <span className="wb-longTaskHeadEnd">
+            {(props.links ?? []).map((link) => (
+              <RowLink href={link.href} key={`${link.text}@${link.href}`} text={link.text} />
+            ))}
+            {props.login === undefined ? null : (
+              <Button type="button" size="sm" variant="outline" onClick={props.login.onOpen}>
+                {props.login.label}
+              </Button>
+            )}
+            {meta === '' ? null : <span className="wb-longTaskMeta">{meta}</span>}
+            {stop === undefined ? null : (
+              <StopControl stop={stop} onFired={() => setStopFired(true)} />
+            )}
           </span>
+        }
+      >
+        {stepShown ? <p className="wb-longTaskStep">{step}</p> : null}
+        {history.length === 0 ? (
+          <CodeBlock
+            code={steps.join('\n')}
+            className="wb-longTaskDump"
+            showHeader={props.copyLabel !== undefined}
+            copyLabel={props.copyLabel ?? ''}
+            copiedLabel={props.copiedLabel ?? ''}
+          />
+        ) : (
+          <ul className="wb-longTaskSteps">
+            {history.map((row, index) => (
+              <StepRow
+                key={`${String(index)}:${row.text}`}
+                row={row}
+                live={live}
+                last={index === history.length - 1}
+                {...(props.attemptLabel === undefined ? {} : { attemptLabel: props.attemptLabel })}
+              />
+            ))}
+          </ul>
         )}
-        <span className="wb-longTaskHeadline">{props.headline}</span>
-        {(props.links ?? []).map((link) => (
-          <RowLink href={link.href} key={`${link.text}@${link.href}`} text={link.text} />
-        ))}
-        {props.login === undefined ? null : (
-          <Button type="button" size="sm" variant="outline" onClick={props.login.onOpen}>
-            {props.login.label}
-          </Button>
-        )}
-        {stop === undefined ? null : <StopControl stop={stop} onFired={() => setStopFired(true)} />}
-      </p>
-      {step === '' ? null : <p className="wb-longTaskStep">{step}</p>}
-      {meta === '' ? null : <p className="wb-longTaskMeta">{meta}</p>}
+      </DisclosureRow>
       {stopPending === '' ? null : <p className="wb-longTaskStopPending">{stopPending}</p>}
       {props.intervention === undefined ? null : (
         <InterventionNeed intervention={props.intervention} />
       )}
       {problem === '' ? null : <p className="wb-longTaskProblem">{problem}</p>}
       {stopWhy === '' ? null : <p className="wb-longTaskStopWhy">{stopWhy}</p>}
-      {props.stepsTitle === undefined || (history.length === 0 && steps.length === 0) ? null : (
-        <DumpBlock
-          icon={<IconFlatListOutlineRegular size={14} />}
-          title={props.stepsTitle}
-          open={stepsOpen}
-          onToggle={() => setStepsOpen(!stepsOpen)}
-        >
-          {history.length === 0 ? (
-            <CodeBlock
-              code={steps.join('\n')}
-              className="wb-longTaskDump"
-              showHeader={props.copyLabel !== undefined}
-              copyLabel={props.copyLabel ?? ''}
-              copiedLabel={props.copiedLabel ?? ''}
-            />
-          ) : (
-            <ul className="wb-longTaskSteps">
-              {history.map((row, index) => (
-                <StepRow key={`${String(index)}:${row.text}`} row={row} />
-              ))}
-            </ul>
-          )}
-        </DumpBlock>
-      )}
       {raw === '' || props.rawTitle === undefined ? null : (
         <DumpBlock
           icon={<IconCodeOutlineRegular size={14} />}

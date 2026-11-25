@@ -6,11 +6,9 @@
   gap: var(--wb-len-2);
 }
 
-.wb-longTaskHead {
-  display: flex;
-  align-items: center;
-  gap: var(--wb-len-6);
-  margin: 0;
+.wb-longTaskDense {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .wb-longTaskLink {
@@ -46,6 +44,15 @@
   overflow: auto;
 }
 
+.wb-longTaskHeadEnd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--wb-len-8);
+  min-width: 0;
+  margin-left: auto;
+}
+
 .wb-longTaskStop {
   display: inline-flex;
   flex: none;
@@ -55,7 +62,6 @@
   width: var(--wb-len-20);
   height: var(--wb-len-20);
   padding: 0;
-  margin-left: auto;
   border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: var(--dsw-radius-sm);
   background: var(--dsw-specific-menu);
@@ -182,6 +188,7 @@
 
 .wb-longTaskMeta {
   margin: 0;
+  min-width: 0;
   font-size: var(--dsw-font-xxxs-11-font-size);
   line-height: var(--wb-line-16);
   color: var(--dsw-alias-label-tertiary);
@@ -230,4 +237,15 @@
 
 .wb-longTaskStepLink {
   flex: none;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.wb-longTaskStepDetail {
+  padding-left: calc(var(--wb-len-8) + var(--wb-len-6));
+}
+
+.wb-longTaskStepAttempt {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
 }

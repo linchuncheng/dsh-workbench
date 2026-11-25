@@ -8,23 +8,23 @@ const ROW = read('LongTaskRow.tsx');
 const CSS = read('LongTaskRow.css');
 
 describe('两按停止钮：接线（这仓的组件测试是 node 环境，读源码断言）', () => {
-  it('★★ 不给 stop ⇒ 那颗钮整个不出现；文件里就一颗 button', () => {
-    const gate = ROW.indexOf('{stop === undefined ? null : <StopControl');
-
+  it('★★ 不给 stop ⇒ 那颗钮整个不出现（停止钮只有一处入口）', () => {
     expect(ROW).toContain('const stop = props.stop;');
-    expect(gate).toBeGreaterThan(0);
-    expect(ROW.match(/<button/g)).toHaveLength(1);
+    expect(ROW).toContain('stop === undefined ? null : (');
+    expect(ROW).toContain('<StopControl');
+    expect(ROW.match(/<StopControl/g)).toHaveLength(1);
   });
 
-  it('★★ 住在 .wb-longTaskHead 里、最右边那颗（margin-left: auto）', () => {
-    const head = ROW.indexOf('className="wb-longTaskHead"');
-    const gate = ROW.indexOf('{stop === undefined ? null : <StopControl');
-    const close = ROW.indexOf('</p>', gate);
+  it('★★ 右组走 headerAccessory、最右边那颗（右组 margin-left: auto）', () => {
+    const end = ROW.indexOf('className="wb-longTaskHeadEnd"');
+    const gate = ROW.indexOf('stop === undefined ? null : (');
+    const close = ROW.indexOf('</DisclosureRow>', end);
 
-    expect(head).toBeGreaterThan(0);
-    expect(gate).toBeGreaterThan(head);
+    expect(end).toBeGreaterThan(0);
+    expect(gate).toBeGreaterThan(end);
     expect(close).toBeGreaterThan(gate);
     expect(CSS).toContain('margin-left: auto');
+    expect(CSS).toContain('.wb-longTaskHeadEnd {');
   });
 
   it('★★ 两按只走 longTaskStopPress(longTaskStopStage({ armed, busy }))：arm 上膛 / fire 落膛并 onStop / ignore 不动', () => {
@@ -74,7 +74,7 @@ describe('两按停止钮：接线（这仓的组件测试是 node 环境，读�
   it('★★ 没有 stop 的行一个像素都不变：既要的规则一个字没动，新规则也只在带钮的行上起作用', () => {
     expect(CSS).toContain('.wb-longTaskHeadline {\n  margin: 0;');
     expect(CSS).toContain('.wb-longTaskLink {\n  flex: none;\n}');
-    expect(CSS).toContain('.wb-longTaskHead {');
+    expect(CSS).not.toContain('.wb-longTaskHead {');
   });
 });
 
@@ -109,6 +109,45 @@ describe('两按停止钮：样式跟 dsh 那颗钮同款（组件自带，同�
     expect(CSS).not.toContain('#');
     expect(CSS).toContain('var(--wb-len-20)');
     expect(CSS).not.toMatch(/(^|[^a-z-])rgb\(/);
+  });
+});
+
+describe('步骤行：跑完就不再有 loading 环', () => {
+  it('★★ 只有「还活着且是最后一行」的 start 才画 ongoing，其余 start 都是 idle 灰点', () => {
+    expect(ROW).toContain(
+      "const state = row.kind === 'start' ? (live && last ? 'ongoing' : 'idle') : STEP_DOT[row.kind];",
+    );
+    expect(ROW).toContain('live={live}');
+    expect(ROW).toContain('last={index === history.length - 1}');
+    expect(ROW).toContain('<StateDot state={state} size={8} />');
+  });
+});
+
+describe('细节行与轮询次数：语义分层，链接字号跟正文一致', () => {
+  it('★★ info 走细节：无点、缩进；其余 kind 才有点', () => {
+    expect(ROW).toContain('className="wb-longTaskStepRow wb-longTaskStepDetail"');
+    expect(ROW).toContain("if (row.kind === 'info') {");
+    expect(CSS).toContain('.wb-longTaskStepDetail {');
+    expect(CSS).toContain('padding-left: calc(var(--wb-len-8) + var(--wb-len-6));');
+  });
+
+  it('★★ attempt > 1 才画「第 N 次」，文案由调用点给', () => {
+    expect(ROW).toContain('row.attempt !== undefined && row.attempt > 1');
+    expect(ROW).toContain(
+      '{attempt === undefined ? null : <span className="wb-longTaskStepAttempt">{attempt}</span>}',
+    );
+    expect(ROW).toContain('readonly attemptLabel?: ((attempt: number) => string) | undefined;');
+  });
+
+  it('★★ 菜单里用 dense：去掉行上那根分隔线和 12px 抬头', () => {
+    expect(ROW).toContain("props.dense === true ? 'wb-longTask wb-longTaskDense' : 'wb-longTask'");
+    expect(CSS).toContain('.wb-longTaskDense {');
+    expect(CSS).toMatch(/\.wb-longTaskDense\s*\{[^}]*padding-top:\s*0/);
+    expect(CSS).toMatch(/\.wb-longTaskDense\s*\{[^}]*border-top:\s*0/);
+  });
+
+  it('★★ 步骤行里的链接字号 / 行高继承正文（11px / 16px）', () => {
+    expect(CSS).toContain('.wb-longTaskStepLink {\n  flex: none;\n  font-size: inherit;\n  line-height: inherit;');
   });
 });
 
@@ -207,8 +246,9 @@ describe('行内可读：当前步骤 / 状态 · 耗时 / 结构化步骤 / 停
   it('★★ 不给 step / meta 时一行都不多，给了才画', () => {
     expect(ROW).toContain("const step = props.step ?? '';");
     expect(ROW).toContain("const meta = props.meta ?? '';");
-    expect(ROW).toContain('{step === \'\' ? null : <p className="wb-longTaskStep">{step}</p>}');
-    expect(ROW).toContain('{meta === \'\' ? null : <p className="wb-longTaskMeta">{meta}</p>}');
+    expect(ROW).toContain('const stepShown = step !== \'\' && !props.headline.includes(step);');
+    expect(ROW).toContain('{stepShown ? <p className="wb-longTaskStep">{step}</p> : null}');
+    expect(ROW).toContain('{meta === \'\' ? null : <span className="wb-longTaskMeta">{meta}</span>}');
   });
 
   it('★★ 点可以抬档（人待 warning），读屏有词', () => {
@@ -225,14 +265,26 @@ describe('行内可读：当前步骤 / 状态 · 耗时 / 结构化步骤 / 停
   });
 
   it('★★ 没有 history 回退旧 CodeBlock：旧模块一个像素不变', () => {
-    expect(ROW).toContain('{history.length === 0 ? (');
+    expect(ROW).toContain('history.length === 0 ? (');
     expect(ROW).toContain('code={steps.join(');
   });
 
   it('★★ 步骤块的展开不再绑死失败：给 stepsTitle 且有内容就画，失败默认开', () => {
     expect(ROW).toContain("useState(props.status === 'failed')");
     expect(ROW).toContain('if (failed) setStepsOpen(true);');
-    expect(ROW).toContain('props.stepsTitle === undefined || (history.length === 0 && steps.length === 0)');
+    expect(ROW).toContain('const expandable = props.stepsTitle !== undefined && (history.length > 0 || steps.length > 0);');
+    expect(ROW).toContain('open={expandable && stepsOpen}');
+    expect(ROW).toContain('expandable={expandable}');
+  });
+
+  it('★★ 标题行就是 DisclosureRow 的头：hover 出箭头、整行可点、点链接 / 按钮不切换', () => {
+    expect(ROW).toContain('<DisclosureRow');
+    expect(ROW).toContain('expandOnRowClick');
+    expect(ROW).toContain('previewChevron');
+    expect(ROW).toContain('titleClassName="wb-longTaskHeadline"');
+    expect(ROW).toContain('headerAccessory={');
+    expect(ROW).toContain('onToggle={() => setStepsOpen((value) => !value)}');
+    expect(CSS).not.toContain('.wb-longTaskHead {');
   });
 
   it('★★ 停止请求之后、模块确认之前，行上说一句；模块确认了就收', () => {

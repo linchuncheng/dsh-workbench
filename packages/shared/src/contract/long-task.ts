@@ -62,6 +62,8 @@ export interface LongTaskIntervention {
 export interface LongTaskStep {
   readonly kind: 'start' | 'succeed' | 'fail' | 'info' | 'warn';
   readonly text: string;
+  readonly stepId?: string | undefined;
+  readonly attempt?: number | undefined;
   readonly links?: readonly LongTaskLink[] | undefined;
   readonly intervention?: LongTaskIntervention | undefined;
   readonly loginUrl?: string | undefined;
@@ -74,6 +76,8 @@ export interface LongTaskStep {
 export interface LongTaskStepRow {
   readonly kind: LongTaskStep['kind'];
   readonly text: string;
+  readonly stepId?: string | undefined;
+  readonly attempt?: number | undefined;
   readonly links?: readonly LongTaskLink[] | undefined;
 }
 

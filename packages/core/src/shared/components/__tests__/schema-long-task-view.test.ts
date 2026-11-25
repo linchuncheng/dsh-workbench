@@ -287,6 +287,23 @@ describe('行内可读：状态词 · 耗时 · 当前步骤 · 结构化步骤'
   it('★ 停止请求有话说：这一趟还活着就显示「等模块确认」', () => {
     expect(VIEW).toContain("pending: t('longTask.stopPending'),");
   });
+
+  it('★★ 紧凑档透传给行（菜单里用）', () => {
+    expect(VIEW).toContain('...(dense === true ? { dense: true } : {}),');
+  });
+
+  it('★★ 没有标题时用当前步骤当标题（步骤不挂在下面），再退到 target', () => {
+    expect(VIEW).toContain("const stepText = row.step ?? '';");
+    expect(VIEW).toContain(
+      "override?.headline ?? row.headline ?? (stepText === '' ? row.target : stepText)",
+    );
+  });
+
+  it('★★ 轮询次数走词表（>1 才画，文案由视图给）', () => {
+    expect(VIEW).toContain(
+      "attemptLabel: (attempt: number) => t('longTask.attempt', { attempt }),",
+    );
+  });
 });
 
 describe('行尾链接：run 自带 + 卡片覆盖按 href 合并去重，最多三条', () => {
