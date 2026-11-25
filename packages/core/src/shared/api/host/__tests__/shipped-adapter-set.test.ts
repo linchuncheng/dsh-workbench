@@ -1,9 +1,9 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { browserExtensionDir, shippedAdapterSetSpec } from '@/shared/api/host/shipped-adapter-set';
+import { browserExtensionInputOf, shippedAdapterSetSpec } from '@/shared/api/host/shipped-adapter-set';
 
 const roots: string[] = [];
 
@@ -31,23 +31,30 @@ describe('shippedAdapterSetSpec', () => {
     expect(() => shippedAdapterSetSpec(packageAt({ workbench: { adapterSet: '  ' } }))).toThrow('workbench.adapterSet');
   });
 });
-
-describe('随包带的浏览器扩展目录', () => {
-  it('★ 从本包解出 vendor/browser-extension（用户要「加载已解压」这个目录）', () => {
-    const dir = browserExtensionDir();
-
-    expect(dir).toBeDefined();
-    expect(dir?.endsWith(join('vendor', 'browser-extension'))).toBe(true);
-    const manifest = JSON.parse(readFileSync(join(dir as string, 'manifest.json'), 'utf8')) as {
-      manifest_version: number;
-    };
-    expect(manifest.manifest_version).toBe(3);
+describe('browserExtensionInputOf', () => {
+  it('★ 适配器没有这个能力 → 不给预检塞空壳', () => {
+    expect(browserExtensionInputOf({}, {} as never)).toEqual({});
   });
 
-  it('★ 包里没有这一份就返回 undefined（别给一个不存在的路径）', () => {
-    const bare = packageAt({ workbench: { adapterSet: '@dsh-workbench/adapters-default' } });
+  it('★ 正常转交目录与版本', () => {
+    const found = { dir: '/opt/ext', version: '1.0.27', source: 'bundled' as const };
+    const input = browserExtensionInputOf({ browserExtension: () => found }, {} as never);
 
-    expect(browserExtensionDir(bare)).toBeUndefined();
-    expect(browserExtensionDir(join(bare, '没有这个目录'))).toBeUndefined();
+    expect(input.extension?.()).toEqual(found);
+  });
+
+  it('★ 读目录抛错 → 当作没有，并记一条 warn（不让整轮预检变 failed）', () => {
+    const warns: string[] = [];
+    const input = browserExtensionInputOf(
+      {
+        browserExtension: () => {
+          throw new Error('boom');
+        },
+      },
+      { logger: { warn: (message: string) => warns.push(message) } } as never,
+    );
+
+    expect(input.extension?.()).toBeUndefined();
+    expect(warns.join('\n')).toContain('读取浏览器扩展目录失败');
   });
 });

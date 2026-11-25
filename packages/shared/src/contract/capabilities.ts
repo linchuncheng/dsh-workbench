@@ -29,6 +29,12 @@ export interface RuntimeProfile {
   readonly bridge?: Readonly<Partial<Record<string, RuntimeBridgeFix>>>;
 }
 
+export interface BrowserExtension {
+  readonly dir: string;
+  readonly version: string;
+  readonly source: 'env' | 'bundled';
+}
+
 export interface RuntimeBridgeStatus {
   readonly extension?: string;
   readonly connectivityMs?: number;

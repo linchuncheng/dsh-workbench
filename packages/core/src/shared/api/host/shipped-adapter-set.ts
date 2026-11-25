@@ -1,21 +1,27 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
-import type { DshHostContext } from '@dsh-workbench/shared/host';
+import { readFileSync } from 'node:fs';
+import type { BrowserExtension, DshHostContext } from '@dsh-workbench/shared/host';
 import type { AdapterSet } from '@dsh-workbench/shared/host';
 
-function corePackageRoot(): string | undefined {
-  try {
-    return dirname(createRequire(import.meta.url).resolve('@dsh-workbench/core/package.json'));
-  } catch {
-    return undefined;
-  }
+export interface BrowserExtensionSource {
+  readonly browserExtension?: ((ctx: DshHostContext) => BrowserExtension | undefined) | undefined;
 }
 
-export function browserExtensionDir(root: string | undefined = corePackageRoot()): string | undefined {
-  if (root === undefined) return undefined;
-  const dir = join(root, 'vendor', 'browser-extension');
-  return existsSync(join(dir, 'manifest.json')) ? dir : undefined;
+export function browserExtensionInputOf(
+  runtime: BrowserExtensionSource,
+  ctx: DshHostContext,
+): { readonly extension?: (() => BrowserExtension | undefined) | undefined } {
+  const read = runtime.browserExtension;
+  if (read === undefined) return {};
+  return {
+    extension: () => {
+      try {
+        return read(ctx);
+      } catch (error) {
+        ctx.logger?.warn?.(`[dsh-workbench] 读取浏览器扩展目录失败：${String(error)}`);
+        return undefined;
+      }
+    },
+  };
 }
 
 export function shippedAdapterSetSpec(moduleUrl: string): string {

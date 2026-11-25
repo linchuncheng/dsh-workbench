@@ -1,7 +1,7 @@
 import type { DshHostContext } from '../../api/dsh.js';
 import type { DiagRecorder } from '../runtime/diag-records.js';
 import type { Seam } from '../seam/run.js';
-import type { RuntimeCapabilities, RuntimeProfile } from '../../contract/capabilities.js';
+import type { BrowserExtension, RuntimeCapabilities, RuntimeProfile } from '../../contract/capabilities.js';
 import type { BrowserCaptureRow } from '../../contract/data.js';
 import type { PluginPackageKind } from '../../contract/protocol/bundle-install.js';
 import type { LibNeed, SupplySource } from '../../contract/needs.js';
@@ -176,6 +176,7 @@ export interface ProbePreflightInput {
   readonly runtimeCheck?: (() => Promise<RuntimeCheck>) | undefined;
   readonly runtimeLabel?: string | undefined;
   readonly warmReads: () => readonly (readonly string[])[];
+  readonly extension?: (() => BrowserExtension | undefined) | undefined;
   readonly extensionDir?: string | undefined;
   readonly diag?: DiagRecorder | undefined;
 }
@@ -191,7 +192,7 @@ export interface RuntimeSeedOptions {
   readonly log: (message: string) => void;
 }
 
-export type { RuntimeCapabilities, RuntimeProfile, RuntimeTerms } from '../../contract/capabilities.js';
+export type { BrowserExtension, RuntimeCapabilities, RuntimeProfile, RuntimeTerms } from '../../contract/capabilities.js';
 
 export interface RuntimeCheck {
   readonly ok: boolean;
@@ -225,6 +226,7 @@ export interface RuntimePort {
   frontApp?(ctx: DshHostContext): Promise<string | undefined>;
   bringToFront?(ctx: DshHostContext, app: string): Promise<boolean>;
   raiseBrowser?(ctx: DshHostContext): Promise<boolean>;
+  browserExtension?(ctx: DshHostContext): BrowserExtension | undefined;
 }
 
 export interface PluginDeclarationSource {

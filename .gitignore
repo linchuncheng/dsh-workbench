@@ -22,6 +22,11 @@ packages/core/client.js
 packages/core/CHANGELOG.md
 packages/docs/site-dist/
 
+# 随包浏览器扩展的 dist/ 是 manifest 直接引用的运行时文件（service worker），必须进库：
+# 上面那条全局 `dist/` 会把它一起吞掉，缺了它 Chrome 会拒绝加载整个目录。
+!packages/adapter-runtime/vendor/browser-extension/dist/
+!packages/adapter-runtime/vendor/browser-extension/dist/**
+
 # 门禁中间产物：跑 `pnpm run check` 时在仓内出现、正常跑完会自己清掉的那几样。
 #
 # 探针包（packages/.init-* / .design-* / .reconcile-* …共十六种前缀，见 module-tools 自检）：

@@ -14,7 +14,8 @@
     "dist",
     "channel",
     "!channel/__tests__/**",
-    "bin"
+    "bin",
+    "vendor"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -25,10 +26,12 @@
   },
   "dependencies": {
     "@dsh-workbench/shared": "workspace:*",
-    "execa": "^10.2.0"
+    "execa": "^10.2.0",
+    "proper-lockfile": "^4.1.2"
   },
   "devDependencies": {
     "@types/node": "^24.19.0",
+    "@types/proper-lockfile": "^4.1.4",
     "@vitest/coverage-v8": "^5.0.2",
     "vitest": "^5.0.2"
   },

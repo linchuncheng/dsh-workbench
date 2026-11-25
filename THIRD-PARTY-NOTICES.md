@@ -2,7 +2,7 @@
 
 ## Browser extension vendored from `jackwener/opencli`
 
-`packages/core/vendor/browser-extension/` is an unmodified copy of
+`packages/adapter-runtime/vendor/browser-extension/` is an unmodified copy of
 `opencli-extension-v1.0.27.zip` from
 <https://github.com/jackwener/opencli/releases/tag/v2.0.3>. It ships with the
 workbench so the extension can be loaded from disk when the Chrome Web Store
@@ -11,7 +11,7 @@ records the upstream URL and the zip's SHA-256; refresh it with
 `node scripts/sync-opencli-extension.mjs`.
 
 It is licensed under the Apache License 2.0 (see
-`packages/core/vendor/browser-extension/LICENSE`).
+`packages/adapter-runtime/vendor/browser-extension/LICENSE`).
 
 ```text
 Copyright the opencli authors.

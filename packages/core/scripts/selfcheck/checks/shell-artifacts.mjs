@@ -1,12 +1,99 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-import { PKG, pkg, read } from '../lib.mjs';
+import { PKG, REPO, pkg, read } from '../lib.mjs';
+
+const LOCK = join(REPO, 'scripts', 'opencli-extension.lock.json');
+const ADAPTER = join(REPO, 'packages', 'adapter-runtime');
+const VENDOR = join(ADAPTER, 'vendor', 'browser-extension');
+const TITLE_OWNER = '★ 浏览器扩展副本只在适配器包里（core 包的 files 不带 vendor）';
+const TITLE_FILES = '★ 随包副本与扩展 lock 的文件清单逐一对上（清单独立生成，不取自副本自身）';
+const TITLE_GIT = '★ 随包副本的每个文件都在 git 里（缺 dist/ 说明仓库比打包少文件）';
+
+function digestOf(file) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
+}
+
+function filesUnder(dir, prefix = '') {
+  const found = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const rel = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+    if (entry.isDirectory()) found.push(...filesUnder(join(dir, entry.name), rel));
+    else if (entry.isFile()) found.push(rel);
+  }
+  return found;
+}
+
+function vendorDirs() {
+  const found = [];
+  for (const name of readdirSync(join(REPO, 'packages'), { withFileTypes: true })) {
+    if (!name.isDirectory()) continue;
+    const dir = join(REPO, 'packages', name.name, 'vendor', 'browser-extension');
+    if (existsSync(join(dir, 'manifest.json'))) found.push(name.name);
+  }
+  return found;
+}
+
+function filesOfManifest(manifest) {
+  const listed = manifest.files;
+  return Array.isArray(listed) ? listed.filter((one) => typeof one === 'string') : [];
+}
+
+function tracked() {
+  const text = execFileSync('git', ['ls-files', '--', relative(REPO, VENDOR)], { cwd: REPO, encoding: 'utf8' });
+  return new Set(text.split('\n').filter((one) => one.trim() !== '').map((one) => one.trim()));
+}
 
 const RUNTIME_WORDS = /opencli/i;
 
 export const checks = [
+
+  {
+    title: TITLE_OWNER,
+    run(_ctx, report) {
+      const owners = vendorDirs();
+      const core = JSON.parse(read(join(PKG, 'package.json')));
+      const adapter = JSON.parse(read(join(ADAPTER, 'package.json')));
+      const problems = [];
+      if (owners.join(',') !== 'adapter-runtime') problems.push(`副本在：${owners.join('、') || '（哪都没有）'}`);
+      if (filesOfManifest(core).includes('vendor')) problems.push('core 的 files 还带着 vendor');
+      if (!filesOfManifest(adapter).includes('vendor')) problems.push('adapter-runtime 的 files 没带 vendor');
+      report(TITLE_OWNER, problems.length === 0, problems.join('；'));
+    },
+  },
+  {
+    title: TITLE_FILES,
+    run(_ctx, report) {
+      const lock = JSON.parse(read(LOCK));
+      const expected = lock.files ?? {};
+      const problems = [];
+      for (const [rel, digest] of Object.entries(expected)) {
+        const file = join(VENDOR, rel);
+        if (!existsSync(file)) {
+          problems.push(`缺 ${rel}`);
+          continue;
+        }
+        if (digestOf(file) !== digest) problems.push(`${rel} 的 sha256 和 lock 对不上`);
+      }
+      if (Object.keys(expected).length === 0) problems.push('lock 里没有逐文件清单（跑同步脚本）');
+      const known = new Set(Object.keys(expected));
+      for (const rel of filesUnder(VENDOR)) if (!known.has(rel)) problems.push(`多出 ${rel}`);
+      report(TITLE_FILES, problems.length === 0, problems.slice(0, 5).join('、'));
+    },
+  },
+  {
+    title: TITLE_GIT,
+    run(_ctx, report) {
+      const lock = JSON.parse(read(LOCK));
+      const expected = Object.keys(lock.files ?? {});
+      const known = tracked();
+      const missing = expected.filter((rel) => !known.has(join(relative(REPO, VENDOR), rel).split('\\').join('/')));
+      report(TITLE_GIT, missing.length === 0, missing.slice(0, 5).join('、'));
+    },
+  },
+
   {
     title: '★ 随包的启动 / 安装脚本不点名运行时（文案与入口都跟着适配器走）',
     run(_ctx, report) {

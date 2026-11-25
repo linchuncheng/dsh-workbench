@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
-import type { DiagRecorder, DshHostContext } from '@dsh-workbench/shared/host';
+import type { BrowserExtension, DiagRecorder, DshHostContext } from '@dsh-workbench/shared/host';
 import type { RouteTable } from '@dsh-workbench/shared/host';
 import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, VERIFIED_DSH, dshHome, dshHostGapOf, dshTierOf, dshVersionFrom, hostOsOf, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
 import { isOpencliAtPin, isOpencliAtPinAt, isOpencliReady, opencliBuiltAt, opencliPackageDir, opencliReadinessAt, storeDirFor, toolchainDir } from '@dsh-workbench/adapter-runtime';
@@ -61,20 +61,6 @@ export async function provisionWorkbenchPnpm(input: {
   return result;
 }
 
-const EXTENSION_ENV = 'DSH_WB_OPENCLI_EXTENSION';
-
-function hasManifest(dir: string): boolean {
-  return existsSync(join(dir, 'manifest.json'));
-}
-
-function extensionDirOf(bundled: string | undefined): string | undefined {
-  const asked = process.env[EXTENSION_ENV]?.trim();
-  if (asked !== undefined && asked !== '') return asked;
-  const local = join(toolchainDir(), '..', 'extension');
-  if (hasManifest(local)) return local;
-  return bundled !== undefined && hasManifest(bundled) ? bundled : undefined;
-}
-
 function describeToolchain(toolchain: string, pkgDir: string): string {
   if (!existsSync(toolchain)) return `${toolchain} 不存在`;
   const entries = (() => {
@@ -112,6 +98,7 @@ export function registerPreflight(input: {
   runtimeLabel?: string | undefined;
   warmReads: () => readonly (readonly string[])[];
   desktopBrowser?: DesktopBrowser | undefined;
+  extension?: (() => BrowserExtension | undefined) | undefined;
   extensionDir?: string | undefined;
   diag?: DiagRecorder | undefined;
 }): void {
@@ -145,7 +132,8 @@ export function registerPreflight(input: {
     paths: { workbenchRoot: workbenchRoot(), dshHome: dshHome() },
     command,
     installCommand,
-    ...(extensionDirOf(input.extensionDir) === undefined ? {} : { extensionDir: extensionDirOf(input.extensionDir) }),
+    ...(input.extension === undefined ? {} : { extension: input.extension }),
+    ...(input.extensionDir === undefined ? {} : { extensionDir: input.extensionDir }),
     installed: () => isOpencliReady(),
     installedNote: () => {
       if (!isOpencliReady()) return undefined;

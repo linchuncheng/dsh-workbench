@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
 import type { RuntimePort } from '@dsh-workbench/shared/host';
 import { packageRootOf, seamOf } from '@dsh-workbench/shared/host';
-import { backgroundLine, libsBinDir } from '@dsh-workbench/adapter-runtime';
+import { backgroundLine, browserExtensionOf, libsBinDir, type BrowserExtensionOptions } from '@dsh-workbench/adapter-runtime';
 
 import { platformName } from '@dsh-workbench/adapter-probe';
 import { lastBridgeFacts, raiseBrowser, rememberFrontApp, restoreFocus } from '@dsh-workbench/adapter-probe';
@@ -51,7 +51,11 @@ export function prependRuntimePath(
 
 const OPENCLI_RUNNER_TIMEOUT_MS = 30 * 60_000;
 
-export function createRuntimePort(): RuntimePort {
+export interface RuntimePortOptions {
+  readonly extension?: BrowserExtensionOptions | undefined;
+}
+
+export function createRuntimePort(options: RuntimePortOptions = {}): RuntimePort {
   return {
     packageRoot: packageRootOf,
 
@@ -190,6 +194,14 @@ export function createRuntimePort(): RuntimePort {
     async raiseBrowser(ctx: DshHostContext) {
       const seam = seamOf(ctx);
       return seam === undefined ? false : raiseBrowser(seam);
+    },
+
+    browserExtension(ctx) {
+      const warn = ctx.logger?.warn;
+      const log =
+        options.extension?.log ??
+        (warn === undefined ? undefined : (message: string) => warn.call(ctx.logger, message));
+      return browserExtensionOf({ ...options.extension, ...(log === undefined ? {} : { log }) });
     },
 
     seed(ctx: DshHostContext, options) {

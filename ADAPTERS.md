@@ -39,7 +39,10 @@ interface AdapterSet {
   `supply` 只给探针与市场用。
 - `ProbePort`：`probeUnits` / `registerPreflight` / `declaredPluginCommands`。
 - `RuntimePort`：必需 `packageRoot` / `capabilities` / `commands` / `runners` / `health` / `seed`；
-  可选 `profile` / `platformName` / `commandSurface` / `check` / `frontApp` / `bringToFront` / `raiseBrowser` / `versionReport`。
+  可选 `profile` / `platformName` / `commandSurface` / `check` / `frontApp` / `bringToFront` / `raiseBrowser` /
+  `versionReport` / `browserExtension`。
+  `browserExtension` 给出浏览器扩展副本的目录、版本，以及来源是用户自备还是随包带的那份；
+  适配器负责把它写入固定目录（只替换文件、路径不变），启动检查只读取这个值，工作台不自行拼接路径。
   `platformName` 回一个平台名（`darwin` / `win32` / `linux` / `other`），给诊断导出这类只需要
   「哪台系统」的业务用 —— 原始判定留在适配器里，工作台不读 `process.platform`。
   `versionReport` 交的是"哪些插件跟这一版运行时对不上"，工作台把它喂给探针 —— 探针不自己去读

@@ -6,7 +6,7 @@ import { bootChores, seedRuntime } from '@/shared/api/host/boot-chores';
 import { diagnoseModuleRows } from '@/shared/api/host/module-rows-sync';
 import { bootOkAction } from '@/shared/api/host/boot-ok';
 import { provideGitProcessSeam } from '@/shared/api/host/git-process';
-import { browserExtensionDir, shippedAdapterSet } from '@/shared/api/host/shipped-adapter-set';
+import { browserExtensionInputOf, shippedAdapterSet } from '@/shared/api/host/shipped-adapter-set';
 import { createHostRoutes } from '@/shared/api/host/host-routes';
 import { diagRoutesOf } from '@/shared/api/host/diag-routes';
 import { assembleHostUnits } from '@/app/units/host';
@@ -382,7 +382,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
       ctx,
       seam,
       runtimeCommands,
-      ...(browserExtensionDir() === undefined ? {} : { extensionDir: browserExtensionDir() }),
+      ...browserExtensionInputOf(adapters.runtime, ctx),
       runtimeCapabilities: capabilities,
       ...(runtimeCheck === undefined ? {} : { runtimeCheck: () => runtimeCheck(ctx) }),
       ...(runtimeProfile === null ? {} : { runtimeLabel: runtimeProfile.label }),

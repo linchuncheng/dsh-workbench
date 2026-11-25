@@ -26,7 +26,7 @@ export function bundledExtensionVersion(dir: string | undefined): string | undef
 
 export function extensionDriftOf(installed: string | undefined, bundled: string | undefined): string | undefined {
   if (installed === undefined || bundled === undefined || installed === bundled) return undefined;
-  return `浏览器扩展是 v${installed}，工作台自带的是 v${bundled}`;
+  return `浏览器扩展是 v${installed}，工作台需要 v${bundled}`;
 }
 export type BridgeExec =
   | { readonly kind: 'ok'; readonly stdout: string }

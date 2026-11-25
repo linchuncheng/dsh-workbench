@@ -418,7 +418,7 @@ AdapterSet
 ```text
 adapter-runtime/src/
   cli/        opencli 命令、隔离运行时、窗口参数、安装命令
-  browser/    页面读、DOM 查找
+  browser/    页面读、DOM 查找、浏览器扩展副本写入固定目录（vendor → 稳定目录）
   data/       DataReader 的 http / browser / command 实现
 ```
 
@@ -878,6 +878,9 @@ mount() 抛错 / 工具注册到一半失败
       运行时  toolchain/node_modules/@jackwener/opencli
             │
             ├── 软链 ① ──► plugins-npm/   插件 A · 插件 B · 通道插件（各自写 peer 范围）
+            │
+            │  随包副本写入固定目录（只替换文件、路径不变）
+            ├── extension/  ◄── adapter-runtime/vendor/browser-extension
             │                  │ opencli plugin install <路径>
             │                  ▼
             │             home/.opencli/plugins（软链回 plugins-npm）

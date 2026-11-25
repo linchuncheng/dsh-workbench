@@ -125,6 +125,11 @@ Desktop 里个别浏览器调试能力不可用；网页浏览与录制不受影
 > [OpenCLI（Chrome 应用商店）](https://chromewebstore.google.com/detail/opencli/ildkmabpimmkaediidaifkhjpohdnifk)，
 > 安装并启用后保持浏览器打开，再回到「准备工作台」选择「重试」。不安装也能选择「先进入工作台」，
 > 只是依赖登录状态的面板取不到数据。
+>
+> **没有外网也能安装**：工作台自带一份扩展副本。在启动检查里选择「加载已解压的扩展程序」，目录以检查页面上
+> 显示的为准（默认 `~/.dsh/workbench/opencli/extension`；`DSH_WORKBENCH_HOME` 指到别处时随之改变）。
+> 这个路径**固定不变**：更新工作台不需要重新选择；只有扩展自身升级时，才需要在 chrome://extensions 里
+> 点击一次「重新加载」。
 
 ## 第一次打开
 

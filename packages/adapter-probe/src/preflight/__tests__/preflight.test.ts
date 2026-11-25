@@ -119,6 +119,56 @@ describe('createPreflight', () => {
     expect(snapshot.extensionTarget).toBe('1.0.30');
   });
 
+  it('★ supplier：初始快照没有路径，每次真实 run 求值一次', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-ext-'));
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ version: '1.0.30' }));
+    const calls: string[] = [];
+    const fake = createFakeShell(ALL_OK);
+    const preflight = createPreflight({
+      seam: seamFor(fake.shell),
+      extension: () => {
+        calls.push(dir);
+        return { dir, version: '1.0.30', source: 'bundled' as const };
+      },
+    });
+
+    const idle = preflight.snapshot();
+    const first = await preflight.run({ hard: true });
+    const second = await preflight.run({ hard: true });
+    rmSync(dir, { recursive: true, force: true });
+
+    expect(idle.extensionDir).toBeUndefined();
+    expect(first.extensionDir).toBe(dir);
+    expect(second.extensionDir).toBe(dir);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('★ 目标版本来自端口，不是目录里的 manifest（同一份文件只解释一次）', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wb-ext-'));
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ version: '9.9.9' }));
+    const incompatible = [
+      'opencli v2.0.3 doctor (node v24.15.0)',
+      '',
+      '[OK] Daemon: running on port 19825 (v2.0.3)',
+      '[OK] Extension: connected (v1.0.27)',
+      '[OK] Connectivity: connected in 0.0s',
+      '',
+      'Issues:',
+      'CLI version incompatible with extension: extension v1.0.27 requires CLI <2.0.0, but CLI is v2.0.3',
+    ].join('\n');
+    const fake = createFakeShell([{ stdout: '2.0.3\n' }, { stdout: incompatible }]);
+    const preflight = createPreflight({
+      seam: seamFor(fake.shell),
+      extension: () => ({ dir, version: '1.0.30', source: 'bundled' as const }),
+    });
+
+    const snapshot = await preflight.run();
+    rmSync(dir, { recursive: true, force: true });
+
+    expect(snapshot.extensionTarget).toBe('1.0.30');
+  });
+
+
   it('缺 opencli → 自动安装 → 重探 → 放行；安装期间界面能拿到"正在执行的动作"', async () => {
     const { fake, preflight } = build(
       [

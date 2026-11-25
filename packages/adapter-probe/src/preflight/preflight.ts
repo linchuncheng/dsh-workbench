@@ -1,8 +1,9 @@
 
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
-import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, WARM_TIMEOUT_MS, hostOsOf, now, productWrite, quoteShellArgFor, tailLines, type Seam } from '@dsh-workbench/shared/host';
-import { bundledExtensionVersion, canWarm, createBridgeProbe, extensionDriftOf, type BridgeVerdict } from './preflight-bridge.js';
+import { PREFLIGHT_DOCTOR_TIMEOUT_MS, PREFLIGHT_FRESH_MS, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, WARM_TIMEOUT_MS, hostOsOf, now, productWrite, quoteShellArgFor, tailLines, type BrowserExtension, type Seam } from '@dsh-workbench/shared/host';
+import { canWarm, createBridgeProbe, extensionDriftOf, type BridgeVerdict } from './preflight-bridge.js';
 import { opencliCommandLine, OPENCLI_SITE_SESSION_ENV, OPENCLI_WINDOW_ENV } from '@dsh-workbench/adapter-runtime';
+import { extensionResolverOf } from './preflight-extension.js';
 import { classifyFailure } from './preflight-failure.js';
 import { notePreflightFailed, notePreflightHold } from './preflight-note.js';
 import { persistPreflightSnapshot } from './preflight-snapshot.js';
@@ -64,6 +65,7 @@ export function createPreflight(options: {
   provisionNpm?: (() => Promise<LocalNpmProvision>) | undefined;
   provisionPnpm?: (() => Promise<LocalPnpmProvision>) | undefined;
   desktopBrowser?: DesktopBrowser | undefined;
+  extension?: (() => BrowserExtension | undefined) | undefined;
   extensionDir?: string | undefined;
   capabilities?: RuntimeCapabilities | undefined;
   runtimeCheck?: (() => Promise<{ ok: boolean; detail: string }>) | undefined;
@@ -271,6 +273,11 @@ export function createPreflight(options: {
   };
 
   async function doRun(from?: PreflightStepId): Promise<PreflightSnapshot> {
+    const extension = extensionResolverOf({
+      extension: options.extension,
+      extensionDir: options.extensionDir,
+      ...(logger === undefined ? {} : { log: (message: string) => logger.warn?.(message) }),
+    })();
     const order: readonly PreflightStepId[] = ['toolchain', 'runtime', 'host', 'cli', 'bridge', 'diy', 'warm'];
     const skip = (id: PreflightStepId): boolean =>
       from !== undefined && order.indexOf(id) >= 0 && order.indexOf(id) < order.indexOf(from);
@@ -466,7 +473,7 @@ export function createPreflight(options: {
     }
     const healable = !bridge.ok && warmReads().length > 0 && canWarm(bridge);
     const drift = bridge.ok
-      ? extensionDriftOf(bridge.facts?.extension, bundledExtensionVersion(options.extensionDir))
+      ? extensionDriftOf(bridge.facts?.extension, extension?.version)
       : undefined;
     const incompatible = bridge.issues.includes('extension-incompatible');
     if (!healable) {
@@ -484,13 +491,12 @@ export function createPreflight(options: {
     logger?.warn?.(
       `[dsh-workbench] 环境体检：${current.steps.map((item) => `${item.id}=${item.status}`).join(' ')}`,
     );
-    const extensionTarget = incompatible
-      ? bundledExtensionVersion(options.extensionDir)
-      : undefined;
+    const extensionTarget = incompatible ? extension?.version : undefined;
     const ready = set({
       phase: 'ready',
       ...(settled.ok ? {} : { bridgeIssues: settled.issues }),
       ...(extensionTarget === undefined ? {} : { extensionTarget }),
+      ...(extension === undefined ? {} : { extensionDir: extension.dir }),
       ...(host.gap === undefined ? {} : { hostGap: host.gap }),
       ...(host.facts === undefined ? {} : { hostFacts: host.facts }),
       ...(diyGap === undefined ? {} : { diyGap }),
