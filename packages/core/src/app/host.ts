@@ -44,6 +44,7 @@ import { SIDEBAR_EDITION_ROUTE } from '@/kernel/contract/sidebar-edition';
 import { sidebarEditionAction, sidebarEditionHandler } from '@/shared/api/host/sidebar-edition';
 import { createPresetScope } from '@/shared/api/host/preset-scope';
 import { createClosedReasonOf } from '@/shared/api/host/closed-tool-gate';
+import { registerWorkbenchPriority } from '@/shared/api/host/workbench-priority';
 import { createValueHandoff } from '@dsh-workbench/shared/host';
 import { PANELS_SERVICE, PLUGIN_ID, UNITS_SERVICE } from '@dsh-workbench/shared/host';
 import { asArgs, warn } from '../shared/api/host/host-args';
@@ -472,6 +473,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     });
     return () => off?.();
   }, `${PLUGIN_ID}: 打包提示时就把收起的工具从清单里去掉（不靠限制的生效时机）`);
+  ctx.effect(() => registerWorkbenchPriority(ctx, flowAgents.isChild), `${PLUGIN_ID}: 工作台工具优先（系统提示词段）`);
   ctx.effect(() => () => toolScope.disposeAll(), `${PLUGIN_ID}: 卸载时撤销工具面限制`);
 
   ctx.effect(() => {

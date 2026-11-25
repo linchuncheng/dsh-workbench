@@ -119,8 +119,8 @@ export function registerToolboxTools(ctx: DshHostContext, toolbox: Toolbox): Arr
   const listTool: DshToolDefinition = {
     name: TOOLBOX_LIST_TOOL,
     description:
-      '列出工作台工具包：每个包的 id、名称、一句用途，以及当前已启用的包。' +
-      '不确定该调用哪把工具、或现有工具无法完成时先调用。',
+      '列出工作台工具包与当前已启用的包。' +
+      '不确定开哪个包、或已开的包不满足时先调用。',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
     output: OUTPUT,
     async execute(_raw: unknown, exec: DshToolRunContext) {

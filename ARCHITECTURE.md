@@ -758,7 +758,11 @@ ctx.get('workbenchUnits').registerUnit({
 - **发现性**（ADR-0108）：默认面就是模型能读到的全部索引，所以三把控制工具的文案里带一张最小能力地图
   （能力 → 包的字面量，含 `mcp:<server>`），且不抬 `tool-surface.test.ts` 的字数棘轮；
   「这台机器上具体有哪几个 `unit:<id>` / 哪台 `mcp:<server>`」不常驻，按需交给 `workbench_toolbox_list`，
-  猜错的名字由下面那条「失败转发现」接住。运行期 skill（`workbench-capabilities`）那条已撤：它只省一次
+  猜错的名字由下面那条「失败转发现」接住。**优先级那句不进工具面**：它以系统提示词段注册
+  （`workbench:tool-priority`，order 700，`shared/api/host/workbench-priority.ts`；每个会话注入一次，
+  flow 子 agent 由动态文本给空），工具面只留「是什么 + 什么时候调用」——策略走权限最高的通道，
+  目录留在按需的地方。
+  运行期 skill（`workbench-capabilities`）那条已撤：它只省一次
   `list`，却要按 agent 重复注册、失败只留一行日志，包一多描述还会被 skill 目录的 500 字上限截断。
 - **失败转发现**：模型调一个当前被收起的工具时，`gate.denyReason` 把 `unknown tool` 换成"它属于哪个包、
   下一步调 `workbench_toolbox_open`"；同一道判断也让被收起的写工具不再弹一张点了也白点的审批屏

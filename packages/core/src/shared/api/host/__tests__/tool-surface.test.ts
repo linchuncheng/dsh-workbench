@@ -8,7 +8,7 @@ import { registerRecordTools } from '@/modules/panels/model/diy-record-tools';
 import { registerLongTaskTools } from '@/modules/panels/model/long-task-tools';
 import { registerToolboxTools } from '@/modules/panels/model/toolbox-tools';
 import { createToolbox } from '@/modules/panels/model/toolbox';
-import { TOOLBOX_TOOLS } from '@/modules/panels/unit';
+import { TOOLBOX_LIST_TOOL, TOOLBOX_TOOLS } from '@/modules/panels/unit';
 
 const TOOLBOX_CHAR_BUDGET = 394;
 const MANAGE_CHAR_BUDGET = 1687;
@@ -107,6 +107,14 @@ describe('工具面是常驻上下文：话要一句顶一句', () => {
     expect(total, `${TOTAL_OF('toolbox')} / 预算 ${String(TOOLBOX_CHAR_BUDGET)}`).toBeLessThanOrEqual(
       TOOLBOX_CHAR_BUDGET,
     );
+  });
+
+  it('★ list 描述只留发现：优先级那句住在系统提示词段（workbench:tool-priority），工具面不重复（2026-11-26）', () => {
+    const description = registered('toolbox').find((tool) => tool.name === TOOLBOX_LIST_TOOL)?.description ?? '';
+
+    expect(description).toContain('列出工作台工具包');
+    expect(description).toContain('不确定开哪个包');
+    expect(description).not.toContain('优先用工作台工具');
   });
 
   it('★ manage 包：面板 6 + 模块 9 + 市场 3 + 长任务 2，共 21 把；开包才付这份钱（2026-11-08 实测 1687）', () => {
