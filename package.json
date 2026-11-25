@@ -1,6 +1,6 @@
 {
   "name": "@dsh-workbench/core-workspace",
-  "version": "1.5.4-beta.2",
+  "version": "1.5.4",
   "private": true,
   "type": "module",
   "scripts": {
