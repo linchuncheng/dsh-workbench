@@ -7,10 +7,12 @@ export interface ToolchainLockOptions {
   readonly waitMs?: number | undefined;
   readonly staleMs?: number | undefined;
   readonly pollMs?: number | undefined;
+  readonly absentGraceMs?: number | undefined;
 }
 
 const DEFAULT_WAIT_MS = 90_000;
 const DEFAULT_POLL_MS = 500;
+const DEFAULT_ABSENT_GRACE_MS = 2_000;
 
 function codeOf(error: unknown): string {
   const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined;
@@ -27,6 +29,11 @@ export function isLockContention(error: unknown, locked: boolean): boolean {
   return (code === 'EPERM' || code === 'EEXIST') && locked;
 }
 
+function isTransientLockError(error: unknown): boolean {
+  const code = codeOf(error);
+  return code === 'EPERM' || code === 'EEXIST';
+}
+
 function lockedNow(dir: string): boolean {
   try {
     statSync(lockedPathOf(dir));
@@ -41,8 +48,10 @@ async function acquire(
   stale: number,
   waitMs: number,
   pollMs: number,
+  absentGraceMs: number,
 ): Promise<() => Promise<void>> {
   const deadline = now() + waitMs;
+  let absentSince: number | undefined;
   for (;;) {
     try {
       return await lockfile.lock(dir, {
@@ -52,7 +61,15 @@ async function acquire(
         retries: 0,
       });
     } catch (error) {
-      if (!isLockContention(error, lockedNow(dir)) || now() >= deadline) throw error;
+      if (isLockContention(error, lockedNow(dir))) {
+        absentSince = undefined;
+      } else if (isTransientLockError(error)) {
+        absentSince ??= now();
+        if (now() - absentSince > absentGraceMs) throw error;
+      } else {
+        throw error;
+      }
+      if (now() >= deadline) throw error;
       await delay(pollMs);
     }
   }
@@ -69,6 +86,7 @@ export async function holdToolchainLock<T>(
     options.staleMs ?? 120_000,
     options.waitMs ?? DEFAULT_WAIT_MS,
     options.pollMs ?? DEFAULT_POLL_MS,
+    options.absentGraceMs ?? DEFAULT_ABSENT_GRACE_MS,
   );
   try {
     return await run();
