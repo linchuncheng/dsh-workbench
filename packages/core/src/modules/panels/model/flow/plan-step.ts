@@ -21,8 +21,12 @@ const NEXT: Readonly<Record<string, string>> = {
 };
 
 function nextOf(step: string, destination: Destination): string {
-  if (step === 'plan' && destination === 'tweak') return '补上四段变化与改之后的 ascii';
-  return NEXT[step] ?? step;
+  if (step === 'plan') {
+    return destination === 'tweak'
+      ? '补上四段变化与改之后的 ascii（用 workbench_diy_plan）'
+      : '补上方案四段与 ascii（用 workbench_diy_plan）';
+  }
+  return `${NEXT[step] ?? step}；用 workbench_diy_step 提交`;
 }
 
 export interface PlanResult {

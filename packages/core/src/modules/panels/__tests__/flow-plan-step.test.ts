@@ -62,6 +62,7 @@ describe('计划工具推进流程', () => {
 
     expect(first.step).toBe('probe');
     expect(first.index).toBe(1);
+    expect(first.text).toContain('workbench_diy_step');
 
     runs.provide('s-1', { sites: ['库存表'] });
     await new Promise((resolve) => setTimeout(resolve, 0));

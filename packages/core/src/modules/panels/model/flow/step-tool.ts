@@ -22,9 +22,9 @@ function nextOf(step: string, destination: string | null): string {
     return destination === 'headless' ? '补上方案四段（用 workbench_diy_plan）' : '补上方案四段与 ascii（用 workbench_diy_plan）';
   }
   if (step === 'verify' && !hostSurface().capabilities.pageDebug) {
-    return '本机没有页面调试能力：按只读取证逐条验证，无法验证的写入 unverified';
+    return '本机没有页面调试能力：按只读取证逐条验证，无法验证的写入 unverified；用 workbench_diy_step 提交';
   }
-  return STEP_NEXT[step] ?? step;
+  return `${STEP_NEXT[step] ?? step}；用 workbench_diy_step 提交`;
 }
 
 const STEP_NEXT: Readonly<Record<string, string>> = {

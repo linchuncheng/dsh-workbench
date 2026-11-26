@@ -45,6 +45,7 @@ describe('workbench_diy · status（入口：我手上有什么）', () => {
     const result = (await tool(DIY_STATUS_TOOL)?.execute({}, rig.diyExec())) as { text: string };
 
     expect(result.text).toContain('这个工作区中没有模块源码');
+    expect(result.text).toContain('workbench_diy_plan');
     expect(result.text).toContain('dsh-wb-module init');
   });
 

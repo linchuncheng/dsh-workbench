@@ -311,7 +311,8 @@ export function renderList(root: string, modules: readonly DiyModule[], shape: W
     return [
       `这个工作区中没有模块源码（${root}）。${what}；当前会话也尚未安装任何模块。`,
       '只看面板或调试模块界面时不需要模块（workbench_diy_panel 可直接查看）。',
-      '要在这里创建模块，请先提供包目录：pnpm exec dsh-wb-module init <名字> --dir <包目录>/module-<名字> --template diy。',
+      '要在这里创建模块：先调 workbench_diy_plan（destination=board / headless），流程走到「创建模块」再创建模块目录。',
+      '创建命令：pnpm exec dsh-wb-module init <名字> --dir <包目录>/module-<名字> --template diy。',
       '目录按该仓库的实际情况确定，不要为了创建模块而强行修改其结构。',
     ].join('\n');
   }
