@@ -79,7 +79,7 @@ export function registerDiyTools(
   const statusTool = unitTool({
     name: DIY_STATUS_TOOL,
     description:
-      '查看模块状态：安装、源码、面板识别、启动能力与下一步；不填 unit 则列出全部模块。要新建或修改模块，先调用 workbench_diy_plan。',
+      '查看模块状态：安装、源码、面板识别、启动能力与下一步；不填 unit 则列出全部模块。要创建或修改模块，先调用 workbench_diy_plan。',
     unitHint: '模块标识；不填则列出全部模块。',
     async run(raw: unknown, exec: DshToolRunContext) {
       const { root, units } = await unitsAt(ctx, exec);

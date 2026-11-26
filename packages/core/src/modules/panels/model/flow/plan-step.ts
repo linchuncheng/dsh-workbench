@@ -14,10 +14,10 @@ export interface PlanInput extends ReadmeDraft {
 const NEXT: Readonly<Record<string, string>> = {
   probe: '站探完成后提交读取到的站点',
   plan: '补上方案四段与 ascii',
-  build: '开始编写模块',
-  install: '安装并显示到面板',
-  verify: '执行一遍检查',
-  ledger: '保存设计记录',
+  build: '开始编写模块；写完后提交这一步的结果',
+  install: '安装并显示到面板；装完后提交这一步的结果',
+  verify: '执行一遍检查；检查完后提交这一步的结果',
+  ledger: '保存设计记录；保存后提交这一步的结果',
 };
 
 function nextOf(step: string, destination: Destination): string {
@@ -26,7 +26,7 @@ function nextOf(step: string, destination: Destination): string {
       ? '补上四段变化与改之后的 ascii（用 workbench_diy_plan）'
       : '补上方案四段与 ascii（用 workbench_diy_plan）';
   }
-  return `${NEXT[step] ?? step}；用 workbench_diy_step 提交`;
+  return `${NEXT[step] ?? step}（workbench_diy_step）`;
 }
 
 export interface PlanResult {

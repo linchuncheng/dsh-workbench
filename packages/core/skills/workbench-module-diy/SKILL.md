@@ -50,10 +50,9 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 判到「要做模块」之后，流程按格推进，面板上可见。顺序不在这里写（流程定义是唯一来源），
 这里只说每一格要交出的东西。
 
-开流程用 `workbench_diy_plan`（`destination`: `board` / `headless` / `tweak`），第一次只交去向与一句话复述；
-此后「查看数据来源 / 创建模块 / 安装 / 检查 / 保存这次的设计」用 `workbench_diy_step` 提交，
-「确认方案」仍用 `workbench_diy_plan`；返回 `done` 才算完。文件写入在「创建模块」与「保存这次的设计」两格；
-没开流程时 `write` / `edit` 不在工具面里。
+开流程用 `workbench_diy_plan`（`destination`: `board` / `headless` / `tweak`）。创建时第一次只交去向与一句话复述（不审批）；
+修改可直接交完整方案。方案那一步（「确认方案」/「补充方案」）用 `workbench_diy_plan`，其余各格用 `workbench_diy_step` 提交；
+返回 `done: true` 才算完。`write` / `edit` 只在「创建模块」与「保存这次的设计」两格放行；没开流程时它们不在工具面里。
 
 | 格 | 你要交出 |
 |---|---|

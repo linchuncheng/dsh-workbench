@@ -120,8 +120,8 @@ function planToolOf(runs: DiyFlowRuns): DshToolDefinition {
     description:
       '需要为用户创建或修改面板模块时，在动手之前使用：先说清用户要什么（先询问、等回答），再判断去向。' +
       '一次性任务、使用现成模块、只是提问都不要调用。' +
-      '新建模块时第一次只提交去向与一句话复述，走到「确认方案」再提交四段（有看板时再加 ascii）；改模块从「确认方案」起步，可以一次提交完整方案。' +
-      '流程开始后，除「确认方案」外的每一步都用 workbench_diy_step 提交；返回 done 才算完成。' +
+      '创建模块时第一次只提交去向与一句话复述，走到「确认方案」再提交四段（有看板时再加 ascii）；改模块从「补充方案」起步，可以一次提交完整方案。' +
+      '流程开始后，除方案那一步外的每一步都用 workbench_diy_step 提交；返回 done: true 才算完成。' +
       '建模块（board / headless）时四段（see/do/agent/data）讲清这个模块是什么，再加一两张 shots；' +
       '改模块（tweak）时四段只写这次的变化：每条以「新增：」「删除：」「修改：」开头，没变的段只写一条「没变」' +
       '（不用解释它原本是什么），shots 只给改之后的图（不用画改前）；动了审批屏就四段都按审批屏写，' +
@@ -165,7 +165,7 @@ function planToolOf(runs: DiyFlowRuns): DshToolDefinition {
         throw new Error(
           current === null
             ? '现在还没到「确认方案」：先只提交去向与一句话复述；查看数据来源提交完后，在「确认方案」那一步再提交四段（有看板时再加 ascii）。'
-            : `现在停在「${current.title ?? current.id}」；这一步用 workbench_diy_step 提交，方案四段（有看板时再加 ascii）只在「确认方案」那一步提交。`,
+            : `现在停在「${current.title ?? current.id}」；这一步用 workbench_diy_step 提交，方案四段（有看板时再加 ascii）只在方案那一步提交。`,
         );
       }
       if (submittingPlan && destination === 'tweak') validatedChanges(sections, shots);

@@ -5,11 +5,11 @@ import { registerPromptSection } from './prompt-section';
 export const DIY_FLOW_SECTION = 'workbench:diy-flow';
 
 export const DIY_FLOW_TEXT =
-  '这个会话是工作台 DIY 模式。判到这件事要做成模块（新建或修改）后，第一件事调用 workbench_diy_plan' +
-  '（destination=board / headless / tweak，summary 复述用户要什么；不清楚就先问、等回答；第一次不审批）；' +
-  '此后「查看数据来源 / 创建模块 / 安装 / 检查 / 保存设计」用 workbench_diy_step 提交，' +
-  '「确认方案」仍用 workbench_diy_plan；返回 done 才算完成。' +
-  '一次性任务、直接使用现成模块、只是查看面板或排障，都不进流程。';
+  '这个会话是工作台 DIY 模式。要创建或修改模块时，先调用 workbench_diy_plan' +
+  '（destination=board / headless / tweak，summary 复述用户要什么）。' +
+  '创建时第一次只交去向与复述（不审批）；修改可直接交完整方案。' +
+  '方案那一步（「确认方案」/「补充方案」）用 workbench_diy_plan；其余各步用 workbench_diy_step 提交，' +
+  'done: true 才算完成。一次性任务、现成模块、只是查看或排查，都不进流程。';
 
 const DIY_FLOW_ORDER = 701;
 

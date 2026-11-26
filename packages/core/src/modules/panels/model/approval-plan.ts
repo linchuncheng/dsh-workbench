@@ -45,7 +45,7 @@ export function confirmVerdictFor(
   if (step.id !== 'plan') {
     return {
       kind: 'deny',
-      reason: `现在停在「${step.title ?? step.id}」；这一步用 workbench_diy_step 提交，方案四段（有看板时再加 ascii）只在「确认方案」那一步提交。`,
+      reason: `现在停在「${step.title ?? step.id}」；这一步用 workbench_diy_step 提交，方案四段（有看板时再加 ascii）只在方案那一步提交。`,
     };
   }
   return planAskVerdict();
