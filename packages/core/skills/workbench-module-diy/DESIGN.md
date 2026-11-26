@@ -114,7 +114,7 @@ pnpm exec dsh-wb-module design accept    # 逐条走通后打勾
 单态不适用时写 `na`：`{ "key": "idle", "na": "读的是账号，不随项目变" }`，不填 `sees` / `canDo` / `agentCan`。
 `capabilities` 为空时 `states[].agentCan` 可省。`link` 等可选格留空渲染 `—`。
 
-`design.json` 只写用户能读懂的内容。模块**不声明**"在哪些工作区出现"—— 用户用 `workbench_panels_show` / `_hide` 决定
+`design.json` 只写用户能读懂的内容。模块**不声明**"在哪些工作区出现"—— 用户用 `workbench_panels_show` / `panels_hide` 决定
 （[TOOLS.md](TOOLS.md) §12）。`contracts` 只对键名。
 
 ## 6 readme.json

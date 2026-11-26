@@ -35,11 +35,9 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 
 输出固定三行，对用户说，不是给 agent 的日志：
 
-```
-结论：这件事不需要面板，我直接处理，不新增模块。
-依据：不需要在面板中占一格、不需要登录站点、不需要等你处理。
-要调整就说：如果希望以后每天在面板上看到它，我再改为模块。
-```
+> 结论：这件事不需要面板，我直接处理，不新增模块。
+> 依据：不需要在面板中占一格、不需要登录站点、不需要等你处理。
+> 要调整就说：如果希望以后每天在面板上看到它，我再改为模块。
 
 用词只用用户见过的：**面板**、**模块**。不出现「看板」「长流程」「插件」——「插件」在本仓还指 opencli 插件。
 
@@ -50,9 +48,9 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 判到「要做模块」之后，流程按格推进，面板上可见。顺序不在这里写（流程定义是唯一来源），
 这里只说每一格要交出的东西。
 
-开流程用 `workbench_diy_plan`（`destination`: `board` / `headless` / `tweak`）。创建时第一次只交去向与一句话复述（不审批）；
-修改可直接交完整方案。方案那一步（「确认方案」/「补充方案」）用 `workbench_diy_plan`，其余各格用 `workbench_diy_step` 提交；
-返回 `done: true` 才算完。`write` / `edit` 只在「创建模块」与「保存这次的设计」两格放行；没开流程时它们不在工具面里。
+开流程用 `workbench_diy_plan` 与 `workbench_diy_step`；具体参数与返回见 [FAMILY.md](FAMILY.md)。创建时第一次只交去向与一句话复述（不审批）；
+修改可直接交完整方案；方案那一步再交完整方案，其余各格逐格提交。文件写入与编辑只在「创建模块」与「保存这次的设计」两格放开；
+没开流程时不在工具面里。
 
 | 格 | 你要交出 |
 |---|---|
@@ -61,11 +59,11 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 | 创建模块 | 站点表 → 接口 → 配方 → 模板 → 构建（[BUILD.md](BUILD.md) §1–§2） |
 | 安装 / 添加模块到面板 | `workbench_diy_install`；三种结果各说清：直接生效 / **需要退出工作台再打开一次** / 安装失败 |
 | 检查（显示或功能） | 只读取证五态，「验过 / 未验」两列贴给用户，未验必须明写（[REVIEW.md](REVIEW.md)） |
-| 保存这次的设计 | 写入 `design.json`；模块 `README.md` 从 `readme.json` 生成 |
+| 保存这次的设计 | 写入设计底稿；模块说明从用户说明生成 |
 
 **判成一次性**（不进流程时）：给一句时间承诺，完成后把结果发到对话中。
 
-**判成改已有模块**（`destination: 'tweak'`）走另一条五格：补充方案 → 修改模块 → 热换 → 只验证那一格 →
+**判成改已有模块**走另一条五格：补充方案 → 修改模块 → 热换 → 只验证那一格 →
 保存这次的设计。没有站探（数据源没变），也不新建模块。
 
 **判断预算按内容决策算**，不按问句算：出草图算一次，改草图算一次，二选一算一次。复述与
@@ -113,14 +111,13 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
    是这个模块的交付物。
 3. 交代里必须说明它上一次运行的时间，以及在哪里查看。
 
-这一档**不建 `design.json` 的面板表**，也**不运行 `design check`**（它要求面板表非空）；替代门禁是
-`build` + `check` + 实际运行一次给用户看。`README.md` 手写。
+这一档**不建设计底稿的面板表**，也**不运行面板检查**（它要求面板表非空）；替代门禁是构建、模块检查与实际运行一次给用户看。模块说明手写。
 
 ## 改已有模块
 
 用户说「这个数不对 / 修改一下」时，不要重新访谈：
 
-1. 读模块根 `design.json`。
+1. 读模块根的设计底稿。
 2. 复述三行：看什么（`panel[].cell`）/ 哪几格（`panel[]`）/ 什么时候会变（`linkage[].when`）。
 3. 只问「还是这些吗，要改哪一条」。
 
@@ -130,8 +127,8 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 要捕获「用户点击之后发送了什么」，依次调用 `workbench_diy_record_prepare` → 用户操作 → `_record_read`；
 结束调 `_debug_stop` / `_record_stop`。
 
-> **Desktop**：屏调试不可用（`debug_*`、`logs_*`、不带 `read` 的看/动都不会出现）；站点探索用
-> `read=<地址>`，录制 `_record_*` 照旧，`_panel` / `_status` / build / install 照旧。
+> **Desktop**：屏调试不可用（`debug_*`、`logs_*`、不带 `read` 的看/动都不会出现）；站点探索用只读入口，
+> 录制 `_record_*` 照旧，`_panel` / `_status` / 构建 / 安装照旧。
 
 ## 创建落点
 
@@ -139,15 +136,15 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 在这里创建 workspace，还是使用工坊的脚手架工作区。不要改动用户仓库的结构。
 从「创建模块」入口进来的会话已经在工坊里。
 
-套模板见 [BUILD.md](BUILD.md) §1–§2：先 `pnpm exec dsh-wb-module init <unit> --template diy`，
-再修改数据源与渲染。依赖由 setup 安装完成；确实需要安装时，在**工作区根**运行 `pnpm install`（会话沙箱里会报 EPERM）。
+套模板见 [BUILD.md](BUILD.md) §1–§2：先按模板初始化模块，再修改数据源与渲染。依赖由 setup 安装完成；
+确实需要安装时，在**工作区根**运行包管理器（会话沙箱里会报 EPERM）。
 不要从零编写。渲染文案按 [COPY.md](COPY.md)：先判读者（卡片给人 / 描述给 agent / 原始输出进 detail）。
 
 ## 发布
 
-只在用户说「帮我发布」之后调用 `workbench_diy_publish`（`unit=…`）。缺更新日志就带 `changelogNote`；
-缺少模块市场标签时，选择 1–2 个短词放进 `labels`。不要手动修改 `package.json`，不要补标题或署名，也不要询问用户发布出口。
-发布工具返回 `needsUser` 时按 `text` 转述。审批之前会先做一次发布前检查：缺什么就直接拒绝、不显示审批，
+只在用户说「帮我发布」之后调用 `workbench_diy_publish`。缺更新日志就带变更说明；缺少模块市场标签时，选择 1–2 个短词。
+不要手动修改模块清单，不要补标题或署名，也不要询问用户发布出口。发布工具需要用户确认时按返回正文转述。
+审批之前会先做一次发布前检查：缺什么就直接拒绝、不显示审批，
 按理由补齐后再调用一次。细节见 [WIRING.md](WIRING.md) §5。
 
 ## 索引
@@ -174,15 +171,14 @@ description: 在工作台里查清当前面板的问题，或为它新增一块�
 
 ## 查不到时
 
-1. `dsh-wb-module check --only <判据>` 的报错原文。
-2. kit、dsh 原语、CSS 令牌、宿主能力与 deps：调用 `workbench_diy_surface`（令牌用 `scope: 'tokens'`，deps 用 `scope: 'deps'`）；
-   工程域用 `check --only kit` / `--only primitives`。
-3. 模板：`node_modules/@dsh-workbench/module-tools/template-diy/`。
-4. 安装包的类型面：`node_modules/@dsh-workbench/core/dist/types/**`；本指引：
-   `node_modules/@dsh-workbench/core/skills/workbench-module-diy/**`。
+1. 模块工具链的单条判据报错原文。
+2. kit、dsh 原语、CSS 令牌、宿主能力与 deps：读对应声明与 JSDoc；需要定位时用当前环境的只读查询面；
+   工程域用模块工具链的 kit / primitives 判据。
+3. 模板：模块工具包里的模板目录（见 [BUILD.md](BUILD.md)）。
+4. 已安装包的类型面与本指引：见已安装包里的 skills 目录（细节见 [BUILD.md](BUILD.md)）。
 
 ## 硬约束
 
-- dsh 已有的能力从 `kit` 取（`@dsh-workbench/core/client`）；不要手写 DOM 与 CSS，也不要直接 import dsh 的包。
-- DIY 模块默认 `private: true`，不发布到任何来源；用户确认后才调用 `workbench_diy_publish`。
-- 源码零注释（`//`、块注释、`.css` 注释都不许）；用户说明写模块 `README.md`，作者说明写 `DEVELOPING.md` 或 spec。
+- dsh 已有的能力从 `kit` 取；不要手写 DOM 与 CSS，也不要直接 import dsh 的包。
+- DIY 模块默认不发布到任何来源；用户确认后才调用 `workbench_diy_publish`。
+- 源码零注释（行注释、块注释、样式注释都不许）；用户说明写模块说明，作者说明写开发说明或 spec。

@@ -24,7 +24,12 @@ export const PUBLIC_TYPES = {
   'packages/shared/src/host/ai/types.ts': {
     AiRequest: ['prompt', 'images', 'schema', 'signal', 'onStep', 'onDelta', 'model', 'temperature', 'retry', 'timeoutMs', 'strict'],
   },
-  'packages/shared/src/components/card/board-module.ts': { BoardModuleProps: 'all', CardViewCustomProps: 'all' },
+  'packages/shared/src/components/card/board-module.ts': {
+    BoardModuleProps: 'all',
+    CardViewCustomProps: 'all',
+    ApprovalPlanData: 'all',
+    ApprovalPlanExtra: 'all',
+  },
   'packages/shared/src/components/card/Activity.tsx': {
     ActivityBlockProps: 'all',
     ActivityLineProps: 'all',

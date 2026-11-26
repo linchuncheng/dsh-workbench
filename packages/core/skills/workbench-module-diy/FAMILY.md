@@ -10,7 +10,7 @@
 | 定位、是否已安装、能否启动 | `_status`（`unit` 可省略）；它的「下一步」就是下一件事；带 `unit` 时 text 末尾多一条「发布出口：…」 |
 | 卡片空白 / 崩溃 / 读不到 | `_panel` |
 | 找 opencli 命令、看命令形状 | `_recon` → `_spec`（`--help -f json` 原样） |
-| kit 有什么 / 令牌叫什么 | `_components`（`bucket` / `name` 取声明；`scope: tokens` 现读 `--dsw-*` / `--wb-*`） |
+| kit 有什么 / 令牌叫什么 | 读声明与令牌表；只读查询面可加速，不写参数 |
 | 安装一次 / 只添加到看板 | `_install` / `_show` |
 | 发布（顺带记这一版改了什么） | `_publish`，只在用户说「帮我发布」之后；这一版还没有更新日志时带 `changelogNote` |
 | 查看 / 操作当前页 | `_state` · `_html` · `_find` · `_screenshot` · `_click` · `_hover` · `_type` · `_fill` · `_keys` · `_scroll` · `_wait` · `_network` · `_dialog` |
@@ -28,7 +28,7 @@ DIY 工具包还包含管理族的七把工具，因为工坊会使用：`panels
 
 - 只在 DIY 模式的会话出现；面板必须显示在屏幕上。
 - 看屏 / 操作 / 网络 / 日志族要先调用 `_debug_start`（审批一次），否则整族工具都会被拒绝，一条命令也无法执行；结束时调用 `_debug_stop`。
-  `_debug_pause` 只暂停看屏。不碰屏的：`_status` / `_panel` / `_components` / `_recon` / `_spec` /
+  `_debug_pause` 只暂停看屏。不碰屏的：`_status` / `_panel` / `_recon` / `_spec` /
   `_install` / `_show` / `_publish`；`_find` / `_eval` 带 `read=` 时也不碰。
 - 录制独立：`_record_prepare` 审批一次，其余不问；同一时间只能有一场录制，需要重新录制时先调用 `_record_stop`。
 
@@ -43,8 +43,8 @@ DIY 工具包还包含管理族的七把工具，因为工坊会使用：`panels
 - 只读线：带 `read: <地址>` 时运行在 `workbench-read` 会话，不碰屏、不认卡作用域、能代为打开站点；
   `_eval` 返回 `not-logged-in` 时让用户去登录。
 - `_screenshot` 不给路径时写 artifacts 目录；拿不到选择器就先 `_eval` 量盒再 `clip`。
-- `state` 没有 `scope`；`_select` 不存在（下拉分两步）；ref 只在一次快照内有效；
-  `_dialog` 不校验 `accept|dismiss`；`_network --detail` 没有 body，要 body 用 `_eval` 的 fetch。
+- `state` 没有 `scope`；没有单独的选择工具（下拉分两步）；ref 只在一次快照内有效；
+  `_dialog` 不校验 `accept|dismiss`；`_network` 的 detail 没有 body，要 body 用 `_eval` 的 fetch。
 - 录制会按 URL 去除静态资源后写入；`_record_read` 不回体，取体用 `_record_detail`；
   `_record_stop` 先读文件再另存 `.last`，所以先 read / detail 再 stop。取不到时给 DevTools 复制 curl。
   场次 15 分钟过期；过期或记录变更时会停止捕获并收回标签。

@@ -133,7 +133,7 @@ pnpm run check                        # 门禁：整仓那一套（= `pnpm -w ru
 - `.agents/skills/` 随仓带着工程与写作技能；从 `mattpocock/skills` 取的那批见 `skills-lock.json`
   与 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)。
 - 模块设计与 DIY 的共用口径只有一份，住在 `packages/core/skills/workbench-module-diy/`，
-  **不要在仓内再抄一份**。
+  **不要在仓内再抄一份**；skill 只做路由与跨件规则，逐件用法读声明/JSDoc，不依赖 `surface` 的工具名或查询语法。
 
 ### Issue tracker
 

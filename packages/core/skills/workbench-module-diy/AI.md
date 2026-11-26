@@ -6,7 +6,7 @@
 ## 1 怎么选
 
 四个入口：`ask` 回文本、`askJson` 回结构化对象、`askRich` 回文本加用量、`agent` 起子 agent。
-签名、字段与默认值见 `name=AiPort` / `name=AiRequest`；这一节只讲怎么选。
+签名、字段与默认值见 `AiPort` / `AiRequest`；这一节只讲怎么选。
 
 - 除 `prompt` 外**全部可选**：新增字段不会破坏调用方。
 - `askJson` 保证返回对象：schema 的紧凑描述会附在提示词末尾，先解析、再校验，不合格**自动重试一次**，

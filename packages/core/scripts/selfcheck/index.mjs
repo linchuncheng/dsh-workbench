@@ -3,6 +3,8 @@ import { reportAndExit } from '../../../../scripts/selfcheck-report.mjs';
 import * as host from './checks/host.mjs';
 import * as client from './checks/client.mjs';
 import * as kitFace from './checks/kit-face.mjs';
+import * as skillRefs from './checks/skill-refs.mjs';
+import * as skillEntry from './checks/skill-entry.mjs';
 import * as slots from './checks/slots.mjs';
 import * as cssHygiene from './checks/css-hygiene.mjs';
 import * as cardReporting from './checks/card-reporting.mjs';
@@ -29,6 +31,8 @@ const MODULES = [
   host,
   client,
   kitFace,
+  skillRefs,
+  skillEntry,
   slots,
   cssHygiene,
   cardReporting,

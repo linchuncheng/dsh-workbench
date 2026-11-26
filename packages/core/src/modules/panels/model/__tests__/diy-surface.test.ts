@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { surfaceTool, registerSurfaceTool } from '../diy-surface';
 import { DIY_SURFACE_TOOL, READ_TOOLS, WRITE_TOOLS } from '../../unit';
+import { surfaceCoreRoot } from '@/shared/api/host/diy-deps';
+import { publicTypeOf, renderTypeText } from '@/shared/api/host/diy-types';
 
 describe('workbench_diy_surface · 工具形状', () => {
   it('★ 名字是那一把、四个参数（name / scope / bucket / all），scope 只认五个面，而且只归读侧（不写东西、不用点头）', () => {
@@ -30,6 +32,20 @@ describe('workbench_diy_surface · 工具形状', () => {
     expect(out.names).toEqual(['seam', 'ai']);
     expect(out.text).toContain('seam →');
     expect(out.text).toContain('ai →');
+  });
+
+  it('★ 公开类型能答出声明与 JSDoc：CardProps / ApprovalPlanData / UnitMountDeps', () => {
+    const root = surfaceCoreRoot();
+    expect(root).not.toBeNull();
+
+    for (const name of ['CardProps', 'ApprovalPlanData', 'UnitMountDeps']) {
+      const fact = publicTypeOf(name, root, []);
+      expect(fact, name).not.toBeNull();
+      if (fact === null) throw new Error(`缺公开类型 ${name}`);
+      const text = renderTypeText(fact);
+      expect(text, name).toContain(name);
+      expect(text, name).toContain('/**');
+    }
   });
 
   it('注册恰好一把，并回一个能撤销的 disposer', () => {

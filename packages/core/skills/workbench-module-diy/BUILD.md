@@ -127,7 +127,7 @@ export const apply = plugin.apply;
 | `unit` | `<运行时根>/units/<unit>/`（模块自己的数据目录；`HOME`、npm/pnpm 缓存与日志也注入到这里） | 声明了就常开、不用审批 |
 | `workspace` | 当前会话的工作区 | 声明了才给；调用时还要带上会话对象 |
 
-字段、默认值与错误码见 `name=UnitSeamRequest`；这一节只留必须遵守的约束。
+字段、默认值与错误码见 `UnitSeamRequest`；这一节只留必须遵守的约束。
 
 不写 `writes`（或写 `[]`）= 不拿门面：`deps.seam` 是 `undefined`，代码里按可选处理。
 

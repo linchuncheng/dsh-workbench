@@ -82,8 +82,7 @@
   `DECLARED_TOOLS.rebuild.name`。工具名字面量只保留在清单里一处；键名错误会导致编译错误，生成物过期、只写一半或又出现字面量都会失败。
 - `needsApproval`：`read` 不问；`ask` 给 `headline`（动作 + 对象，≤15 字，无「允许吗」）与
   `question` / `fallback`（zh / en；`writeApprovalOf` 会补齐）；`deny` 给理由。`writes: true` 未认领 = deny。
-- `approval.plan` 必填：`{ object, change, target, impact }`，可带 `objectLabel` / `extra` / `warn`；
-  四行非空、单行；说不清就 `null` + `deny`。
+- `approval.plan` 四行：`object` / `change` / `target` / `impact`，其余见 `ApprovalPlanData`；说不清就 `null` + `deny`。
 - `approval.render` 可选：接管详情区；空/抛错退回四行表。
 - `approvalDetail` 只给无 `headline` 的旧模块；没有材料返回 `{ blocked }`。
 
@@ -162,7 +161,7 @@
 耗时几十秒以上的操作做成长任务：`mount` deps 的 `longTasks` 并挂回：
 
 `deps.longTasks.create(...)` 建注册表、`start` 起一趟；方法、字段见
-`name=LongTaskHost` / `name=LongTaskDeps` / `name=LongTaskRegistry`；`run` 里用 `onStep` 报步骤。
+`LongTaskHost` / `LongTaskDeps` / `LongTaskRegistry`；`run` 里用 `onStep` 报步骤。
 
 - 来源：工具里 `runs.start({ …, session: deps.sessionIdOf(exec) ?? undefined })`。未记录 = 用户手动启动的 → 停止需审批。
 - 流程事件默认用 `longTaskStepOf(event)`。
@@ -193,7 +192,7 @@
   `label: 停止任务 {label}`、`askLabel: '确认停止'`）；失败文案画行下；两步确认归组件。
 - 工作台自带 `workbench_long_tasks_list`（读）与 `workbench_long_tasks_stop`（写）。自己发起的长任务无需审批；
   他人的 / 用户手动启动的 / 未记录来源的需要审批；跨工作区直接拒绝。
-- `contracts` 查形状：注册表方法见 `name=LongTaskRegistry`，`create` 的字段见 `name=LongTaskDeps`；
+- `contracts` 查形状：注册表方法见 `LongTaskRegistry`，`create` 的字段见 `LongTaskDeps`；
   产物含 `useLongTask` / `LongTaskRow` 之一。是否实际响应 signal 不在检查范围内。
 - 左栏的状态点由工作台按 `live()` 驱动；等待人工处理时升级为「等你处理」的 warning，模块不做。
 - 用 `stop` / `session` / 长任务工具需把 `@dsh-workbench/core` peer 下限抬到含它们的版本（`check --only kit` 查）。
@@ -225,4 +224,4 @@
   模块工具按工作区是否有这个模块收窄；DIY 族按模式收窄。
 - 工作台双重执行：清单不出现 + 调用时拒。
 
-"哪些工作区出现"由用户用 `workbench_panels_show` / `_hide` 控制，卡片与全部工具同判；`deniedTools` 可选。
+"哪些工作区出现"由用户用 `workbench_panels_show` / `panels_hide` 控制，卡片与全部工具同判；`deniedTools` 可选。
