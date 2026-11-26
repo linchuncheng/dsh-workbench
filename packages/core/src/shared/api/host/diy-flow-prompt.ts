@@ -1,6 +1,6 @@
-import type { DshHostContext } from '@dsh-workbench/shared/host';
+import type { DshHostContext, ToolScopeContext } from '@dsh-workbench/shared/host';
 import { DIY_PRESET_ID } from '@/shared/api/diy';
-import { registerPromptSection } from './prompt-section';
+import { registerPromptText } from './prompt-section';
 
 export const DIY_FLOW_SECTION = 'workbench:diy-flow';
 
@@ -15,17 +15,12 @@ export const DIY_FLOW_TEXT =
 
 const DIY_FLOW_ORDER = 701;
 
+const DIY_FLOW_VISIBLE = (scope: ToolScopeContext | null): boolean =>
+  scope !== null && scope.preset === DIY_PRESET_ID;
+
 export function registerDiyFlowPrompt(
   ctx: DshHostContext,
   isChild: (sessionId: string) => boolean,
 ): () => void {
-  return registerPromptSection(ctx, {
-    name: DIY_FLOW_SECTION,
-    order: DIY_FLOW_ORDER,
-    text: DIY_FLOW_TEXT,
-    isChild,
-    visible: (scope) => scope !== null && scope.preset === DIY_PRESET_ID,
-    absent: '这个 dsh 没有 systemPrompt 服务：DIY 流程入口不进系统提示词',
-    failed: '注册 DIY 流程提示词段失败',
-  });
+  return registerPromptText(ctx, isChild, DIY_FLOW_SECTION, DIY_FLOW_ORDER, DIY_FLOW_TEXT, '这个 dsh 没有 systemPrompt 服务：DIY 流程入口不进系统提示词', '注册 DIY 流程提示词段失败', DIY_FLOW_VISIBLE);
 }

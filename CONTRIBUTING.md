@@ -134,17 +134,18 @@ which is not exhaustive: a short block whose names all differ can slip through.
 
 Known noise: flat data tables (state maps, word lists) match themselves under the renamed
 mode, so editing such a table reports a same-file clone. When the new-clone list contains
-only same-file table self-matches, run `pnpm run duplication:accept`; anything else gets
-fixed or refactored first.
+only same-file table self-matches, fix or refactor first; `pnpm run duplication:accept`
+rewrites the baseline and must wait for explicit user approval.
 
 - Remove the duplication, or
-- accept it explicitly with `pnpm run duplication:accept` and commit the updated
-  `.jscpd-baseline.json`.
+- accept it explicitly with `pnpm run duplication:accept` **after the user has approved
+  that clone**, then commit the updated `.jscpd-baseline.json`.
 - `pnpm run duplication:report` writes the full HTML and JSON reports to `coverage/duplication/`.
 
 Baseline fingerprints describe clone content, not line numbers or file names, so moving code
-or renaming files does not invalidate the baseline. Re-run `duplication:accept` after changing
-the scan surface in `.jscpd.json` or after upgrading jscpd across a major version.
+or renaming files does not invalidate the baseline. Re-run `duplication:accept` — with the
+user's approval — after changing the scan surface in `.jscpd.json` or after upgrading jscpd
+across a major version.
 
 ## Swallowed errors
 

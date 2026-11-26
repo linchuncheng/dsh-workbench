@@ -1,21 +1,12 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
-import { pkg, REPO } from '../lib.mjs';
+import { readFileSync } from 'node:fs';
+import { relative } from 'node:path';
+import { markdownFilesUnder, pkg, REPO } from '../lib.mjs';
 import { documentedInterfaces } from '../public-types.mjs';
 
 const SKILL_DIR = pkg('skills/workbench-module-diy');
 const UNIT = pkg('src/modules/panels/unit.ts');
 const PACKS = new Set(['manage', 'diy']);
 const TITLE = '★ DIY skill 里的工具名必须是现名（含 _foo 简写），旧名/带语法的名字当场红';
-
-function mdFilesUnder(dir) {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) return mdFilesUnder(full);
-    return entry.name.endsWith('.md') ? [full] : [];
-  });
-}
 
 export function toolNamesOf(source) {
   return new Set([...source.matchAll(/'((?:workbench_)[a-z0-9_]+)'/g)].map((one) => one[1]));
@@ -78,7 +69,7 @@ export const checks = [
       const toolNames = toolNamesOf(readFileSync(UNIT, 'utf8'));
       const typeNames = typeNamesOf();
       const kitNames = kitNamesOf(ctx.kit);
-      const files = mdFilesUnder(SKILL_DIR);
+      const files = markdownFilesUnder(SKILL_DIR);
       const bad = files.flatMap((file) =>
         violationsOf({
           text: readFileSync(file, 'utf8'),

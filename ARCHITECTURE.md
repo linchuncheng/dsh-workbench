@@ -1171,7 +1171,7 @@ check:release-artifacts
 <!-- doc-facts:end gate-chain -->
 
 重复代码是基线门禁：存量克隆记在 `.jscpd-baseline.json`，`check:duplication` 只红在基线之外的
-新克隆；`pnpm run duplication:accept` 重写基线（和代码一起提交），`pnpm run duplication:report`
+新克隆；`pnpm run duplication:accept` 重写基线（**必须经用户明确同意**，和代码一起提交），`pnpm run duplication:report`
 出 `coverage/duplication/` 下的 HTML / JSON 全量报告。扫描面（`packages/` 与 `scripts/` 的
 TS / JS，不含测试、构建产物与词典）在 `.jscpd.json` —— 词典是逐条平铺的键值表，同名同形的行
 在 Type-2 下会被当成克隆，那里没有可抽的逻辑。纯 re-export 的 barrel（整份文件只有 `export` / `import`）

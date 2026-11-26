@@ -1,5 +1,5 @@
 import type { DshHostContext } from '@dsh-workbench/shared/host';
-import { registerPromptSection } from './prompt-section';
+import { registerPromptText } from './prompt-section';
 
 export const PRIORITY_SECTION = 'workbench:tool-priority';
 
@@ -13,12 +13,5 @@ export function registerWorkbenchPriority(
   ctx: DshHostContext,
   isChild: (sessionId: string) => boolean,
 ): () => void {
-  return registerPromptSection(ctx, {
-    name: PRIORITY_SECTION,
-    order: PRIORITY_ORDER,
-    text: PRIORITY_TEXT,
-    isChild,
-    absent: '这个 dsh 没有 systemPrompt 服务：工作台工具优先级不进系统提示词',
-    failed: '注册工作台优先级提示词段失败',
-  });
+  return registerPromptText(ctx, isChild, PRIORITY_SECTION, PRIORITY_ORDER, PRIORITY_TEXT, '这个 dsh 没有 systemPrompt 服务：工作台工具优先级不进系统提示词', '注册工作台优先级提示词段失败');
 }

@@ -57,6 +57,15 @@ export function walk(dir, { withTests = false } = {}) {
   return out;
 }
 
+export function markdownFilesUnder(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return markdownFilesUnder(full);
+    return entry.name.endsWith('.md') ? [full] : [];
+  });
+}
+
 export function sourceIndex() {
   const out = [];
   for (const root of [SRC, SHARED_SRC]) {

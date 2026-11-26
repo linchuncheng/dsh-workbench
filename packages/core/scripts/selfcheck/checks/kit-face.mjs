@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { REPO, pkg } from '../lib.mjs';
+import { markdownFilesUnder, REPO, pkg } from '../lib.mjs';
 
 const FACES = ['api', 'components', 'hooks', 'lib'];
 
@@ -46,15 +46,6 @@ const ADDITIONS = [
   { key: 'lib.blockerOf', why: 'named' },
 ];
 
-function mdFilesUnder(dir) {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) return mdFilesUnder(full);
-    return entry.name.endsWith('.md') ? [full] : [];
-  });
-}
-
 function sourceFilesUnder(dir, out = []) {
   if (!existsSync(dir)) return out;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -76,7 +67,7 @@ export function codeTextOf(markdown) {
 }
 
 export function guidanceCodeText() {
-  return mdFilesUnder(GUIDANCE_DIR)
+  return markdownFilesUnder(GUIDANCE_DIR)
     .map((file) => codeTextOf(readFileSync(file, 'utf8')))
     .join('\n');
 }
@@ -141,7 +132,7 @@ export function kitPairsOf(kit) {
 
 export function kitRefsInGuidance() {
   const refs = [];
-  for (const file of mdFilesUnder(GUIDANCE_DIR)) {
+  for (const file of markdownFilesUnder(GUIDANCE_DIR)) {
     const text = readFileSync(file, 'utf8');
     for (const match of text.matchAll(/kit\.([a-z]+)(?:\.([A-Za-z0-9_$]+))?/g)) {
       refs.push({ face: match[1], name: match[2] ?? '', file: relative(GUIDANCE_DIR, file) });

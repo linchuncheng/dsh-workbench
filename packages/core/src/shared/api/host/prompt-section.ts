@@ -19,6 +19,19 @@ export interface PromptSectionOptions {
   readonly failed: string;
 }
 
+export function registerPromptText(
+  ctx: DshHostContext,
+  isChild: (sessionId: string) => boolean,
+  name: string,
+  order: number,
+  text: string,
+  absent: string,
+  failed: string,
+  visible?: ((scope: ToolScopeContext | null) => boolean) | undefined,
+): () => void {
+  return registerPromptSection(ctx, { name, order, text, isChild, visible, absent, failed });
+}
+
 export function registerPromptSection(ctx: DshHostContext, options: PromptSectionOptions): () => void {
   const systemPrompt = ctx.get('systemPrompt') as unknown as SectionRegistry | undefined;
   if (systemPrompt?.section === undefined) {

@@ -24,16 +24,19 @@ import * as platformCi from './checks/platform-ci.mjs';
 import * as marketSeam from './checks/market-seam.mjs';
 import * as bootstrapSeam from './checks/bootstrap-seam.mjs';
 import * as seamIntent from './checks/seam-intent.mjs';
-import * as faultExits from './checks/fault-exits.mjs';
 import * as toolOutput from './checks/tool-output.mjs';
+import * as faultExits from './checks/fault-exits.mjs';
 
-const MODULES = [
+const ENTRY_CHECKS = [
   host,
   client,
   kitFace,
   skillRefs,
   skillEntry,
   slots,
+];
+
+const PANEL_CHECKS = [
   cssHygiene,
   cardReporting,
   wiring,
@@ -44,6 +47,9 @@ const MODULES = [
   workshopWiring,
   diyEntry,
   diyTools,
+];
+
+const SYSTEM_CHECKS = [
   gateChain,
   kernelShape,
   platform,
@@ -55,6 +61,8 @@ const MODULES = [
   faultExits,
   toolOutput,
 ];
+
+const MODULES = [...ENTRY_CHECKS, ...PANEL_CHECKS, ...SYSTEM_CHECKS];
 
 const results = [];
 const report = (name, passed, detail = '') => {

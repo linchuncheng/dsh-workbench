@@ -60,6 +60,8 @@ function declarationOnly(file, start, end) {
         (line) =>
           /^(export|import)\b/.test(line) ||
           /^[\w$]+,?$/.test(line) ||
+          /^const\s+[\w$]+\s*=\s*\[/.test(line) ||
+          /^\]\s*;?\s*$/.test(line) ||
           /^}\s*from\s+['"]/.test(line),
       );
   } catch {
@@ -88,7 +90,7 @@ function check() {
     const report = readReport(join(output, REPORT_NAME));
     if (report === undefined) {
       echo(result);
-      console.error('✖ 重复代码：jscpd 没跑成 —— 没装依赖就 pnpm install，没有基线就 pnpm run duplication:accept');
+      console.error('✖ 重复代码：jscpd 没跑成 —— 没装依赖就 pnpm install；没有基线时先获用户同意，再跑 pnpm run duplication:accept');
       return 2;
     }
     const total = report.statistics.total;
@@ -107,7 +109,7 @@ function check() {
     );
     for (const clone of fresh.slice(0, LIST_LIMIT)) console.error(cloneLine(clone));
     if (fresh.length > LIST_LIMIT) console.error(`  · 还有 ${fresh.length - LIST_LIMIT} 块，跑 pnpm run duplication:report 看全量`);
-    console.error('  → 消掉重复；确认可以接受就跑 pnpm run duplication:accept，并把 .jscpd-baseline.json 一起提交');
+    console.error('  → 消掉重复；确需接受时，先拿到用户明确同意，再跑 pnpm run duplication:accept，并把 .jscpd-baseline.json 一起提交');
     return 1;
   } finally {
     rmSync(output, { recursive: true, force: true });
@@ -117,7 +119,7 @@ function check() {
 function accept() {
   const result = jscpd(['--reporters', 'silent', '--update-baseline']);
   echo(result);
-  if (result.exitCode === 0) console.log('✔ 基线已重写：.jscpd-baseline.json（和代码一起提交）');
+  if (result.exitCode === 0) console.log('✔ 基线已重写：.jscpd-baseline.json（必须已获用户同意；和代码一起提交）');
   return result.exitCode ?? 1;
 }
 
