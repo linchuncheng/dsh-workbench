@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DshHostContext } from '@dsh-workbench/shared/host';
+import { TOOL_NAMES_SERVICE, createToolNameLedger } from '@/kernel/host/tool-output-budget';
 import { objectSchemaOf, toolRegistryOf } from '../tool-registry-guard';
 
 const ctxWith = (tools: unknown, skipped: string[]): DshHostContext =>
@@ -25,6 +26,27 @@ describe('工具注册的那道门：没有 tools 服务就安静跳过', () => 
   it('★ 没有 logger 也不炸：只是没人听见', () => {
     const ctx = { get: () => undefined } as unknown as DshHostContext;
     expect(toolRegistryOf(ctx, '跳过录制')).toBeUndefined();
+  });
+});
+
+describe('工具注册的那道门：记名字（输出预算认得出是不是工作台的）', () => {
+  it('★★ 注册前先记账，再把定义原样交给 tools', () => {
+    const names = createToolNameLedger();
+    const registered: string[] = [];
+    const tools = {
+      register: (definition: { name: string }) => {
+        registered.push(definition.name);
+        return () => undefined;
+      },
+    };
+    const ctx = {
+      get: (key: string) => (key === 'tools' ? tools : key === TOOL_NAMES_SERVICE ? names : undefined),
+    } as unknown as DshHostContext;
+    const registry = toolRegistryOf(ctx, '跳过录制');
+    registry?.register({ name: 'workbench_demo_list' } as never);
+    expect(names.has('workbench_demo_list')).toBe(true);
+    expect(names.size).toBe(1);
+    expect(registered).toEqual(['workbench_demo_list']);
   });
 });
 

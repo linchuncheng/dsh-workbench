@@ -8,7 +8,6 @@ export const SURFACE_TIMEOUT_MS = 30000;
 export const EXCERPT_LINES = 60;
 export const SUMMARY_PER_BUCKET = 12;
 export const NEAR_LIMIT = 8;
-export const PRUNE_CHARS = 8192;
 export const PRIMITIVES_PKG = '@deepseek-ai/dsh-client-ui-primitives';
 
 export const MANIFEST_TAIL = '//# sourceMappingURL=';
@@ -353,17 +352,7 @@ export function renderSurfaceText(
     ...Object.entries(rootsOf(query.primitives)).map(([key, dir]) => `${key}=${dir}`),
   ];
   if (roots.length > 0) lines.push(`类型面：${roots.join(' · ')}`);
-  const text = lines.join('\n');
-  if (text.length <= PRUNE_CHARS) return text;
-  const commands = (options.scope === 'all' ? ['kit', 'primitives'] : [options.scope])
-    .map((one) => `\`dsh-wb-module check --only ${one} --all\``)
-    .join(' 或 ');
-  return [
-    `⚠️ 这份清单 ${String(text.length)} 字符，超过 ${String(PRUNE_CHARS)} 会被修剪器裁掉中间 —— 按桶问装得下；要一份全的走 shell：${commands} 再 grep。`,
-    '   （shell 那份按 barrel 列，计数比这里的落点分组大 —— 两边口径不同。）',
-    '',
-    text,
-  ].join('\n');
+  return lines.join('\n');
 }
 
 export function listedNamesOf(query: SurfaceQuery): readonly string[] {

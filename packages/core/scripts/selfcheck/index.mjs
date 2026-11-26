@@ -23,6 +23,7 @@ import * as marketSeam from './checks/market-seam.mjs';
 import * as bootstrapSeam from './checks/bootstrap-seam.mjs';
 import * as seamIntent from './checks/seam-intent.mjs';
 import * as faultExits from './checks/fault-exits.mjs';
+import * as toolOutput from './checks/tool-output.mjs';
 
 const MODULES = [
   host,
@@ -48,6 +49,7 @@ const MODULES = [
   bootstrapSeam,
   seamIntent,
   faultExits,
+  toolOutput,
 ];
 
 const results = [];

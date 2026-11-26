@@ -1,6 +1,5 @@
 import type { TokenEntry, TokenSet } from '@dsh-workbench/shared/host';
 import { nearestTokens, tokenFamilyOf } from '@dsh-workbench/shared/host';
-import { PRUNE_CHARS } from './diy-surface';
 
 export interface TokenRenderOptions {
   readonly name: string;
@@ -110,10 +109,5 @@ export function renderTokensText(set: TokenSet, options: TokenRenderOptions): st
     if (keys.length > 0) lines.push(`列全一族：${keys.map((one) => `bucket=${one}`).join(' / ')}`);
     if (set.dsw !== null) lines.push(`查单个连浅/深值：name=--dsw-alias-bg-layer-1${set.wb === null ? '' : '（--wb-* 同理）'}；全表：all=true`);
   }
-  let text = lines.join('\n');
-  if (text.length <= PRUNE_CHARS) return text;
-  const family = groups[0]?.family ?? '';
-  text = text.slice(0, PRUNE_CHARS);
-  const cut = text.lastIndexOf(' ');
-  return `${text.slice(0, cut)}\n（到这儿 ${PRUNE_CHARS} 字符就截了 —— 剩下的按族问${family === '' ? '' : `：bucket=${family}`}）`;
+  return lines.join('\n');
 }

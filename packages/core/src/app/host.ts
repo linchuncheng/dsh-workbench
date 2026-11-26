@@ -17,7 +17,7 @@ import type { PostWrite } from '@dsh-workbench/shared/host';
 import {
   capabilityHandler, dshHome, hostSurface, registerApi, registerPanelState, runningVersionOf, workbenchRoot,
 } from '@dsh-workbench/shared/host';
-import { PANEL_STATE_SERVICE, createFactLog, createPanelStateStore, toolUnits, wroteNow } from '@dsh-workbench/shared/host';
+import { PANEL_STATE_SERVICE, createFactLog, createPanelStateStore, toolUnits } from '@dsh-workbench/shared/host';
 
 import { createMcpScope } from '@/shared/api/host/pack-scope';
 import { mountWorkbenchSettings, workbenchSettingsAction } from '@/shared/api/host/workbench-settings';
@@ -53,6 +53,7 @@ import { registerBootThemeGuard } from '@/shared/api/host/boot-theme-guard';
 import { mountDiyPreset } from '@/shared/api/host/diy-preset-host';
 import { createFlowAgentGateway, FLOW_CHILD_HIDDEN_TOOLS } from '@/shared/api/host/flow/agent';
 import { notifyLongTaskChange } from '@/shared/api/host/long-task-notice';
+import { installToolResultEffects, provideToolNames } from '@/shared/api/host/tool-result-effects';
 export const name = 'dsh-workbench';
 interface ReleasedLookup { isReleased(id: string): boolean }
 export const inject = ['webServer'];
@@ -63,6 +64,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   registerBootThemeGuard(ctx);
   const flowAgents = createFlowAgentGateway(ctx);
   const facts = createFactLog();
+  const toolNames = provideToolNames(ctx);
   const values = createValueHandoff();
   const panelState = createPanelStateStore();
   const resolved = await resolveAdapterSet(ctx, config?.adapterSet, () => shippedAdapterSet(ctx));
@@ -439,23 +441,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   ctx.effect(() => holdHostLock((message) => warn(ctx, message)), `${PLUGIN_ID}: 宿主运行时保留一把锁，自更新等它退出后才替换安装包`);
   ctx.effect(() => bindRosterFacts({ units, bump: (names) => facts.bump(names) }), `${PLUGIN_ID}: 花名册变了就把清单那条事实记一笔（浏览器据此重读，不用刷新页面）`);
 
-  ctx.effect(() => {
-    const off = ctx.on?.('tools/post-execute', (exec, result, next) => {
-      const name = exec?.name === undefined ? undefined : String(exec.name);
-      const tool = name === undefined ? undefined : unitsOfTool().get(name);
-      if (tool !== undefined && name !== undefined) {
-        const call: UnitCall = { source: name, args: asArgs(exec?.arguments), result };
-        const declared = factsOfMap.get(tool.unit)?.(call);
-        if (declared !== undefined) {
-          if (declared.length > 0) facts.bump(declared);
-        } else if (tool.writes && wroteNow(result) !== false) {
-          facts.bump(factsOfUnit(tool.unit));
-        }
-      }
-      return next();
-    });
-    return () => off?.();
-  }, `${PLUGIN_ID}: 事实归属（读工具与写工具同一处声明）`);
+  installToolResultEffects(ctx, { toolNames, unitsOfTool, factsOfMap, facts, factsOfUnit });
 
   ctx.effect(() => {
     const off = ctx.on?.('agent/created', (payload) => {

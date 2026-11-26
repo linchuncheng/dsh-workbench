@@ -1,5 +1,6 @@
-import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
+import type { DshHostContext, DshToolDefinition, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { hostSurface, sessionIdOf } from '@dsh-workbench/shared/host';
+import { toolRegistryOf } from '../tool-registry-guard';
 import { DIY_STEP_TOOL } from '../../unit';
 import { plainJson } from '../diy-context';
 import { positionOf, titleOf } from './position';
@@ -46,7 +47,7 @@ function destinationOf(input: Readonly<Record<string, unknown>>): string | null 
 }
 
 export function registerDiyStepTool(ctx: DshHostContext, runs: DiyFlowRuns): Array<() => void> {
-  const tools = ctx.get('tools') as DshToolRegistry | undefined;
+  const tools = toolRegistryOf(ctx, '跳过 DIY 步骤工具注册');
   if (tools === undefined) return [];
 
   const stepTool: DshToolDefinition = {

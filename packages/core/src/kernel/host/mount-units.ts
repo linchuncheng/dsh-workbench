@@ -31,6 +31,7 @@ import type { DataReader } from '@dsh-workbench/shared/host';
 import type { HostUnit } from './unit-registry';
 import { unitReadiness, type UnitReadiness } from './unit-readiness';
 import { withRunsRoute } from './unit-runs';
+import { TOOL_NAMES_SERVICE, toolNameLedgerOf, type ToolNameLedger } from './tool-output-budget';
 import { createWorkspaceStore } from '@dsh-workbench/shared/host';
 
 function declaresNote(definition: DshToolDefinition): boolean {
@@ -51,9 +52,11 @@ function journaledRegistry(
   registry: DshToolRegistry,
   journal: Array<() => void>,
   declaredNotes: Set<string>,
+  names: ToolNameLedger | undefined,
 ): DshToolRegistry {
   return {
     register(definition: DshToolDefinition) {
+      names?.add(definition.name);
       const registered = registry.register(definition);
       journal.push(registered);
       if (declaresNote(definition)) declaredNotes.add(definition.name);
@@ -67,8 +70,9 @@ function scopedMountCtx(
   registry: DshToolRegistry,
   journal: Array<() => void>,
   declaredNotes: Set<string>,
+  names: ToolNameLedger | undefined,
 ): DshHostContext {
-  const tools = journaledRegistry(registry, journal, declaredNotes);
+  const tools = journaledRegistry(registry, journal, declaredNotes, names);
   const get = (name: string, strict?: boolean): unknown => {
     const value = ctx.get(name, strict);
     return name === 'tools' && value !== undefined ? tools : value;
@@ -371,8 +375,10 @@ export function mountUnits(
       ...(deps.drafts === undefined ? {} : { drafts: deps.drafts }),
     });
     const tools = deps.ctx.get('tools');
+    const toolNames = toolNameLedgerOf(deps.ctx.get(TOOL_NAMES_SERVICE));
     const toolJournal: Array<() => void> = [];
-    const mountCtx = tools === undefined ? deps.ctx : scopedMountCtx(deps.ctx, tools, toolJournal, declaredNotes);
+    const mountCtx =
+      tools === undefined ? deps.ctx : scopedMountCtx(deps.ctx, tools, toolJournal, declaredNotes, toolNames);
     const longTasks =
       deps.longTasks === undefined
         ? undefined

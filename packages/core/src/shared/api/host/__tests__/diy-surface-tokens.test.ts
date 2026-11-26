@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import type { TokenEntry, TokenSet } from '@dsh-workbench/shared/host';
-import { PRUNE_CHARS } from '../diy-surface';
 import { renderTokensText } from '../diy-tokens';
 
 function entry(name: string, light: string | null, dark: string | null = light): TokenEntry {
@@ -76,7 +75,7 @@ describe('workbench_diy_surface · 令牌清单', () => {
     expect(wrong).toContain('wb（2）');
   });
 
-  it('all 给全表；太长就截断并说清截了、下一问去哪', () => {
+  it('all 给全表：自己不再截断，预算归平台的 post-execute 策略', () => {
     expect(renderTokensText(set, { name: '', bucket: '', all: true, searched })).toContain('--dsw-static-neutral-bluish-700');
     const many: TokenSet = {
       dsw: {
@@ -88,9 +87,8 @@ describe('workbench_diy_surface · 令牌清单', () => {
       wb: null,
     };
     const text = renderTokensText(many, { name: '', bucket: '', all: true, searched });
-    expect(text.length).toBeLessThanOrEqual(PRUNE_CHARS + 120);
-    expect(text).toContain('截了');
-    expect(text).toContain('bucket=alias');
+    expect(text).toContain('--dsw-alias-filler-599');
+    expect(text).not.toContain('截了');
   });
 
   it('★ 读不到 dsh 主题：说读不到、找过哪，别把 --wb-* 说成没有', () => {

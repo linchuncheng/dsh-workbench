@@ -166,7 +166,7 @@ describe('workbench_diy_surface · 人话', () => {
     expect(renderSurfaceText({ primitives, kit }, { scope: 'all', all: true, bucket: 'components' })).toContain('  组件(1)：Card');
   });
 
-  it('★ 兜底网：目录档自己长到超预算（桶多到自己就超）时，警告顶在最前，两个面的命令都给', () => {
+  it('★ 目录档自己长到超预算时不再自己截断：全表原样给出，预算归平台的 post-execute 策略', () => {
     const files = Object.fromEntries(
       Array.from({ length: 30 }, (_unused, bi) => `b${String(bi)}`).flatMap((b) =>
         Array.from({ length: 14 }, (_unused, index) => [
@@ -179,14 +179,11 @@ describe('workbench_diy_surface · 人话', () => {
     const text = renderSurfaceText({ primitives, kit: big }, { scope: 'all', all: false });
 
     expect(text.length).toBeGreaterThan(8192);
-    expect(text.startsWith('⚠️ 这份清单')).toBe(true);
-    expect(text).toContain('`dsh-wb-module check --only kit --all`');
-    expect(text).toContain('`dsh-wb-module check --only primitives --all`');
-    expect(renderSurfaceText({ primitives, kit: big }, { scope: 'kit', all: false })).toContain('⚠️ 这份清单');
-    expect(renderSurfaceText({ primitives, kit }, { scope: 'all', all: false })).not.toContain('⚠️ 这份清单');
+    expect(text).not.toContain('这份清单');
+    expect(renderSurfaceText({ primitives, kit: big }, { scope: 'kit', all: false })).not.toContain('这份清单');
   });
 
-  it('★ 单面全表自己也长到超预算时（原语长大以后）：警告在前，且只报这一面的命令', () => {
+  it('★ 单面全表自己也长到超预算时（原语长大以后）：整份给全，不再警告', () => {
     const many = Array.from({ length: 400 }, (_unused, index) => `Thing${String(index)}WithALongName`);
     const payload = {
       ...primitives,
@@ -195,11 +192,7 @@ describe('workbench_diy_surface · 人话', () => {
     };
     const text = renderSurfaceText({ primitives: payload }, { scope: 'primitives', all: true });
     expect(text.length).toBeGreaterThan(8192);
-    expect(text.startsWith('⚠️ 这份清单')).toBe(true);
-    expect(text).toContain('按桶问装得下');
-    expect(text).toContain('`dsh-wb-module check --only primitives --all`');
-    expect(text).not.toContain('--only kit --all');
-    expect(text).not.toContain('两个面一起不给全表');
+    expect(text).not.toContain('这份清单');
   });
 
   it('装机那份没装：把那句能照做的补法说出来，不假装有清单', () => {
