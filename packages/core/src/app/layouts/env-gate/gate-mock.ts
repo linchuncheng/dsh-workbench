@@ -1,6 +1,7 @@
 import styles from './BootGate.module.css';
 import type {
   PreflightBridgeIssue,
+  PreflightDiyGap,
   PreflightGuidance,
   PreflightSnapshot,
   PreflightStep,
@@ -98,6 +99,30 @@ function mock(
 
 const BRIDGE_PENDING = { id: 'bridge', status: 'pending' } as const;
 
+type SnapshotBody = Omit<PreflightSnapshot, 'at'>;
+
+function readySnapshot(steps: readonly PreflightStep[], extra: Partial<SnapshotBody> = {}): SnapshotBody {
+  return { phase: 'ready', steps, ...extra };
+}
+
+function bridgeWarnStep(detail: string, command?: string): PreflightStep {
+  return { ...(command === undefined ? {} : { command }), id: 'bridge', status: 'warn', detail };
+}
+
+function diySnapshot(step: PreflightStep, gap: PreflightDiyGap): SnapshotBody {
+  return readySnapshot([cliOkStep(), bridgeOkStep(), step], { diyGap: gap });
+}
+
+const DIY_DETAIL = 'tool-schedule (@deepseek-ai/dsh-tool-schedule): never started';
+
+function extensionSnapshot(extra: Partial<SnapshotBody> = {}): SnapshotBody {
+  return readySnapshot([cliOkStep(), bridgeWarnStep(EXTENSION_REPORT)], {
+    bridgeIssues: ['extension'],
+    canWakeBrowser: true,
+    ...extra,
+  });
+}
+
 export const GATE_MOCKS: readonly GateMock[] = [
   mock(
     'boot',
@@ -147,65 +172,54 @@ export const GATE_MOCKS: readonly GateMock[] = [
     'ready',
     '都就绪（真机到这就放行）',
     '两步都过。这一帧之后 gate 立刻撤掉 —— 钉住它只是为了看一眼这两行长什么样。',
-    {
-      phase: 'ready',
-      steps: [
-        cliOkStep(),
-        bridgeOkStep(),
-      ],
-    },
+    readySnapshot([cliOkStep(), bridgeOkStep()]),
     { hint: 'checking', command: false },
   ),
   mock(
     'warn-extension',
     '浏览器通道：扩展没连上',
-    'daemon 在跑、扩展没连上（最常见）：门**停在这一帧** —— 行尾说"没连上"，下面给「去应用商店装扩展」+ `daemon restart`（原文折叠当证据）+ 一颗「打开浏览器」（Desktop 才有）+ 一颗「先进入工作台」。',
-    {
-      phase: 'ready',
-      steps: [
-        cliOkStep(),
-        { id: 'bridge', status: 'warn', detail: EXTENSION_REPORT },
-      ],
-      bridgeIssues: ['extension'],
-      canWakeBrowser: true,
-    },
+    'daemon 在跑、扩展没连上（最常见）：门**停在这一帧** —— 行尾说"没连上"，下面给两种装法：① 工作台自带的扩展副本（目录可直接复制）；② 去应用商店装。末尾一句「做完后回来点击重试」，再往下是「打开浏览器」（Desktop 才有）+「先进入工作台」。',
+    extensionSnapshot({ extensionDir: '/Users/you/.dsh/workbench/opencli/extension' }),
     { hint: 'hold', command: false, bridgeIssues: ['extension'] },
+  ),
+  mock(
+    'warn-extension-offline',
+    '浏览器通道：没有本地副本可指',
+    '扩展没连上、这台机器上又没有随包带的副本：不给「加载本地副本」这条（没得选），只剩应用商店一条路。',
+    extensionSnapshot(),
+    { hint: 'hold', command: false, bridgeIssues: ['extension'] },
+  ),
+  mock(
+    'warn-bridge-incompatible',
+    '浏览器通道：扩展版本不兼容',
+    '扩展连上了但版本对不上：三步（打开扩展页 → 重新加载或更新 → 确认版本），不再教怎么装。',
+    extensionSnapshot({ bridgeIssues: ['extension-incompatible'], extensionTarget: '3.1.0' }),
+    { hint: 'hold', command: false, bridgeIssues: ['extension-incompatible'] },
   ),
   mock(
     'warn-daemon',
     '浏览器通道：服务没起来',
     'daemon 没起来（扩展跟着也连不上）：两条人话都摆出来，命令给 `daemon restart`。',
-    {
-      phase: 'ready',
-      steps: [
-        cliOkStep(),
-        { id: 'bridge', status: 'warn', detail: DAEMON_REPORT, command: 'opencli daemon restart' },
-      ],
+    readySnapshot([cliOkStep(), bridgeWarnStep(DAEMON_REPORT, 'opencli daemon restart')], {
       bridgeIssues: ['daemon', 'extension'],
-    },
+    }),
     { hint: 'hold', command: false, bridgeIssues: ['daemon', 'extension'] },
   ),
   mock(
     'warn-profile',
     '浏览器通道：没选默认 profile',
     '连了多个浏览器 profile 但没选默认：只说"选哪个"（重启服务解决不了它），命令给 `profile list`。',
-    {
-      phase: 'ready',
-      steps: [
-        cliOkStep(),
-        { id: 'bridge', status: 'warn', detail: PROFILE_REPORT, command: 'opencli profile list' },
-      ],
+    readySnapshot([cliOkStep(), bridgeWarnStep(PROFILE_REPORT, 'opencli profile list')], {
       bridgeIssues: ['profile'],
-    },
+    }),
     { hint: 'hold', command: false, bridgeIssues: ['profile'] },
   ),
   mock(
     'warn-host',
     'dsh 升到了没验过的一代',
     '运行中的 dsh 比这份工作台验过的那一代新（跨代）。门停在这一帧：行尾说「未验证」，下面说清是哪一版、验的是哪一版，并给「先进入工作台」；再往下是打不开时的恢复步骤（界面句 + 一行原样的键路径）。',
-    {
-      phase: 'ready',
-      steps: [
+    readySnapshot(
+      [
         cliOkStep(),
         {
           id: 'host',
@@ -219,56 +233,56 @@ export const GATE_MOCKS: readonly GateMock[] = [
         },
         bridgeOkStep(),
       ],
-      hostGap: { tier: 'newer', runtime: '0.3.0-rc.1', verified: '0.2.3-alpha.2' },
-    },
+      { hostGap: { tier: 'newer', runtime: '0.3.0-rc.1', verified: '0.2.3-alpha.2' } },
+    ),
+    { hint: 'hold', command: false },
+  ),
+  mock(
+    'warn-host-older',
+    'dsh 比验证过的版本旧',
+    '运行中的 dsh 低于这份工作台验过的那一代：卡上给升级步骤（网页版带命令）+ 一条「一直打不开时」的退路。',
+    readySnapshot(
+      [
+        cliOkStep(),
+        { id: 'host', status: 'warn', detail: '0.2.1', log: ['profile: /Users/you/.dsh/profiles/workbench', 'dsh: 0.2.1'] },
+        bridgeOkStep(),
+      ],
+      { hostGap: { tier: 'older', runtime: '0.2.1', verified: '0.2.3-alpha.2', command: 'npm i -g @deepseek-ai/dsh@latest' } },
+    ),
     { hint: 'hold', command: false },
   ),
   mock(
     'warn-diy',
     'DIY 模式：版本过低',
     'dsh 比这份工作台验过的那一代旧（版本事实可证）：卡片给出版本、验证过的版本与升级命令，桌面版不显示命令。门**停在这一帧**。',
-    {
-      phase: 'ready',
-      steps: [
-        cliOkStep(),
-        bridgeOkStep(),
-        diyWarnStep('tool-schedule (@deepseek-ai/dsh-tool-schedule): never started', 'npm i -g @deepseek-ai/dsh@latest'),
-      ],
-      diyGap: {
-        kind: 'older-dsh',
-        rows: ['tool-schedule'],
-        detail: 'tool-schedule (@deepseek-ai/dsh-tool-schedule): never started',
-        command: 'npm i -g @deepseek-ai/dsh@latest',
-      },
-    },
+    diySnapshot(diyWarnStep(DIY_DETAIL, 'npm i -g @deepseek-ai/dsh@latest'), {
+      kind: 'older-dsh',
+      rows: ['tool-schedule'],
+      detail: DIY_DETAIL,
+      command: 'npm i -g @deepseek-ai/dsh@latest',
+    }),
     { hint: 'hold', command: false },
   ),
   mock(
     'warn-diy-broken',
     'DIY 模式：几行没有启动',
     '版本不是原因（dsh 没升级也能出现）：某几行插件没导入成功，真正报错只在 dsh 启动日志里。卡片不再断言原因、不给命令，只陈述「哪几行没有启动」+ 复制给 agent。',
-    {
-      phase: 'ready',
-      steps: [
-        cliOkStep(),
-        bridgeOkStep(),
-        diyWarnStep('tool-schedule (@deepseek-ai/dsh-tool-schedule): never started'),
-      ],
-      diyGap: {
-        kind: 'broken-row',
-        rows: ['tool-schedule'],
-        detail: 'tool-schedule (@deepseek-ai/dsh-tool-schedule): never started',
-      },
-    },
+    diySnapshot(diyWarnStep(DIY_DETAIL), { kind: 'broken-row', rows: ['tool-schedule'], detail: DIY_DETAIL }),
+    { hint: 'hold', command: false },
+  ),
+  mock(
+    'warn-diy-preset-missing',
+    'DIY 模式：模式列表里没有',
+    '启动检查没在 dsh 的模式列表里找到「工作台 DIY 模式」：兜底卡，只陈述事实 +「复制给 agent」，不给命令。',
+    diySnapshot(diyWarnStep('工作台 DIY 模式：未找到'), { kind: 'preset-missing', rows: [], detail: 'preset missing' }),
     { hint: 'hold', command: false },
   ),
   mock(
     'warn-bridge-unknown',
     '浏览器连接：认不出问题',
     'doctor 报了问题但认不出是哪一类：卡片陈述事实并给「复制给 agent」，不再让人自己展开原文猜。',
-    {
-      phase: 'ready',
-      steps: [
+    readySnapshot(
+      [
         cliOkStep(),
         {
           id: 'bridge',
@@ -277,8 +291,8 @@ export const GATE_MOCKS: readonly GateMock[] = [
           log: ['> opencli doctor', 'Something unexpected happened while probing the browser'],
         },
       ],
-      bridgeIssues: ['unknown'],
-    },
+      { bridgeIssues: ['unknown'] },
+    ),
     { hint: 'hold', command: false, bridgeIssues: ['unknown'] },
   ),
   mock(

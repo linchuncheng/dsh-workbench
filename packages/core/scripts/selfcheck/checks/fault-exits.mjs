@@ -4,7 +4,7 @@ import { read, SHARED_SRC, SRC, walk } from '../lib.mjs';
 
 const SURFACE_ROWS = [
   '启动页兜底卡|core|app/layouts/env-gate/fault-card.ts|mode: \'fallback\'|prompt:',
-  '启动页兜底卡的出口按钮|core|app/layouts/env-gate/fallback-section.ts|askAgent.copy|writeClipboard',
+  '启动页兜底卡的出口按钮|core|app/layouts/env-gate/fix-card.ts|askAgent.copy|writeClipboard',
   '模块卡阻断|shared|api/blocker-table.ts|ask-agent|askAgentActionOf',
   '看板读失败|core|app/layouts/rightbar/BoardReadFailed.tsx|askAgentActionOf',
   '卡片渲染崩溃|shared|components/card/CardBoundary.tsx|askAgent.copy|askAgent.copied',

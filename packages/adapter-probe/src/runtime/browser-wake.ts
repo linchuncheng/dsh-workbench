@@ -11,6 +11,7 @@ const BROWSER_IDS = BROWSER_SPECS.map((one) => one.id);
 export interface DesktopBrowser {
   observe(): Promise<void>;
   wake(): Promise<WakeBrowserReply>;
+  openExtensions(): Promise<WakeBrowserReply>;
 }
 
 function isBrowserId(value: unknown): value is DesktopBrowserId {
@@ -21,6 +22,7 @@ function specOf(id: DesktopBrowserId) {
   return BROWSER_SPECS.find((item) => item.id === id) ?? BROWSER_SPECS[0]!;
 }
 
+const EXTENSIONS_URL = 'chrome://extensions';
 const WAKE_WAIT_MS = 12_000;
 const SHORT_WAIT_MS = 3_000;
 const POLL_MS = 500;
@@ -127,11 +129,12 @@ export function createDesktopBrowser(options: {
     return exists(local) ? local : join(home, 'Applications', `${label}.app`);
   }
 
-  async function launch(id: DesktopBrowserId): Promise<boolean> {
+  async function launch(id: DesktopBrowserId, url?: string): Promise<boolean> {
     const spec = browserLaunchOf(id, hostOsOf(platform), {
       appPath: appPath(id),
       executable: executableOf(id),
       linuxBinary: specOf(id).linuxBinary,
+      ...(url === undefined ? {} : { url }),
     });
     if (spec === undefined) return false;
     if (spec.probe !== undefined && !(await run(spec.probe, SHORT_WAIT_MS)).ok) return false;
@@ -175,7 +178,16 @@ export function createDesktopBrowser(options: {
     return { status: 'not-connected', browser: target };
   }
 
-  return { observe, wake };
+  async function openExtensions(): Promise<WakeBrowserReply> {
+    if (!browserWakeSupportedOf(platform)) return { status: 'unsupported' };
+    const target = pickTarget(await running());
+    if (target === undefined) return { status: 'no-browser' };
+    if (!(await launch(target, EXTENSIONS_URL))) return { status: 'launch-failed', browser: target };
+    save(target);
+    return { status: 'browser-open', browser: target };
+  }
+
+  return { observe, wake, openExtensions };
 }
 
 export function bridgeFixCommand(

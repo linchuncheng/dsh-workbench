@@ -1,7 +1,8 @@
 .hint[hidden],
-.actions[hidden],
+.fixCard[hidden],
 .commandRow[hidden],
-.bridge[hidden] {
+.cardStatus[hidden],
+.stepStatus[hidden] {
   display: none;
 }
 
@@ -26,8 +27,7 @@
   text-align: center;
 }
 
-.card:has(.actions:not([hidden])),
-.card:has(.bridge:not([hidden])) {
+.card:has(.fixCard:not([hidden])) {
   max-width: var(--wb-len-520);
 }
 
@@ -165,7 +165,7 @@
   align-items: center;
   gap: var(--wb-len-4);
   margin: 0 0 var(--wb-len-8);
-  padding-right: var(--wb-len-4);
+  padding-right: var(--wb-len-8);
   border-radius: var(--dsw-radius-sm);
   background: var(--dsw-alias-bg-layer-2);
 }
@@ -245,20 +245,22 @@
   opacity: 0.4;
 }
 
-.actions,
-.bridge {
+.fixCard {
   box-sizing: border-box;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--wb-len-10);
+  gap: var(--wb-len-12);
   margin-top: var(--wb-len-4);
   padding: var(--wb-len-14) var(--wb-len-16);
   border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: var(--wb-radius-14);
   background: var(--dsw-alias-bg-layer-1);
   text-align: left;
+  font-size: var(--dsw-font-xxs-12-font-size);
+  line-height: var(--wb-line-19);
+  color: var(--dsw-alias-label-secondary);
 }
 
 .fixTitle {
@@ -269,42 +271,159 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.actions .hint,
-.bridge .hint {
+.fixBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-len-12);
+}
+
+.fixBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-len-4);
+}
+
+.blockLabel {
   margin: 0;
-  font-size: var(--dsw-font-xxs-12-font-size);
-  line-height: var(--wb-line-19);
+  font-size: var(--dsw-font-xxxs-11-font-size);
+  line-height: var(--wb-line-16);
+  font-weight: 400;
+  letter-spacing: var(--wb-track-brand);
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.reason {
+  margin: 0;
   color: var(--dsw-alias-label-secondary);
 }
 
-.actions .commandRow,
-.bridge .commandRow {
-  margin: 0;
-}
-
-.actions .buttons,
-.bridge .buttons {
-  justify-content: flex-start;
-}
-
-.bridgeLines {
+.facts {
   margin: 0;
   padding-left: var(--wb-len-18);
   display: flex;
   flex-direction: column;
-  gap: var(--wb-len-8);
-  font-size: var(--dsw-font-xxs-12-font-size);
-  line-height: var(--wb-line-19);
-  color: var(--dsw-alias-label-secondary);
+  gap: var(--wb-len-4);
 }
 
-.bridgeLine a {
-  display: block;
-  margin-top: var(--wb-len-4);
-  width: fit-content;
+.fact {
+  margin: 0;
+}
+
+.methods {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-len-12);
+}
+
+.methodHint {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.method {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-len-6);
+}
+
+.methodHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--wb-len-4);
+}
+
+.methodMarked .fixSteps {
+  padding-left: var(--wb-len-16);
+}
+
+.methodTitle {
+  margin: 0;
+  font-size: var(--dsw-font-xxs-12-font-size);
+  line-height: var(--wb-line-19);
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.fixSteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-len-6);
+}
+
+.stepRow {
+  display: grid;
+  grid-template-columns: var(--wb-len-16) minmax(0, 1fr);
+  gap: var(--wb-len-8);
+  align-items: start;
+}
+
+.stepRowSingle {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.stepIndex {
+  font-size: var(--dsw-font-xxxs-11-font-size);
+  line-height: var(--wb-line-19);
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.stepMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-len-4);
+  min-width: 0;
+}
+
+.stepText {
+  margin: 0;
+}
+
+.inlineCode {
+  margin: 0 var(--wb-len-2);
+  padding: 0 var(--wb-len-4);
+  border-radius: var(--wb-radius-6);
+  background: var(--dsw-alias-bg-layer-2);
+  font-family: var(--ds-font-family-code, monospace);
+  font-size: var(--dsw-font-xxxs-11-font-size);
+  line-height: var(--wb-line-16);
+  color: var(--dsw-alias-label-primary);
+}
+
+.inlineAction {
+  border: none;
+  cursor: pointer;
+}
+
+.inlineAction::after {
+  content: '↗';
+  margin-left: var(--wb-len-2);
+}
+
+.inlineAction:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.fixCard .commandRow {
+  margin: 0 var(--wb-len-16) 0 0;
+}
+
+.fixCard .buttons {
+  justify-content: flex-start;
+}
+
+.stepStatus,
+.cardStatus,
+.note {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .link {
+  width: fit-content;
   color: var(--dsw-alias-label-primary);
   text-decoration: none;
 }

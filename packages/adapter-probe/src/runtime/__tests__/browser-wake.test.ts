@@ -67,6 +67,32 @@ function disconnected(): string {
 }
 
 describe('Desktop 浏览器唤醒', () => {
+  it('★ 打开扩展页：用当前浏览器直接落到 chrome://extensions，不再等连接', async () => {
+    const { fake, desktop } = wire({ status: [disconnected()], running: ['Google Chrome'], open: [0] });
+
+    const result = await desktop.openExtensions();
+
+    expect(result).toEqual({ status: 'browser-open', browser: 'chrome' });
+    expect(fake.commands()).toContain(`open -g -j -a '${CHROME_APP}' 'chrome://extensions'`);
+  });
+
+  it('没有能开的浏览器 → no-browser，不白跑 open', async () => {
+    const fake = createFakeShell(() => ({ stdout: disconnected() }));
+    const desktop = createDesktopBrowser({
+      seam: seamFor(fake.shell),
+      command: 'opencli',
+      stateFile: join(tmpdir(), 'wb-wake-ext-none', 'browser.json'),
+      platform: 'darwin',
+      home: '/Users/who',
+      exists: () => false,
+      waitMs: 0,
+      pollMs: 0,
+    });
+
+    expect(await desktop.openExtensions()).toEqual({ status: 'no-browser' });
+    expect(fake.commands().some((line) => line.startsWith('open '))).toBe(false);
+  });
+
   it('通道本就通 → 只记住正在跑的那个浏览器，不打开任何东西', async () => {
     const { fake, desktop, stateFile } = wire({ status: [CONNECTED], running: ['Google Chrome'] });
 

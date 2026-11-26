@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { en, zh } from '@dsh-workbench/shared';
 import { gateActionOf } from '../boot-gate';
-import { bridgeAdvice, bridgeAdviceLines, failedStepText, gateHintOf, guidanceTextOf, hostVersionWhyText, stepDetailText } from '../gate-text';
+import { failedStepText, gateHintOf, guidanceTextOf, hostVersionWhyText, stepDetailText } from '../gate-text';
+import { bridgeFixOf } from '../fix-card';
 import { GATE_MOCKS } from '../gate-mock';
 
 const t = ((key: string) => (zh as Record<string, string>)[key] ?? key) as never;
@@ -108,17 +109,19 @@ describe('GATE_MOCKS', () => {
     expect(en['env.fix.stepRetry']).toBeDefined();
   });
 
-  it('★ 桥接建议按文案去重：运行时档案还没加载时，两条 issue 不会把同一条「没认出」刷两遍', () => {
+  it('★ 同时坏两样时先讲根因：daemon 那一帧只给 daemon 卡，扩展装法不抢戏', () => {
     const simple = (key: string): string => key;
-    expect(bridgeAdviceLines(['daemon', 'extension'], simple).map((one) => one.text)).toEqual([
-      'env.bridge.unknown',
-      'env.bridge.extensionOffline',
-    ]);
-    expect(bridgeAdviceLines([], simple)).toHaveLength(1);
-    const fixes = { daemon: { text: { zh: '起服务', en: 'start' } } };
+    const both = bridgeFixOf(
+      { phase: 'ready', steps: [], at: 0, bridgeIssues: ['daemon', 'extension'] },
+      simple as never,
+      undefined,
+    );
+
+    expect(both?.reason).toBe('env.bridge.unknown');
+    expect(both?.methods).toBeUndefined();
     expect(
-      bridgeAdviceLines(['daemon', 'daemon'], simple, fixes as never).map((one) => one.text),
-    ).toEqual(['起服务']);
+      bridgeFixOf({ phase: 'ready', steps: [], at: 0, bridgeIssues: ['unknown'] }, simple as never, undefined),
+    ).toBeUndefined();
   });
 
   it('★ 覆盖了真机上难造的那几档：安装中、装不上、装了找不到、执行缝坏、命令没返回、浏览器通道三种坏法', () => {
@@ -132,6 +135,10 @@ describe('GATE_MOCKS', () => {
       'failed-shell',
       'failed-host',
       'warn-extension',
+      'warn-extension-offline',
+      'warn-bridge-incompatible',
+      'warn-host-older',
+      'warn-diy-preset-missing',
       'warn-daemon',
       'warn-profile',
       'warn-diy',
@@ -172,21 +179,60 @@ describe('GATE_MOCKS', () => {
       const issues = item.snapshot.bridgeIssues ?? [];
       expect(issues.length, item.id).toBeGreaterThan(0);
       expect(issues, item.id).toEqual(item.expect.bridgeIssues);
-      for (const issue of issues) expect(bridgeAdvice(issue, t).text.length, `${item.id}/${issue}`).toBeGreaterThan(0);
+      if (issues.includes('unknown')) continue;
+      expect(bridgeFixOf(item.snapshot, t, undefined), item.id).toBeDefined();
       expect(bridge.detail ?? '', item.id).not.toBe('');
     }
   });
 
-  it('★ 有本地扩展目录时直接说路径：离线加载的三步就写在那一行里', () => {
-    const located = (key: string, params?: Record<string, string>): string =>
-      (zh as Record<string, string>)[key]?.replace('{dir}', params?.dir ?? '') ?? key;
-    const advice = bridgeAdvice('extension', located as never, undefined, '/opt/opencli-extension');
-    expect(advice.text).toContain('/opt/opencli-extension');
-    expect(advice.text).toContain('chrome://extensions');
-    expect(advice.link).toBeUndefined();
-    expect(
-      bridgeAdviceLines(['extension'], located as never, undefined, '/opt/opencli-extension').map((one) => one.text),
-    ).toEqual([advice.text]);
+  it('★ 有本地扩展目录时：四步装法，目录单独一行、可复制', () => {
+    const card = bridgeFixOf(
+      {
+        phase: 'ready',
+        steps: [{ id: 'bridge', status: 'warn' }],
+        at: 0,
+        bridgeIssues: ['extension'],
+        extensionDir: '/opt/opencli-extension',
+        canWakeBrowser: true,
+      },
+      t,
+      undefined,
+    );
+    const steps = card?.methods?.[0]?.steps ?? [];
+
+    expect(card?.reason).toBe(zh['env.bridge.reason.extension']);
+    expect(card?.actions).toEqual(['wake', 'retry', 'skip']);
+    expect(card?.methods?.[0]?.title).toBe(zh['env.bridge.extension.local']);
+    expect(steps).toHaveLength(4);
+    expect(steps[0]?.open).toBe('extensions');
+    expect(steps[3]?.command).toBe('/opt/opencli-extension');
+    expect(card?.note).toBe(zh['env.fix.note']);
+  });
+
+  it('★ 没有随包副本时不教「加载本地副本」：只剩应用商店一条路', () => {
+    const fixes = {
+      extension: { link: { label: { zh: '去装', en: 'install' }, href: 'https://example.com/extension' } },
+    };
+    const card = bridgeFixOf(
+      { phase: 'ready', steps: [{ id: 'bridge', status: 'warn' }], at: 0, bridgeIssues: ['extension'] },
+      t,
+      fixes as never,
+    );
+
+    expect(card?.methods).toHaveLength(1);
+    expect(card?.methods?.[0]?.link?.href).toBe('https://example.com/extension');
+    expect(card?.methodHint).toBeUndefined();
+  });
+
+  it('★ 副本和商店都给不出时：只留「确认扩展已启用」，不编装法', () => {
+    const card = bridgeFixOf(
+      { phase: 'ready', steps: [{ id: 'bridge', status: 'warn' }], at: 0, bridgeIssues: ['extension'] },
+      t,
+      undefined,
+    );
+
+    expect(card?.methods).toHaveLength(1);
+    expect(card?.methods?.[0]?.steps.map((step) => step.text)).toEqual([zh['env.fix.open'], zh['env.bridge.extension.enable']]);
   });
 
   it('★ 档案给了修法就用档案的（连不上的那一步，话和链接都跟着运行时走）', () => {
@@ -195,20 +241,38 @@ describe('GATE_MOCKS', () => {
         text: { zh: '扩展没连上', en: 'extension not connected' },
         link: { label: { zh: '去装', en: 'install' }, href: 'https://example.com/extension' },
       },
+      daemon: { text: { zh: '起服务', en: 'start' } },
     };
 
-    const extension = bridgeAdvice('extension', t, fixes);
+    const extension = bridgeFixOf(
+      {
+        phase: 'ready',
+        steps: [{ id: 'bridge', status: 'warn' }],
+        at: 0,
+        bridgeIssues: ['extension'],
+        extensionDir: '/opt/ext',
+      },
+      t,
+      fixes as never,
+    );
 
-    expect(extension.text).toBe(zh['env.bridge.extensionOffline']);
-    expect(extension.link?.href).toBe('https://example.com/extension');
-    expect(extension.link?.label).toBe('去装');
-    expect(bridgeAdviceLines(['extension'], t, fixes).map((one) => one.text)).toEqual([
-      zh['env.bridge.extensionOffline'],
-    ]);
-    for (const issue of ['daemon', 'profile', 'stale', 'unknown'] as const) {
-      expect(bridgeAdvice(issue, t, fixes).link, issue).toBeUndefined();
-    }
-    expect(bridgeAdvice('daemon', t).text).toBe(zh['env.bridge.unknown']);
+    expect(extension?.methods?.[1]?.link).toEqual({
+      label: '去装',
+      href: 'https://example.com/extension',
+    });
+
+    const daemon = bridgeFixOf(
+      {
+        phase: 'ready',
+        steps: [{ id: 'bridge', status: 'warn', command: 'opencli daemon restart' }],
+        at: 0,
+        bridgeIssues: ['daemon'],
+      },
+      t,
+      fixes as never,
+    );
+    expect(daemon?.reason).toBe('起服务');
+    expect(daemon?.methods?.[0]?.steps?.[0]?.command).toBe('opencli daemon restart');
   });
 
   it('★ 通道坏了时给的是"怎么修"，不是再诊一次（`doctor` 已经诊过了）', () => {

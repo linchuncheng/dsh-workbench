@@ -1,23 +1,26 @@
-import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives';
-import styles from './BootGate.module.css';
 import type { Translate } from '@dsh-workbench/shared';
 import type { PreflightSnapshot, PreflightStep, PreflightStepId } from '@dsh-workbench/shared/host';
+import styles from './BootGate.module.css';
 import { WAKE_BROWSER_ROUTE, type WakeBrowserReply } from '@/kernel/contract/preflight-wake';
 import { apiGet } from '@dsh-workbench/shared';
 import { LOCALE_NS } from '@dsh-workbench/shared';
 import { devSurface } from '@/shared/dev-surface';
 import { hostSurfaceValue, runtimeProfileValue } from '@/shared/hooks/use-runtime-capabilities';
-import { bridgeAdviceLines, guidanceTextOf, hostVersionWhyText, stepDetailText } from './gate-text';
+import { stepDetailText } from './gate-text';
 import type { RuntimeProfile } from '@dsh-workbench/shared';
 import { readRuntimeCapabilities } from '@/shared/hooks/runtime-queries';
-import { brandMarkIcon, el, spinnerIcon, svgIcon } from './gate-dom';
+import { brandMarkIcon, el, spinnerIcon } from './gate-dom';
 import { createForcePlan, retryTargetOf } from './force-plan';
 import { logAtBottom } from './log-follow';
 import { hostLabel } from '@/app/layouts/host-requirement';
-import { bridgeFallbackOf, diyCardOf, type GateDeployment } from './fault-card';
-import { fallbackSectionOf } from './fallback-section';
+import { bridgeFallbackOf, type GateDeployment } from './fault-card';
+import { bridgeFixOf, createFixCard, diyFixOf, failureFixOf, fallbackFixOf, hostFixOf, type FixCardView } from './fix-card';
 
 const POLL_MS = 400;
+
+function nullOnFailure<T>(promise: Promise<T>): Promise<T | null> {
+  return promise.catch(() => null);
+}
 
 function stepLabel(step: PreflightStep, t: Translate): string {
   const id: PreflightStepId = step.id;
@@ -50,64 +53,6 @@ export function gateActionOf(snapshot: PreflightSnapshot): 'close' | 'hold' | 'w
   return snapshot.diyGap === undefined ? 'close' : 'hold';
 }
 
-function commandRow(t: Translate): { row: HTMLElement; set(text: string | undefined): void } {
-  const row = el('div', styles.commandRow);
-  const code = el('code', styles.command);
-  const copy = el('button', styles.copy);
-  copy.setAttribute('type', 'button');
-  copy.setAttribute('aria-label', t('env.copyCommand'));
-  copy.title = t('env.copyCommand');
-  copy.append(svgIcon('copy'));
-  row.append(code, copy);
-
-  let text: string | undefined;
-
-  copy.addEventListener('click', () => {
-    if (text === undefined) return;
-    void writeClipboard(text).then((ok) => {
-      if (!ok) return;
-      copy.replaceChildren(svgIcon('check'));
-      copy.title = t('env.copied');
-      setTimeout(() => {
-        copy.replaceChildren(svgIcon('copy'));
-        copy.title = t('env.copyCommand');
-      }, 1500);
-    });
-  });
-
-  return {
-    row,
-    set(next) {
-      text = next;
-      code.textContent = next ?? '';
-      row.hidden = next === undefined;
-    },
-  };
-}
-
-interface AdviceSection {
-  readonly root: HTMLElement;
-  readonly why: HTMLElement;
-  readonly step: HTMLElement;
-  readonly command: ReturnType<typeof commandRow>;
-  readonly buttons: HTMLElement;
-}
-
-function adviceSectionOf(
-  t: Translate,
-  parts: { whyText?: string; beforeStep?: readonly HTMLElement[]; afterStep?: readonly HTMLElement[] } = {},
-): AdviceSection {
-  const root = el('div', styles.bridge);
-  root.hidden = true;
-  const title = el('h2', styles.fixTitle, t('env.fix.title'));
-  const why = el('p', styles.hint, parts.whyText ?? '');
-  const step = el('p', styles.hint);
-  const command = commandRow(t);
-  const buttons = el('div', styles.buttons);
-  root.append(title, why, ...(parts.beforeStep ?? []), step, ...(parts.afterStep ?? []), command.row, buttons);
-  return { root, why, step, command, buttons };
-}
-
 export function createBootGate(
   ctx: { locale: { bind(namespace: string): Translate } },
   options: { request?: typeof apiGet } = {},
@@ -129,60 +74,23 @@ export function createBootGate(
   brandHead.append(brandMarkIcon(), title);
   const bootHint = el('p', styles.hint, t('env.checking'));
   const list = el('ul', styles.steps);
-  const actions = el('div', styles.actions);
-  actions.hidden = true;
-  const fixTitle = el('h2', styles.fixTitle, t('env.fix.title'));
-  const fixWhy = el('p', styles.hint);
-  const fixStep = el('p', styles.hint);
-  const fixAdvice = el('p', styles.hint);
-  const buttons = el('div', styles.buttons);
-  const retry = el('button', styles.button, t('env.retry'));
-  retry.setAttribute('type', 'button');
-  const failedSkip = el('button', styles.button, t('env.failed.continue'));
-  failedSkip.setAttribute('type', 'button');
-  const fixCommand = commandRow(t);
 
-  buttons.append(retry, failedSkip);
-  actions.append(fixTitle, fixWhy, fixStep, fixCommand.row, fixAdvice, buttons);
+  let openExtensionsAllowed = false;
 
-  const bridge = el('div', styles.bridge);
-  bridge.hidden = true;
-  const bridgeTitle = el('h2', styles.fixTitle, t('env.fix.title'));
-  const bridgeWhy = el('p', styles.hint, t('env.bridge.why'));
-  const bridgeLines = el('ul', styles.bridgeLines);
-  const bridgeCommand = commandRow(t);
-  const wakeNote = el('p', styles.hint);
-  wakeNote.hidden = true;
-  const bridgeWake = el('button', styles.button, t('env.wake'));
-  bridgeWake.setAttribute('type', 'button');
-  const bridgeRetry = el('button', styles.button, t('env.retry'));
-  bridgeRetry.setAttribute('type', 'button');
-  const bridgeSkip = el('button', styles.button, t('env.bridge.continue'));
-  bridgeSkip.setAttribute('type', 'button');
-  const bridgeButtons = el('div', styles.buttons);
-  bridgeButtons.append(bridgeWake, bridgeRetry, bridgeSkip);
-bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, bridgeButtons);
+  const wiring = {
+    retry: () => retryNow(),
+    skip: () => close(),
+    wake: () => void wakeBrowserNow(),
+    openExtensions: () => void openExtensionsNow(),
+    canOpenExtensions: () => openExtensionsAllowed,
+  };
+  const failureCard = createFixCard(t, wiring);
+  const bridgeCard = createFixCard(t, wiring);
+  const diyCard = createFixCard(t, wiring);
+  const hostCard = createFixCard(t, wiring);
+  const cards: readonly FixCardView[] = [failureCard, bridgeCard, diyCard, hostCard];
 
-  const diySection = adviceSectionOf(t);
-  const diy = diySection.root;
-  const diyCommand = diySection.command;
-  const diyRetry = el('button', styles.button, t('env.retry'));
-  diyRetry.setAttribute('type', 'button');
-  const diySkip = el('button', styles.button, t('env.diy.continue'));
-  diySkip.setAttribute('type', 'button');
-  diySection.buttons.append(diyRetry, diySkip);
-  const diyFallback = fallbackSectionOf(t, t('env.diy.continue'));
-  const bridgeFallback = fallbackSectionOf(t, t('env.bridge.continue'));
-
-  const hostRecover = el('p', styles.hint);
-  const hostRecoverDetail = el('p', styles.hint);
-  const hostSection = adviceSectionOf(t, { afterStep: [hostRecover, hostRecoverDetail] });
-  const host = hostSection.root;
-  const hostSkip = el('button', styles.button, t('env.failed.continue'));
-  hostSkip.setAttribute('type', 'button');
-  hostSection.buttons.append(hostSkip);
-
-  card.append(brandHead, bootHint, list, actions, bridge, bridgeFallback.root, diy, diyFallback.root, host);
+  card.append(brandHead, bootHint, list, failureCard.root, bridgeCard.root, diyCard.root, hostCard.root);
   overlay.append(card);
   document.body.append(overlay);
 
@@ -278,7 +186,8 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
 
   function render(snapshot: PreflightSnapshot): void {
     lastSnapshot = snapshot;
-    wakeNote.hidden = true;
+    bridgeCard.status(undefined);
+    bridgeCard.openStatus(undefined);
     if (bootHintShown && (snapshot.phase !== 'idle' || snapshot.steps.length > 0)) {
       bootHintShown = false;
       bootHint.hidden = true;
@@ -329,106 +238,37 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
       list.replaceChildren(...items);
     }
 
-    const failed = snapshot.phase === 'failed';
     const gateFacts = { deployment: deploymentOf(), retried, host: hostLabel() };
-    actions.hidden = !failed;
-    retry.removeAttribute('disabled');
-    bridgeRetry.removeAttribute('disabled');
-    diyFallback.setDisabled(false);
-    bridgeFallback.setDisabled(false);
-    const fix = snapshot.steps.find((step) => step.status === 'failed' && step.command !== undefined);
-    const commandText = fix?.command;
+    openExtensionsAllowed = snapshot.canWakeBrowser === true;
 
-    const guidance = snapshot.guidance ?? 'install';
-    const showCommand = guidance === 'install' && commandText !== undefined;
-    const advice = guidanceTextOf(guidance, t, showCommand);
-    fixWhy.textContent = advice.why;
-    fixStep.textContent = advice.step;
+    const failure = failureFixOf(snapshot, t);
+    if (failure === undefined) failureCard.root.hidden = true;
+    else failureCard.set(failure);
 
-    fixCommand.set(showCommand ? commandText : undefined);
-
-    fixAdvice.textContent = !showCommand
-      ? ''
-      : snapshot.failure === 'permission'
-        ? t('env.fix.permission')
-        : snapshot.failure === 'network'
-          ? t('env.fix.network')
-          : '';
-    const bridgeStep = snapshot.steps.find((step) => step.id === 'bridge');
-    const bridgeIssues = snapshot.bridgeIssues ?? [];
-    const bridgeBroken =
-      bridgeIssues.length > 0 ||
-      (bridgeStep !== undefined && (bridgeStep.status === 'warn' || bridgeStep.status === 'failed'));
-    const bridgeFallbackCard = bridgeFallbackOf(snapshot, gateFacts, t);
-    bridge.hidden = !bridgeBroken || bridgeFallbackCard !== undefined;
-    if (bridgeFallbackCard === undefined) bridgeFallback.root.hidden = true;
-    else bridgeFallback.set(bridgeFallbackCard);
-    if (bridgeBroken && bridgeFallbackCard === undefined) {
-      bridgeLines.replaceChildren(
-        ...bridgeAdviceLines(
-          bridgeIssues,
-          t,
-          runtimeProfile?.bridge ?? runtimeProfileValue()?.bridge,
-          snapshot.extensionDir,
-          snapshot.extensionTarget,
-        ).map(
-          (advice) => {
-            const item = el('li', styles.bridgeLine, advice.text);
-            if (advice.link !== undefined) {
-              const link = document.createElement('a');
-              link.className = styles.link;
-              link.textContent = advice.link.label;
-              link.href = advice.link.href;
-              link.target = '_blank';
-              link.rel = 'noreferrer noopener';
-              item.append(link);
-            }
-            return item;
-          },
-        ),
-      );
-      bridgeCommand.set(bridgeStep?.command);
-      const canWake =
-        snapshot.canWakeBrowser === true && bridgeIssues.includes('extension');
-      bridgeWake.hidden = !canWake;
-      if (!canWake) wakeNote.hidden = true;
-    }
-
-    const diyCard = diyCardOf(snapshot, gateFacts, t);
-    if (diyCard === undefined) {
-      diy.hidden = true;
-      diyFallback.root.hidden = true;
-    } else if (diyCard.mode === 'deterministic') {
-      diyFallback.root.hidden = true;
-      diy.hidden = false;
-      diySection.why.textContent = diyCard.why;
-      diySection.step.textContent = diyCard.step;
-      diyCommand.set(diyCard.command);
+    const bridgeFallback = bridgeFallbackOf(snapshot, gateFacts, t);
+    if (bridgeFallback !== undefined) {
+      bridgeCard.set(fallbackFixOf(bridgeFallback));
     } else {
-      diy.hidden = true;
-      diyFallback.set(diyCard);
+      const bridge = bridgeFixOf(snapshot, t, runtimeProfile?.bridge ?? runtimeProfileValue()?.bridge);
+      if (bridge === undefined) bridgeCard.root.hidden = true;
+      else bridgeCard.set(bridge);
     }
 
-    const hostGap = snapshot.hostGap;
-    host.hidden = hostGap === undefined;
-    if (hostGap !== undefined) {
-      hostSection.why.textContent = hostVersionWhyText(hostGap, t);
-      hostRecover.textContent = t('env.hostVersion.recover', { host: hostLabel() });
-      hostRecoverDetail.textContent = t('env.hostVersion.recover.detail');
-      hostSection.step.textContent =
-        hostGap.tier === 'older' ? t('env.hostVersion.older.step', { host: hostLabel() }) : '';
-      hostSection.step.hidden = hostGap.tier !== 'older';
-      hostSection.command.set(hostGap.tier === 'older' ? hostGap.command : undefined);
-    }
+    const diy = diyFixOf(snapshot, gateFacts, t);
+    if (diy === undefined) diyCard.root.hidden = true;
+    else diyCard.set(diy);
 
+    const host = hostFixOf(snapshot, t);
+    if (host === undefined) hostCard.root.hidden = true;
+    else hostCard.set(host);
+
+    for (const one of cards) one.setBusy(false);
   }
 
   async function poll(): Promise<void> {
     if (cancelled) return;
     if (pinned !== null) return;
-    const response = await request<PreflightSnapshot>('preflight', forcePlan.next()).catch(
-      () => null,
-    );
+    const response = await nullOnFailure(request<PreflightSnapshot>('preflight', forcePlan.next()));
     if (cancelled) return;
 
     if (response === null || !response.ok) {
@@ -449,18 +289,10 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
   function retryNow(): void {
     retried += 1;
     forcePlan.again(retryTargetOf(pinned ?? lastSnapshot));
-    actions.hidden = true;
-    bridge.hidden = true;
-    wakeNote.hidden = true;
-    diy.hidden = true;
-    host.hidden = true;
-    diyFallback.root.hidden = true;
-    bridgeFallback.root.hidden = true;
-    retry.setAttribute('disabled', '');
-    bridgeRetry.setAttribute('disabled', '');
-    diyRetry.setAttribute('disabled', '');
-    diyFallback.setDisabled(true);
-    bridgeFallback.setDisabled(true);
+    for (const one of cards) {
+      one.root.hidden = true;
+      one.setBusy(true);
+    }
     if (pinned !== null) {
       render(pinned);
       return;
@@ -469,45 +301,38 @@ bridge.append(bridgeTitle, bridgeWhy, bridgeLines, bridgeCommand.row, wakeNote, 
   }
 
   async function wakeBrowserNow(): Promise<void> {
-    bridgeWake.setAttribute('disabled', '');
-    bridgeWake.textContent = t('env.wake.opening');
-    wakeNote.hidden = true;
-    const reply = await request<WakeBrowserReply>(WAKE_BROWSER_ROUTE).catch(() => null);
-    bridgeWake.removeAttribute('disabled');
-    bridgeWake.textContent = t('env.wake');
+    bridgeCard.status(t('env.wake.opening'));
+    const reply = await nullOnFailure(request<WakeBrowserReply>(WAKE_BROWSER_ROUTE));
     if (reply === null || !reply.ok) {
-      wakeNote.textContent = t('env.wake.failed');
-      wakeNote.hidden = false;
+      bridgeCard.status(t('env.wake.failed'));
       return;
     }
     if (reply.status === 'connected') {
-      wakeNote.textContent = t('env.checking');
-      wakeNote.hidden = false;
+      bridgeCard.status(t('env.checking'));
       forcePlan.again();
       void poll();
       return;
     }
-    wakeNote.textContent =
+    bridgeCard.status(
       reply.status === 'browser-open'
         ? t('env.wake.browserOpen')
         : reply.status === 'no-browser'
           ? t('env.wake.noBrowser')
-          : t('env.wake.failed');
-    wakeNote.hidden = false;
+          : t('env.wake.failed'),
+    );
   }
 
-  retry.addEventListener('click', retryNow);
-  failedSkip.addEventListener('click', close);
-  bridgeWake.addEventListener('click', () => void wakeBrowserNow());
-  bridgeRetry.addEventListener('click', retryNow);
-  bridgeSkip.addEventListener('click', close);
-  diyRetry.addEventListener('click', retryNow);
-  diySkip.addEventListener('click', close);
-  diyFallback.onRetry(retryNow);
-  diyFallback.onSkip(close);
-  bridgeFallback.onRetry(retryNow);
-  bridgeFallback.onSkip(close);
-  hostSkip.addEventListener('click', close);
+  async function openExtensionsNow(): Promise<void> {
+    bridgeCard.openStatus(undefined);
+    const reply = await nullOnFailure(
+      request<WakeBrowserReply>(WAKE_BROWSER_ROUTE, { target: 'extensions' }),
+    );
+    if (reply === null || !reply.ok || reply.status !== 'browser-open') {
+      bridgeCard.openStatus(t('env.bridge.openFailed'));
+      return;
+    }
+    bridgeCard.openStatus(t('env.bridge.opened'));
+  }
 
   const search = typeof window === 'undefined' ? '' : (window.location?.search ?? '');
   if (devSurface.on(search)) {

@@ -3,7 +3,7 @@ import { basename, join } from 'node:path';
 import type { RuntimeCapabilities } from '@dsh-workbench/shared';
 import type { BrowserExtension, DiagRecorder, DshHostContext } from '@dsh-workbench/shared/host';
 import type { RouteTable } from '@dsh-workbench/shared/host';
-import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, VERIFIED_DSH, dshHome, dshHostGapOf, dshTierOf, dshVersionFrom, hostOsOf, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
+import { OPENCLI_PIN, PREFLIGHT_INSTALL_TIMEOUT_MS, PREFLIGHT_VERSION_TIMEOUT_MS, VERIFIED_DSH, dshHome, dshHostGapOf, dshTierOf, dshVersionFrom, hostOsOf, param, preflightHandler, quoteShellArgFor, type Seam, workbenchRoot } from '@dsh-workbench/shared/host';
 import { isOpencliAtPin, isOpencliAtPinAt, isOpencliReady, opencliBuiltAt, opencliPackageDir, opencliReadinessAt, storeDirFor, toolchainDir } from '@dsh-workbench/adapter-runtime';
 import { WAKE_BROWSER_ROUTE } from '@dsh-workbench/shared/contract/protocol/preflight-wake';
 import { runBootstrapCommand } from '../runtime/bootstrap-run.js';
@@ -204,8 +204,12 @@ export function registerPreflight(input: {
   });
   input.routes.preflight = preflightHandler(preflight);
   if (desktopBrowser !== undefined) {
-    input.routes[WAKE_BROWSER_ROUTE] = async () => {
-      const result = await desktopBrowser.wake().catch(() => ({ status: 'unknown' as const }));
+    input.routes[WAKE_BROWSER_ROUTE] = async (search) => {
+      const pending =
+        param(search, 'target') === 'extensions'
+          ? desktopBrowser.openExtensions()
+          : desktopBrowser.wake();
+      const result = await pending.catch(() => ({ status: 'unknown' as const }));
       return { ok: true, ...result };
     };
   }
