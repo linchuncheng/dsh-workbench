@@ -349,24 +349,56 @@ export interface ApprovalInput {
 }
 
 /**
+ * 一条可以分多行的审批值：单字符串是一行，字符串数组由外壳按行排版。
+ */
+export type ApprovalLines = string | readonly string[];
+
+/**
  * 审批详情里的一行附加事实：标签与值都由模块给。
  */
 export interface ApprovalPlanExtra {
+  /**
+   * 附加行的标签。
+   */
   readonly label: string;
-  readonly value: string;
+  /**
+   * 附加行的值；字符串数组每项一行，最多 6 行。
+   */
+  readonly value: ApprovalLines;
 }
 
 /**
  * 模块审批详情的四行数据：对象、修改后、目标位置、影响范围，外加可选的领域标签、附加行与警告。
  */
 export interface ApprovalPlanData {
+  /**
+   * 修改项：这次改的是哪个对象。
+   */
   readonly object: string;
-  readonly change: string;
+  /**
+   * 修改后：改成什么；多条事实用字符串数组，最多 6 行。
+   */
+  readonly change: ApprovalLines;
+  /**
+   * 目标位置：这次改在哪里。
+   */
   readonly target: string;
-  readonly impact: string;
+  /**
+   * 影响范围：还会波及什么；多条事实用字符串数组，最多 6 行。
+   */
+  readonly impact: ApprovalLines;
+  /**
+   * 对象标签，默认「修改项」。
+   */
   readonly objectLabel?: string | undefined;
+  /**
+   * 附加事实行。
+   */
   readonly extra?: readonly ApprovalPlanExtra[] | undefined;
-  readonly warn?: string | undefined;
+  /**
+   * 警告；多条事实用字符串数组，最多 6 行。
+   */
+  readonly warn?: ApprovalLines | undefined;
 }
 
 /**

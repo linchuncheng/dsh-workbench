@@ -24,6 +24,13 @@ export interface ApprovalPlanProps {
   readonly children?: ReactNode | undefined;
 }
 
+function linesOf(value: ReactNode): ReactNode {
+  if (!Array.isArray(value)) return value;
+  return value.map((line, index) =>
+    h('span', { className: 'wb-approvalLine', key: String(index) }, line),
+  );
+}
+
 /**
  * 审批屏那张"这次要做什么"的表：一行一项，上面可给一句附注、下面可给一句警告。
  * @returns 一个 div。
@@ -36,12 +43,12 @@ export function ApprovalPlan({ rows, hint, warn, children }: ApprovalPlanProps) 
         {rows.map((row, index) => (
           <div className="wb-approvalRow" key={String(index)}>
             <dt className="wb-approvalLabel">{row.label}</dt>
-            <dd className="wb-approvalValue">{row.value}</dd>
+            <dd className="wb-approvalValue">{linesOf(row.value)}</dd>
           </div>
         ))}
       </dl>
       {children}
-      {warn === undefined ? null : <p className="wb-approvalWarn">{warn}</p>}
+      {warn === undefined ? null : <p className="wb-approvalWarn">{linesOf(warn)}</p>}
     </div>
   );
 }

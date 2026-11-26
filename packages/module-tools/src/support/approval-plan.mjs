@@ -4,16 +4,76 @@ function text(value) {
 
 export const HEAD_BUDGETS = { detail: 20, question: 40, fallback: 40, headline: 15 };
 
+export const APPROVAL_PLAN_LINES_MAX = 6;
+
 const EN_RATIO = 3;
 
 const PLAN_FIELDS = [
-  ['object', '修改项'],
-  ['change', '修改后'],
-  ['target', '目标位置'],
-  ['impact', '影响范围'],
+  ['object', '修改项', false],
+  ['change', '修改后', true],
+  ['target', '目标位置', false],
+  ['impact', '影响范围', true],
 ];
 
 const PLAN_BAD = /undefined|NaN|\[object Object\]/;
+
+function isPlanLines(value) {
+  return typeof value === 'string' || (Array.isArray(value) && value.every((one) => typeof one === 'string'));
+}
+
+function planLinesOf(value) {
+  return typeof value === 'string' ? [value] : value;
+}
+
+function planValueProblems(name, toolName, label, value, many, missing) {
+  const problems = [];
+  if (!isPlanLines(value)) {
+    return [
+      `${name}: 写工具 ${toolName} 的 approval.plan 的「${label}」必须是字符串或字符串数组 —— ` +
+        (many ? '多条事实用数组，每一项一行' : '这里是单值，多个目标放 extra 或 render'),
+    ];
+  }
+  if (!many && Array.isArray(value)) {
+    return [
+      `${name}: 写工具 ${toolName} 的 approval.plan 的「${label}」只收单行字符串 —— ` +
+        '多个目标或对象放 extra 或 render',
+    ];
+  }
+  const lines = planLinesOf(value).map((one) => one.trim());
+  if (lines.length === 0 || lines.every((one) => one === '')) {
+    problems.push(`${name}: 写工具 ${toolName} 的 approval.plan ${missing}`);
+    return problems;
+  }
+  if (lines.some((one) => one === '')) {
+    problems.push(
+      `${name}: 写工具 ${toolName} 的 approval.plan 的「${label}」里有空行 —— ` +
+        '数组里每一项都要有内容',
+    );
+  }
+  if (many && lines.length > APPROVAL_PLAN_LINES_MAX) {
+    problems.push(
+      `${name}: 写工具 ${toolName} 的 approval.plan 的「${label}」有 ${lines.length} 行 —— ` +
+        `最多 ${APPROVAL_PLAN_LINES_MAX} 行；更多内容放 approval.render`,
+    );
+  }
+  for (const line of lines) {
+    if (line === '') continue;
+    if (/[\r\n]/.test(line)) {
+      problems.push(
+        `${name}: 写工具 ${toolName} 的 approval.plan 的「${label}」里有换行 —— ` +
+          '每一项要单行；换行请拆成多个数组元素',
+      );
+      continue;
+    }
+    if (PLAN_BAD.test(line) || /^(待填|TODO|TBD)$/i.test(line)) {
+      problems.push(
+        `${name}: 写工具 ${toolName} 的 approval.plan 的「${label}」是占位或调试值：「${line}」—— ` +
+          '审批屏上不能出现待填、undefined、NaN 或 [object Object]',
+      );
+    }
+  }
+  return problems;
+}
 
 function planProblemsOf(name, toolName, plan) {
   if (plan === null || plan === undefined) {
@@ -29,30 +89,20 @@ function planProblemsOf(name, toolName, plan) {
     ];
   }
   const problems = [];
-  for (const [field, label] of PLAN_FIELDS) {
-    const value = text(plan[field]);
-    if (value === '') {
-      problems.push(
-        `${name}: 写工具 ${toolName} 的 approval.plan 缺少「${label}」—— ` +
-          '四行是审批详情的下限：对象、修改后、目标位置、影响范围都要说清',
-      );
-      continue;
-    }
-    if (/[\r\n]/.test(value)) {
-      problems.push(
-        `${name}: 写工具 ${toolName} 的 approval.plan 的「${label}」里有换行 —— ` +
-          '详情表一行一个事实，长内容放 extra 或 render',
-      );
-    }
-    if (PLAN_BAD.test(value) || /^(待填|TODO|TBD)$/i.test(value)) {
-      problems.push(
-        `${name}: 写工具 ${toolName} 的 approval.plan 的「${label}」是占位或调试值：「${value}」—— ` +
-          '审批屏上不能出现待填、undefined、NaN 或 [object Object]',
-      );
-    }
+  for (const [field, label, many] of PLAN_FIELDS) {
+    problems.push(
+      ...planValueProblems(
+        name,
+        toolName,
+        label,
+        plan[field],
+        many,
+        `缺少「${label}」—— 四行是审批详情的下限：对象、修改后、目标位置、影响范围都要说清`,
+      ),
+    );
   }
   if (plan.objectLabel !== undefined) {
-    const label = text(plan.objectLabel);
+    const label = typeof plan.objectLabel === 'string' ? plan.objectLabel.trim() : '';
     if (label === '' || /[\r\n]/.test(label)) {
       problems.push(
         `${name}: 写工具 ${toolName} 的 approval.plan.objectLabel 必须是一行非空文字（例如「缺陷」「文件」）`,
@@ -64,26 +114,43 @@ function planProblemsOf(name, toolName, plan) {
       problems.push(`${name}: 写工具 ${toolName} 的 approval.plan.extra 必须是数组`);
     } else {
       plan.extra.forEach((row, index) => {
-        const label = text(row?.label);
-        const value = text(row?.value);
-        if (label === '' || value === '') {
+        const label = typeof row?.label === 'string' ? row.label.trim() : '';
+        if (label === '' || /[\r\n]/.test(label)) {
+          problems.push(
+            `${name}: 写工具 ${toolName} 的 approval.plan.extra[${index}] 的标签不能为空，且必须单行`,
+          );
+        }
+        if (row?.value === undefined) {
           problems.push(
             `${name}: 写工具 ${toolName} 的 approval.plan.extra[${index}] 的标签和值都不能为空 —— ` +
               '附加行也要说清是什么、值是什么',
           );
-        } else if (/[\r\n]/.test(label) || /[\r\n]/.test(value)) {
+        } else {
           problems.push(
-            `${name}: 写工具 ${toolName} 的 approval.plan.extra[${index}] 里有换行 —— 每行只放一个事实`,
+            ...planValueProblems(
+              name,
+              toolName,
+              `extra[${index}].value`,
+              row.value,
+              true,
+              `缺少「extra[${index}].value」—— 附加行也要说清值是什么`,
+            ),
           );
         }
       });
     }
   }
   if (plan.warn !== undefined) {
-    const warn = text(plan.warn);
-    if (warn === '' || /[\r\n]/.test(warn)) {
-      problems.push(`${name}: 写工具 ${toolName} 的 approval.plan.warn 必须是一行非空文字`);
-    }
+    problems.push(
+      ...planValueProblems(
+        name,
+        toolName,
+        '警告 warn',
+        plan.warn,
+        true,
+        '缺少「警告 warn」—— 没有内容就不要给 warn',
+      ),
+    );
   }
   return problems;
 }

@@ -34,6 +34,9 @@
   color: var(--dsw-alias-label-primary);
   overflow-wrap: anywhere;
 }
+.wb-approvalLine {
+  display: block;
+}
 .wb-approvalWarn {
   color: var(--dsw-alias-label-secondary);
 }

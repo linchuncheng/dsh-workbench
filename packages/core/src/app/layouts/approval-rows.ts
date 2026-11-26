@@ -13,9 +13,11 @@ import {
   PANELS_SHOW_TOOL,
 } from '@/modules/panels/client';
 
+export type ApprovalCell = string | readonly string[];
+
 export interface ApprovalRow {
   readonly label: string;
-  readonly value: string;
+  readonly value: ApprovalCell;
 }
 
 export function textOf(args: Readonly<Record<string, unknown>>, key: string): string {
@@ -23,11 +25,16 @@ export function textOf(args: Readonly<Record<string, unknown>>, key: string): st
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
 }
 
-function argText(value: unknown): string {
+function argLine(value: unknown): string {
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   const text = JSON.stringify(value);
   return text === undefined ? String(value) : text;
+}
+
+function argCell(value: unknown): ApprovalCell {
+  if (Array.isArray(value) && value.length > 0) return value.map(argLine);
+  return argLine(value);
 }
 
 export function recordApprovalRows(
@@ -65,7 +72,7 @@ export function pluginApprovalRows(
   }
   for (const name of origin.args) {
     if (!(name in args)) continue;
-    rows.push({ label: name, value: argText(args[name]) });
+    rows.push({ label: name, value: argCell(args[name]) });
   }
   return rows;
 }

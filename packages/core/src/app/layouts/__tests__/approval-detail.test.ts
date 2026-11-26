@@ -383,7 +383,7 @@ describe('插件命令的审批详情座：从清单与参数把"跑哪条命令
       ['命令', 'personnel-authorize'],
       ['agent 说明', '给陈孝群(20191104004)加开发者角色'],
       ['ASCode', 'auth_6dc3eb9b7012119'],
-      ['authorizations', '[{"code":"20191104004","roleCode":"dify_developer"}]'],
+      ['authorizations', ['{"code":"20191104004","roleCode":"dify_developer"}']],
     ]);
   });
 
@@ -408,6 +408,16 @@ describe('插件命令的审批详情座：从清单与参数把"跑哪条命令
 
     expect(rows.slice(2).map((row) => row.value)).toEqual(['3', 'false', 'null', '{"k":"v"}', '']);
     expect(rows.map((row) => row.value).join(' ')).not.toMatch(/undefined|NaN|\[object/);
+  });
+
+  it('★ 数组参数一项一行，单元素数组也走数组', () => {
+    const rows = pluginApprovalRows(
+      { plugin: 'demo', command: 'run', args: ['tags', 'ids'] },
+      { tags: ['甲', '乙'], ids: [7] },
+      t,
+    );
+
+    expect(rows.slice(2).map((row) => row.value)).toEqual([['甲', '乙'], ['7']]);
   });
 
   it('★★ 真调用：详情座认领插件命令画那张表，agent 塞的 command 进不来', () => {
@@ -562,8 +572,8 @@ function moduleSeatOf(
   }) as SeatNode | null;
 }
 
-function rowsOf(node: SeatNode | null): readonly { readonly label: string; readonly value: string }[] {
-  return (node?.props?.rows ?? []) as readonly { readonly label: string; readonly value: string }[];
+function rowsOf(node: SeatNode | null): readonly { readonly label: string; readonly value: unknown }[] {
+  return (node?.props?.rows ?? []) as readonly { readonly label: string; readonly value: unknown }[];
 }
 
 const planData = (objectLabel?: string): ApprovalPlanData => ({
@@ -605,6 +615,31 @@ describe('模块审批详情：四行是下限，render 是上限', () => {
     const node = moduleSeatOf(planFace({ plan: () => planData() }));
 
     expect(rowsOf(node)[0]).toEqual({ label: '修改项', value: '#136' });
+  });
+
+  it('★ change / impact / extra / warn 都能传数组，交给同一张表排版', () => {
+    const node = moduleSeatOf(
+      planFace({
+        plan: () => ({
+          object: '#136',
+          change: ['激活 → 已解决', '补一条回归'],
+          target: '演示平台 · 预发',
+          impact: ['只改这一条', '不动其他'],
+          extra: [{ label: '当前状态', value: ['激活', '已复核'] }],
+          warn: ['提交后不可撤回', '不要重复提交'],
+        }),
+      }),
+    );
+    const rows = rowsOf(node);
+
+    expect(rows.map((row) => row.value)).toEqual([
+      '#136',
+      ['激活 → 已解决', '补一条回归'],
+      '演示平台 · 预发',
+      ['只改这一条', '不动其他'],
+      ['激活', '已复核'],
+    ]);
+    expect(node?.props?.warn).toEqual(['提交后不可撤回', '不要重复提交']);
   });
 
   it('★ render 接管详情区，拿到 plan；返回 null 退回四行表', () => {

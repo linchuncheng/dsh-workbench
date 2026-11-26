@@ -74,6 +74,12 @@ describe('审批前预检：开工前就判得出来的，不让人白点一次'
     expect(approvalPrecheckOf({ name: DIY_DEBUG_START_TOOL, arguments: {}, session: 's1' }, { debugOf: debugOf(held('s2', 'paused')) })).toContain('另一场');
     expect(approvalPrecheckOf({ name: DIY_DEBUG_START_TOOL, arguments: {}, session: 's1' }, { debugOf: debugOf(held('s1', 'debugging')) })).toContain('已持有');
     expect(approvalPrecheckOf({ name: DIY_DEBUG_START_TOOL, arguments: {}, session: 's1' }, { debugOf: debugOf(null) })).toBeUndefined();
+    expect(
+      approvalPrecheckOf(
+        { name: MODULES_INSTALL_BUNDLE_TOOL, arguments: { spec: '@demo/probe' } },
+        { debugOf: debugOf(null) },
+      ),
+    ).toBeUndefined();
 
     expect(approvalPrecheckOf({ name: DIY_DEBUG_RESUME_TOOL, arguments: {}, session: 's1' }, { debugOf: debugOf(null) })).toContain('没有调试');
     expect(approvalPrecheckOf({ name: DIY_DEBUG_RESUME_TOOL, arguments: {}, session: 's1' }, { debugOf: debugOf(held('s2', 'paused')) })).toContain('不属于当前会话');

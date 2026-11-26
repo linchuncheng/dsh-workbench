@@ -46,6 +46,13 @@ export function debugPrecheckOf(
     if (held === null) return undefined;
     return debugRefusalText(held.sessionId === session ? 'already-held' : 'held-by-other', held);
   }
+  if (
+    call.name !== DIY_DEBUG_RESUME_TOOL &&
+    call.name !== DIY_DEBUG_PAUSE_TOOL &&
+    call.name !== DIY_DEBUG_STOP_TOOL
+  ) {
+    return undefined;
+  }
   if (held === null) return debugRefusalText('none');
   if (held.sessionId !== session) return debugRefusalText('not-owner', held);
   if (held.phase === 'debugging') return debugRefusalText('already-debugging', held);

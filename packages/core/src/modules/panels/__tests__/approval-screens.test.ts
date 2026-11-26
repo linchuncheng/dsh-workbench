@@ -66,7 +66,10 @@ function planLines(plan: ApprovalPlanView | undefined): readonly string[] {
   if (plan.rows.length === 0) return ['详情座：外壳认领了，不画（agent 塞的 command 进不来）'];
   const label = Math.max(...plan.rows.map((row) => displayWidth(row.label)));
   return [
-    ...plan.rows.map((row) => `${pad(row.label, label)}  ${row.value}`),
+    ...plan.rows.flatMap((row) => {
+      const values = Array.isArray(row.value) ? row.value : [row.value];
+      return values.map((value, index) => `${index === 0 ? pad(row.label, label) : pad('', label)}  ${value}`);
+    }),
     ...(plan.warn === undefined ? [] : [`⚠ ${plan.warn}`]),
   ];
 }

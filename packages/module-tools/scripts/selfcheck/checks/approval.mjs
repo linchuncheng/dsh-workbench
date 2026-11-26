@@ -51,6 +51,20 @@ export const checks = [
         target: '本机',
         impact: '只改这一条',
       })`;
+      const arrayPlan = `(input, t) => ({
+        object: '演示对象',
+        change: ['改一下', '再改一下'],
+        target: '本机',
+        impact: ['只改这一条', '不动别的'],
+        extra: [{ label: '当前状态', value: ['激活', '已复核'] }],
+        warn: ['先别关', '再来一次'],
+      })`;
+      const tooManyPlan = `(input, t) => ({
+        object: '演示对象',
+        change: ['一', '二', '三', '四', '五', '六', '七'],
+        target: '本机',
+        impact: '只改这一条',
+      })`;
       const clientSource = (planSource) => `window.__ModuleLoader__.load({
   id: "@dsh-workbench/module-demo-approval",
   factory() {
@@ -174,6 +188,10 @@ export function apply(ctx) {
         );
         writeAskHost();
         expectRed('plan 的「修改项」为空', '修改项');
+        writeFileSync(join(probe, 'client.js'), clientSource(arrayPlan));
+        expectGreen('plan 的 change / impact / extra / warn 可传数组');
+        writeFileSync(join(probe, 'client.js'), clientSource(tooManyPlan));
+        expectRed('plan 的数组超过 6 行', '最多 6 行');
         writeFileSync(join(probe, 'client.js'), clientSource(goodPlan));
 
         writeFileSync(
