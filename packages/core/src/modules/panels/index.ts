@@ -63,6 +63,8 @@ import { absentScreenReason, diyManageAbsentReason, offBoardReason, packClosedRe
 import { registerToolboxTools } from './model/toolbox-tools';
 import { diagExportAction } from '@/shared/api/host/diag-export-action';
 import { registerDiagTools } from './model/diag-tool';
+import { registerUnitSkills } from './model/unit-skills';
+import type { UnitSkillDeps } from './model/unit-skills';
 import { panelsUnit, screenOnlyToolsFor } from './unit';
 
 function recordFlowOf(runs: DiyFlowRuns): RecordFlowPort {
@@ -385,6 +387,13 @@ export const panelsHost: UnitOwnedFace = {
         ...registerDiyStepTool(ctx, diyRuns),
         ...registerRecordTools(ctx, record, recordFlowOf(diyRuns)),
         ...registerLongTaskTools(ctx, longTaskRuns),
+        ...registerUnitSkills({
+          skills: ctx.get('skills') as UnitSkillDeps['skills'],
+          manifests,
+          toolbox,
+          workspaceOf: (cwd) => registeredWorkspacePathOf(ctx, cwd),
+          subscribe: (listener) => panels.subscribe(listener),
+        }),
       ],
       factsOf: (call) => panelsFactsOf(call, manifests()),
       needsApproval: panelsApprovalFor(

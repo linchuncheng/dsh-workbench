@@ -5,10 +5,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createNoopDataReader } from '@dsh-workbench/shared/testing';
 import type { HostContext, UnitManifest } from '@dsh-workbench/shared';
 import type { DshToolDefinition } from '@dsh-workbench/shared/host';
-import { MCP_TOOLS_SERVICE, SESSION_PROJECTIONS_SERVICE, type McpServerPacks } from '@dsh-workbench/shared/host';
+import { MCP_TOOLS_SERVICE, PANELS_SERVICE, SESSION_PROJECTIONS_SERVICE, type McpServerPacks } from '@dsh-workbench/shared/host';
 import { createHostKit, createWorkspaceStore, hostSurface, WORKBENCH_ADAPTERS } from '@dsh-workbench/shared/host';
 import { panelsHost } from '../index';
 import { createToolbox } from '../model/toolbox';
+import type { PanelsService } from '../model/service';
+import type { SkillProvider } from '../model/unit-skills';
 import {
   DIY_BORROWED_TOOLS,
   DIY_PACK_TOOLS,
@@ -66,8 +68,27 @@ function mount(
   mcp: readonly McpServerPacks[] = [],
   extra: readonly UnitManifest[] = [],
   presetOf: (session: string) => string | null = () => null,
+  skills = true,
 ) {
   const registered: DshToolDefinition[] = [];
+  const warnings: string[] = [];
+  const handlers = new Map<string, (payload: unknown) => void>();
+  const provided = new Map<string, unknown>();
+  const skillRegistry = {
+    providers: [] as SkillProvider[],
+    invalidations: 0,
+    registerProvider(create: (control: { readonly signal: AbortSignal; invalidate(): void }) => SkillProvider) {
+      skillRegistry.providers.push(
+        create({
+          signal: new AbortController().signal,
+          invalidate: () => {
+            skillRegistry.invalidations += 1;
+          },
+        }),
+      );
+      return () => {};
+    },
+  };
   const ctx = {
     get: (key: string) =>
       key === WORKBENCH_ADAPTERS
@@ -90,14 +111,28 @@ function mount(
                     return () => {};
                   },
                 }
-              : undefined,
-    provide: () => () => {},
-    logger: { info: () => {}, warn: () => {} },
+              : key === 'skills'
+                ? skills
+                  ? skillRegistry
+                  : undefined
+                : key === 'workspaceRegistry'
+                  ? { list: () => [{ path: dir, title: 'workspace' }] }
+                  : undefined,
+    on: (event: string, handler: (payload: unknown) => void) => {
+      handlers.set(event, handler);
+      return () => { handlers.delete(event); };
+    },
+    provide: (name: string, service: unknown) => {
+      provided.set(name, service);
+      return () => {};
+    },
+    logger: { info: () => {}, warn: (message: string) => { warnings.push(message); } },
   } as unknown as HostContext;
 
   const mounted = panelsHost.mount({
     manifest: panelsUnit,
     ctx,
+    logger: { info: () => {}, warn: (message: string) => { warnings.push(message); } },
     manifests: () => [panelsUnit, boardUnit, ...extra],
     ownedUnits: () => [panelsUnit.id, 'board-x'],
     store: store(),
@@ -105,7 +140,7 @@ function mount(
     ...createHostKit({ libInstallCommand: (options) => `npm i ${options.need.name}`, surface: hostSurface() }),
   });
   mounted.registerTools();
-  return { mounted, registered };
+  return { mounted, registered, handlers, warnings, skillRegistry, provided };
 }
 
 const exec = (session?: string) =>
@@ -378,5 +413,73 @@ describe('MCP server 也是外部包', () => {
 
     expect(deniedOf(mounted, 's-1')).not.toContain('mcp__chrome__navigate_page');
     expect(deniedOf(mounted, null)).toEqual([]);
+  });
+});
+
+const emptyUnit: UnitManifest = {
+  id: 'empty-unit',
+  title: { zh: '空', en: 'Empty' },
+  titleKey: 'empty.unit',
+  card: null,
+  host: { inject: [], optional: [] },
+  tools: [],
+};
+
+function providerOf(skillRegistry: { readonly providers: readonly SkillProvider[] }): SkillProvider {
+  const provider = skillRegistry.providers[0];
+  if (provider === undefined) throw new Error('没有注册 skill provider');
+  return provider;
+}
+
+describe('模块 skill：/workbench-<unit-id> 只列当前工作区可用、仅用户调用', () => {
+  it('注册一个 user-only skill provider', () => {
+    const { skillRegistry } = mount();
+    expect(providerOf(skillRegistry).name).toBe('workbench');
+  });
+
+  it('只给当前工作区可见、有工具的单元；panels、无工具、未启用都没有', async () => {
+    const { skillRegistry } = mount([], [offUnit, emptyUnit]);
+    const skills = await providerOf(skillRegistry).list({ cwd: dir });
+
+    expect(skills.map((one) => one.name)).toEqual(['workbench-board-x']);
+    expect(skills[0]?.description).toBe('看板 X');
+    expect(skills[0]?.invocation).toEqual({ modelInvocable: false, userInvocable: true });
+    expect(skills[0]?.source).toBe('custom');
+    expect(skills[0]?.provider).toBe('workbench');
+    expect(skills[0]?.locator).toBe('board-x');
+  });
+
+  it('没有项目：没有 skill', async () => {
+    const { skillRegistry } = mount();
+    const provider = providerOf(skillRegistry);
+    expect(await provider.list({})).toEqual([]);
+    expect(await provider.list({ cwd: path.join(os.tmpdir(), 'not-registered') })).toEqual([]);
+  });
+
+  it('正文只点名模块和工具包，不点名具体工具', async () => {
+    const { skillRegistry } = mount();
+    const provider = providerOf(skillRegistry);
+    const candidates = await provider.list({ cwd: dir });
+    const candidate = candidates[0];
+    if (candidate === undefined) throw new Error('没有 skill');
+    const skill = await provider.get(candidate, { cwd: dir });
+
+    expect(skill?.content).toContain('看板 X');
+    expect(skill?.content).toContain('unit:board-x');
+    expect(skill?.content).not.toContain('workbench_board_x_list');
+  });
+
+  it('面板变化会让 skill 目录失效', () => {
+    const { skillRegistry, provided } = mount();
+    const panels = provided.get(PANELS_SERVICE) as PanelsService | undefined;
+
+    expect(skillRegistry.invalidations).toBe(0);
+    panels?.reset(dir);
+    expect(skillRegistry.invalidations).toBe(1);
+  });
+
+  it('skills 服务缺失：不炸，也不注册', () => {
+    const { skillRegistry } = mount([], [], () => null, false);
+    expect(skillRegistry.providers).toEqual([]);
   });
 });
