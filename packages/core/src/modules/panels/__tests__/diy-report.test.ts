@@ -1,7 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { PanelUnitReport } from '@dsh-workbench/shared/host';
 
 import { ageText, healthOf, readText, renderList, renderPanel, renderStatus, statusOf } from '../model/diy-report';
+
+const temps: string[] = [];
+
+afterEach(() => {
+  for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+
+function builtDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'wb-report-'));
+  temps.push(dir);
+  mkdirSync(join(dir, 'dist'), { recursive: true });
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ exports: { '.': './dist/host.js' } }), 'utf8');
+  writeFileSync(join(dir, 'dist', 'host.js'), 'x', 'utf8');
+  return dir;
+}
 
 function registry(options: {
   mounted?: readonly string[];
@@ -93,6 +111,81 @@ describe('statusOf / renderStatus', () => {
 
   it('空的清单回到 list 那一屏（不打印"工作区："加一片空白）', () => {
     expect(renderStatus('/w', [])).toContain('没有模块源码');
+  });
+
+  it('这次构建没有生效：下一步说清原因与重启，不糊成"均已生效"', () => {
+    const status = statusOf({
+      dir: builtDir(),
+      unit: 'demo',
+      name: 'demo',
+      installed: true,
+      known: true,
+      open: true,
+      health: { state: 'ok' },
+      applied: { at: 1_700_000_000_000, state: 'pending', reason: 'host-module' },
+    });
+
+    expect(status.next).toContain('没有生效');
+    expect(status.next).toContain('不是可替换的插件');
+    expect(status.next).toContain('重启');
+    expect(status.next).not.toContain('均已生效');
+    expect(renderStatus('/w', [status])).toContain('最近一次推送：未生效');
+  });
+
+  it('这台 dsh 未启用热更新：说清修改后要重启', () => {
+    const status = statusOf({
+      dir: builtDir(),
+      unit: 'demo',
+      name: 'demo',
+      installed: true,
+      known: true,
+      open: true,
+      health: { state: 'ok' },
+      applied: { at: 1_700_000_000_000, state: 'unavailable', reason: '这台 dsh 未启用热更新' },
+    });
+
+    expect(status.next).toContain('无法热换模块');
+    expect(status.next).toContain('重启');
+  });
+
+  it('换进去了：说已生效，并把回执打出来', () => {
+    const status = statusOf({
+      dir: builtDir(),
+      unit: 'demo',
+      name: 'demo',
+      installed: true,
+      known: true,
+      open: true,
+      health: { state: 'ok' },
+      applied: { at: 1_700_000_000_000, state: 'applied' },
+    });
+
+    expect(status.next).toContain('均已生效');
+    expect(renderStatus('/w', [status])).toContain('最近一次推送：已生效');
+    expect(status.applied?.state).toBe('applied');
+  });
+
+  it('不在本工作区的模块：不拿 cwd 顶替产物，也不谎报"源码比产物新"', () => {
+    const status = statusOf({
+      dir: '',
+      unit: 'demo',
+      name: 'demo',
+      installed: true,
+      known: true,
+      open: true,
+      health: { state: 'ok' },
+      applied: { at: 1_700_000_000_000, state: 'applied' },
+    });
+
+    expect(status.outside).toBe(true);
+    expect(status.artifacts).toEqual([]);
+    expect(status.stale).toBe(false);
+    expect(status.next).toContain('不在当前工作区');
+
+    const text = renderStatus('/w', [status]);
+    expect(text).toContain('产物：不在本工作区，无法判定');
+    expect(text).not.toContain('源码比产物新');
+    expect(text).toContain('最近一次推送：已生效');
   });
 });
 

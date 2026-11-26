@@ -35,6 +35,8 @@ import type { DshHostContext, DshPromptAssembly, LongTaskBase, LongTaskRegistry,
 import { applyPlanFailures, declaredNotesOf, mountUnits, failureReasonOf, type UnitsPlan } from '@/kernel/host/mount-units';
 import { createUnitProbe } from '@/kernel/host/unit-probe';
 import { createUnitRegistry, installableUnitsOf, type HostUnit } from '@/kernel/host/unit-registry';
+import { createProfileApply } from '@/shared/api/host/profile-apply';
+import { mountBuildPush } from '@/shared/api/host/build-push';
 import { bindRosterFacts } from '@/shared/api/host/unit-roster-facts';
 import { refusalRowsOf } from '@/shared/api/host/unit-refusals';
 import { createDraftStore, createWorkspaceStore, withLibRunners } from '@dsh-workbench/shared/host';
@@ -124,12 +126,9 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
   });
   const renderers = new Map<string, ContextRenderer>();
   const packageRoot = adapters.runtime.packageRoot(import.meta.url);
-  const reconcileProfile = async (): Promise<boolean> => {
-    const hmr = ctx.get('hmr');
-    if (hmr?.runExclusive === undefined || hmr.reconcileProfile === undefined) return false;
-    await hmr.runExclusive(() => hmr.reconcileProfile());
-    return true;
-  };
+  const profileApply = createProfileApply(ctx);
+  const applyProfile = profileApply.apply;
+  const reconcileProfile = profileApply.reconcile;
   const sidebarReconcile = async (): Promise<void> => {
     await reconcileProfile();
   };
@@ -156,6 +155,7 @@ export async function apply(ctx: DshHostContext, config?: WorkbenchConfig): Prom
     refusals: refusalRowsOf(units),
   });
   assembleHostUnits(units);
+  mountBuildPush({ ctx, units, apply: applyProfile, profileDir });
   ctx.inject(['workspaceRegistry'], (scoped) => {
     const registry = scoped.get('workspaceRegistry');
     const workshop = workshopPathOf(scoped);

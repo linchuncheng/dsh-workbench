@@ -47,6 +47,7 @@ import {
   panelEntriesOf,
   plainJson,
   showOrReason,
+  unitTool,
   unitsOf,
   verdictOf,
   workspaceOf,
@@ -75,18 +76,12 @@ export function registerDiyTools(
   const tools = toolRegistryOf(ctx, '跳过 DIY 工具注册');
   if (tools === undefined) return [];
 
-  const statusTool: DshToolDefinition = {
+  const statusTool = unitTool({
     name: DIY_STATUS_TOOL,
     description:
       '查看模块状态：安装、源码、面板识别、启动能力与下一步；不填 unit 则列出全部模块。要新建或修改模块，先调用 workbench_diy_plan。',
-    parameters: {
-      type: 'object',
-      properties: { unit: { type: 'string', description: '模块标识；不填则列出全部模块。' } },
-      required: [],
-      additionalProperties: false,
-    },
-    output: OUTPUT,
-    async execute(raw: unknown, exec: DshToolRunContext) {
+    unitHint: '模块标识；不填则列出全部模块。',
+    async run(raw: unknown, exec: DshToolRunContext) {
       const { root, units } = await unitsAt(ctx, exec);
       const registry = ctx.get(UNITS_SERVICE) as UnitRegistry | undefined;
       const panelEntries = panelEntriesOf(panels, root);
@@ -109,6 +104,7 @@ export function registerDiyTools(
             open: panels.isEnabled(one.unit, root),
             health: healthOf({ registry, unit: one.unit, installed: one.installed }),
             mountedAt: registry?.addedAt?.(one.unit),
+            applied: registry?.applyOf?.(one.unit),
           }),
       );
       const preview = wanted === '' ? null : previewOf(root, wanted);
@@ -120,18 +116,13 @@ export function registerDiyTools(
         text,
       });
     },
-  };
+  });
 
-  const panelTool: DshToolDefinition = {
+  const panelTool = unitTool({
     name: DIY_PANEL_TOOL,
     description: '面板当前状态：每个模块界面是否读取成功、是否崩溃过。用户说「卡片不对」或「一片空白」时先调用。',
-    parameters: {
-      type: 'object',
-      properties: { unit: { type: 'string', description: '模块标识；不填则查看全部模块。' } },
-      additionalProperties: false,
-    },
-    output: OUTPUT,
-    async execute(raw: unknown, exec: DshToolRunContext) {
+    unitHint: '模块标识；不填则查看全部模块。',
+    async run(raw: unknown, exec: DshToolRunContext) {
       const { root } = await workspaceOf(ctx, exec);
       const { installed, units } = unitsOf(ctx, root);
       const panelState = ctx.get(PANEL_STATE_SERVICE) as PanelStateStore | undefined;
@@ -165,7 +156,7 @@ export function registerDiyTools(
       });
       return plainJson({ workspace: root, board, report: snapshot, panels: rows, text });
     },
-  };
+  });
 
   const surface = surfaceOf(ctx);
   const reconTool: DshToolDefinition = {
@@ -279,7 +270,7 @@ export function registerDiyTools(
     name: DIY_INSTALL_TOOL,
     description:
       '把当前工作区中创建的模块安装并显示到面板。这是持久变更，每个模块只安装一次；' +
-      '之后改源码只需 dsh-wb-module build（宿主侧秒级热替换）。',
+      '之后改源码只需 dsh-wb-module build（宿主侧秒级热换）。',
     parameters: UNIT_PARAMETERS,
     output: OUTPUT,
     async execute(raw: unknown, exec: DshToolRunContext) {
@@ -289,7 +280,7 @@ export function registerDiyTools(
       if (found.installed) {
         const panel = showOrReason(panels, found.unit, root);
         const text = [
-          '这个模块已经安装过（当前工作区中的这一份）。不要再安装：修改源码后执行 dsh-wb-module build，宿主侧与 client.js 都会热替换（dsh-client-hmr 监听每个 bundle 的 lib/client.js，重建后替换进已打开的页面）。',
+          '这个模块已经安装过（当前工作区中的这一份）。不要再安装：修改源码后执行 dsh-wb-module build，宿主侧与 client.js 都会热换（dsh-client-hmr 监听每个 bundle 的 lib/client.js，重建后替换进已打开的页面）。',
           panel.ok
             ? `已在面板上打开（${root}）。验收使用这张模块界面，由 agent 亲自操作一遍。`
             : `面板尚未打开：${panel.reason}。调用 workbench_diy_show（unit=${found.unit}）。`,
@@ -333,7 +324,7 @@ export function registerDiyTools(
       const text = [
         `${verdict}：${found.unit}（${found.name}）`,
         panelText,
-        '此后只需修改源码并执行 dsh-wb-module build，宿主侧与 client.js 都会热替换（dsh-client-hmr 监听每个 bundle 的 lib/client.js，重建后替换进已打开的页面）：不要再安装一遍。',
+        '此后只需修改源码并执行 dsh-wb-module build，宿主侧与 client.js 都会热换（dsh-client-hmr 监听每个 bundle 的 lib/client.js，重建后替换进已打开的页面）：不要再安装一遍。',
       ].join('\n');
 
       return plainJson({

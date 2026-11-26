@@ -1,7 +1,7 @@
 import type { DshHostContext, DshToolDefinition, DshToolRegistry, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { sessionIdOf } from '@dsh-workbench/shared/host';
 import type { DebugMove, DebugRefusal, DebugState, DebugStore } from '@dsh-workbench/shared/host';
-import { asRecord, asText, OUTPUT, plainJson, unitsOf, workspaceOf } from './diy-context';
+import { asRecord, asText, OUTPUT, plainJson, unitTool, unitsOf, workspaceOf } from './diy-context';
 import { pageAt } from './diy-page';
 import {
   DIY_DEBUG_PAUSE_TOOL,
@@ -88,17 +88,11 @@ export function registerDebugTools(
   tools: DshToolRegistry,
   store: DebugStore,
 ): readonly (() => void)[] {
-  const startTool: DshToolDefinition = {
+  const startTool = unitTool({
     name: DIY_DEBUG_START_TOOL,
     description: '开始调试：占用用户当前页面，需要用户批准一次。没有该状态时，页面工具一律直接拒绝。',
-    parameters: {
-      type: 'object',
-      properties: { unit: { type: 'string', description: '模块标识；不填时仅在只有一个已安装模块时可用。' } },
-      required: [],
-      additionalProperties: false,
-    },
-    output: OUTPUT,
-    async execute(raw: unknown, exec: DshToolRunContext) {
+    unitHint: '模块标识；不填时仅在只有一个已安装模块时可用。',
+    async run(raw: unknown, exec: DshToolRunContext) {
       const { root, title } = await workspaceOf(ctx, exec);
       const { units } = unitsOf(ctx, root);
       const asked = asText(asRecord(raw)['unit']);
@@ -127,7 +121,7 @@ export function registerDebugTools(
         text: renderDebugStart(state),
       });
     },
-  };
+  });
 
   const pauseTool: DshToolDefinition = {
     name: DIY_DEBUG_PAUSE_TOOL,

@@ -55,12 +55,15 @@ DIY 族仅在选了 DIY 模式的会话出现（按模式，不按工作区）�
 
 ## 4 热换
 
-安装后不再重复安装。修改源码后执行 `dsh-wb-module build`：
+安装后不再重复安装。修改源码后执行 `dsh-wb-module build`（或 `--watch` 常驻，改完自动重建）：
 
 - 宿主侧 → `dist/host.js`：秒级热换，不重启、不刷新。
 - 客户端侧 → `client.js`：刷新页面；`*.module.css` 就地改写 `<style>`，刷新生效。
 - 改 `package.json` 的 `dsh.client` / `exports["./client"]`：需重启（安装声明变更）。
 - 必须重启时说明原因与重启对象。
+- 模块放在自己的工作区（不在工坊）也生效：`build` 写完产物会往 `$DSH_WORKBENCH_HOME/diy/outbox/<unit>.json` 推一条，宿主 `fs.watch` 那个目录（不轮询）收到后重新对账。**老版本 module-tools 不推送**，所以根外模块务必用工作台自带的那份 `dsh-wb-module`；`_status` 说「没有收到这次构建的推送」时就是这条。
+- 对账后无法生效的两种：被宿主本身加载的（`host-module`）、由不在加载清单里的插件提供的（`unmanaged-plugin`）。这时 `_status` 的 `applied` 是 `pending` + 原因，才需要重启。
+- 构建成功不等于已经生效：`_status` 的 `applied` 说 `pending` 时不要报「已生效」；说 `applied` 才表示已经进入正在运行的模块。
 
 ## 5 发布
 

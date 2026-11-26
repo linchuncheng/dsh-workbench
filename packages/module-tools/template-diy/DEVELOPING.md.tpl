@@ -8,7 +8,8 @@
 
 ```bash
 dsh-wb-module init <unit> --dir <目录>              # 生成这份骨架（只有这一个模板）
-dsh-wb-module build     # 生成 dist/host.js 与带加载器包装的 client.js
+dsh-wb-module build     # 生成 dist/host.js 与带加载器包装的 client.js，并推送给运行中的工作台
+dsh-wb-module build --watch   # 常驻：修改 src/** 后自动重建并推送（按 Ctrl-C 退出）
 dsh-wb-module check     # 十四条判据：契约 / 声明协议 / 产物边界 / 源码边界 / 执行缝 / 架构 / dsh 原语 / kit 面 / 卡片渲染 / 独立构建 / 内部标识 / 样式归属 / 不指工作台 / 代码卫生（eslint）
 dsh-wb-module check --only cards   # 十四条可以单独运行
 ```

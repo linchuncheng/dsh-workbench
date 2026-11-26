@@ -52,7 +52,8 @@ pnpm design check # 检查设计底稿的空白项、README 是否覆盖能力 /
 |---|---|
 | `dsh-wb-module init <unit> [--dir <目录>] [--template diy] [--description "一句话"]` | 创建模块骨架（只有 `diy` 一个模板，也是默认） |
 | `dsh-wb-module market-init <git 地址\|目录> [--ref <分支>] [--path <索引路径>]` | 初始化市场索引仓库：写 `market/` + README，推首个 commit |
-| `dsh-wb-module build` | 生成 `dist/host.js`（单文件 ESM）与 `client.js`（带加载器包装） |
+| `dsh-wb-module build` | 生成 `dist/host.js`（单文件 ESM）与 `client.js`（带加载器包装），并推送给运行中的工作台 |
+| `dsh-wb-module build --watch` | 常驻：修改 `src/**` 后自动重建并推送；按 `Ctrl-C` 退出 |
 | `dsh-wb-module check [--only <判据>] [--package <包名或 unit>]` | 十五条检查项（判据）；`--only` 单独运行，也作为查询入口；`--package` 只检查这个模块 + 工作区级不变量（见下）；`--list [--json\|--markdown]` 只列判据元数据 |
 | `dsh-wb-module lint [--fix]` | 使用模块自己的 `eslint.config.mjs`；`--fix` 直接修改文件 |
 | `dsh-wb-module sync` | 按清单生成 `src/declared-tools.ts` 与 `src/sites.ts`（清单有站点表时），按 `design.json` 的 `key + recipe` 生成 `src/datasource.ts` |

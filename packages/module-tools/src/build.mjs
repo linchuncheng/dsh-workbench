@@ -1,8 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, watch, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { builtinModules } from 'node:module';
 import { isAbsolute, join, relative } from 'node:path';
 import { build as esbuild } from 'esbuild';
+import { pushBuild } from './build/push.mjs';
 import { SEED_SPECIFIERS } from './build/seed.mjs';
 import { cssInjectionCode } from './build/css-injection.mjs';
 import { CLIENT_ENTRY_CANDIDATES, HOST_ENTRY_CANDIDATES } from './contract/faces.mjs';
@@ -105,7 +106,13 @@ function cssInjector({ root }) {
   };
 }
 
-export async function build({ root }) {
+function artifactStampsOf(root) {
+  return ['dist/host.js', 'client.js']
+    .filter((one) => existsSync(join(root, one)))
+    .map((one) => ({ path: one, mtimeMs: statSync(join(root, one)).mtimeMs }));
+}
+
+export async function buildOnce({ root }) {
   const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const id = manifest.name;
   if (typeof id !== 'string' || id === '') throw new Error('package.json 中没有 name，无法识别模块标识');
@@ -169,4 +176,68 @@ export async function build({ root }) {
   writeFileSync(join(root, 'client.js'), wrapped);
 
   console.log(`${id}：client.js 已更新（${Buffer.byteLength(wrapped, 'utf8')} 字节）`);
+
+  const files = artifactStampsOf(root);
+  if (unit !== undefined) {
+    const pushed = pushBuild({ unit, root, files });
+    if (!pushed.ok && pushed.skipped !== true) {
+      console.log(`  没有推送：${pushed.reason}（构建已成功）`);
+    }
+  }
+  return { unit, files };
+}
+
+export async function watchBuild({ root }) {
+  const first = await buildOnce({ root });
+  const src = join(root, 'src');
+  if (!existsSync(src)) throw new Error('没有 src/ 目录，无法监听');
+  console.log(`${first.unit ?? '(没有 unit)'}：watch 中，修改 src/** 后自动重建并推送（Ctrl-C 退出）`);
+
+  let timer = null;
+  let running = false;
+  let again = false;
+  const rebuild = async () => {
+    if (running) {
+      again = true;
+      return;
+    }
+    running = true;
+    try {
+      await buildOnce({ root });
+    } catch (error) {
+      console.error(`✖ ${error instanceof Error ? error.message : String(error)}`);
+    }
+    running = false;
+    if (again) {
+      again = false;
+      await rebuild();
+    }
+  };
+  const watcher = watch(src, { recursive: true }, () => {
+    if (timer !== null) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      void rebuild();
+    }, 120);
+  });
+  const stop = () => {
+    watcher.close();
+    if (timer !== null) clearTimeout(timer);
+  };
+  process.once('SIGINT', () => {
+    stop();
+    process.exit(0);
+  });
+  process.once('SIGTERM', () => {
+    stop();
+    process.exit(0);
+  });
+  await new Promise((resolve) => {
+    watcher.on('close', resolve);
+  });
+}
+
+export async function build({ root, args = [] }) {
+  if (args.includes('--watch')) return watchBuild({ root });
+  return buildOnce({ root });
 }

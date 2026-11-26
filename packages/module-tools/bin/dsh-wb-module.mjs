@@ -102,7 +102,7 @@ const CHANGELOG_HELP = `
 release --changelog-note "这一版改了什么"（文件不存在时会先创建）。`;
 
 const COMMANDS = {
-  build: '生成 dist/host.js（单文件 ESM）与 client.js（带加载器包装）',
+  build: '生成 dist/host.js（单文件 ESM）与 client.js（带加载器包装）；--watch 常驻，修改 src/** 后自动重建并推送到运行中的工作台',
   check: '十四条判据；--only 单独运行，也作为查询入口；--list 只列出判据元数据',
   init: '创建模块骨架（--dir / --template diy / --description；只有 diy 一个模板）',
   'market-init': '初始化市场索引仓库（写 market/ 与 README，推首个 commit）',

@@ -88,4 +88,17 @@ describe('moduleBuildFacts', () => {
     expect(facts.builtAll).toBe(false);
     expect(facts.stale).toBe(false);
   });
+
+  it('空目录（模块不在本工作区）：不按 cwd 顶替产物，标记 outside', () => {
+    const facts = moduleBuildFacts('');
+    expect(facts.outside).toBe(true);
+    expect(facts.artifacts).toEqual([]);
+    expect(facts.stale).toBe(false);
+    expect(facts.builtAll).toBe(false);
+  });
+
+  it('有目录的模块：outside=false', () => {
+    const dir = moduleDir(EXPORTS_MANIFEST);
+    expect(moduleBuildFacts(dir).outside).toBe(false);
+  });
 });

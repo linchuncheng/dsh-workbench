@@ -26,6 +26,14 @@ export interface UnitDeclarationSource {
   readonly description?: string;
 }
 
+export type UnitApplyState = 'applied' | 'pending' | 'unavailable';
+
+export interface UnitApplyRecord {
+  readonly at: number;
+  readonly state: UnitApplyState;
+  readonly reason?: string;
+}
+
 export function installableUnitsOf(registry: {
   all(): readonly HostUnit[];
 }): readonly string[] {
@@ -48,6 +56,8 @@ export interface UnitRegistry {
   recovered(unit: string): void;
   failureOf(unit: string): string | undefined;
   addedAt(unit: string): number | undefined;
+  noteApply(unit: string, record: UnitApplyRecord): void;
+  applyOf(unit: string): UnitApplyRecord | undefined;
 }
 
 function sourceLabel(source: UnitSource): string {
@@ -65,6 +75,7 @@ export function createUnitRegistry(options: {
   const byUnit = new Map<string, HostUnit>();
   const failures = new Map<string, string>();
   const added = new Map<string, number>();
+  const applies = new Map<string, UnitApplyRecord>();
   const listeners = new Set<() => void>();
 
   function notify(): void {
@@ -162,5 +173,9 @@ export function createUnitRegistry(options: {
     failureOf: (unit) => failures.get(unit),
 
     addedAt: (unit) => added.get(unit),
+    noteApply: (unit, record) => {
+      applies.set(unit, record);
+    },
+    applyOf: (unit) => applies.get(unit),
   };
 }

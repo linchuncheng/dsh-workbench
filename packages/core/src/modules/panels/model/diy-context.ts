@@ -1,4 +1,4 @@
-import type { DshHostContext, DshToolRunContext } from '@dsh-workbench/shared/host';
+import type { DshHostContext, DshToolDefinition, DshToolRunContext } from '@dsh-workbench/shared/host';
 import { sessionWorkspace } from '@dsh-workbench/shared/host';
 import { modulesIn } from '@/shared/api/host/diy-modules';
 import { sessionWorkspaceOf } from '@/shared/api/host/workspace-root';
@@ -7,6 +7,28 @@ import { hostSurface } from '@dsh-workbench/shared/host';
 import { supplyPortOf } from '@dsh-workbench/shared/host';
 import type { PanelsService } from './service';
 import { textOutput } from './tool-output';
+
+export function unitTool(options: {
+  readonly name: string;
+  readonly description: string;
+  readonly unitHint: string;
+  readonly run: (raw: unknown, exec: DshToolRunContext) => Promise<unknown>;
+}): DshToolDefinition {
+  return {
+    name: options.name,
+    description: options.description,
+    parameters: {
+      type: 'object',
+      properties: { unit: { type: 'string', description: options.unitHint } },
+      required: [],
+      additionalProperties: false,
+    },
+    output: OUTPUT,
+    async execute(raw: unknown, exec: DshToolRunContext) {
+      return options.run(raw, exec);
+    },
+  };
+}
 
 export const OUTPUT = textOutput({
   workspace: { type: 'string' },

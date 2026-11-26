@@ -26,6 +26,18 @@ function face(unit: string): UnitModuleFace {
 }
 
 describe('createUnitRegistry', () => {
+  it('对账回执按 unit 记下、按 unit 取回（这次构建进没进去）', () => {
+    const registry = registryOf();
+    expect(registry.applyOf('issues')).toBeUndefined();
+
+    registry.noteApply('issues', { at: 1_700_000_000_000, state: 'applied' });
+    registry.noteApply('inventory', { at: 1_700_000_001_000, state: 'pending', reason: 'host-module' });
+
+    expect(registry.applyOf('issues')).toEqual({ at: 1_700_000_000_000, state: 'applied' });
+    expect(registry.applyOf('inventory')?.reason).toBe('host-module');
+    expect(registry.applyOf('nope')).toBeUndefined();
+  });
+
   it('注册进来的套件按注册顺序可见', () => {
     const registry = registryOf();
     registry.register(face('issues'));

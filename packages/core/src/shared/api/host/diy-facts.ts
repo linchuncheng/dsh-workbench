@@ -5,6 +5,7 @@ export interface ModuleBuildFacts {
   readonly artifacts: readonly { readonly path: string; readonly at: string | null }[];
   readonly builtAll: boolean;
   readonly stale: boolean;
+  readonly outside: boolean;
 }
 
 function asExported(dir: string): readonly string[] {
@@ -53,6 +54,7 @@ function newestMtime(dir: string): number | undefined {
 }
 
 export function moduleBuildFacts(dir: string): ModuleBuildFacts {
+  if (dir === '') return { artifacts: [], builtAll: false, stale: false, outside: true };
   const declared = asExported(dir);
   const artifacts = declared.map((rel) => ({ path: rel, mtime: mtimeOf(join(dir, rel)) }));
   const present = artifacts.filter((one) => one.mtime !== undefined);
@@ -68,5 +70,6 @@ export function moduleBuildFacts(dir: string): ModuleBuildFacts {
     })),
     builtAll: present.length === artifacts.length && artifacts.length > 0,
     stale: newestSource !== undefined && oldestBuilt !== undefined && newestSource > oldestBuilt,
+    outside: false,
   };
 }

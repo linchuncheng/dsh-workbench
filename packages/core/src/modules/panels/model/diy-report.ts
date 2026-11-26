@@ -6,6 +6,7 @@ dayjs.extend(utc);
 import type { PanelUnitReport } from '@dsh-workbench/shared/host';
 import type { PublishPreview } from '@dsh-workbench/shared/contract/protocol/market-index';
 
+import type { UnitApplyRecord } from '@/kernel/host/unit-registry';
 import { moduleBuildFacts } from '@/shared/api/host/diy-facts';
 import {
   shapeOf,
@@ -184,8 +185,24 @@ export interface ModuleStatus {
   readonly open: boolean;
   readonly artifacts: readonly { readonly path: string; readonly at: string | null }[];
   readonly stale: boolean;
+  readonly outside: boolean;
   readonly health: SuiteHealth;
+  readonly applied?: UnitApplyRecord | undefined;
   readonly next: string;
+}
+
+function applyReasonText(reason: string): string {
+  if (reason === 'host-module') return '它由 dsh 本身加载，不是可替换的插件';
+  if (reason === 'unmanaged-plugin') return '它由不在加载清单里的插件提供';
+  if (reason === 'module-comparison') return '已安装的版本与正在运行的相同';
+  return reason;
+}
+
+function applyText(applied: UnitApplyRecord | undefined): string | undefined {
+  if (applied === undefined) return undefined;
+  if (applied.state === 'applied') return `已生效（${stampOf(applied.at)}）`;
+  if (applied.state === 'pending') return `未生效（${applyReasonText(applied.reason ?? '原因不明')}，${stampOf(applied.at)}）`;
+  return `无法热换（${applied.reason ?? '原因不明'}）`;
 }
 
 export function statusOf(options: {
@@ -197,8 +214,9 @@ export function statusOf(options: {
   readonly open: boolean;
   readonly health: SuiteHealth;
   readonly mountedAt?: number | undefined;
+  readonly applied?: UnitApplyRecord | undefined;
 }): ModuleStatus {
-  const { dir, unit, name, installed, known, open, health } = options;
+  const { dir, unit, name, installed, known, open, health, applied } = options;
   const facts = moduleBuildFacts(dir);
   const mountedAt = options.mountedAt;
   const newerThanRun =
@@ -218,13 +236,19 @@ export function statusOf(options: {
           ? '面板尚未识别该模块。重启一次工作台（新安装的模块需要重启后才注册到面板），然后再调用 workbench_diy_show'
           : !open
             ? '显示在看板：workbench_diy_show（仅显示，不重新安装）'
-            : !facts.builtAll
+            : facts.outside
+              ? '这个模块不在当前工作区，无法比较源码与产物；请在它自己的仓库中执行 build，构建完成后会自动生效'
+              : !facts.builtAll
               ? '尚未构建：pnpm exec dsh-wb-module build'
               : facts.stale
-                ? '源码比产物新：pnpm exec dsh-wb-module build（宿主侧秒级热替换；修改 client.js 后刷新页面）'
-                : newerThanRun
-                  ? '产物比运行中的实例新：热替换没有生效（模块加载失败时最常见）。重新执行 pnpm exec dsh-wb-module build；如果仍然失败，重启工作台'
-                  : '均已生效：修改源码后执行 build（宿主侧秒级热替换；修改 client.js 后刷新页面），无需再次安装';
+                ? '源码比产物新：pnpm exec dsh-wb-module build（宿主侧秒级热换；修改 client.js 后刷新页面）'
+                : applied?.state === 'pending'
+                  ? `这次构建没有生效：${applyReasonText(applied.reason ?? '原因不明')}。需要重启工作台；构建成功不等于已经生效`
+                  : applied?.state === 'unavailable'
+                    ? `这台 dsh 无法热换模块（${applied.reason ?? '原因不明'}）：修改后需要重启工作台`
+                    : newerThanRun
+                      ? '产物比正在运行的模块新，但工作台没有收到这次构建的推送：请确认 build 用的是工作台自带的那份 dsh-wb-module（旧版不推送）'
+                      : '均已生效：修改源码后执行 build（宿主侧秒级热换；修改 client.js 后刷新页面），无需再次安装';
 
   return {
     unit,
@@ -235,7 +259,9 @@ export function statusOf(options: {
     open,
     artifacts: facts.artifacts,
     stale: facts.stale,
+    outside: facts.outside,
     ...(mountedAt === undefined ? {} : { mountedAt }),
+    ...(applied === undefined ? {} : { applied }),
     health,
     next,
   };
@@ -263,12 +289,16 @@ export function renderStatus(
     const facts =
       `   安装：${one.installed ? '是' : '否'} · 面板已识别：${one.known ? '是' : '否'}` +
       ` · 面板已启用：${one.open ? '是' : '否'}`;
+    const appliedText = applyText(one.applied);
     const artifacts =
-      one.artifacts.length === 0
+      one.outside
+        ? `   产物：不在本工作区，无法判定` + (appliedText === undefined ? '' : ` · 最近一次推送：${appliedText}`)
+        : one.artifacts.length === 0
         ? '   产物：无'
         : `   产物：${one.artifacts
             .map((item) => `${item.path}${item.at === null ? '（缺）' : ` ${item.at.slice(11, 19)}Z`}`)
-            .join(' · ')}` + ` · 源码比产物新：${one.stale ? '是' : '否'}`;
+            .join(' · ')}` + ` · 源码比产物新：${one.stale ? '是' : '否'}` +
+      (appliedText === undefined ? '' : ` · 最近一次推送：${appliedText}`);
     return [head, facts, `   启动状态：${healthText(one.health)}`, artifacts, `   下一步：${one.next}`].join('\n');
   });
   const head = notice === undefined ? `工作区：${root}` : `工作区：${root}\n${notice}`;
@@ -324,7 +354,7 @@ export function renderList(root: string, modules: readonly DiyModule[], shape: W
   const pending = modules.filter((one) => !one.installed);
   const footer =
     pending.length === 0
-        ? '均已安装过，**不要再次安装**：修改源码后执行 dsh-wb-module build（宿主侧秒级热替换；修改 client.js 后刷新页面）。'
+        ? '均已安装过，**不要再次安装**：修改源码后执行 dsh-wb-module build（宿主侧秒级热换；修改 client.js 后刷新页面）。'
         : '安装：workbench_diy_install（unit=<上述 unit>）';
   return `工作区：${root}\n${lines.join('\n')}\n\n${footer}`;
 }
