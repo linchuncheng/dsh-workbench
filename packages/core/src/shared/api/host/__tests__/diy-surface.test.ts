@@ -6,6 +6,7 @@ import {
   findFileOf,
   installedVersionOf,
   kitBucketsOf,
+  namesIn,
   nearNamesOf,
   renderSurfaceText,
   rootsOf,
@@ -27,6 +28,12 @@ import {
 import { kit, primitives } from './diy-surface-samples';
 
 describe('workbench_diy_surface · 解析与落点', () => {
+  it('多个名称按逗号 / 中文逗号 / 空白拆开，并去重', () => {
+    expect(namesIn('Card, CardProps useApiResource')).toEqual(['Card', 'CardProps', 'useApiResource']);
+    expect(namesIn(' Card，Card ')).toEqual(['Card']);
+    expect(namesIn('')).toEqual([]);
+  });
+
   it('scope 只认已知面，别的都当 all', () => {
     expect(scopeOf('kit')).toBe('kit');
     expect(scopeOf('primitives')).toBe('primitives');

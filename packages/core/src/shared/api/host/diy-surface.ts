@@ -253,6 +253,10 @@ export function kitBucketsOf(payload: SurfacePayload): readonly SurfaceBucket[] 
   ];
 }
 
+export function namesIn(text: string): readonly string[] {
+  return [...new Set(text.split(/[,，\s]+/).filter((one) => one !== ''))];
+}
+
 export function matchesBucket(where: string, bucket: string): boolean {
   const wanted = bucket.trim().toLowerCase();
   if (wanted === '') return false;

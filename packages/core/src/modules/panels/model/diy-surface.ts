@@ -5,6 +5,7 @@ import {
   filesOf,
   findFileOf,
   kitTypeHintOf,
+  namesIn,
   refusesEvery,
   renderNameText,
   renderSurfaceText,
@@ -29,6 +30,8 @@ import { renderTokensText } from '@/shared/api/host/diy-tokens';
 import { asRecord, asText, moduleDirsOf, OUTPUT, plainJson, workspaceOf } from './diy-context';
 import { DIY_SURFACE_TOOL } from '../unit';
 
+const MAX_SURFACE_NAMES = 8;
+
 export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
   return {
     name: DIY_SURFACE_TOOL,
@@ -37,7 +40,11 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
     parameters: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: '要查询的名称（如 Card，或公开类型名 UnitSeam / CardProps；scope=deps 时是 deps 成员名；以 --dsw- 开头时连同取值返回）。' },
+        name: {
+          type: 'string',
+          description:
+            '要查询的名称（如 Card，或公开类型名 UnitSeam / CardProps；scope=deps 时是 deps 成员名；以 --dsw- 开头时连同取值返回；可逗号 / 空白分隔多个，一次回多段）。',
+        },
         scope: { type: 'string', enum: ['kit', 'primitives', 'tokens', 'platform', 'deps'], description: 'kit=组件 / primitives=原语 / tokens=令牌 / platform=dsh 进程能力 / deps=工作台依赖（可配 name 单点查）；默认 kit 与 primitives。' },
         bucket: { type: 'string', description: '只列某一分组并展开全部（例 components）。' },
         all: { type: 'boolean', description: '列出全表；默认每组前 12 个。' },
@@ -49,9 +56,34 @@ export function surfaceTool(ctx: DshHostContext): DshToolDefinition {
       const { root } = await workspaceOf(ctx, exec);
       const args = asRecord(raw);
       const scope = scopeOf(asText(args['scope']));
-      const name = asText(args['name']);
+      const names = namesIn(asText(args['name']));
+      const name = names[0] ?? '';
       const bucket = asText(args['bucket']);
       const all = args['all'] === true;
+      if (names.length > 1 && scope !== 'platform') {
+        const limited = names.slice(0, MAX_SURFACE_NAMES);
+        const parts: Record<string, unknown>[] = [];
+        for (const one of limited) parts.push(asRecord(await surfaceTool(ctx).execute({ ...args, name: one }, exec)));
+        const text = parts.map((one) => asText(one['text'])).join('\n\n---\n\n');
+        return plainJson({
+          workspace: root,
+          scope,
+          name: names.join(','),
+          names,
+          bucket,
+          all,
+          file: null,
+          from: 'multi',
+          primitives: parts[0]?.['primitives'] ?? null,
+          kit: parts[0]?.['kit'] ?? null,
+          deps: parts[0]?.['deps'] ?? null,
+          files: parts[0]?.['files'] ?? null,
+          text:
+            names.length > MAX_SURFACE_NAMES
+              ? `${text}\n\n（只回了前 ${String(MAX_SURFACE_NAMES)} 个；其余分批查）`
+              : text,
+        });
+      }
       if (scope === 'deps') {
         const coreRoot = surfaceCoreRoot();
         const type = name === '' || isDepName(name) ? null : publicTypeOf(name, coreRoot, []);

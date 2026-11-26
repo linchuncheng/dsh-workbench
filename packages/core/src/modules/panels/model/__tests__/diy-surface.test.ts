@@ -15,6 +15,23 @@ describe('workbench_diy_surface · 工具形状', () => {
     expect(WRITE_TOOLS).not.toContain(DIY_SURFACE_TOOL);
   });
 
+  it('name 支持逗号 / 空白分隔多个，一次回多段', async () => {
+    const ctx = {
+      get: (key: string) =>
+        key === 'workspaceRegistry'
+          ? { resolveByPath: async () => ({ path: process.cwd(), title: 'x' }) }
+          : undefined,
+    } as never;
+    const exec = { agent: { session: { header: { cwd: process.cwd() } } } } as never;
+    const out = (await surfaceTool(ctx).execute({ name: 'seam, ai', scope: 'deps' }, exec)) as {
+      names?: readonly string[];
+      text?: string;
+    };
+    expect(out.names).toEqual(['seam', 'ai']);
+    expect(out.text).toContain('seam →');
+    expect(out.text).toContain('ai →');
+  });
+
   it('注册恰好一把，并回一个能撤销的 disposer', () => {
     const seen: Array<{ name?: string }> = [];
     const tools = {
